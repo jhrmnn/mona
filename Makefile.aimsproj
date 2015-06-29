@@ -29,7 +29,6 @@ run_local:
 	python worker.py RUN 1 >RUN/local_job.log
 
 run_%:
-	$(eval remote := $(firstword $(subst _, , $*)))
 	bash ~/bin/submit.sh $*.job.sh
 
 update:
