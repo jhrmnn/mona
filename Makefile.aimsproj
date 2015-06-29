@@ -39,6 +39,10 @@ remote_%:
 	make upload_${remote}
 	ssh ${remote} "cd ${remotedir}/$(notdir ${PWD}) && AIMSROOT=${aimsroot_remote} make RUN/$*_job.log"
 
+submit_%:
+	$(eval remote := $(firstword $(subst _, , $*)))
+	ssh ${remote} "cd ${remotedir}/$(notdir ${PWD}) && make run_$*"
+
 upload_%:
 	make $(tools) run_aims.sh
 	rsync -a --delete \
