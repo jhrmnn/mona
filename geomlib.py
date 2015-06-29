@@ -13,6 +13,12 @@ settings = {
     'width': 15
 }
 
+ext_fmt_dict = {
+    'xyz': 'xyz',
+    'aims': 'fhiaims',
+    'vasp': 'vasp'
+}
+
 bohr = 0.52917721092
 
 
@@ -150,7 +156,10 @@ class Molecule(object):
     def copy(self):
         return Molecule([a.copy() for a in self.atoms])
 
-    def write(self, fmt, path):
+    def write(self, path, fmt=None):
+        path = Path(path)
+        if not fmt:
+            fmt = ext_fmt_dict.get(path.suffix[1:])
         with Path(path).open('w') as f:
             if fmt == 'xyz':
                 f.write(u'%i\n' % len(self.atoms))
@@ -177,6 +186,10 @@ class Molecule(object):
             a.xyz += delta
         return m
 
+    def part(self, idxs):
+        return Molecule([a.copy() for i, a in enumerate(self.atoms)
+                         if i+1 in idxs])
+
     def rotated(self, axis, phi, center=None):
         phi = phi*np.pi/180
         rotmat = np.array(
@@ -187,7 +200,7 @@ class Molecule(object):
         shift = {'x': 0, 'y': 1, 'z': 2}[axis]
         for i in [0, 1]:
             rotmat = np.roll(rotmat, shift, i)
-        center = np.array(center) if center else self.cms()
+        center = np.array(center) if center else self.cms
         m = self.copy()
         for a in m.atoms:
             a.xyz = center+rotmat.dot(a.xyz-center)
@@ -346,11 +359,7 @@ def split(s):
 def readfile(path, fmt=None):
     path = Path(path)
     if not fmt:
-        fmt = {
-            'xyz': 'xyz',
-            'aims': 'fhiaims',
-            'vasp': 'vasp'
-        }.get(path.suffix[1:])
+        fmt = ext_fmt_dict.get(path.suffix[1:])
     with path.open() as f:
         if fmt == 'xyz':
             n = int(f.readline())
