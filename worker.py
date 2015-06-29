@@ -3,7 +3,9 @@ import os
 import glob
 import time
 
-myid, prefix, scratch = sys.argv[1:]
+nargs = len(sys.argv[1:])
+prefix, myid = sys.argv[1:3]
+scratch = sys.argv[3] if len(sys.argv[1:]) == 3 else None
 os.chdir(prefix)
 while True:
     tasks = glob.glob('*.start')
@@ -16,10 +18,14 @@ while True:
         os.rename(startname, runname)
     except:
         continue
-    today = time.strftime('%y-%m-%d')
-    rundir = os.path.join(scratch, today, myid, basename)
-    os.makedirs(rundir)
-    os.system('rsync -a ./%s/ %s' % (runname, rundir))
-    os.symlink(rundir, os.path.join(runname, 'rundir'))
-    os.system('cd %s && ./run' % rundir)
+    if scratch:
+        today = time.strftime('%y-%m-%d')
+        rundir = os.path.join(scratch, today, myid, basename)
+        os.makedirs(rundir)
+        os.symlink(rundir, os.path.join(runname, 'rundir'))
+    else:
+        rundir = os.path.join(runname, 'rundir')
+        os.makedirs(rundir)
+    os.system('rsync -a --exclude=rundir ./%s/ %s' % (runname, rundir))
+    os.system('cd %s && ./run > run.log' % rundir)
     os.rename(runname, basename + '.done')
