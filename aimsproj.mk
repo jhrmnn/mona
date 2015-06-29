@@ -15,7 +15,7 @@ endif
 	make prepare
 	make run_$*
 
-${tools}: %:
+${tools} aimsproj.mk: %:
 	rsync -a ${tooldir}/$@ $@
 
 run_aims.sh:
