@@ -66,3 +66,6 @@ distclean: clean
 
 distclean_%:
 	ssh $* "cd ${remotedir}/$(notdir ${PWD}) && make distclean"
+
+self:
+	rsync -a ${tooldir}/Makefile.aimsproj Makefile
