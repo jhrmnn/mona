@@ -8,7 +8,7 @@ aimsroot_remote = ~/software/fhi-aims
 
 all: RUN/local_job.log
 
-RUN/%_job.log: prepare.py aims basis *.in ${tools} run_aims.sh
+RUN/%_job.log: prepare.py ${tools} run_aims.sh ${prereq}
 ifneq ("$(wildcard RUN/*.start RUN/*.running.*)", "")
 	$(error "Some jobs are still running.")
 endif
@@ -32,7 +32,7 @@ run_%:
 	bash ~/bin/submit.sh $*.job.sh
 
 update:
-	make -B ${tools} run_aims.sh
+	make -B ${tools} aimsproj.mk run_aims.sh
 
 remote_%:
 	$(eval remote := $(firstword $(subst _, , $*)))
@@ -66,6 +66,3 @@ distclean: clean
 
 distclean_%:
 	ssh $* "cd ${remotedir}/$(notdir ${PWD}) && make distclean"
-
-self:
-	rsync -a ${tooldir}/aimsproj.mk Makefile
