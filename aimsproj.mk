@@ -1,4 +1,3 @@
-tooldir = ~/projects/comp-chem-tools
 tools = dispatcher.py geomlib.py pyaims.py worker.py
 remotedir = ~/calculations
 AIMSROOT ?= ~/builds/fhi-aims

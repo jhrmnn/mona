@@ -1,3 +1,4 @@
 prereq = *.in aims basis
 
-include aimsproj.mk
+tooldir = ~/projects/comp-chem-tools
+include ${tooldir}/aimsproj.mk
