@@ -292,7 +292,10 @@ class Crystal(Molecule):
         return Crystal(self.lattice.copy(),
                        [a.copy() for a in self.atoms])
 
-    def write(self, fmt, path):
+    def write(self, path, fmt=None):
+        path = Path(path)
+        if not fmt:
+            fmt = ext_fmt_dict.get(path.suffix[1:])
         with Path(path).open('w') as f:
             if fmt == 'fhiaims':
                 for l in self.lattice:

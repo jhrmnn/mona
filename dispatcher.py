@@ -7,7 +7,7 @@ import yaml
 def dispatch(root, tasks, preparer):
     root = Path(root)
     params = [[(k, v[1]) for k, v in t] for t in tasks]
-    paths = [root/('_'.join(slugify(unicode(v)) for k, v in p) or '_'
+    paths = [root/(('_'.join(slugify(unicode(v)) for k, v in p) or '_')
                    + '.start')
              for p in params]
     tasks = [{k: v[0] for k, v in t} for t in tasks]
