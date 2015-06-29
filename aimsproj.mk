@@ -1,4 +1,4 @@
-tools = dispatcher.py geomlib.py pyaims.py worker.py
+tools = dispatcher.py geomlib.py pyaims.py worker.py aimsproj.mk
 remotedir = ~/calculations
 AIMSROOT ?= ~/builds/fhi-aims
 aimsroot_remote = ~/software/fhi-aims
@@ -14,7 +14,7 @@ endif
 	make prepare
 	make run_$*
 
-${tools} aimsproj.mk: %:
+${tools}: %:
 	rsync -a ${tooldir}/$@ $@
 
 run_aims.sh:
@@ -31,7 +31,7 @@ run_%:
 	bash ~/bin/submit.sh $*.job.sh
 
 update:
-	make -B ${tools} aimsproj.mk run_aims.sh
+	make -B ${tools} run_aims.sh
 
 remote_%:
 	$(eval remote := $(firstword $(subst _, , $*)))
