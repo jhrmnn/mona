@@ -1,6 +1,6 @@
+#!/usr/bin/env python
 import numpy as np
 import re
-# import numpy.linalg as lin
 import pandas as pd
 from numpy import sin, cos
 from pathlib import Path
