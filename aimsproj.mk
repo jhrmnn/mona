@@ -1,76 +1,126 @@
-tools = dispatcher.py geomlib.py pyaims.py worker.py
+ifndef inputs
+$(error "Project has no defined $${inputs}.")
+endif
+ifndef outputs
+$(error "Project has no defined $${outputs}.")
+endif
+ifndef tooldir
+$(error "The $${tooldir} path is not defined.")
+endif
+tools = dispatcher.py geomlib.py pyaims.py worker.py logparser.py
+external = ${tools} aimsproj.mk run_aims.sh
 remotedir = ~/calculations
 AIMSROOT ?= ~/builds/fhi-aims
 aimsroot_remote = ~/software/fhi-aims
+existing_files = $(wildcard ${tools} run_aims.sh \
+				 $(addprefix results_*/, ${outputs} results.p))
 
-.PHONY: all prepare run_% update remote_% upload_% check monitor_% clean distclean
 .SECONDEXPANSION:
+.PRECIOUS: $(addprefix results_%/, ${outputs}) results_%/results.p RUN/%_job.log
 
-all: RUN/local_job.log
+all:
+	@make --no-print-directory $(addprefix results_local/, ${outputs})
 
-RUN/%_job.log: prepare.py external ${prereq}
+$(addprefix results_%/, ${outputs}): results_%/results.p process.py
+	cd results_$* && python ../process.py ../$<
+
+results_%/results.p: RUN/%_job.log extract.py | ${external}
+	python extract.py
+	mkdir -p results_$* && mv RUN/results.p $@
+
+RUN/%_job.log: prepare.py ${inputs} | ${external}
 ifneq ("$(wildcard RUN/*.start RUN/*.running.*)", "")
 	$(error "Some jobs are still running.")
 endif
-	make prepare
-	make run_$*
+	@make --no-print-directory prepare
+	@make --no-print-directory run_$*
 
 ${tools} aimsproj.mk:
-	rsync -a ${tooldir}/$@ $@
+	@rsync -ai ${tooldir}/$@ $@
 
 run_aims.sh:
-	rsync -a ~/bin/$@ $@
-
-prepare:
-ifneq ("$(wildcard RUN)", "")
-	$(error "There is a previous RUN, run make cleanrun to overwrite.")
-endif
-	AIMSROOT=${AIMSROOT} python prepare.py
+	@rsync -ai ~/bin/$@ $@
 
 run_local:
 	python worker.py RUN 1 >RUN/local_job.log
 
 run_%:
 	bash ~/bin/submit.sh $*.job.sh
-	@sleep 0.3  # some submitters print asynchronously
+	@sleep 1  # some submitters print asynchronously
+	@make --no-print-directory print_error
+	
+prepare:
+ifneq ("$(wildcard RUN)", "")
+	$(error "There is a previous RUN, run make cleanrun to overwrite.")
+endif
+	AIMSROOT=${AIMSROOT} python prepare.py
+
+print_error:
+	$(error "Wait till the job finishes, then run make again.")
 
 update:
-	make -B external
+	@echo "Updating tools..."
+	@make --no-print-directory -B external
 
-external: ${tools} run_aims.sh aimsproj.mk
+external: ${external}
 
-remote_%: upload_$$(firstword $$(subst _, , %))
+remote_%: upload_$$(firstword $$(subst _, , %)) 
 	$(eval remote := $(firstword $(subst _, , $*)))
-	ssh ${remote} "cd ${remotedir}/$(notdir ${PWD}) && AIMSROOT=${aimsroot_remote} make RUN/$*_job.log"
+ifndef OFFLINE
+	@echo "Connecting to ${remote}..."
+	@ssh ${remote} \
+		"cd ${remotedir}/$(notdir ${PWD}) && \
+		AIMSROOT=${aimsroot_remote} make results_$*/results.p"
+	@echo "Downloading results from ${remote}..."
+	@rsync -ia ${remote}:${remotedir}/$(notdir ${PWD})/results_$*/results.p results_$*/
+endif
+	@make --no-print-directory $(addprefix results_$*/, ${outputs})
+
+upload_%: ${external}
+ifdef OFFLINE
+	@echo "Skipping upload."
+else
+	@echo "Uploading to $*..."
+	@rsync -ia --delete \
+		--exclude=*.pyc --exclude=RUN --exclude=run_aims.sh \
+		--include=$*_*.job.sh --exclude=*_*.job.sh \
+		--exclude=results_* \
+		${PWD}/* $*:${remotedir}/$(notdir ${PWD})/
+endif
 
 submit_%:
 	$(eval remote := $(firstword $(subst _, , $*)))
-	ssh ${remote} "cd ${remotedir}/$(notdir ${PWD}) && make run_$*"
-
-upload_%: external
-	rsync -a --delete \
-		--exclude=*.pyc --exclude=RUN --exclude=run_aims.sh \
-		--include=$*_*.job.sh --exclude=*_*.job.sh \
-		${PWD} $*:${remotedir}/
+	@echo "Connecting to ${remote}..."
+	@ssh ${remote} "cd ${remotedir}/$(notdir ${PWD}) && make run_$*"
 
 check:
 	grep "Have a nice day." RUN/*.done/rundir/run.log
 
 monitor_%:
-	ssh $* qmy
+	@ssh $* qmy
 
 clean:
-	-rm *.pyc
+ifneq ("$(wildcard *.pyc)", "")
+	rm *.pyc
+endif
 
 cleanrun:
-	-rm -r RUN
+ifneq ("$(wildcard RUN)", "")
+	rm -r RUN
+endif
 
 distclean: clean cleanrun
-	-rm ${tools}
-	-rm run_aims.sh
+ifneq ("${existing_files}", "")
+	rm ${existing_files}
+endif
+ifneq ("$(wildcard results_*)", "")
+	rmdir results_*
+endif
 
 cleanrun_%:
-	ssh $* "cd ${remotedir}/$(notdir ${PWD}) && make cleanrun"
+	@echo "Connecting to $*..."
+	@ssh $* "cd ${remotedir}/$(notdir ${PWD}) && make cleanrun"
 
 distclean_%:
-	ssh $* "cd ${remotedir}/$(notdir ${PWD}) && make distclean"
+	@echo "Connecting to $*..."
+	@ssh $* "cd ${remotedir}/$(notdir ${PWD}) && make distclean"

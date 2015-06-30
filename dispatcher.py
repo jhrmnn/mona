@@ -3,6 +3,8 @@ from pathlib import Path
 from slugify import slugify
 from builtins import str  # python23
 import json
+from collections import namedtuple
+import cPickle as pickle
 
 
 def dispatch(root, tasks, preparer):
@@ -17,6 +19,9 @@ def dispatch(root, tasks, preparer):
             json.dump(dict(param), f)
 
 
+Result = namedtuple('Result', ['info', 'data'])
+
+
 def extract(path, extractor):
     path = Path(path)
     results = []
@@ -24,5 +29,6 @@ def extract(path, extractor):
         with open(str(rundir/'info.json')) as f:
             info = json.load(f)
         data = extractor(rundir)
-        results.append((info, data))
-    return results
+        results.append(Result(info, data))
+    with (path/'results.p').open('wb') as f:
+        pickle.dump(results, f, -1)
