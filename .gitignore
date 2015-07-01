@@ -1,0 +1,7 @@
+*.pyc
+example/dispatcher.py
+example/worker.py
+example/proj.mk
+example/pyexample.py
+example/results_*
+example/RUN
