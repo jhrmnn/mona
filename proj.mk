@@ -17,7 +17,7 @@ all:
 	@${MAKE} --no-print-directory $(addprefix results_local/,${outputs})
 
 $(addprefix results_%/,${outputs}): results_%/results.p process.py
-	cd results_$* && python ../process.py ../$<
+	cd results_$* && python ../process.py
 
 results_%/results.p: RUN/%_job.log extract.py | ${external}
 ifneq ("$(wildcard RUN/*.start RUN/*.running.*)", "")

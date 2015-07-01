@@ -36,3 +36,8 @@ def extract(path, extractor):
         results.append(Result(info, data))
     with (path/'results.p').open('wb') as f:
         pickle.dump(results, f, -1)
+
+
+def fetch():
+    with open('results.p', 'rb') as f:
+        return pickle.load(f)
