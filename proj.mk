@@ -8,6 +8,7 @@ ifndef tooldir
 $(error "The $${tooldir} path is not defined.")
 endif
 tools += dispatcher.py worker.py
+userscripts = prepare.py extract.py process.py
 external += ${tools} proj.mk
 
 .SECONDEXPANSION:
@@ -86,6 +87,14 @@ submit_%:
 	$(eval remote := $(firstword $(subst _, ,$*)))
 	@echo "Connecting to ${remote}..."
 	@ssh ${remote} "cd ${remotedir}/$(notdir ${PWD}) && make run_$*"
+
+archive_%:
+	@${MAKE} --no-print-directory results_$*/archive.tar.gz
+
+results_%/archive.tar.gz: $$(addprefix results_%/,${outputs})
+	@echo "Creating archive $@..."
+	@ls ${tools} ${userscripts} $(addprefix results_$*/,${outputs}) ${inputs} \
+		${external} Makefile | xargs tar -zc >$@
 
 clean:
 ifneq ("$(wildcard *.pyc)", "")
