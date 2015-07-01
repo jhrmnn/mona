@@ -13,6 +13,7 @@ def dispatch(root, tasks, preparer):
              for p in params]
     tasks = [{k: v[0] for k, v in t} for t in tasks]
     for path, task, param in zip(paths, tasks, params):
+        path.mkdir(parents=True)
         preparer(path, task)
         with open(str(path/'info.json'), 'w') as f:
             json.dump(dict(param), f)
@@ -28,7 +29,7 @@ def extract(path, extractor):
         with open(str(rundir/'info.json')) as f:
             info = json.load(f)
         try:
-            data = extractor(rundir)
+            data = extractor(rundir/'rundir')
         except:
             print('info: Error occured in {}'.format(rundir))
             raise

@@ -10,8 +10,6 @@ import numpy as np
 
 
 def prepare(path, task):
-    path = Path(path)
-    path.mkdir(parents=True)
     if 'geom' in task:
         geom = task['geom']
     elif Path('geometry.in').is_file():
