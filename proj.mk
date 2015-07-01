@@ -53,7 +53,14 @@ endif
 
 update:
 	@echo "Updating tools..."
+ifneq ("$(wildcard ${external})", "")
+	@rsync -a $(wildcard ${external}) .oldtools/
+endif
 	@${MAKE} --no-print-directory -B external
+
+restore:
+	@echo "Restoring tools..."
+	@rsync -ia .oldtools/* .
 
 external: ${external}
 
@@ -113,6 +120,7 @@ endif
 ifneq ("$(wildcard results_*)", "")
 	rmdir results_*
 endif
+	rm -rf .oldtools
 
 cleanrun_%:
 	@echo "Connecting to $*..."
