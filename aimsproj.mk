@@ -32,6 +32,12 @@ ifneq ("$(wildcard RUN/*.start RUN/*.running.*)", "")
 endif
 	@make --no-print-directory prepare
 	@make --no-print-directory run_$*
+ifneq ("$*", "local")
+	@make --no-print-directory print_error
+endif
+
+print_error:
+	$(error "Wait till the job finishes, then run make again.")
 
 ${tools} aimsproj.mk:
 	@rsync -ai ${tooldir}/$@ $@
@@ -45,16 +51,12 @@ run_local:
 run_%:
 	bash ~/bin/submit.sh $*.job.sh
 	@sleep 1  # some submitters print asynchronously
-	@make --no-print-directory print_error
 	
 prepare:
 ifneq ("$(wildcard RUN)", "")
 	$(error "There is a previous RUN, run make cleanrun to overwrite.")
 endif
 	AIMSROOT=${AIMSROOT} python prepare.py
-
-print_error:
-	$(error "Wait till the job finishes, then run make again.")
 
 update:
 	@echo "Updating tools..."
