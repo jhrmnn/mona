@@ -21,7 +21,7 @@ $(addprefix results_%/,${outputs}): results_%/results.p process.py
 
 results_%/results.p: RUN/%_job.log extract.py | ${external}
 ifneq ("$(wildcard RUN/*.start RUN/*.running.*)", "")
-	$(error "Some jobs are still running.")
+	$(warning "Some jobs are still running.")
 endif
 	python extract.py
 	mkdir -p results_$* && mv RUN/results.p $@
