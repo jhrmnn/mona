@@ -2,9 +2,6 @@ tools = pyexample.py
 external = exampleproj.mk
 remotedir = ~/calculations
 
-# a hack to fetch proj.mk to avoid duplicite entries in git repository
-FETCH_PROJMK := $(shell rsync -a ../proj.mk . &>/dev/null)
-
 include proj.mk
 
 exampleproj.mk:
