@@ -1,7 +1,9 @@
 *.pyc
 example/dispatcher.py
 example/worker.py
-example/*.mk
 example/pyexample.py
-example/results_*
+example/proj.mk
+example/projexample.mk
+example/results_*/results.p
+example/results_*/results.txt
 example/RUN
