@@ -5,6 +5,8 @@ import geomlib
 import os
 from logparser import Parser
 import re
+import xml.etree.cElementTree as ET
+import numpy as np
 
 
 def prepare(path, task):
@@ -45,6 +47,30 @@ def scrape_output(path):
     path = Path(path)
     with path.open() as f:
         return aims_parser.parse(f)
+
+
+def parse_xml(path):
+    path = Path(path)
+    root = ET.parse(str(path)).getroot()
+    results = {}
+    results['elems'] = [e.text for e in root.find('elems')]
+    for kind in ['TS', 'SCS', 'rsSCS', 'VV']:
+        elem = root.find(kind)
+        results[kind] = {
+            'alpha': parse_xmlarr(elem.find('alpha')),
+            'C6': parse_xmlarr(elem.find('C6'))
+        }
+    return results
+
+
+def parse_xmlarr(xmlarr, axis=None):
+    if axis is None:
+        axis = len(xmlarr.attrib['size'].split())-1
+    if axis > 0:
+        lst = [parse_xmlarr(v, axis-1)[..., None] for v in xmlarr.findall('vector')]
+        return np.concatenate(lst, axis)
+    else:
+        return np.array(map(float, xmlarr.text.split()))
 
 
 @aims_parser.add('The structure contains')
