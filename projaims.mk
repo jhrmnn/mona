@@ -1,5 +1,5 @@
 tools = geomlib.py pyaims.py logparser.py
-external = aimsproj.mk run_aims.sh
+external = projaims.mk run_aims.sh
 remotedir = ~/calculations
 AIMSROOT ?= ~/builds/fhi-aims
 aimsroot_remote = ~/software/fhi-aims
@@ -9,7 +9,7 @@ prepare_env_remote = AIMSROOT=${aimsroot_remote}
 
 include proj.mk
 
-aimsproj.mk:
+projaims.mk:
 	@rsync -ai ${tooldir}/$@ $@
 
 run_aims.sh:

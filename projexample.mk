@@ -1,8 +1,8 @@
 tools = pyexample.py
-external = exampleproj.mk
+external = projexample.mk
 remotedir = ~/calculations
 
 include proj.mk
 
-exampleproj.mk:
+projexample.mk:
 	@rsync -ai ${tooldir}/example/$@ $@
