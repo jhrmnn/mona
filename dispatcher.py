@@ -28,7 +28,11 @@ def extract(path, extractor):
     for rundir in path.glob('*.done'):
         with open(str(rundir/'info.json')) as f:
             info = json.load(f)
-        data = extractor(rundir)
+        try:
+            data = extractor(rundir)
+        except:
+            print('info: Error occured in {}'.format(rundir))
+            raise
         results.append(Result(info, data))
     with (path/'results.p').open('wb') as f:
         pickle.dump(results, f, -1)
