@@ -14,8 +14,8 @@ external += ${tools} proj.mk
 .SECONDEXPANSION:
 .PRECIOUS: $(addprefix results_%/,${outputs}) results_%/results.p RUN/%_job.log
 
-all:
-	@${MAKE} --no-print-directory $(addprefix results_local/,${outputs})
+local:
+	@${MAKE} --no-print-directory $(addprefix results_$@/,${outputs})
 
 $(addprefix results_%/,${outputs}): results_%/results.p process.py
 	cd results_$* && python ../process.py
