@@ -40,26 +40,33 @@ def prepare(path, task):
     os.system('chmod +x %s' % (path/'run'))
 
 
-aims_parser = Parser()
-
-
-def scrape_output(path):
-    path = Path(path)
-    with path.open() as f:
-        return aims_parser.parse(f)
-
-
-def parse_xml(path):
+def parse_aimsxml(path):
     path = Path(path)
     root = ET.parse(str(path)).getroot()
+    return parse_xmlelem(root)
+
+
+def parse_xmlelem(elem):
     results = {}
-    results['elems'] = [e.text for e in root.find('elems')]
-    for kind in ['TS', 'SCS', 'rsSCS', 'VV']:
-        elem = root.find(kind)
-        results[kind] = {
-            'alpha': parse_xmlarr(elem.find('alpha')),
-            'C6': parse_xmlarr(elem.find('C6'))
-        }
+    children = set(c.tag for c in elem)
+    for child in children:
+        child_elems = elem.findall(child)
+        child_results = []
+        for child_elem in child_elems:
+            if 'type' in child_elem.attrib:
+                if 'size' in child_elem.attrib:
+                    child_elem_results = parse_xmlarr(child_elem)
+                else:
+                    child_elem_results = float(child_elem.text)
+            elif len(list(child_elem)):
+                child_elem_results = parse_xmlelem(child_elem)
+            else:
+                child_elem_results = child_elem.text.strip()
+            child_results.append(child_elem_results)
+        if len(child_results) == 1:
+            results[child] = child_results[0]
+        else:
+            results[child] = child_results
     return results
 
 
@@ -71,6 +78,15 @@ def parse_xmlarr(xmlarr, axis=None):
         return np.concatenate(lst, axis)
     else:
         return np.array(map(float, xmlarr.text.split()))
+
+
+aims_parser = Parser()
+
+
+def scrape_output(path):
+    path = Path(path)
+    with path.open() as f:
+        return aims_parser.parse(f)
 
 
 @aims_parser.add('The structure contains')
