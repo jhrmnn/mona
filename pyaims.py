@@ -70,14 +70,23 @@ def parse_xmlelem(elem):
     return results
 
 
-def parse_xmlarr(xmlarr, axis=None):
+def parse_xmlarr(xmlarr, axis=None, typef=None):
     if axis is None:
         axis = len(xmlarr.attrib['size'].split())-1
+    if not typef:
+        typename = xmlarr.attrib['type']
+        if typename == 'real':
+            typef = float
+        elif typename == 'int':
+            typef = int
+        else:
+            raise Exception('Unknown array type')
     if axis > 0:
-        lst = [parse_xmlarr(v, axis-1)[..., None] for v in xmlarr.findall('vector')]
+        lst = [parse_xmlarr(v, axis-1, typef)[..., None]
+               for v in xmlarr.findall('vector')]
         return np.concatenate(lst, axis)
     else:
-        return np.array(map(float, xmlarr.text.split()))
+        return np.array(map(typef, xmlarr.text.split()))
 
 
 aims_parser = Parser()
