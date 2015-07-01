@@ -12,8 +12,6 @@ external = ${tools} aimsproj.mk run_aims.sh
 remotedir = ~/calculations
 AIMSROOT ?= ~/builds/fhi-aims
 aimsroot_remote = ~/software/fhi-aims
-existing_files = $(wildcard ${tools} run_aims.sh \
-				 $(addprefix results_*/, ${outputs} results.p))
 
 .SECONDEXPANSION:
 .PRECIOUS: $(addprefix results_%/, ${outputs}) results_%/results.p RUN/%_job.log
@@ -110,8 +108,8 @@ ifneq ("$(wildcard RUN)", "")
 endif
 
 distclean: clean cleanrun
-ifneq ("${existing_files}", "")
-	rm ${existing_files}
+ifneq ("$(wildcard ${tools} run_aims.sh results_*/*)", "")
+	rm $(wildcard ${tools} run_aims.sh results_*/*)
 endif
 ifneq ("$(wildcard results_*)", "")
 	rmdir results_*
