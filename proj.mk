@@ -89,12 +89,12 @@ submit_%:
 	@ssh ${remote} "cd ${remotedir}/$(notdir ${PWD}) && make run_$*"
 
 archive_%:
-	@${MAKE} --no-print-directory results_$*/archive.tar.gz
+	@${MAKE} --no-print-directory results_$*/$(notdir ${PWD}).tar.gz
 
-results_%/archive.tar.gz: $$(addprefix results_%/,${outputs})
+results_%/$(notdir ${PWD}).tar.gz: $$(addprefix results_%/,${outputs})
 	@echo "Creating archive $@..."
-	@ls ${tools} ${userscripts} $(addprefix results_$*/,${outputs}) ${inputs} \
-		${external} Makefile | xargs tar -zc >$@
+	@tar -zc ${tools} ${userscripts} $(addprefix results_$*/,${outputs}) ${inputs} \
+		${external} Makefile >$@
 
 clean:
 ifneq ("$(wildcard *.pyc)", "")
