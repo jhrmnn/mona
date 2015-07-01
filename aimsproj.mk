@@ -14,12 +14,12 @@ AIMSROOT ?= ~/builds/fhi-aims
 aimsroot_remote = ~/software/fhi-aims
 
 .SECONDEXPANSION:
-.PRECIOUS: $(addprefix results_%/, ${outputs}) results_%/results.p RUN/%_job.log
+.PRECIOUS: $(addprefix results_%/,${outputs}) results_%/results.p RUN/%_job.log
 
 all:
-	@make --no-print-directory $(addprefix results_local/, ${outputs})
+	@${MAKE} --no-print-directory $(addprefix results_local/,${outputs})
 
-$(addprefix results_%/, ${outputs}): results_%/results.p process.py
+$(addprefix results_%/,${outputs}): results_%/results.p process.py
 	cd results_$* && python ../process.py ../$<
 
 results_%/results.p: RUN/%_job.log extract.py | ${external}
@@ -27,17 +27,12 @@ results_%/results.p: RUN/%_job.log extract.py | ${external}
 	mkdir -p results_$* && mv RUN/results.p $@
 
 RUN/%_job.log: prepare.py ${inputs} | ${external}
-ifneq ("$(wildcard RUN/*.start RUN/*.running.*)", "")
+ifneq "$(wildcard RUN/*.start RUN/*.running.*)" ""
 	$(error "Some jobs are still running.")
 endif
-	@make --no-print-directory prepare
-	@make --no-print-directory run_$*
-ifneq ("$*", "local")
-	@make --no-print-directory print_error
-endif
-
-print_error:
-	$(error "Wait till the job finishes, then run make again.")
+	@${MAKE} --no-print-directory prepare
+	@${MAKE} --no-print-directory run_$*
+	@$(if $(subst local,,$*),$(error "Wait till the job finishes, then run make again."))
 
 ${tools} aimsproj.mk:
 	@rsync -ai ${tooldir}/$@ $@
@@ -53,20 +48,22 @@ run_%:
 	@sleep 1  # some submitters print asynchronously
 	
 prepare:
-ifneq ("$(wildcard RUN)", "")
+ifneq "$(wildcard RUN)" ""
 	$(error "There is a previous RUN, run make cleanrun to overwrite.")
 endif
 	AIMSROOT=${AIMSROOT} python prepare.py
 
 update:
 	@echo "Updating tools..."
-	@make --no-print-directory -B external
+	@${MAKE} --no-print-directory -B external
 
 external: ${external}
 
 remote_%: upload_$$(firstword $$(subst _, , %)) 
-	$(eval remote := $(firstword $(subst _, , $*)))
-ifndef OFFLINE
+ifdef OFFLINE
+	@echo "Skipping download."
+else
+	$(eval remote := $(firstword $(subst _, ,$*)))
 	@echo "Connecting to ${remote}..."
 	@ssh ${remote} \
 		"cd ${remotedir}/$(notdir ${PWD}) && \
@@ -74,7 +71,7 @@ ifndef OFFLINE
 	@echo "Downloading results from ${remote}..."
 	@rsync -ia ${remote}:${remotedir}/$(notdir ${PWD})/results_$*/results.p results_$*/
 endif
-	@make --no-print-directory $(addprefix results_$*/, ${outputs})
+	@${MAKE} --no-print-directory $(addprefix results_$*/,${outputs})
 
 upload_%: ${external}
 ifdef OFFLINE
@@ -89,7 +86,7 @@ else
 endif
 
 submit_%:
-	$(eval remote := $(firstword $(subst _, , $*)))
+	$(eval remote := $(firstword $(subst _, ,$*)))
 	@echo "Connecting to ${remote}..."
 	@ssh ${remote} "cd ${remotedir}/$(notdir ${PWD}) && make run_$*"
 
@@ -100,20 +97,20 @@ monitor_%:
 	@ssh $* qmy
 
 clean:
-ifneq ("$(wildcard *.pyc)", "")
+ifneq "$(wildcard *.pyc)" ""
 	rm *.pyc
 endif
 
 cleanrun:
-ifneq ("$(wildcard RUN)", "")
+ifneq "$(wildcard RUN)" ""
 	rm -r RUN
 endif
 
 distclean: clean cleanrun
-ifneq ("$(wildcard ${tools} run_aims.sh results_*/*)", "")
+ifneq "$(wildcard ${tools} run_aims.sh results_*/*)" ""
 	rm $(wildcard ${tools} run_aims.sh results_*/*)
 endif
-ifneq ("$(wildcard results_*)", "")
+ifneq "$(wildcard results_*)" ""
 	rmdir results_*
 endif
 
