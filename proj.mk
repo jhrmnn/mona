@@ -20,13 +20,13 @@ $(addprefix results_%/,${outputs}): results_%/results.p process.py
 	cd results_$* && python ../process.py ../$<
 
 results_%/results.p: RUN/%_job.log extract.py | ${external}
+ifneq ("$(wildcard RUN/*.start RUN/*.running.*)", "")
+	$(error "Some jobs are still running.")
+endif
 	python extract.py
 	mkdir -p results_$* && mv RUN/results.p $@
 
 RUN/%_job.log: prepare.py ${inputs} | ${external}
-ifneq "$(wildcard RUN/*.start RUN/*.running.*)" ""
-	$(error "Some jobs are still running.")
-endif
 	@${MAKE} --no-print-directory prepare
 	@${MAKE} --no-print-directory run_$*
 	@$(if $(subst local,,$*), @${MAKE} --no-print-directory print_error)
@@ -45,7 +45,7 @@ run_%:
 	@sleep 1  # some submitters print asynchronously
 	
 prepare:
-ifneq "$(wildcard RUN)" ""
+ifneq ("$(wildcard RUN)", "")
 	$(error "There is a previous RUN, run make cleanrun to overwrite.")
 endif
 	${prepare_env} python prepare.py
@@ -88,20 +88,20 @@ submit_%:
 	@ssh ${remote} "cd ${remotedir}/$(notdir ${PWD}) && make run_$*"
 
 clean:
-ifneq "$(wildcard *.pyc)" ""
+ifneq ("$(wildcard *.pyc)", "")
 	rm *.pyc
 endif
 
 cleanrun:
-ifneq "$(wildcard RUN)" ""
+ifneq ("$(wildcard RUN)", "")
 	rm -r RUN
 endif
 
 distclean: clean cleanrun
-ifneq "$(wildcard ${tools} ${excluded} results_*/*)" ""
+ifneq ("$(wildcard ${tools} ${excluded} results_*/*)", "")
 	rm $(wildcard ${tools} ${excluded} results_*/*)
 endif
-ifneq "$(wildcard results_*)" ""
+ifneq ("$(wildcard results_*)", "")
 	rmdir results_*
 endif
 
