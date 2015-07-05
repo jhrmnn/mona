@@ -7,6 +7,7 @@ from logparser import Parser
 import re
 import xml.etree.cElementTree as ET
 import numpy as np
+import subprocess
 
 
 def prepare(path, task):
@@ -18,10 +19,11 @@ def prepare(path, task):
     species = set((a.number, a.symbol) for a in geom.atoms)
     with Path('control.in').open() as f:
         template = f.read()
+    cmd = "tar -xO <aims.tar.gz diff | shasum | awk '{print $1}'"
+    aimshash = subprocess.check_output(cmd, shell=True).strip()
+    aims = 'build/*/bin/aims.%s' % aimshash[-7:]
     with Path('basis').open() as f:
         basis = f.read().strip()
-    with Path('aims').open() as f:
-        aims = f.read().strip()
     basisroot = Path(os.environ['AIMSROOT'])/basis
     with (path/'control.in').open('w') as f:
         f.write(template % task)
