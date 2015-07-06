@@ -10,6 +10,7 @@ endif
 tools += dispatcher.py worker.py
 userscripts = prepare.py extract.py process.py
 external += ${tools} proj.mk
+remotedir := ${remotedir}/$(notdir ${PWD})_$(shell shasum <<<$$PWD | awk '{print $$1}' | tail -c8)
 
 .SECONDEXPANSION:
 .PRECIOUS: $(addprefix results_%/,${outputs}) results_%/results.p RUN/%_job.log
@@ -71,10 +72,10 @@ else
 	$(eval remote := $(firstword $(subst _, ,$*)))
 	@echo "Connecting to ${remote}..."
 	@ssh ${remote} \
-		"cd ${remotedir}/$(notdir ${PWD}) && \
+		"cd ${remotedir} && \
 		${prepare_env_remote} make results_$*/results.p"
 	@echo "Downloading results from ${remote}..."
-	@rsync -ia ${remote}:${remotedir}/$(notdir ${PWD})/results_$*/results.p results_$*/
+	@rsync -ia ${remote}:${remotedir}/results_$*/results.p results_$*/
 endif
 	@${MAKE} --no-print-directory $(addprefix results_$*/,${outputs})
 
@@ -87,13 +88,13 @@ else
 		--exclude=*.pyc --exclude=RUN $(addprefix --exclude=,${excluded}) \
 		--include=$*_*.job.sh --exclude=*_*.job.sh \
 		--exclude=results_* \
-		${PWD}/* $*:${remotedir}/$(notdir ${PWD})/
+		${PWD}/* $*:${remotedir}/
 endif
 
 submit_%:
 	$(eval remote := $(firstword $(subst _, ,$*)))
 	@echo "Connecting to ${remote}..."
-	@ssh ${remote} "cd ${remotedir}/$(notdir ${PWD}) && make run_$*"
+	@ssh ${remote} "cd ${remotedir} && make run_$*"
 
 archive_%:
 	@${MAKE} --no-print-directory results_$*/$(notdir ${PWD}).tar.gz
@@ -124,8 +125,8 @@ endif
 
 cleanrun_%:
 	@echo "Connecting to $*..."
-	@ssh $* "cd ${remotedir}/$(notdir ${PWD}) && make cleanrun"
+	@ssh $* "cd ${remotedir} && make cleanrun"
 
 distclean_%:
 	@echo "Connecting to $*..."
-	@ssh $* "cd ${remotedir}/$(notdir ${PWD}) && make distclean"
+	@ssh $* "cd ${remotedir} && make distclean"
