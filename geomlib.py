@@ -69,6 +69,9 @@ class Atom(object):
             settings['precision'], x) for x in self.xyz)
         return 'Atom(%r, %s, %r)' % (self.number, xyz, self.flags)
 
+    def __str__(self):
+        return self.symbol
+
     @property
     def group(self):
         return self._group()
@@ -82,13 +85,13 @@ class Atom(object):
 
     def to_string(self, fmt):
         if fmt == 'xyz':
-            s = '%-2s %s' % (self.symbol, vectortostr(self.xyz))
+            s = '%-2s %s' % (self, vectortostr(self.xyz))
         elif fmt == 'fhiaims':
             if self.flags.get('dummy'):
                 name = 'empty'
             else:
                 name = 'atom'
-            s = '%s %s %-2s' % (name, vectortostr(self.xyz), self.symbol)
+            s = '%s %s %-2s' % (name, vectortostr(self.xyz), self)
         else:
             raise Exception('Unknown format')
         return s
