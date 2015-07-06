@@ -43,6 +43,7 @@ print_error:
 	$(error "Wait till the job finishes, then run make again.")
 
 ${tools} proj.mk:
+	@mkdir -p $(dir $@)
 	@rsync -ai ${tooldir}/$@ $@
 
 run_local:
