@@ -39,7 +39,7 @@ Running `make` again after that should output
 make[1]: 'results_local/results.txt' is up to date.
 ```
 
-If you then pay some time and create a file `example/<remote>_<ame>.job.sh` (have a look in `example/hydra_test.job.sh`) that takes care of job submission on the cluster side, you should be able to run `make remote_<remote>_<name>` with output like
+If you then pay some time and create a file `example/<remote>_<name>.job.sh` (have a look in `example/hydra_test.job.sh`) that takes care of job submission on the cluster side, you should be able to run `make remote_<remote>_<name>` with output like
 
 ```
 Uploading to hydra...
