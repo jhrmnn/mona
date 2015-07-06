@@ -63,7 +63,7 @@ make: *** [remote_hydra_test] Error 2`
 This warns you that the calculation has not yet finished (it will take a couple 
 of seconds). If it was a larger calculation, you could submit additional workers 
 with `make submit_<remote>_<name>` to speed it up. When the calculation is 
-finished running `make remote_<remote>_<name>` again should output
+finished, running `make remote_<remote>_<name>` again should output
 
 ```
 Uploading to hydra...
