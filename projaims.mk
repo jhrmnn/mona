@@ -18,3 +18,5 @@ run_aims.sh:
 check:
 	grep "Have a nice day." RUN/*.done/rundir/run.log
 
+tellaims:
+	@tar -xO <aims.tar.gz diff | shasum | awk '{print $$1}' | tail -c8
