@@ -101,7 +101,7 @@ class Atom(object):
     def copy(self):
         return Atom(self.number, self.xyz.copy(), self.flags.copy())
 
-    def to_string(self, fmt):
+    def dumps(self, fmt):
         if fmt == 'xyz':
             s = '%-2s %s' % (self, vectortostr(self.xyz))
         elif fmt == 'fhiaims':
@@ -185,21 +185,29 @@ class Molecule(object):
     def copy(self):
         return Molecule([a.copy() for a in self.atoms])
 
+    def dump(self, fp, fmt):
+            if fmt == 'xyz':
+            fp.write(u'%i\n' % len(self.atoms))
+            fp.write(u'Formula: %s\n' % self)
+                for a in self.atoms:
+                fp.write(u'%s\n' % a.dumps('xyz'))
+            elif fmt == 'fhiaims':
+                for a in self.atoms:
+                fp.write(u'%s\n' % a.dumps('fhiaims'))
+            else:
+                raise Exception('Unknown format')
+
+    def dumps(self, fmt):
+        fp = io.BytesIO()
+        self.dump(fp, fmt)
+        return fp.getvalue()
+
     def write(self, path, fmt=None):
         path = Path(path)
         if not fmt:
             fmt = ext_fmt_dict.get(path.suffix[1:])
-        with Path(path).open('w') as f:
-            if fmt == 'xyz':
-                f.write(u'%i\n' % len(self.atoms))
-                f.write(u'Formula: %s\n' % self)
-                for a in self.atoms:
-                    f.write(u'%s\n' % a.to_string('xyz'))
-            elif fmt == 'fhiaims':
-                for a in self.atoms:
-                    f.write(u'%s\n' % a.to_string('fhiaims'))
-            else:
-                raise Exception('Unknown format')
+        with path.open('w') as f:
+            self.dump(f, fmt)
 
     @property
     def mass(self):
@@ -328,33 +336,29 @@ class Crystal(Molecule):
         return Crystal(self.lattice.copy(),
                        [a.copy() for a in self.atoms])
 
-    def write(self, path, fmt=None):
-        path = Path(path)
-        if not fmt:
-            fmt = ext_fmt_dict.get(path.suffix[1:])
-        with Path(path).open('w') as f:
+    def dump(self, fp, fmt):
             if fmt == 'fhiaims':
                 for l in self.lattice:
-                    f.write(u'lattice_vector %s\n' % vectortostr(l))
+                fp.write(u'lattice_vector %s\n' % vectortostr(l))
                 for a in self.atoms:
-                    f.write(u'%s\n' % a.to_string('fhiaims'))
+                fp.write(u'%s\n' % a.dumps('fhiaims'))
             elif fmt == 'vasp':
-                f.write(u'Formula: %s\n' % self)
-                f.write(u'%s\n' % scalartostr(1))
+            fp.write(u'Formula: %s\n' % self)
+            fp.write(u'%s\n' % scalartostr(1))
                 for l in self.lattice:
-                    f.write(u'%s\n' % vectortostr(l))
+                fp.write(u'%s\n' % vectortostr(l))
                 species = list(set([a.number for a in self.atoms]))
-                f.write(u'%s\n' % ' '.join(elemquery('symbol', 'number', s)
+            fp.write(u'%s\n' % ' '.join(elemquery('symbol', 'number', s)
                                            for s in species))
                 packs = [[] for _ in species]
                 for a in self.atoms:
                     packs[species.index(a.number)].append(a)
-                f.write(u'%s\n' % ' '.join('%i' % len(atoms)
+            fp.write(u'%s\n' % ' '.join('%i' % len(atoms)
                                            for atoms in packs))
                 atoms = list(chain(*packs))
-                f.write(u'cartesian\n')
+            fp.write(u'cartesian\n')
                 for a in atoms:
-                    f.write(u'%s\n' % vectortostr(a.xyz))
+                fp.write(u'%s\n' % vectortostr(a.xyz))
             else:
                 raise Exception('Unknown format')
 
@@ -391,34 +395,27 @@ class Crystal(Molecule):
 #         return c
 
 
-def split(s):
-    return re.split(r'\s+', s.strip())
 
-
-def readfile(path, fmt=None):
-    path = Path(path)
-    if not fmt:
-        fmt = ext_fmt_dict.get(path.suffix[1:])
-    with path.open() as f:
+def load(fp, fmt):
         if fmt == 'xyz':
-            n = int(f.readline())
-            f.readline()
+        n = int(fp.readline())
+        fp.readline()
             atoms = []
             for _ in range(n):
-                l = split(f.readline())
+            l = fp.readline().split()
                 atoms.append(Atom(l[0], [float(x) for x in l[1:4]]))
             return Molecule(atoms)
         elif fmt == 'fhiaims':
             atoms = []
             lattice = []
             while True:
-                l = f.readline()
+            l = fp.readline()
                 if not l:
                     break
                 l = l.strip()
                 if not l or l.startswith('#'):
                     continue
-                l = split(l)
+            l = l.split()
                 what = l[0]
                 if what == 'atom':
                     atoms.append(Atom(l[4], [float(x) for x in l[1:4]]))
@@ -430,26 +427,39 @@ def readfile(path, fmt=None):
             else:
                 return Molecule(atoms)
         elif fmt == 'vasp':
-            f.readline()
-            scale = float(f.readline())
+        fp.readline()
+        scale = float(fp.readline())
             lattice = scale*np.array([
-                [float(x) for x in split(f.readline())]
+            [float(x) for x in fp.readline().split()]
                 for _ in range(3)])
-            species = split(f.readline())
-            nspecies = [int(x) for x in split(f.readline())]
-            coordtype = f.readline().strip()[0].lower()
+        species = fp.readline().split()
+        nspecies = [int(x) for x in fp.readline().split()]
+        coordtype = fp.readline().strip()[0].lower()
             if scale != 1:
                 assert coordtype == 'd'
             atoms = []
             for sp, n in zip(species, nspecies):
                 for _ in n:
-                    xyz = [float(x) for x in split(f.readline())]
+                xyz = [float(x) for x in fp.readline().split()]
                     if coordtype == 'd':
                         xyz = xyz.dot(lattice)
                     atoms.append(Atom(sp, xyz))
             return Crystal(lattice, atoms)
         else:
             raise Exception('Unknown format')
+
+
+def loads(s, fmt):
+    fp = io.BytesIO(s)
+    return load(fp, fmt)
+
+
+def readfile(path, fmt=None):
+    path = Path(path)
+    if not fmt:
+        fmt = ext_fmt_dict.get(path.suffix[1:])
+    with path.open() as f:
+        return load(f, fmt)
 
 
 elems = pd.read_csv(io.BytesIO("""\
