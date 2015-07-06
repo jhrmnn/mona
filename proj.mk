@@ -131,6 +131,10 @@ endif
 monitor_%:
 	@ssh $* qmy
 
+check_%:
+	@echo "Connecting to $*..."
+	@ssh $* "cd ${remotedir} && make check"
+
 cleanrun_%:
 	@echo "Connecting to $*..."
 	@ssh $* "cd ${remotedir} && make cleanrun"
