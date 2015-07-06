@@ -19,7 +19,7 @@ def prepare(path, task):
     species = set((a.number, a.symbol) for a in geom.atoms)
     with Path('control.in').open() as f:
         template = f.read()
-    cmd = "tar -xO <aims.tar.gz diff | shasum | awk '{print $1}'"
+    cmd = "tar -xzO <aims.tar.gz diff | shasum | awk '{print $1}'"
     aimshash = subprocess.check_output(cmd, shell=True).strip()
     aims = 'build/*/bin/aims.%s' % aimshash[-7:]
     with Path('basis').open() as f:
