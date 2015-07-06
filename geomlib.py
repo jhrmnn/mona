@@ -7,6 +7,7 @@ from pathlib import Path
 from collections import defaultdict
 from itertools import chain
 import io
+from functools import cmp_to_key
 
 settings = {
     'precision': 8,
@@ -32,6 +33,14 @@ def scalartostr(x):
 
 def vectortostr(v):
     return ' '.join(scalartostr(x) for x in v)
+
+
+def cmp3d(x, y):
+    for i in range(3):
+        diff = x[i]-y[i]
+        if abs(diff) > 1e-10:
+            return int(np.sign(diff))
+    return 0
 
 
 class Dictlike(object):
@@ -71,6 +80,15 @@ class Atom(object):
 
     def __str__(self):
         return self.symbol
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        if self.symbol != self.symbol:
+            return False
+        if np.linalg.norm(self.xyz-other.xyz) > 1e-10:
+            return False
+        return True
 
     @property
     def group(self):
@@ -155,6 +173,14 @@ class Molecule(object):
             counter[a.symbol] += 1
         return ''.join('%s%s' % (s, n if n > 1 else '')
                        for s, n in sorted(counter.items()))
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        key = cmp_to_key(lambda a, b: cmp3d(a.xyz, b.xyz))
+        return all(a == b for a, b in
+                   zip(sorted(list(self.atoms), key=key),
+                       sorted(list(other.atoms), key=key)))
 
     def copy(self):
         return Molecule([a.copy() for a in self.atoms])
@@ -290,6 +316,13 @@ class Crystal(Molecule):
 
     def __repr__(self):
         return 'Crystal(%r, %r)' % (self.lattice, self.atoms)
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        if np.linalg.norm(self.lattice-other.lattice) > 1e-10:
+            return False
+        return super().__eq__(other)
 
     def copy(self):
         return Crystal(self.lattice.copy(),
