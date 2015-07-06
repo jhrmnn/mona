@@ -20,3 +20,6 @@ check:
 
 tellaims:
 	@tar -xO <aims.tar.gz diff | shasum | awk '{print $$1}' | tail -c8
+
+updateaims:
+	@rsync -a `realpath ${AIMSROOT}/diffs/latest.diff.tar.gz` aims.tar.gz
