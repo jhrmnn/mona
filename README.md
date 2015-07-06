@@ -76,7 +76,8 @@ cd results_hydra_test && python ../process.py`
 ```
 
 If you tried to run `make` before the calculation is finished, it would abort 
-with an error. There are many other checks built in.
+with an error. There are many other checks built in. Have a look around if you 
+got interested.
 
 [^submit]: 
 https://github.com/azag0/comp-chem-tools/blob/master/example/hydra_test.job.sh
