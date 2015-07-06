@@ -37,7 +37,6 @@ def prepare(path, task):
         raise Exception('Cannot find binary %s' % aims)
     Path(path/'aims').symlink_to(aimsbin)
     shutil.copy('run_aims.sh', str(path/'run'))
-    os.system('chmod +x %s' % (path/'run'))
 
 
 def parse_aimsxml(path):
