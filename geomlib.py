@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import numpy as np
-import re
 import pandas as pd
 from numpy import sin, cos
 from pathlib import Path
@@ -114,21 +113,21 @@ class Atom(object):
             raise Exception('Unknown format')
         return s
 
-    def dist(self, obj):
+    def dist(self, other):
         try:
-            return np.sqrt(sum((self.xyz-obj)**2))
+            return np.sqrt(sum((self.xyz-other)**2))
         except:
             pass
         try:
-            return self.dist(obj.xyz)
+            return self.dist(other.xyz)
         except:
             pass
         try:
-            return min(self.dist(a.xyz) for a in obj.atoms)
+            return min(self.dist(a.xyz) for a in other.atoms)
         except:
             pass
         raise Exception("Don't know how to treat %r object" %
-                        obj.__class__.__name__)
+                        other.__class__.__name__)
 
     def _group(self):
         n = self.number
@@ -148,14 +147,6 @@ class Atom(object):
                 return n
             elif n-24 >= 3:
                 return n-24
-
-
-def concat(objs):
-    assert len(objs) >= 2
-    c = objs[0].joined(objs[1])
-    for o in objs[2:]:
-        c.join(o)
-    return c
 
 
 class Molecule(object):
@@ -186,16 +177,16 @@ class Molecule(object):
         return Molecule([a.copy() for a in self.atoms])
 
     def dump(self, fp, fmt):
-            if fmt == 'xyz':
+        if fmt == 'xyz':
             fp.write(u'%i\n' % len(self.atoms))
             fp.write(u'Formula: %s\n' % self)
-                for a in self.atoms:
+            for a in self.atoms:
                 fp.write(u'%s\n' % a.dumps('xyz'))
-            elif fmt == 'fhiaims':
-                for a in self.atoms:
+        elif fmt == 'fhiaims':
+            for a in self.atoms:
                 fp.write(u'%s\n' % a.dumps('fhiaims'))
-            else:
-                raise Exception('Unknown format')
+        else:
+            raise Exception('Unknown format')
 
     def dumps(self, fmt):
         fp = io.BytesIO()
@@ -262,12 +253,12 @@ class Molecule(object):
                      for fragment in fragments]
         return fragments
 
-    def join(self, obj):
-        self.atoms.extend(obj.copy().atoms)
+    def join(self, other):
+        self.atoms.extend(other.copy().atoms)
 
-    def joined(self, obj):
+    def joined(self, other):
         m = self.copy()
-        m.join(obj)
+        m.join(other)
         return m
 
     def _getflag(self, k):
@@ -280,6 +271,14 @@ class Molecule(object):
     def _setflag(self, k, v):
         for a in self.atoms:
             a.flags[k] = v
+
+
+def concat(objs):
+    assert len(objs) >= 2
+    c = objs[0].joined(objs[1])
+    for o in objs[2:]:
+        c.join(o)
+    return c
 
 
 def getfragments(C):
@@ -320,7 +319,7 @@ def getfragments(C):
 class Crystal(Molecule):
     def __init__(self, lattice, atoms=None):
         self.lattice = np.array(lattice)
-        super(Crystal, self).__init__(atoms)
+        super().__init__(atoms)
 
     def __repr__(self):
         return 'Crystal(%r, %r)' % (self.lattice, self.atoms)
@@ -333,120 +332,86 @@ class Crystal(Molecule):
         return super().__eq__(other)
 
     def copy(self):
-        return Crystal(self.lattice.copy(),
-                       [a.copy() for a in self.atoms])
+        return Crystal(self.lattice.copy(), Molecule.copy().atoms)
 
     def dump(self, fp, fmt):
-            if fmt == 'fhiaims':
-                for l in self.lattice:
+        if fmt == 'fhiaims':
+            for l in self.lattice:
                 fp.write(u'lattice_vector %s\n' % vectortostr(l))
-                for a in self.atoms:
+            for a in self.atoms:
                 fp.write(u'%s\n' % a.dumps('fhiaims'))
-            elif fmt == 'vasp':
+        elif fmt == 'vasp':
             fp.write(u'Formula: %s\n' % self)
             fp.write(u'%s\n' % scalartostr(1))
-                for l in self.lattice:
+            for l in self.lattice:
                 fp.write(u'%s\n' % vectortostr(l))
-                species = list(set([a.number for a in self.atoms]))
+            species = list(set([a.number for a in self.atoms]))
             fp.write(u'%s\n' % ' '.join(elemquery('symbol', 'number', s)
-                                           for s in species))
-                packs = [[] for _ in species]
-                for a in self.atoms:
-                    packs[species.index(a.number)].append(a)
+                                        for s in species))
+            packs = [[] for _ in species]
+            for a in self.atoms:
+                packs[species.index(a.number)].append(a)
             fp.write(u'%s\n' % ' '.join('%i' % len(atoms)
-                                           for atoms in packs))
-                atoms = list(chain(*packs))
+                                        for atoms in packs))
+            atoms = list(chain(*packs))
             fp.write(u'cartesian\n')
-                for a in atoms:
+            for a in atoms:
                 fp.write(u'%s\n' % vectortostr(a.xyz))
-            else:
-                raise Exception('Unknown format')
-
-#     def set_coord_type(self, coord_type):
-#         if coord_type == self.coord_type:
-#             return
-#         elif coord_type == "c":
-#             self.coord_type = "c"
-#             for a in self.atoms:
-#                 a.R = a.R.dot(self.lattice_vectors)
-#         elif coord_type == "d":
-#             self.coord_type = "d"
-#             for a in self.atoms:
-#                 a.R = lin.solve(self.lattice_vectors.T, a.R)
-#
-#     def copy_cell(self, dim):
-#         dim = np.array(dim)
-#         coord_type = self.coord_type
-#         self.set_coord_type("c")
-#         atoms = []
-#         for i in range(dim[0]):
-#             for j in range(dim[1]):
-#                 for k in range(dim[2]):
-#                     shift = np.array((i, j, k))
-#                     for a in self.atoms:
-#                         a = a.copy()
-#                         a.R += shift.dot(self.lattice_vectors)
-#                         atoms.append(a)
-#         lattice_vectors = np.diag(dim).dot(self.lattice_vectors)
-#         self.set_coord_type(coord_type)
-#         c = Crystal(atoms, lattice_vectors, coord_type="c")
-#         c.set_coord_type(coord_type)
-#         self.set_coord_type(coord_type)
-#         return c
-
+        else:
+            raise Exception('Unknown format')
 
 
 def load(fp, fmt):
-        if fmt == 'xyz':
+    if fmt == 'xyz':
         n = int(fp.readline())
         fp.readline()
-            atoms = []
-            for _ in range(n):
+        atoms = []
+        for _ in range(n):
             l = fp.readline().split()
-                atoms.append(Atom(l[0], [float(x) for x in l[1:4]]))
-            return Molecule(atoms)
-        elif fmt == 'fhiaims':
-            atoms = []
-            lattice = []
-            while True:
+            atoms.append(Atom(l[0], [float(x) for x in l[1:4]]))
+        return Molecule(atoms)
+    elif fmt == 'fhiaims':
+        atoms = []
+        lattice = []
+        while True:
             l = fp.readline()
-                if not l:
-                    break
-                l = l.strip()
-                if not l or l.startswith('#'):
-                    continue
+            if not l:
+                break
+            l = l.strip()
+            if not l or l.startswith('#'):
+                continue
             l = l.split()
-                what = l[0]
-                if what == 'atom':
-                    atoms.append(Atom(l[4], [float(x) for x in l[1:4]]))
-                elif what == 'lattice_vector':
-                    lattice.append([float(x) for x in l[1:4]])
-            if lattice:
-                assert len(lattice) == 3
-                return Crystal(lattice, atoms)
-            else:
-                return Molecule(atoms)
-        elif fmt == 'vasp':
+            what = l[0]
+            if what == 'atom':
+                atoms.append(Atom(l[4], [float(x) for x in l[1:4]]))
+            elif what == 'lattice_vector':
+                lattice.append([float(x) for x in l[1:4]])
+        if lattice:
+            assert len(lattice) == 3
+            return Crystal(lattice, atoms)
+        else:
+            return Molecule(atoms)
+    elif fmt == 'vasp':
         fp.readline()
         scale = float(fp.readline())
-            lattice = scale*np.array([
+        lattice = scale*np.array([
             [float(x) for x in fp.readline().split()]
-                for _ in range(3)])
+            for _ in range(3)])
         species = fp.readline().split()
         nspecies = [int(x) for x in fp.readline().split()]
         coordtype = fp.readline().strip()[0].lower()
-            if scale != 1:
-                assert coordtype == 'd'
-            atoms = []
-            for sp, n in zip(species, nspecies):
-                for _ in n:
+        if scale != 1:
+            assert coordtype == 'd'
+        atoms = []
+        for sp, n in zip(species, nspecies):
+            for _ in n:
                 xyz = [float(x) for x in fp.readline().split()]
-                    if coordtype == 'd':
-                        xyz = xyz.dot(lattice)
-                    atoms.append(Atom(sp, xyz))
-            return Crystal(lattice, atoms)
-        else:
-            raise Exception('Unknown format')
+                if coordtype == 'd':
+                    xyz = xyz.dot(lattice)
+                atoms.append(Atom(sp, xyz))
+        return Crystal(lattice, atoms)
+    else:
+        raise Exception('Unknown format')
 
 
 def loads(s, fmt):
@@ -556,4 +521,4 @@ number,symbol,name,vdw radius,covalent radius,mass,ionization energy
 90,Th,thorium,,,232.0381,6.3067
 91,Pa,protactinium,,,231.0359,5.89
 92,U,uranium,1.86,,238.0289,6.1941
-"""))
+""".encode()))
