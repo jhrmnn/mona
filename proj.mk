@@ -91,6 +91,7 @@ ifdef OFFLINE
 	@echo "Skipping upload."
 else
 	@echo "Uploading to $*..."
+	@ssh $* "mkdir -p ${remotedir}"
 	@rsync -ia \
 		--exclude=*.pyc --exclude=RUN $(addprefix --exclude=,${excluded}) \
 		--include=$*_*.job.sh --exclude=*_*.job.sh \
