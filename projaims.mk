@@ -18,5 +18,3 @@ run_aims.sh:
 check:
 	grep "Have a nice day." RUN/*.done/rundir/run.log
 
-monitor_%:
-	@ssh $* qmy

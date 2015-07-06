@@ -123,6 +123,9 @@ ifneq ("$(wildcard results_*)", "")
 endif
 	rm -rf .oldtools
 
+monitor_%:
+	@ssh $* qmy
+
 cleanrun_%:
 	@echo "Connecting to $*..."
 	@ssh $* "cd ${remotedir} && make cleanrun"
