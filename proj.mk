@@ -44,7 +44,7 @@ print_error:
 
 ${tools} proj.mk:
 	@mkdir -p $(dir $@)
-	@rsync -ai ${tooldir}/$@ $@
+	@rsync -ai ${tooldir}/$@ $(dir $@)
 
 run_local:
 	python worker.py RUN 1 >RUN/local_job.log
@@ -123,12 +123,9 @@ endif
 
 distclean: clean cleanrun
 ifneq ("$(wildcard ${tools} ${excluded} results_*/*)", "")
-	rm $(wildcard ${tools} ${excluded} results_*/*)
+	rm -r $(wildcard ${tools} ${excluded} results_*)
 endif
-ifneq ("$(wildcard results_*)", "")
-	rmdir results_*
-endif
-	rm -rf .oldtools
+	-rm -rf .oldtools
 
 monitor_%:
 	@ssh $* qmy
