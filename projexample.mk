@@ -1,6 +1,6 @@
-tools = pyexample.py
-external = projexample.mk
-remotedir = ~/calculations
+tools += pyexample.py
+external += projexample.mk
+remotedir ?= ~/calculations
 
 include proj.mk
 

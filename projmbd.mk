@@ -1,6 +1,6 @@
-external = projmbd.mk run_mbd.sh
-remotedir = ~/calculations
-excluded = run_mbd.sh
+external += projmbd.mk run_mbd.sh
+remotedir ?= ~/calculations
+excluded += run_mbd.sh
 
 include proj.mk
 
