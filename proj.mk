@@ -4,13 +4,19 @@ endif
 ifndef outputs
 $(error "Project has no defined $${outputs}.")
 endif
+ifndef root
+$(error "The $${root} path is not defined.")
+endif
 ifndef tooldir
 $(error "The $${tooldir} path is not defined.")
+endif
+ifndef remotedir
+$(error "The $${remotedir} path is not defined.")
 endif
 tools += dispatcher.py worker.py
 userscripts = prepare.py extract.py process.py
 external += ${tools} proj.mk
-remotedir := ${remotedir}/$(notdir ${PWD})_$(shell shasum <<<$$PWD | awk '{print $$1}' | tail -c8)
+remotedir := ${remotedir}/$(PWD:$(wildcard ${root})/%=%)
 
 .SECONDEXPANSION:
 .PRECIOUS: $(addprefix results_%/,${outputs}) results_%/results.p RUN/%_job.log
