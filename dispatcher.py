@@ -8,7 +8,7 @@ import cPickle as pickle
 
 def dispatch(root, tasks, preparer):
     root = Path(root)
-    params = [[(k, v[1]) for k, v in t] for t in tasks]
+    params = [[(k, v[1]) for k, v in t if len(v) == 2] for t in tasks]
     paths = [root/(('_'.join(slugify(unicode(v)) for k, v in p) or '_') + '.start')
              for p in params]
     tasks = [{k: v[0] for k, v in t} for t in tasks]
