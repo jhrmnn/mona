@@ -34,7 +34,7 @@ endif
 	python extract.py
 	mkdir -p results_$* && mv RUN/results.p $@
 
-RUN/%_job.log: prepare.py ${inputs} | ${external}
+RUN/%_job.log: prepare.py ${inputs}
 	@${MAKE} --no-print-directory prepare
 	@${MAKE} --no-print-directory run_$*
 	@$(if $(subst local,,$*), @${MAKE} --no-print-directory print_error)
@@ -53,7 +53,7 @@ run_%:
 	bash ~/bin/submit.sh $*.job.sh
 	@sleep 1  # some submitters print asynchronously
 	
-prepare:
+prepare: | ${external}
 ifneq ("$(wildcard RUN)", "")
 	$(error "There is a previous RUN, run make cleanrun to overwrite.")
 endif
