@@ -60,7 +60,7 @@ class Atom(object):
             self.number = int(x)
         except ValueError:
             self.number = elemquery('number', 'symbol', x.capitalize())
-        self.xyz = np.array(xyz if xyz is not None else (0, 0, 0), float)
+        self.xyz = np.array(xyz if xyz is not None else [0, 0, 0], float)
         self.flags = flags or {}
         self.prop = Dictlike(lambda k: elemquery(k, 'number', self.number))
 
