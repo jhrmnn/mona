@@ -1,10 +1,2 @@
 *.pyc
-example/dispatcher.py
-example/worker.py
-example/pyexample.py
-example/proj.mk
-example/projexample.mk
-example/results_*/results.p
-example/results_*/results.txt
-example/.oldtools
-example/RUN
+__pycache__
