@@ -22,7 +22,7 @@ mkdir -p results_local && mv RUN/results.p results_local/results.p
 cd results_local && python ../process.py
 ```
 
-Running `make` again after that, should output
+Running `make` again after that should output
 
 ```
 make[1]: 'results_local/results.txt' is up to date.
