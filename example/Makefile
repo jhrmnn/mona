@@ -5,6 +5,6 @@ outputs = results.txt
 # normally, both files would be copied to the project directory manually
 FETCH_PROJMK := $(shell rsync -a ../{proj.mk,projexample.mk} . &>/dev/null)
 
-root = .
+root = ~/projects/comp-chem-tools
 tooldir = ..
 include projexample.mk
