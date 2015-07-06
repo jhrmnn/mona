@@ -28,5 +28,5 @@ while True:
         rundir = os.path.join(runname, 'rundir')
         os.makedirs(rundir)
     os.system('rsync -a --exclude=rundir ./%s/ %s' % (runname, rundir))
-    os.system('cd %s && ./run > run.log' % rundir)
+    os.system('cd %s && ./run >run.log 2>run.err' % rundir)
     os.rename(runname, basename + '.done')
