@@ -10,7 +10,10 @@ chemistry and physics by
 3. Ensuring that outputs of a calculation (a table, a figure, a tarball, you 
    name it) are newer than inputs.
 
-The whole system is built in GNU Make which does a great job here. The idea is to have as modular system as possible. Most blocks of code are one to three lines. The system basically tries to mimic how one would do stuff **really** by hand.
+The whole system is built in GNU Make which does a great job here. The idea is 
+to have as modular system as possible. Most blocks of code are one to three 
+lines. The system basically tries to mimic how one would do stuff **really** by 
+hand.
 
 The project is "self-documented" via the `example` project. So to start 
 investigating how it works,
@@ -39,7 +42,10 @@ Running `make` again after that should output
 make[1]: 'results_local/results.txt' is up to date.
 ```
 
-If you then pay some time and create a file `example/<remote>_<name>.job.sh` (have a look in `example/hydra_test.job.sh`) that takes care of job submission on the cluster side, you should be able to run `make remote_<remote>_<name>` with output like
+If you then pay some time and create a file `example/<remote>_<name>.job.sh` 
+(have a look in [`example/hydra_test.job.sh`][^submit]) that takes care of job 
+submission on the cluster side, you should be able to run `make 
+remote_<remote>_<name>` with output like
 
 ```
 Uploading to hydra...
@@ -53,7 +59,10 @@ proj.mk:79: recipe for target 'remote_hydra_test' failed
 make: *** [remote_hydra_test] Error 2`
 ```
 
-This warns you that the calculation has not yet finished (it will take a couple of seconds). If it was a larger calculation, you could submit additional workers with `make submit_<remote>_<name>` to speed it up. When the calculation is finished running `make remote_<remote>_<name>` again should output
+This warns you that the calculation has not yet finished (it will take a couple 
+of seconds). If it was a larger calculation, you could submit additional workers 
+with `make submit_<remote>_<name>` to speed it up. When the calculation is 
+finished running `make remote_<remote>_<name>` again should output
 
 ```
 Uploading to hydra...
@@ -65,4 +74,8 @@ Downloading results from hydra...
 cd results_hydra_test && python ../process.py`
 ```
 
-If you tried to run `make` before the calculation is finished, it would abort with an error. There are many other checks built in.
+If you tried to run `make` before the calculation is finished, it would abort 
+with an error. There are many other checks built in.
+
+[^submit]: 
+https://github.com/azag0/comp-chem-tools/blob/master/example/hydra_test.job.sh
