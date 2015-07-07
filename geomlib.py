@@ -22,6 +22,10 @@ ext_fmt_dict = {
 bohr = 0.52917721092
 
 
+class FormatError(Exception):
+    pass
+
+
 def elemquery(what, where, val):
     return elems[elems[where] == val].iloc[0][what]
 
@@ -110,7 +114,7 @@ class Atom(object):
                 name = 'atom'
             s = '%s %s %-2s' % (name, vectortostr(self.xyz), self)
         else:
-            raise Exception('Unknown format')
+            raise FormatError('Unknown format')
         return s
 
     def dist(self, other):
@@ -126,7 +130,7 @@ class Atom(object):
             return min(self.dist(a.xyz) for a in other.atoms)
         except:
             pass
-        raise Exception("Don't know how to treat %r object" %
+        raise TypeError("Don't know how to treat %r object" %
                         other.__class__.__name__)
 
     def _group(self):
@@ -186,7 +190,7 @@ class Molecule(object):
             for a in self.atoms:
                 fp.write(u'%s\n' % a.dumps('fhiaims'))
         else:
-            raise Exception('Unknown format')
+            raise FormatError('Unknown format')
 
     def dumps(self, fmt):
         fp = io.BytesIO()
@@ -358,7 +362,7 @@ class Crystal(Molecule):
             for a in atoms:
                 fp.write(u'%s\n' % vectortostr(a.xyz))
         else:
-            raise Exception('Unknown format')
+            raise FormatError('Unknown format')
 
 
 def load(fp, fmt):
@@ -411,7 +415,7 @@ def load(fp, fmt):
                 atoms.append(Atom(sp, xyz))
         return Crystal(lattice, atoms)
     else:
-        raise Exception('Unknown format')
+        raise FormatError('Unknown format')
 
 
 def loads(s, fmt):
