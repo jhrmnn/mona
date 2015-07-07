@@ -134,9 +134,9 @@ monitor_%:
 check: numoftasks
 
 numoftasks:
-	@echo "Number of initialized tasks: $(shell ls -d RUN/*.start | wc -l)"
-	@echo "Number of running tasks: $(shell ls -d RUN/*.running.* | wc -l)"
-	@echo "Number of finished tasks: $(shell ls -d RUN/*.done | wc -l)"
+	@echo "Number of initialized tasks: $(shell ls -d RUN/*.start 2>/dev/null | wc -l)"
+	@echo "Number of running tasks: $(shell ls -d RUN/*.running.* 2>/dev/null | wc -l)"
+	@echo "Number of finished tasks: $(shell ls -d RUN/*.done 2>/dev/null | wc -l)"
 
 check_%:
 	@echo "Connecting to $*..."
