@@ -16,7 +16,8 @@ run_aims.sh:
 	@rsync -ai ~/bin/$@ $@
 	
 check:
-	@echo "Number of successfull tasks: $(shell grep "Have a nice day." RUN/*.done/rundir/run.log | wc -l)"
+	@echo "Number of successfull tasks: $(shell \
+		grep "Have a nice day." RUN/*.done/rundir/run.log 2>/dev/null | wc -l)"
 
 tellaims:
 	@tar -xO <aims.tar.gz diff | shasum | awk '{print $$1}' | tail -c8
