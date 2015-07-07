@@ -62,13 +62,13 @@ endif
 update:
 	@echo "Updating tools..."
 ifneq ("$(wildcard ${external})", "")
-	@rsync -a $(wildcard ${external}) .oldtools/
+	@rsync -aR $(wildcard ${external}) .oldtools/
 endif
 	@${MAKE} --no-print-directory -B external
 
 restore:
 	@echo "Restoring tools..."
-	@rsync -ia .oldtools/* .
+	@rsync -ia .oldtools/* ./
 
 external: ${external}
 
