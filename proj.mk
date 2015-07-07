@@ -131,6 +131,13 @@ endif
 monitor_%:
 	@ssh $* qmy
 
+check: numoftasks
+
+numoftasks:
+	@echo "Number of initialized tasks: $(shell ls -d RUN/*.start | wc -l)"
+	@echo "Number of running tasks: $(shell ls -d RUN/*.running.* | wc -l)"
+	@echo "Number of finished tasks: $(shell ls -d RUN/*.done | wc -l)"
+
 check_%:
 	@echo "Connecting to $*..."
 	@ssh $* "cd ${remotedir} && make check"
