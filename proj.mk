@@ -17,8 +17,10 @@ tools += dispatcher.py worker.py
 userscripts = prepare.py extract.py process.py
 external += ${tools} proj.mk
 remotedir := ${remotedir}/$(PWD:$(wildcard ${root})/%=%)
+N ?= 1
 
 .SECONDEXPANSION:
+.NOTPARALLEL:
 .PRECIOUS: $(addprefix results_%/,${outputs}) results_%/results.p RUN/%_job.log
 
 local:
@@ -47,7 +49,9 @@ ${tools} proj.mk:
 	@rsync -ai ${tooldir}/$@ $(dir $@)
 
 run_local:
-	python worker.py RUN 1 >RUN/local_job.log
+	for i in `seq ${N}`; do \
+		unbuffer python worker.py RUN $$i | tee RUN/local_job.log & pids[$$i]=$$!; \
+	done; wait $${pids[*]}
 
 run_%:
 	bash ~/bin/submit.sh $*.job.sh
