@@ -5,7 +5,6 @@ from functools import wraps
 
 class Parser(object):
     def __init__(self):
-        self.results = defaultdict(dict)
         self.parsers = {}
 
     def readline(self):
@@ -15,6 +14,7 @@ class Parser(object):
         return self.line
 
     def parse(self, f):
+        self.results = defaultdict(dict)
         self.f = f
         while True:
             try:
