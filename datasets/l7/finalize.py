@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 import geomlib
 import json
+import csv
 from difflib import SequenceMatcher
 
 
@@ -46,7 +47,9 @@ enelbls = [row['system name'] for row in energies]
 energies = [energies[l.index(max(l))] for l in
             [[similar(a, b) for a in enelbls] for b in geomlbls]]
 
-json.dump(energies, sys.stdout, indent=4)
+writer = csv.DictWriter(sys.stdout, fieldnames=energies[0].keys())
+writer.writeheader()
+writer.writerows(energies)
 for idx, row in enumerate(geoms):
     row['complex'].write('{}-complex.xyz'.format(idx+1))
     for i in range(2):

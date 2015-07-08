@@ -1,9 +1,9 @@
 sources = suppl-info.txt structures.zip energies.csv article.pdf
 doi = 10.1039/b600027d
 
-all: build/energies.json ref.bib
+all: build/energies.csv ref.bib
 
-build/energies.json: tmp/sanitized.json tmp/unzipped
+build/energies.csv: tmp/sanitized.json tmp/unzipped
 	mkdir -p build/geoms
 	cd build/geoms && python3 ${PWD}/finalize.py \
 		${PWD}/$(lastword $^)/*.xyz \
@@ -11,10 +11,7 @@ build/energies.json: tmp/sanitized.json tmp/unzipped
 		>${PWD}/$@
 
 tmp/sanitized.json: src/energies.csv | tmp
-	cat $< | \
-		python3 ../sanitize.py | \
-		python3 ../csv2json.py \
-		>$@
+	cat $< | python3 ../sanitize.py >$@
 
 tmp/unzipped: src/structures.zip | tmp
 	mkdir $@
