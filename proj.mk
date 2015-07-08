@@ -49,7 +49,7 @@ ${tools} proj.mk:
 	@rsync -ai ${tooldir}/$@ $(dir $@)
 
 run_local:
-	for i in `seq ${N}`; do \
+	@for i in `seq ${N}`; do \
 		unbuffer python worker.py RUN $$i | tee RUN/local_job.log & pids[$$i]=$$!; \
 	done; wait $${pids[*]}
 
