@@ -17,7 +17,7 @@ tools += dispatcher.py worker.py
 userscripts = prepare.py extract.py process.py
 external += ${tools} proj.mk
 remotedir := ${remotedir}/$(PWD:$(wildcard ${root})/%=%)
-N ?= 1
+N ?= 2
 
 .SECONDEXPANSION:
 .NOTPARALLEL:
