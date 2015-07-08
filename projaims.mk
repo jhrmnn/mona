@@ -2,10 +2,12 @@ tools += geomlib.py pyaims.py logparser.py
 external += projaims.mk run_aims.sh
 excluded += run_aims.sh
 remotedir ?= ~/calculations
-AIMSROOT ?= ~/projects/fhi-aims
-aimsroot_remote = ~/software/fhi-aims
-prepare_env = AIMSROOT=${AIMSROOT}
-prepare_env_remote = AIMSROOT=${aimsroot_remote}
+ifdef REMOTE
+AIMSROOT = ${HOME}/software/fhi-aims
+else
+AIMSROOT = ${HOME}/projects/fhi-aims
+endif
+export AIMSROOT
 
 include proj.mk
 

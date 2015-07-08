@@ -36,13 +36,18 @@ endif
 	python extract.py
 	mkdir -p results_$* && mv RUN/results.p $@
 
-RUN/%_job.log: prepare.py ${inputs}
+RUN/%_job.log: prepare.py ${inputs} | checkifremote_%
 	@${MAKE} --no-print-directory prepare
 	@${MAKE} --no-print-directory run_$*
-	@$(if $(subst local,,$*), @${MAKE} --no-print-directory print_error)
-
-print_error:
+ifdef REMOTE
 	$(error "Wait till the job finishes, then run make again.")
+endif
+
+checkifremote_local: ;
+checkifremote_%:
+ifndef REMOTE
+	$(error "Trying to run remote on local.")
+endif
 
 ${tools} proj.mk:
 	@mkdir -p $(dir $@)
@@ -61,7 +66,7 @@ prepare: | ${external}
 ifneq ("$(wildcard RUN)", "")
 	$(error "There is a previous RUN, run make cleanrun to overwrite.")
 endif
-	${prepare_env} python prepare.py
+	python prepare.py
 
 update:
 	@echo "Updating tools..."
@@ -82,9 +87,7 @@ ifdef OFFLINE
 else
 	$(eval remote := $(firstword $(subst _, ,$*)))
 	@echo "Connecting to ${remote}..."
-	@ssh ${remote} \
-		"cd ${remotedir} && \
-		${prepare_env_remote} make results_$*/results.p"
+	@ssh ${remote} "cd ${remotedir} && make results_$*/results.p REMOTE=1"
 	@echo "Downloading results from ${remote}..."
 	@rsync -ia ${remote}:${remotedir}/results_$*/results.p results_$*/
 endif
