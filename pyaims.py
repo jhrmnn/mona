@@ -88,7 +88,27 @@ def parse_xmlarr(xmlarr, axis=None, typef=None):
         return np.array(map(typef, xmlarr.text.split()))
 
 
-aims_parser = Parser()
+pat_junk = re.compile(
+    r'''
+    [|,]             # pipe or comma
+    |
+    (?<!\d)\.(?!\W)  # dot if not preceeded by \d and not succeeded by \W
+    ''', re.VERBOSE)
+pat_spaces = re.compile(
+    r'''
+    \s*:\s+  # colon preceeded by zero or more spaces and followed by at least one
+    |
+    \s{2,}   # two or more spaces
+    ''', re.VERBOSE)
+
+
+def hook(s):
+    s = re.sub(pat_junk, '', s).strip()
+    s = re.sub(pat_spaces, '\t', s)
+    return s
+
+
+aims_parser = Parser(hook)
 
 
 def scrape_output(path):
@@ -99,12 +119,9 @@ def scrape_output(path):
 
 @aims_parser.add('The structure contains')
 def get_atoms(parser):
-    natoms, nelec = \
-        re.findall(r'contains\s+(\d+) atoms,  and a '
-                   'total of\s+([\d\.]+) electrons.',
-                   parser.line)[0]
-    parser.results['n_atoms'] = int(natoms)
-    parser.results['n_elec'] = float(nelec)
+    words = parser.line.split('\t')
+    parser.results['n_atoms'] = int(words[1].split()[0])
+    parser.results['n_elec'] = float(words[3].split()[0])
     return True
 
 
@@ -116,22 +133,19 @@ def set_converged(parser):
 
 @aims_parser.add('Performing Hirshfeld analysis')
 def get_hirsh(parser):
+    parser.readline()
     atoms = []
-    for i_atom in range(parser.results['n_atoms']):
+    while parser.readline():
         atom = {}
-        parser.readline()
-        atom['element'], = \
-            re.search(r'Atom\s+\d+\:\s+(\w+)', parser.readline()).groups()
-        for i_line in range(5):
-            key, val = \
-                re.search(r'\|\s+(.*?)\s*\:(.*)', parser.readline()).groups()
-            key = key.strip()
-            val = map(float, re.split(r'\s+', val.strip()))
-            if len(val) == 1:
-                val = val[0]
+        atom['element'] = parser.line.split('\t')[2]
+        while '---' not in parser.readline():
+            if not re.match(r'\w', parser.line[0]):
+                continue
+            words = parser.line.split('\t')
+            key = words[0]
+            val = map(float, words[1:])
+            val = val[0] if len(val) == 1 else np.array(val)
             atom[key] = val
-        for i_line in range(3):
-            parser.readline()
         atoms.append(atom)
     parser.results['Hirshfeld'] = atoms
     return True
@@ -139,84 +153,67 @@ def get_hirsh(parser):
 
 @aims_parser.add('Many-Body Dispersion')
 def get_mbd(parser):
-    results = {}
     parser.readline()
-    if re.search(r'Dynamic.*polarizability', parser.line):
-        parser.readline()
-        labels, = re.search(r'\|\s+(\S.*)', parser.readline()).groups()
-        labels = re.split(r'\s+', labels.strip())
-        val = [[] for label in labels]
-        while '---' not in parser.readline():
-            r, = re.search(r'\|\s+(\S.*)', parser.line).groups()
-            r = map(float, re.split(r'\s+', r.strip()))
-            for x, arr in zip(r, val):
-                arr.append(x)
-        omega = dict(zip(labels, val))
-        results['dynamic polarizability'] = omega
-        for i_line in range(2):
-            parser.readline()
-        atoms = []
-        for i_atom in range(parser.results['n_atoms']):
-            elem, c6, alpha = \
-                re.search(r'\|\s+ATOM\s+\d+\s+(\w+)\s+(\S+)\s+(\S+)',
-                          parser.readline()).groups()
-            atoms.append(dict(elem=elem, c6=float(c6), alpha=float(alpha)))
-        results['partitioned C6'] = atoms
-        parser.readline()
-    parser.results['MBD'] = results
-    return True
-
-
-@aims_parser.add('RPA correlation energy :')
-def get_rpa_energy(parser):
-    if not parser.results['converged']:
-        return False
+    while 'omega' not in parser.readline():
+        pass
+    labels = parser.line.split('\t')
+    rows = []
     while '---' not in parser.readline():
-        continue
+        rows.append(map(float, parser.line.split('\t')))
+    alpha = {lab: c for lab, c in zip(labels, np.array(rows).T)}
+    parser.results['MBD']['dynamic polarizability'] = alpha
     while '---' not in parser.readline():
-        try:
-            key, val = \
-                re.search(r'(\w.*?)\s*\:\s+([-\.\d]+)\s+Ha', parser.line).groups()
-        except AttributeError:
-            continue
-        parser.results['energies'][key] = float(val)
+        pass
+    atoms = []
+    while '---' not in parser.readline():
+        words = parser.line.split('\t')
+        atoms.append({'elem': words[2],
+                      'C6': float(words[3]),
+                      'alpha': float(words[4])})
+    parser.results['MBD']['partitioned C6'] = atoms
     return True
 
 
 @aims_parser.add('Total energy components')
 def get_energy(parser):
-    enes = parser.results['energies']
-    while '|' in parser.readline():
-        try:
-            key, val = \
-                re.search(r'\|\s+(.*?)\s*\:\s+([-\.\d]+)\s+Ha', parser.line).groups()
-        except AttributeError:
+    if not parser.results['converged']:
+        return
+    while parser.readline():
+        if '---' in parser.line:
             continue
+        key, val = parser.line.split('\t')[:2]
         if key in ['Total energy',
                    'MBD@rsSCS energy',
                    'van der Waals energy corr.']:
-            enes[key] = float(val)
-    return False
+            parser.results['energies'][key] = float(val.split()[0])
+    return True
+
+
+@aims_parser.add('Meta-GGA post processing starts')
+def get_metagga_energy(parser):
+    while 'Meta-gga total energy' not in parser.readline(hook):
+        pass
+    name, val = parser.line.split('\t')[0:2]
+    val = float(val.split()[0])
+    parser.results['energies'][name] = val
+    return True
 
 
 @aims_parser.add('decomposition of the XC Energy')
 def get_xc(parser):
     while 'End decomposition' not in parser.readline():
-        try:
-            key, val = \
-                re.search(r'\s*(.*?)\s*\:\s+([-\.\d]+)\s+Ha', parser.line).groups()
-        except AttributeError:
+        if '---' in parser.line:
             continue
-        parser.results['energies'][key] = float(val)
+        words = parser.line.split('\t')
+        if len(words) == 1:
+            continue
+        parser.results['energies'][words[0]] = float(words[1].split()[0])
+    return True
 
 
 @aims_parser.add('Detailed time accounting')
 def get_timing(parser):
-    times = {}
-    while 'Have a nice day' not in parser.readline():
-        regex = r'\| (.*\w)\s+\:\s+([\d\.]+) s'
-        m = re.search(regex, parser.line)
-        if m:
-            label, tm = m.groups()
-            times[label] = float(tm)
-    parser.results['timing'] = times
+    while parser.readline():
+        words = parser.line.split('\t')
+        parser.results['timing'][words[0]] = float(words[1].split()[0])
+    return True

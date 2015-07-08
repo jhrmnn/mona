@@ -30,6 +30,9 @@ $(addprefix results_%/,${outputs}): results_%/results.p process.py
 	cd results_$* && python ../process.py
 
 results_%/results.p: RUN/%_job.log extract.py | ${external}
+# TODO actually check the hashes of prepared dirs and rundirs, commands below
+# find RUN -path "*.done/rundir/*" ! -name "run.*" | xargs cat | shasum
+# find RUN -path "*.done/*" \( -name rundir -prune -o -print \) | xargs cat | shasum
 ifneq ("$(wildcard RUN/*.start RUN/*.running.*)", "")
 	$(warning "Some jobs are still running.")
 endif
