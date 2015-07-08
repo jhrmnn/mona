@@ -6,20 +6,29 @@ from collections import namedtuple
 import cPickle as pickle
 
 
+Row = namedtuple('Row', ['info', 'data'])
+Parameter = namedtuple('Parameter', ['key', 'str', 'value'])
+Parameter.__new__.__defaults__ = (None,)
+
+
+class ArrayEncoder(json.JSONEncoder):
+    def default(self, obj):
+        try:
+            return obj.tolist()
+        except AttributeError:
+            return super().default(obj)
+
+
 def dispatch(root, tasks, preparer):
     root = Path(root)
-    params = [[(k, v[1]) for k, v in t if len(v) == 2] for t in tasks]
-    paths = [root/(('_'.join(slugify(unicode(v)) for k, v in p) or '_') + '.start')
-             for p in params]
-    tasks = [{k: v[0] for k, v in t} for t in tasks]
-    for path, task, param in zip(paths, tasks, params):
+    tasks = [[Parameter(*p) for p in t] for t in tasks]
+    for task in tasks:
+        stem = '_'.join(slugify(unicode(p.str)) for p in task if p.str) or '_'
+        path = root/(stem + '.start')
         path.mkdir(parents=True)
-        preparer(path, task)
+        preparer(path, {p.key: p.value for p in task if p.value})
         with open(str(path/'info.json'), 'w') as f:
-            json.dump(dict(param), f)
-
-
-Result = namedtuple('Result', ['info', 'data'])
+            json.dump({p.key: p.str for p in task if p.str}, f)
 
 
 def extract(path, extractor):
@@ -33,7 +42,7 @@ def extract(path, extractor):
         except:
             print('info: Error occured in {}'.format(rundir))
             raise
-        results.append(Result(info, data))
+        results.append(Row(info, data))
     with (path/'results.p').open('wb') as f:
         pickle.dump(results, f, -1)
 
