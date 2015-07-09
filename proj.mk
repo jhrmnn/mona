@@ -43,11 +43,14 @@ RUN/%_job.log: prepare.py ${inputs} | checkifremote_%
 	@${MAKE} --no-print-directory prepare
 	@${MAKE} --no-print-directory run_$*
 ifdef REMOTE
-	$(error "Wait till the job finishes, then run make again.")
+	@${MAKE} --no-print-directory print_error
 endif
 
+print_error:
+	$(error "Wait till the job finishes, then run make again.")
+
 checkifremote_local: ;
-checkifremote_%:
+checkifremote_%: ;
 ifndef REMOTE
 	$(error "Trying to run remote on local.")
 endif
