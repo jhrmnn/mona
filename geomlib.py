@@ -323,7 +323,7 @@ def getfragments(C):
 class Crystal(Molecule):
     def __init__(self, lattice, atoms=None):
         self.lattice = np.array(lattice)
-        super().__init__(atoms)
+        super(self.__class__, self).__init__(atoms)
 
     def __repr__(self):
         return 'Crystal(%r, %r)' % (self.lattice, self.atoms)
@@ -333,7 +333,7 @@ class Crystal(Molecule):
             return False
         if np.linalg.norm(self.lattice-other.lattice) > 1e-10:
             return False
-        return super().__eq__(other)
+        return super(self.__class__, self).__eq__(other)
 
     def copy(self):
         return Crystal(self.lattice.copy(), Molecule.copy().atoms)
