@@ -122,13 +122,11 @@ def get_atoms(parser):
     words = parser.line.split('\t')
     parser.results['n_atoms'] = int(words[1].split()[0])
     parser.results['n_elec'] = float(words[3].split()[0])
-    return True
 
 
 @aims_parser.add('Self-consistency cycle converged')
 def set_converged(parser):
     parser.results['converged'] = True
-    return True
 
 
 @aims_parser.add('Performing Hirshfeld analysis')
@@ -148,7 +146,6 @@ def get_hirsh(parser):
             atom[key] = val
         atoms.append(atom)
     parser.results['Hirshfeld'] = atoms
-    return True
 
 
 @aims_parser.add('Many-Body Dispersion')
@@ -171,7 +168,6 @@ def get_mbd(parser):
                       'C6': float(words[3]),
                       'alpha': float(words[4])})
     parser.results['MBD']['partitioned C6'] = atoms
-    return True
 
 
 @aims_parser.add('Total energy components')
@@ -186,7 +182,6 @@ def get_energy(parser):
                    'MBD@rsSCS energy',
                    'van der Waals energy corr.']:
             parser.results['energies'][key] = float(val.split()[0])
-    return True
 
 
 @aims_parser.add('Meta-GGA post processing starts')
@@ -196,7 +191,6 @@ def get_metagga_energy(parser):
     name, val = parser.line.split('\t')[0:2]
     val = float(val.split()[0])
     parser.results['energies'][name] = val
-    return True
 
 
 @aims_parser.add('decomposition of the XC Energy')
@@ -208,7 +202,6 @@ def get_xc(parser):
         if len(words) == 1:
             continue
         parser.results['energies'][words[0]] = float(words[1].split()[0])
-    return True
 
 
 @aims_parser.add('Detailed time accounting')

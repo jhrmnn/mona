@@ -37,9 +37,7 @@ class Parser(object):
         def decorator(f):
             @wraps(f)
             def wrapper(self, key):
-                return_code = f(self)
-                if return_code:
-                    del self.parsers[key]
+                f(self)
             self.parsers[key] = wrapper
             return wrapper
         return decorator
