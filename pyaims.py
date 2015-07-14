@@ -208,5 +208,7 @@ def get_xc(parser):
 def get_timing(parser):
     while parser.readline():
         words = parser.line.split('\t')
-        parser.results['timing'][words[0]] = float(words[1].split()[0])
-    return True
+        try:
+            parser.results['timing'][words[0]] = float(words[1].split()[0])
+        except ValueError:
+            pass
