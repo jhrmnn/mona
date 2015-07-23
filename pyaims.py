@@ -163,7 +163,7 @@ def get_mbd(parser):
         pass
     atoms = []
     while '---' not in parser.readline():
-        words = parser.line.split('\t')
+        words = re.split(r'\s+', parser.line)
         atoms.append({'elem': words[2],
                       'C6': float(words[3]),
                       'alpha': float(words[4])})
