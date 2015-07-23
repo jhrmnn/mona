@@ -61,8 +61,8 @@ ${tools} proj.mk:
 
 run_local:
 	@for i in `seq ${N}`; do \
-		unbuffer python worker.py RUN $$i | tee RUN/local_job.log & pids[$$i]=$$!; \
-	done; wait $${pids[*]}
+		python -u worker.py RUN $$i | tee RUN/local_job.log & \
+		done; wait
 
 run_%:
 	bash ~/bin/submit.sh $*.job.sh
