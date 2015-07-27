@@ -8,6 +8,9 @@ else
 AIMSROOT = ${HOME}/projects/fhi-aims
 endif
 export AIMSROOT
+BRANCH ?= master
+updatehash := $(shell realpath ${AIMSROOT}/build/${BRANCH}/bin/aims.latest | tail -c 8)
+updatetar = ${AIMSROOT}/diffs/${updatehash}.diff.tar.gz
 
 include proj.mk
 
@@ -25,4 +28,5 @@ tellaims:
 	@tar -xO <aims.tar.gz diff | shasum | awk '{print $$1}' | tail -c8
 
 updateaims:
-	@rsync -a `realpath ${AIMSROOT}/diffs/latest.diff.tar.gz` aims.tar.gz
+	@echo "Fetching aims from branch ${BRANCH} with SHA hash ${updatehash}..."
+	@rsync -a ${updatetar} aims.tar.gz
