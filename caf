@@ -51,7 +51,7 @@ remoteroot = Path(cscript.remoteroot)
 remotedir = remoteroot/Path('.').resolve().relative_to(root)
 
 
-def worker(myid, root):
+def worker(myid, path):
     def sigint_handler(sig, frame):
         print('Worker {} interrupted, aborting.'.format(myid))
         sys.exit()
@@ -59,7 +59,7 @@ def worker(myid, root):
 
     print('Worker {} alive and ready.'.format(myid))
     while True:
-        tasks = root.glob('*.start')
+        tasks = path.glob('*.start')
         try:
             startpath = next(tasks)
         except StopIteration:
@@ -71,12 +71,6 @@ def worker(myid, root):
         except:
             continue
         print('Worker {} started working on {}...'.format(myid, name))
-        # if scratch:
-        #     today = time.strftime('%y-%m-%d')
-        #     rundir = os.path.join(scratch, today, myid, basename)
-        #     os.makedirs(rundir)
-        #     os.symlink(rundir, os.path.join(runname, 'rundir'))
-        # else:
         with (runpath/'run.log').open('w') as stdout, \
                 (runpath/'run.err').open('w') as stderr:
             subprocess.call(str((runpath/'run').resolve()),
@@ -142,6 +136,14 @@ if args['process']:
     with(inputs/'results.p').open('rb') as f:
         results = [Row(*t) for t in pickle.load(f)]
     cscript.process(inputs, results)
+
+
+# if scratch:
+#     today = time.strftime('%y-%m-%d')
+#     rundir = os.path.join(scratch, today, myid, basename)
+#     os.makedirs(rundir)
+#     os.symlink(rundir, os.path.join(runname, 'rundir'))
+# else:
 
 
 # $(addprefix results_%/,${outputs}): results_%/results.p process.py
