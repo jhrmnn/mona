@@ -1,0 +1,255 @@
+#!/usr/bin/env python
+"""caf -- Calculation framework.
+
+Usage:
+    caf prepare
+    caf worker <id> <path>
+    caf run local [-j N]
+    caf extract
+    caf process
+    caf init
+    caf run <remote>
+    caf upload <remote>
+    caf archive
+    caf clean [<remote>]
+    caf distclean [<remote>]
+    caf monitor <remote>
+    caf check <remote>
+
+Commands:
+
+Options:
+    -j N     Number of workers [default: 2].
+"""
+from docopt import docopt
+from pathlib import Path
+import imp
+from collections import namedtuple
+from slugify import slugify
+import json
+import sys
+import subprocess
+import signal
+from multiprocessing import Process
+import cPickle as pickle
+
+# TODO load extensions
+
+args = docopt(__doc__)
+
+inputs = Path('INPUTS')
+
+Parameter = namedtuple('Parameter', ['key', 'value', 'str'])
+Parameter.__new__.__defaults__ = (None,)
+Row = namedtuple('Row', ['key', 'value'])
+
+sys.path.append('tools')
+cscript = imp.new_module('cscript')
+exec(open('cscript').read(), cscript.__dict__)
+root = Path(cscript.root).resolve()
+remoteroot = Path(cscript.remoteroot)
+remotedir = remoteroot/Path('.').resolve().relative_to(root)
+
+
+def worker(myid, root):
+    def sigint_handler(sig, frame):
+        print('Worker {} interrupted, aborting.'.format(myid))
+        sys.exit()
+    signal.signal(signal.SIGINT, sigint_handler)
+
+    print('Worker {} alive and ready.'.format(myid))
+    while True:
+        tasks = root.glob('*.start')
+        try:
+            startpath = next(tasks)
+        except StopIteration:
+            break
+        name = startpath.stem
+        runpath = startpath.with_suffix('.%s.running' % myid)
+        try:
+            startpath.rename(runpath)
+        except:
+            continue
+        print('Worker {} started working on {}...'.format(myid, name))
+        # if scratch:
+        #     today = time.strftime('%y-%m-%d')
+        #     rundir = os.path.join(scratch, today, myid, basename)
+        #     os.makedirs(rundir)
+        #     os.symlink(rundir, os.path.join(runname, 'rundir'))
+        # else:
+        with (runpath/'run.log').open('w') as stdout, \
+                (runpath/'run.err').open('w') as stderr:
+            subprocess.call(str((runpath/'run').resolve()),
+                            stdout=stdout,
+                            stderr=stderr,
+                            cwd=str(runpath))
+        runpath.rename(startpath.with_suffix('.done'))
+        print('Worker {} finished working on {}.'.format(myid, name))
+    print('Worker {} has no more tasks to do, aborting.'.format(myid))
+
+
+class ArrayEncoder(json.JSONEncoder):
+    def default(self, obj):
+        try:
+            return obj.tolist()
+        except AttributeError:
+            return super().default(obj)
+
+
+if args['prepare']:
+    tasks, preparer = cscript.prepare()
+    tasks = [[Parameter(*p) for p in t] for t in tasks]
+    for task in tasks:
+        stem = '_'.join(slugify(unicode(p.str)) for p in task if p.str is not None) or '_'
+        path = inputs/(stem + '.start')
+        path.mkdir(parents=True)
+        preparer(path, {p.key: p.value for p in task if p.value is not None})
+        with open(str(path/'info.json'), 'w') as f:
+            json.dump({p.key: p.str for p in task if p.str is not None}, f)
+    subprocess.call('cd %s && find . -path "*.start/*" | xargs shasum >checksum.sha1' % inputs,
+                    shell=True)
+
+if args['run'] and args['local']:
+    pool = []
+    for i in range(int(args['-j'])):
+        p = Process(target=worker, args=(i, inputs))
+        p.start()
+        pool.append(p)
+    for p in pool:
+        try:
+            p.join()
+        except KeyboardInterrupt:
+            pass
+
+if args['worker']:
+    worker(args['<id>'], Path(args['<path>']))
+
+if args['extract']:
+    results = []
+    for rundir in inputs.glob('*.done'):
+        with open(str(rundir/'info.json')) as f:
+            key = json.load(f)
+        try:
+            value = cscript.extract(rundir)
+        except:
+            print('info: Error occured in {}'.format(rundir))
+            raise
+        results.append((key, value))
+    with (inputs/'results.p').open('wb') as f:
+        pickle.dump(results, f, -1)
+
+if args['process']:
+    with(inputs/'results.p').open('rb') as f:
+        results = [Row(*t) for t in pickle.load(f)]
+    cscript.process(inputs, results)
+
+
+# $(addprefix results_%/,${outputs}): results_%/results.p process.py
+# 	cd results_$* && python ../process.py
+#
+# results_%/results.p: RUN/%_job.log extract.py
+# ifneq ("$(wildcard RUN/*.start RUN/*.running.*)", "")
+# 	$(error "Some jobs are still running.")
+# endif
+# 	python extract.py
+# 	mkdir -p results_$* && mv RUN/results.p $@
+#
+# results_%/seal:
+# # find RUN -path "*.done/rundir/*" ! -name "run.*" | xargs cat | shasum
+# # find RUN -path "*.done/*" \( -name rundir -prune -o -print \) | xargs cat | shasum
+#
+# RUN/%_job.log: prepare.py ${inputs} | checkifremote_%
+# 	@${MAKE} --no-print-directory prepare
+# 	@${MAKE} --no-print-directory run_$*
+# ifdef REMOTE
+# 	@${MAKE} --no-print-directory print_error
+# endif
+#
+# print_error:
+# 	$(error "Wait till the job finishes, then run make again.")
+#
+# checkifremote_local: ;
+# checkifremote_%: ;
+# ifndef REMOTE
+# 	$(error "Trying to run remote on local.")
+# endif
+#
+# run_%:
+# 	bash ~/bin/submit.sh $*.job.sh
+# 	@sleep 1  # some submitters print asynchronously
+#
+# # TODO
+# update:
+# 	@echo "Updating tools..."
+#
+# remote_%: upload_$$(firstword $$(subst _, , %))
+# ifdef OFFLINE
+# 	@echo "Skipping download."
+# else
+# 	$(eval remote := $(firstword $(subst _, ,$*)))
+# 	@echo "Connecting to ${remote}..."
+# 	@ssh ${remote} "cd ${remotedir} && make results_$*/results.p REMOTE=1"
+# 	@echo "Downloading results from ${remote}..."
+# 	@rsync -ia ${remote}:${remotedir}/results_$*/results.p results_$*/
+# endif
+# 	@${MAKE} --no-print-directory $(addprefix results_$*/,${outputs})
+#
+# upload_%: # TODO ???
+# ifdef OFFLINE
+# 	@echo "Skipping upload."
+# else
+# 	@echo "Uploading to $*..."
+# 	@ssh $* "mkdir -p ${remotedir}"
+# 	@rsync -ia \
+# 		--exclude=*.pyc --exclude=RUN $(addprefix --exclude=,${excluded}) \
+# 		--include=$*_*.job.sh --exclude=*_*.job.sh \
+# 		--exclude=results_* \
+# 		${PWD}/* $*:${remotedir}/
+# endif
+#
+# submit_%:
+# 	$(eval remote := $(firstword $(subst _, ,$*)))
+# 	@echo "Connecting to ${remote}..."
+# 	@ssh ${remote} "cd ${remotedir} && make run_$*"
+#
+# archive_%:
+# 	@${MAKE} --no-print-directory results_$*/$(notdir ${PWD}).tar.gz
+#
+# # TODO
+# results_%/$(notdir ${PWD}).tar.gz:
+# 	@echo "Creating archive $@..."
+#
+# clean:
+# ifneq ("$(wildcard *.pyc)", "")
+# 	rm *.pyc
+# endif
+#
+# cleanrun:
+# ifneq ("$(wildcard RUN)", "")
+# 	rm -r RUN
+# endif
+#
+# # TODO
+# distclean: clean cleanrun
+#
+# monitor_%:
+# 	@ssh $* qmy
+#
+# check: numoftasks
+#
+# numoftasks:
+# 	@echo "Number of initialized tasks: $(shell ls -d RUN/*.start 2>/dev/null | wc -l)"
+# 	@echo "Number of running tasks: $(shell ls -d RUN/*.running.* 2>/dev/null | wc -l)"
+# 	@echo "Number of finished tasks: $(shell ls -d RUN/*.done 2>/dev/null | wc -l)"
+#
+# check_%:
+# 	@echo "Connecting to $*..."
+# 	@ssh $* "cd ${remotedir} && make check"
+#
+# cleanrun_%:
+# 	@echo "Connecting to $*..."
+# 	@ssh $* "cd ${remotedir} && make cleanrun"
+#
+# distclean_%:
+# 	@echo "Connecting to $*..."
+# 	@ssh $* "cd ${remotedir} && make distclean"

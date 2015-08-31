@@ -3,6 +3,7 @@ import os
 
 runner = u'''\
 #!/bin/bash
+sleep 3
 expr `cat base.in` + `cat add.in`
 '''
 
