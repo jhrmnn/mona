@@ -1,23 +1,20 @@
+include conf.mk
 ifndef inputs
 $(error "Project has no defined $${inputs}.")
 endif
 ifndef outputs
 $(error "Project has no defined $${outputs}.")
 endif
-ifndef root
-$(error "The $${root} path is not defined.")
+ifndef root_local
+$(error "The $${root_local} path is not defined.")
 endif
-ifndef tooldir
-$(error "The $${tooldir} path is not defined.")
+ifndef root_remote
+$(error "The $${root_remote} path is not defined.")
 endif
-ifndef remotedir
-$(error "The $${remotedir} path is not defined.")
-endif
-tools += dispatcher.py worker.py
-userscripts = prepare.py extract.py process.py
-external += ${tools} proj.mk
 remotedir := ${remotedir}/$(PWD:$(wildcard ${root})/%=%)
 N ?= 2
+
+# TODO load extensions
 
 .SECONDEXPANSION:
 .NOTPARALLEL:
@@ -29,10 +26,10 @@ local:
 $(addprefix results_%/,${outputs}): results_%/results.p process.py
 	cd results_$* && python ../process.py
 
-results_%/results.p: RUN/%_job.log extract.py | ${external}
 # TODO actually check the hashes of prepared dirs and rundirs, commands below
 # find RUN -path "*.done/rundir/*" ! -name "run.*" | xargs cat | shasum
 # find RUN -path "*.done/*" \( -name rundir -prune -o -print \) | xargs cat | shasum
+results_%/results.p:  # ???
 ifneq ("$(wildcard RUN/*.start RUN/*.running.*)", "")
 	$(error "Some jobs are still running.")
 endif
@@ -55,10 +52,6 @@ ifndef REMOTE
 	$(error "Trying to run remote on local.")
 endif
 
-${tools} proj.mk:
-	@mkdir -p $(dir $@)
-	@rsync -ai ${tooldir}/$@ $(dir $@)
-
 run_local:
 	@for i in `seq ${N}`; do \
 		python -u worker.py RUN $$i | tee RUN/local_job.log & \
@@ -68,24 +61,15 @@ run_%:
 	bash ~/bin/submit.sh $*.job.sh
 	@sleep 1  # some submitters print asynchronously
 	
-prepare: | ${external}
+prepare:  # TODO ???
 ifneq ("$(wildcard RUN)", "")
 	$(error "There is a previous RUN, run make cleanrun to overwrite.")
 endif
 	python prepare.py
 
+# TODO
 update:
 	@echo "Updating tools..."
-ifneq ("$(wildcard ${external})", "")
-	@rsync -aR $(wildcard ${external}) .oldtools/
-endif
-	@${MAKE} --no-print-directory -B external
-
-restore:
-	@echo "Restoring tools..."
-	@rsync -ia .oldtools/* ./
-
-external: ${external}
 
 remote_%: upload_$$(firstword $$(subst _, , %)) 
 ifdef OFFLINE
@@ -99,7 +83,7 @@ else
 endif
 	@${MAKE} --no-print-directory $(addprefix results_$*/,${outputs})
 
-upload_%: ${external}
+upload_%: # TODO ???
 ifdef OFFLINE
 	@echo "Skipping upload."
 else
@@ -120,10 +104,9 @@ submit_%:
 archive_%:
 	@${MAKE} --no-print-directory results_$*/$(notdir ${PWD}).tar.gz
 
-results_%/$(notdir ${PWD}).tar.gz: $$(addprefix results_%/,${outputs})
+# TODO
+results_%/$(notdir ${PWD}).tar.gz: 
 	@echo "Creating archive $@..."
-	@tar -zc ${tools} ${userscripts} $(addprefix results_$*/,${outputs}) ${inputs} \
-		${external} Makefile >$@
 
 clean:
 ifneq ("$(wildcard *.pyc)", "")
@@ -135,11 +118,8 @@ ifneq ("$(wildcard RUN)", "")
 	rm -r RUN
 endif
 
+# TODO
 distclean: clean cleanrun
-ifneq ("$(wildcard ${tools} ${excluded} results_*/*)", "")
-	rm -r $(wildcard ${tools} ${excluded} results_*)
-endif
-	-rm -rf .oldtools
 
 monitor_%:
 	@ssh $* qmy
