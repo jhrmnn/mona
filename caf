@@ -4,17 +4,20 @@
 Usage:
     caf prepare
     caf worker <id> <path>
-    caf run local [-j N]
     caf extract
     caf process
-    caf init
-    caf run <remote>
     caf upload <remote>
+    caf run [-j N] local
+    caf run [-j N] <remote> <job>
+    caf submit <remote> <job>
+    caf parent add <path> [<name>]
+    caf parent update <name>
     caf archive
     caf clean [<remote>]
     caf distclean [<remote>]
     caf monitor <remote>
     caf check <remote>
+    caf init
 
 Commands:
 
@@ -27,28 +30,52 @@ import imp
 from collections import namedtuple
 from slugify import slugify
 import json
+import hashlib
 import sys
 import subprocess
 import signal
+from git import Repo
 from multiprocessing import Process
 import cPickle as pickle
 
-# TODO load extensions
 
-args = docopt(__doc__)
+sys.path.append('tools')
+cscript = imp.new_module('cscript')
+exec(open('cscript').read(), cscript.__dict__)
 
-inputs = Path('INPUTS')
+
+class Context(object):
+    def __init__(self, args):
+        self.remote = args['<remote>']
+        self.id = args['<id>']
+        self.job = args['<job>']
+        path = args['<path>']
+        self.path = Path(path) if path else None
+        self.inputdir = Path(getattr(cscript, 'inputdir', 'INPUTS'))
+        self.rundir = Path(getattr(cscript, 'rundir', 'RUNS'))
+        self.resultdir = Path(getattr(cscript, 'resultdir', 'RESULTS'))
+        root = Path(cscript.root).resolve()
+        self.remotedir = Path(cscript.remoteroot)/Path('.').resolve().relative_to(root)
+        repo = Repo('.')
+        head = repo.head.commit
+        self.sharepo = (head.NULL_HEX_SHA if head.diff(None) else head.hexsha)[:7]
+
 
 Parameter = namedtuple('Parameter', ['key', 'value', 'str'])
 Parameter.__new__.__defaults__ = (None,)
 Row = namedtuple('Row', ['key', 'value'])
 
-sys.path.append('tools')
-cscript = imp.new_module('cscript')
-exec(open('cscript').read(), cscript.__dict__)
-root = Path(cscript.root).resolve()
-remoteroot = Path(cscript.remoteroot)
-remotedir = remoteroot/Path('.').resolve().relative_to(root)
+
+def prepare(inputdir):
+    tasks, preparer = cscript.prepare()
+    tasks = [[Parameter(*p) for p in t] for t in tasks]
+    for task in tasks:
+        stem = '_'.join(slugify(unicode(p.str)) for p in task if p.str is not None) or '_'
+        path = inputdir/(stem + '.start')
+        path.mkdir(parents=True)
+        preparer(path, {p.key: p.value for p in task if p.value is not None})
+        with open(str(path/'info.json'), 'w') as f:
+            json.dump({p.key: p.str for p in task if p.str is not None}, f)
 
 
 def worker(myid, path):
@@ -73,13 +100,80 @@ def worker(myid, path):
         print('Worker {} started working on {}...'.format(myid, name))
         with (runpath/'run.log').open('w') as stdout, \
                 (runpath/'run.err').open('w') as stderr:
-            subprocess.call(str((runpath/'run').resolve()),
-                            stdout=stdout,
-                            stderr=stderr,
-                            cwd=str(runpath))
+            subprocess.check_call(str((runpath/'run').resolve()),
+                                  stdout=stdout,
+                                  stderr=stderr,
+                                  cwd=str(runpath))
         runpath.rename(startpath.with_suffix('.done'))
         print('Worker {} finished working on {}.'.format(myid, name))
     print('Worker {} has no more tasks to do, aborting.'.format(myid))
+
+
+def runlocal(inputdir, rundir, sharepo):
+    h = hashlib.new('sha1')
+    h.update(subprocess.check_output(['cat']
+                                     + [str(p) for p in inputdir.glob('*/**/*')]))
+    shainputs = h.hexdigest()[:7]
+    rundir.mkdir(parents=True)
+    (rundir/sharepo).symlink_to(shainputs)
+    if not (rundir/shainputs).is_dir():
+        inputdir.rename(rundir/shainputs)
+        pool = []
+        for i in range(int(args['-j'])):
+            p = Process(target=worker, args=(i, rundir/shainputs))
+            p.start()
+            pool.append(p)
+        for p in pool:
+            try:
+                p.join()
+            except KeyboardInterrupt:
+                pass
+
+
+def extract(rundir, resultdir, sharepo):
+    results = []
+    for path in (rundir/sharepo).glob('*.done'):
+        with open(str(path/'info.json')) as f:
+            key = json.load(f)
+        try:
+            value = cscript.extract(path)
+        except:
+            print('info: Error occured in {}'.format(path))
+            raise
+        results.append((key, value))
+    (resultdir/sharepo).mkdir(parents=True)
+    with (resultdir/sharepo/'results.p').open('wb') as f:
+        pickle.dump(results, f, -1)
+
+
+def process(resultdir, sharepo):
+    with(resultdir/sharepo/'results.p').open('rb') as f:
+        results = [Row(*t) for t in pickle.load(f)]
+    cscript.process(resultdir/sharepo, results)
+
+
+def upload(remote, remotedir):
+    print('Uploading to {}...'.format(remote))
+    subprocess.check_call(['ssh', remote, 'mkdir -p %s' % remotedir])
+    subprocess.check_call(['rsync', '-ia',
+                           '--exclude=*.pyc',
+                           '--exclude=INPUTS',
+                           '--exclude=.*',
+                           '--include=%s_*.job.sh' % remote,
+                           '--exclude=*_*.job.sh',
+                           '.',
+                           '%s:%s' % (remote, remotedir)])
+
+
+def runremote(remote, remotedir, job):
+    subprocess.check_call(['ssh', remote,
+                           'cd %s && ./caf prepare' % remotedir])
+    subprocess.check_call(['ssh', remote,
+                           'cd %s && ./caf submit %s %s' % (remotedir, remote, job)])
+
+
+def submit(remote, job):
+    getattr(cscript, 'remote_%s_%s' % (remote, job))()
 
 
 class ArrayEncoder(json.JSONEncoder):
@@ -90,52 +184,26 @@ class ArrayEncoder(json.JSONEncoder):
             return super().default(obj)
 
 
-if args['prepare']:
-    tasks, preparer = cscript.prepare()
-    tasks = [[Parameter(*p) for p in t] for t in tasks]
-    for task in tasks:
-        stem = '_'.join(slugify(unicode(p.str)) for p in task if p.str is not None) or '_'
-        path = inputs/(stem + '.start')
-        path.mkdir(parents=True)
-        preparer(path, {p.key: p.value for p in task if p.value is not None})
-        with open(str(path/'info.json'), 'w') as f:
-            json.dump({p.key: p.str for p in task if p.str is not None}, f)
-    subprocess.call('cd %s && find . -path "*.start/*" | xargs shasum >checksum.sha1' % inputs,
-                    shell=True)
-
-if args['run'] and args['local']:
-    pool = []
-    for i in range(int(args['-j'])):
-        p = Process(target=worker, args=(i, inputs))
-        p.start()
-        pool.append(p)
-    for p in pool:
-        try:
-            p.join()
-        except KeyboardInterrupt:
-            pass
-
-if args['worker']:
-    worker(args['<id>'], Path(args['<path>']))
-
-if args['extract']:
-    results = []
-    for rundir in inputs.glob('*.done'):
-        with open(str(rundir/'info.json')) as f:
-            key = json.load(f)
-        try:
-            value = cscript.extract(rundir)
-        except:
-            print('info: Error occured in {}'.format(rundir))
-            raise
-        results.append((key, value))
-    with (inputs/'results.p').open('wb') as f:
-        pickle.dump(results, f, -1)
-
-if args['process']:
-    with(inputs/'results.p').open('rb') as f:
-        results = [Row(*t) for t in pickle.load(f)]
-    cscript.process(inputs, results)
+if __name__ == '__main__':
+    args = docopt(__doc__)
+    ctx = Context(args)
+    if args['prepare']:
+        prepare(ctx.inputdir)
+    if args['worker']:
+        worker(ctx.id, ctx.path)
+    if args['run'] and args['local']:
+        runlocal(ctx.inputdir, ctx.rundir, ctx.sharepo)
+    if args['extract']:
+        extract(ctx.rundir, ctx.resultdir, ctx.sharepo)
+    if args['process']:
+        process(ctx.resultdir, ctx.sharepo)
+    if args['upload']:
+        upload(ctx.remote, ctx.remotedir)
+    if args['run'] and args['<remote>']:
+        upload(ctx.remote, ctx.remotedir)
+        runremote(ctx.remote, ctx.remotedir, ctx.job)
+    if args['submit']:
+        submit(ctx.remote, ctx.job)
 
 
 # if scratch:

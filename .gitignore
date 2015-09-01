@@ -1,3 +1,5 @@
 /INPUTS
+/RUNS
+/RESULTS
 *.pyc
 __pycache__
