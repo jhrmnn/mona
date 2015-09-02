@@ -113,16 +113,21 @@ class Context(object):
         self.prepare = lambda: cscript.prepare(self)
         self.extract = lambda: cscript.extract(self)
         self.process = lambda: cscript.process(self)
-        self.cafdir = Path(os.environ['HOME'])/'.caf'
-        with (self.cafdir/'conf.yaml').open() as f:
-            conf = yaml.load(f)
-        self.top = Path(getattr(cscript, 'top', conf['top'])).resolve()
-        if 'scratch' in conf:
-            self.scratch = Path(conf['scratch'])
+        cafdir = Path(os.environ['HOME'])/'.caf'
+        self.cafdir = cafdir if cafdir.is_dir() else None
+        if self.cafdir:
+            with (self.cafdir/'conf.yaml').open() as f:
+                conf = yaml.load(f)
         else:
-            self.scratch = Path('SCRATCH')
-            if not self.scratch.is_dir():
-                self.scratch.mkdir()
+            conf = {}
+        self.top = Path(getattr(cscript, 'top', conf.get('top'))).resolve()
+        if 'scratch' in conf:
+            self.scratch = Path(conf['scratch']).resolve()
+        else:
+            scratch = Path('SCRATCH')
+            if not scratch.is_dir():
+                scratch.mkdir()
+            self.scratch = scratch.resolve()
 
     def add_task(self, calc, **param):
         self.tasks.append(Task(param, calc))

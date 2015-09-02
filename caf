@@ -69,9 +69,14 @@ def prepare(ctx):
 
 def run_local(ctx, profile):
     prepare(ctx)
-    subprocess.call('{} {}'.format(ctx.cafdir/'worker_{}'.format(profile),
-                                   ctx.rundir),
-                    shell=True)
+    if ctx.cafdir:
+        subprocess.call('{} {}'.format(ctx.cafdir/'worker_{}'.format(profile),
+                                       ctx.rundir),
+                        shell=True)
+    else:
+        subprocess.call('python -u caf worker 1 {0} 2>{0}/job.err | tee {0}/job.out'
+                        .format(ctx.rundir),
+                        shell=True)
 
 
 def extract(ctx):
