@@ -14,16 +14,31 @@ import re
 NULL_SHA = 40*'0'
 
 
+class Calculation(object):
+    def __init__(self, *args, **kwargs):
+        self.files = [File(f) for f in args]
+        self.kwargs = kwargs
+
+    def prepare(self):
+        for f in self.files:
+            f.consume(**self.kwargs)
+
+
 class File(object):
     _cache = {}
 
     def __init__(self, path):
-        self.path = Path(path).resolve()
-        if self.path not in File._cache:
-            File._cache[self.path] = self.path.open().read()
+        self.path = Path(path)
+        self.full_path = self.path.resolve()
+        if self.full_path not in File._cache:
+            File._cache[self.full_path] = self.path.open().read()
 
     def format(self, **kwargs):
-        return File._cache[self.path].format(**kwargs)
+        return File._cache[self.full_path].format(**kwargs)
+
+    def consume(self, **kwargs):
+        with self.path.open('w') as f:
+            f.write(self.format(**kwargs))
 
 
 Result = namedtuple('Result', ['param', 'data'])

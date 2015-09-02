@@ -5,26 +5,22 @@ import re
 import xml.etree.cElementTree as ET
 import numpy as np
 from caflib.Tools import geomlib
-from caflib.Core import find_program, File
+from caflib.Core import find_program, Calculation
 
 
-class AimsCalculation(object):
+class AimsCalculation(Calculation):
     def __init__(self, control, geometry, basis, aims='aims', **kwargs):
-        self.control = File(control)
-        self.geometry = File(geometry)
+        super(self.__class__, self).__init__(control, geometry, **kwargs)
         self.basis = basis
-        self.kwargs = kwargs
         self.aims = find_program(aims)
         self.command = 'AIMS={} run_aims'.format(self.aims.name)
 
     def prepare(self):
-        with open('geometry.in', 'w') as f:
-            f.write(self.geometry.format(**self.kwargs))
+        super(self.__class__, self).prepare()
         geom = geomlib.readfile('geometry.in', 'fhiaims')
         species = set((a.number, a.symbol) for a in geom.atoms)
         basis_root = self.aims.parents[1]/'aimsfiles/species_defaults'/self.basis
-        with open('control.in', 'w') as f:
-            f.write(self.control.format(**self.kwargs))
+        with open('control.in', 'a') as f:
             for specie in species:
                 f.write('\n')
                 with (basis_root/'{0[0]:02d}_{0[1]}_default'.format(specie)).open() as f_sp:
