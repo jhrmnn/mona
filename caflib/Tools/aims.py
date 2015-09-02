@@ -1,45 +1,37 @@
 #!/usr/bin/env python
 from pathlib import Path
-import shutil
-import geomlib
-import os
 from logparser import Parser
 import re
 import xml.etree.cElementTree as ET
 import numpy as np
-import subprocess
+from caflib.Tools import geomlib
+from caflib.Core import find_program, File
 
 
-def prepare(path, task):
-    if 'geom' in task:
-        geom = task['geom']
-    elif Path('geometry.in').is_file():
+class AimsCalculation(object):
+    def __init__(self, control, geometry, basis, aims='aims', **kwargs):
+        self.control = File(control)
+        self.geometry = File(geometry)
+        self.basis = basis
+        self.kwargs = kwargs
+        self.aims = find_program(aims)
+        self.command = 'AIMS={} run_aims'.format(self.aims.name)
+
+    def prepare(self):
+        with open('geometry.in', 'w') as f:
+            f.write(self.geometry.format(**self.kwargs))
         geom = geomlib.readfile('geometry.in', 'fhiaims')
-    geom.write(path/'geometry.in', 'fhiaims')
-    species = set((a.number, a.symbol) for a in geom.atoms)
-    with Path('control.in').open() as f:
-        template = f.read()
-    cmd = "tar -xzO <aims.tar.gz *diff | shasum | awk '{print $1}'"
-    aimshash = subprocess.check_output(cmd, shell=True).strip()
-    aims = 'build/*/bin/aims*.%s' % aimshash[-7:]
-    with Path('basis').open() as f:
-        basis = f.read().strip()
-    basisroot = Path(os.environ['AIMSROOT'])/basis
-    with (path/'control.in').open('w') as f:
-        f.write(template % task)
-        for specie in species:
-            f.write(u'\n')
-            with (basisroot/('%02i_%s_default' % specie)).open() as fspecie:
-                f.write(fspecie.read())
-    try:
-        aimsbin = next(Path(os.environ['AIMSROOT']).glob(aims))
-    except StopIteration:
-        raise Exception('Cannot find binary %s' % aims)
-    Path(path/'aims').symlink_to(aimsbin)
-    shutil.copy('run_aims.sh', str(path/'run'))
+        species = set((a.number, a.symbol) for a in geom.atoms)
+        basis_root = self.aims.parents[1]/'aimsfiles/species_defaults'/self.basis
+        with open('control.in', 'w') as f:
+            f.write(self.control.format(**self.kwargs))
+            for specie in species:
+                f.write('\n')
+                with (basis_root/'{0[0]:02d}_{0[1]}_default'.format(specie)).open() as f_sp:
+                    f.write(f_sp.read())
 
 
-def parse_aimsxml(path):
+def parse_xml(path):
     path = Path(path)
     root = ET.parse(str(path)).getroot()
     return parse_xmlelem(root)
@@ -90,15 +82,13 @@ def parse_xmlarr(xmlarr, axis=None, typef=None):
 
 pat_junk = re.compile(
     r'''
-    [|,]             # pipe or comma
-    |
+    [|,]|            # pipe or comma
     (?<!\d)\.(?!\W)  # dot if not preceeded by \d and not succeeded by \W
     ''', re.VERBOSE)
 pat_spaces = re.compile(
     r'''
-    \s*:\s+  # colon preceeded by zero or more spaces and followed by at least one
-    |
-    \s{2,}   # two or more spaces
+    \s*:\s+|  # colon preceeded by zero or more spaces and followed by at least one
+    \s{2,}    # two or more spaces
     ''', re.VERBOSE)
 
 
@@ -111,7 +101,7 @@ def hook(s):
 aims_parser = Parser(hook)
 
 
-def scrape_output(path):
+def parse_output(path):
     path = Path(path)
     with path.open() as f:
         return aims_parser.parse(f)

@@ -182,13 +182,13 @@ class Molecule(object):
 
     def dump(self, fp, fmt):
         if fmt == 'xyz':
-            fp.write(u'%i\n' % len(self.atoms))
-            fp.write(u'Formula: %s\n' % self)
+            fp.write('%i\n' % len(self.atoms))
+            fp.write('Formula: %s\n' % self)
             for a in self.atoms:
-                fp.write(u'%s\n' % a.dumps('xyz'))
+                fp.write('%s\n' % a.dumps('xyz'))
         elif fmt == 'fhiaims':
             for a in self.atoms:
-                fp.write(u'%s\n' % a.dumps('fhiaims'))
+                fp.write('%s\n' % a.dumps('fhiaims'))
         else:
             raise FormatError('Unknown format')
 
@@ -341,26 +341,26 @@ class Crystal(Molecule):
     def dump(self, fp, fmt):
         if fmt == 'fhiaims':
             for l in self.lattice:
-                fp.write(u'lattice_vector %s\n' % vectortostr(l))
+                fp.write('lattice_vector %s\n' % vectortostr(l))
             for a in self.atoms:
-                fp.write(u'%s\n' % a.dumps('fhiaims'))
+                fp.write('%s\n' % a.dumps('fhiaims'))
         elif fmt == 'vasp':
-            fp.write(u'Formula: %s\n' % self)
-            fp.write(u'%s\n' % scalartostr(1))
+            fp.write('Formula: %s\n' % self)
+            fp.write('%s\n' % scalartostr(1))
             for l in self.lattice:
-                fp.write(u'%s\n' % vectortostr(l))
+                fp.write('%s\n' % vectortostr(l))
             species = list(set([a.number for a in self.atoms]))
-            fp.write(u'%s\n' % ' '.join(elemquery('symbol', 'number', s)
-                                        for s in species))
+            fp.write('%s\n' % ' '.join(elemquery('symbol', 'number', s)
+                                       for s in species))
             packs = [[] for _ in species]
             for a in self.atoms:
                 packs[species.index(a.number)].append(a)
-            fp.write(u'%s\n' % ' '.join('%i' % len(atoms)
-                                        for atoms in packs))
+            fp.write('%s\n' % ' '.join('%i' % len(atoms)
+                                       for atoms in packs))
             atoms = list(chain(*packs))
-            fp.write(u'cartesian\n')
+            fp.write('cartesian\n')
             for a in atoms:
-                fp.write(u'%s\n' % vectortostr(a.xyz))
+                fp.write('%s\n' % vectortostr(a.xyz))
         else:
             raise FormatError('Unknown format')
 

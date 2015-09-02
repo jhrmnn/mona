@@ -1,5 +1,4 @@
-/INPUTS
-/RUNS
-/RESULTS
+/build
+/SCRATCH
 *.pyc
 __pycache__
