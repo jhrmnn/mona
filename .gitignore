@@ -1,4 +1,4 @@
 /build
-/SCRATCH
+/_cache
 *.pyc
 __pycache__
