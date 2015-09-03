@@ -11,8 +11,8 @@ from caflib.Tools.logparser import Parser
 
 
 class AimsCalculation(Calculation):
-    def __init__(self, control, geometry, basis, aims='aims', **kwargs):
-        super(self.__class__, self).__init__(control, geometry, **kwargs)
+    def __init__(self, basis, aims='aims', **kwargs):
+        super(self.__class__, self).__init__('control.in', 'geometry.in', **kwargs)
         self.basis = basis
         self.aims = find_program(aims)
         self.command = 'AIMS={} run_aims'.format(self.aims.name)
