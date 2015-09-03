@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 from pathlib import Path
-from logparser import Parser
+import numpy as np
+
 import re
 import xml.etree.cElementTree as ET
-import numpy as np
+
 from caflib.Tools import geomlib
 from caflib.Core import find_program, Calculation
+from caflib.Tools.logparser import Parser
 
 
 class AimsCalculation(Calculation):
