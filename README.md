@@ -21,21 +21,23 @@ Some optional tools such as `geomlib` also require NumPy.
 
 ### How to
 
-You can try Caf by cloning this repository, switching to branch `example-basic`
+You can try Caf by cloning this repository, switching to branch `examples`
 
-	git checkout example-basic
+	git checkout examples
 
 and running
 
+	cp examples/basic/* .
 	./caf run
 	./caf process
 
-To see what happened, have a look in the generated `_cache` and `build` directories. To see why it happened, have a look at files [`a.in`](https://github.com/azag0/caf/blob/example-basic/a.in), [`b.in`](https://github.com/azag0/caf/blob/example-basic/b.in) and [`cscript`](https://github.com/azag0/caf/blob/example-basic/cscript).
+To see what happened, have a look in the generated `_cache` and `build` directories. To see why it happened, have a look at files [`a.in`](https://github.com/azag0/caf/blob/examples/examples/basic/a.in), [`b.in`](https://github.com/azag0/caf/blob/examples/examples/basic/b.in) and [`cscript`](https://github.com/azag0/caf/blob/examples/examples/basic/cscript).
 
-An example illustrating a use of Caf for building variants of a program is prepared in branch `example-compile` (requires `gcc`)
+There is also an example illustrating a use of Caf for building variants of a program (requires `gcc`)
 
-	git checkout example-compile
+	git reset --hard HEAD
+	cp examples/compile/* .
 	./caf run
 	./caf process
 
-and the relevant files are [`hello.c`](https://github.com/azag0/caf/blob/example-compile/hello.c) and [`cscript`](https://github.com/azag0/caf/blob/example-compile/cscript).
+and the relevant files are [`hello.c`](https://github.com/azag0/caf/blob/examples/examples/compile/hello.c) and [`cscript`](https://github.com/azag0/caf/blob/examples/examples/compile/cscript).
