@@ -1,12 +1,13 @@
 #!/usr/bin/env python
-import numpy as np
-import pandas as pd
-from numpy import sin, cos
 from pathlib import Path
+import numpy as np
+from numpy import sin, cos
+
 from collections import defaultdict
 from itertools import chain
-import io
 from functools import cmp_to_key
+import csv
+from StringIO import StringIO
 
 settings = {
     'precision': 8,
@@ -22,12 +23,15 @@ ext_fmt_dict = {
 bohr = 0.52917721092
 
 
-class FormatError(Exception):
+class ParsingError(Exception):
     pass
 
 
 def elemquery(what, where, val):
-    return elems[elems[where] == val].iloc[0][what]
+    for row in elems:
+        if row[where] == val:
+            return row[what]
+    raise LookupError('{} = {} not found for any element'.format(where, val))
 
 
 def scalartostr(x):
@@ -114,7 +118,7 @@ class Atom(object):
                 name = 'atom'
             s = '%s %s %-2s' % (name, vectortostr(self.xyz), self)
         else:
-            raise FormatError('Unknown format')
+            raise ParsingError('Unknown format')
         return s
 
     def dist(self, other):
@@ -190,10 +194,10 @@ class Molecule(object):
             for a in self.atoms:
                 fp.write('%s\n' % a.dumps('fhiaims'))
         else:
-            raise FormatError('Unknown format')
+            raise ParsingError('Unknown format')
 
     def dumps(self, fmt):
-        fp = io.BytesIO()
+        fp = StringIO()
         self.dump(fp, fmt)
         return fp.getvalue()
 
@@ -362,7 +366,7 @@ class Crystal(Molecule):
             for a in atoms:
                 fp.write('%s\n' % vectortostr(a.xyz))
         else:
-            raise FormatError('Unknown format')
+            raise ParsingError('Unknown format')
 
 
 def load(fp, fmt):
@@ -415,11 +419,11 @@ def load(fp, fmt):
                 atoms.append(Atom(sp, xyz))
         return Crystal(lattice, atoms)
     else:
-        raise FormatError('Unknown format')
+        raise ParsingError('Unknown format')
 
 
 def loads(s, fmt):
-    fp = io.BytesIO(s)
+    fp = StringIO(s)
     return load(fp, fmt)
 
 
@@ -431,7 +435,7 @@ def readfile(path, fmt=None):
         return load(f, fmt)
 
 
-elems = pd.read_csv(io.BytesIO("""\
+elems_csv = """\
 number,symbol,name,vdw radius,covalent radius,mass,ionization energy
 1,H,hydrogen,1.2,0.38,1.0079,13.5984
 2,He,helium,1.4,0.32,4.0026,24.5874
@@ -525,4 +529,16 @@ number,symbol,name,vdw radius,covalent radius,mass,ionization energy
 90,Th,thorium,,,232.0381,6.3067
 91,Pa,protactinium,,,231.0359,5.89
 92,U,uranium,1.86,,238.0289,6.1941
-""".encode()))
+"""
+elems = [row for row in csv.DictReader(StringIO(elems_csv))]
+for row in elems:
+    for key in row:
+        try:
+            row[key] = int(row[key])
+            continue
+        except ValueError:
+            pass
+        try:
+            row[key] = float(row[key])
+        except ValueError:
+            pass
