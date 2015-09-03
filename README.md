@@ -32,7 +32,7 @@ and running
 
 To see what happened, have a look in the generated `_cache` and `build` directories. To see why it happened, have a look at files [`a.in`](https://github.com/azag0/caf/blob/example-basic/a.in), [`b.in`](https://github.com/azag0/caf/blob/example-basic/b.in) and [`cscript`](https://github.com/azag0/caf/blob/example-basic/cscript).
 
-An example illustrating a use of Caf for building variants of programs is prepared in branch `example-compile`
+An example illustrating a use of Caf for building variants of programs is prepared in branch `example-compile` (requires `gcc`)
 
 	git checkout example-compile
 	./caf run
