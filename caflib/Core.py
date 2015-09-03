@@ -10,6 +10,7 @@ import subprocess
 import hashlib
 import tempfile
 import shutil
+from string import Template
 import re
 
 NULL_SHA = 40*'0'
@@ -22,7 +23,7 @@ class Calculation(object):
 
     def prepare(self):
         for f in self.files:
-            f.consume(**self.kwargs)
+            f.consume(self.kwargs)
 
 
 class File(object):
@@ -32,14 +33,11 @@ class File(object):
         self.path = Path(path)
         self.full_path = self.path.resolve()
         if self.full_path not in File._cache:
-            File._cache[self.full_path] = self.path.open().read()
+            File._cache[self.full_path] = Template(self.path.open().read())
 
-    def format(self, **kwargs):
-        return File._cache[self.full_path].format(**kwargs)
-
-    def consume(self, **kwargs):
+    def consume(self, mapping):
         with self.path.open('w') as f:
-            f.write(self.format(**kwargs))
+            f.write(File._cache[self.full_path].substitute(mapping))
 
 
 Result = namedtuple('Result', ['param', 'data'])
