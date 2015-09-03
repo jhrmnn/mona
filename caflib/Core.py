@@ -51,7 +51,8 @@ def slugify(s):
 def get_sha_dir(top='.'):
     top = Path(top)
     h = hashlib.new('sha1')
-    for path in top.glob('**/*'):
+    for path in sorted(top.glob('**/*')):
+        h.update(str(path))
         with path.open() as f:
             h.update(f.read())
     return h.hexdigest()
