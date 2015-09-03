@@ -26,12 +26,14 @@ Options:
 """
 from docopt import docopt
 from pathlib import Path
-import shutil
 import yaml
+
+import shutil
 import sys
 import subprocess
 import signal
 import cPickle as pickle
+
 from caflib.Core import Result, Context, cd, mktmpdir, get_sha_dir, \
     sha_to_path, slugify
 
@@ -63,7 +65,7 @@ def prepare(ctx):
         path_run = ctx.rundir/stem
         path_run.symlink_to(path if path.is_absolute() else Path('../..')/path)
         task_db.append((param, str(path_run)))
-    with open(str(ctx.rundir/'tasks.yaml'), 'w') as f:
+    with (ctx.rundir/'tasks.yaml').open('w') as f:
         yaml.dump(task_db, f, default_flow_style=False)
 
 

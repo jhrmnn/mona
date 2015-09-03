@@ -1,4 +1,6 @@
 from pathlib import Path
+import yaml
+
 import imp
 import os
 from collections import namedtuple
@@ -8,7 +10,6 @@ import subprocess
 import hashlib
 import tempfile
 import shutil
-import yaml
 import re
 
 NULL_SHA = 40*'0'
