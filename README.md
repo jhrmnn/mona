@@ -18,3 +18,5 @@ The motivation for having a system like `caf` is the same as for Make: automatiz
 ```bash
 pip install pyyaml docopt pathlib
 ```
+
+Some optional tools such as `geomlib` also require NumPy.
