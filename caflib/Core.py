@@ -91,6 +91,19 @@ def find_program(cmd):
     return Path(subprocess.check_output(['which', cmd]).strip()).resolve()
 
 
+def _load_cscript():
+    cscript = imp.new_module('cscript')
+    try:
+        exec(compile(open('cscript').read(), 'cscript', 'exec'), cscript.__dict__)
+    except:
+        import traceback
+        import sys
+        print('There was an error while reading cscript.')
+        traceback.print_exc()
+        sys.exit(1)
+    return cscript
+
+
 class Context(object):
     def __init__(self):
         if Path('HEAD').is_file():
@@ -109,8 +122,7 @@ class Context(object):
         self.rundir = out/(self.sha_repo[:7] + '_runs')
         self.datafile = out/(self.sha_repo[:7] + '_data.p')
         self.resultdir = out/(self.sha_repo[:7] + '_results')
-        cscript = imp.new_module('cscript')
-        exec open('cscript').read() in cscript.__dict__
+        cscript = _load_cscript()
         self.prepare = lambda: cscript.prepare(self)
         self.extract = lambda: cscript.extract(self)
         self.process = lambda: cscript.process(self)
