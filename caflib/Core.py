@@ -121,13 +121,13 @@ class Context(object):
         else:
             conf = {}
         self.top = Path(getattr(cscript, 'top', conf.get('top'))).resolve()
-        if 'scratch' in conf:
-            self.scratch = Path(conf['scratch']).resolve()
+        if 'cache' in conf:
+            self.cache = Path(conf['cache']).resolve()
         else:
-            scratch = Path('SCRATCH')
-            if not scratch.is_dir():
-                scratch.mkdir()
-            self.scratch = scratch.resolve()
+            cache = Path('_cache')
+            if not cache.is_dir():
+                cache.mkdir()
+            self.cache = cache
 
     def add_task(self, calc, **param):
         self.tasks.append(Task(param, calc))
