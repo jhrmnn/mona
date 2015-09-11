@@ -6,6 +6,7 @@ Usage:
     caf process [--no-check]
     caf prepare
     caf extract
+    caf init
     caf upload <remote>
     caf link <remote>
     caf submit <remote> [-p PROFILE] [-j N]
@@ -67,6 +68,12 @@ def prepare(ctx):
         task_db.append((param, str(path_run)))
     with (ctx.rundir/'tasks.yaml').open('w') as f:
         yaml.dump(task_db, f, default_flow_style=False)
+
+
+def init(ctx):
+    subprocess.check_call('git checkout -b calc'.split())
+    subprocess.check_call('git rm README.md'.split())
+    subprocess.check_call('git commit -m'.split() + ['init calc'])
 
 
 def run_local(ctx, profile):
@@ -222,6 +229,8 @@ if __name__ == '__main__':
     if remote:
         remote_cwd = get_remote_cwd(ctx, remote)
     profile = args['-p']
+    if args['init']:
+        init(ctx)
     if args['prepare']:
         prepare(ctx)
     if args['run']:
