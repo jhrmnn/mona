@@ -205,7 +205,7 @@ class Molecule(object):
         path = Path(path)
         if not fmt:
             fmt = ext_fmt_dict.get(path.suffix[1:])
-        with path.open('w') as f:
+        with open(str(path), 'w') as f:
             self.dump(f, fmt)
 
     @property
