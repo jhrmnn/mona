@@ -62,7 +62,7 @@ def prepare(ctx):
                     path.parent.mkdir(parents=True)
                 shutil.move(tmpdir, str(path))
         stem = '_'.join('{}={}'.format(key, slugify(str(value)))
-                        for key, value in param.items())
+                        for key, value in param.items()) or '_'
         path_run = ctx.rundir/stem
         path_run.symlink_to(path if path.is_absolute() else Path('../..')/path)
         task_db.append((param, str(path_run)))
