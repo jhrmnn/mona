@@ -340,7 +340,7 @@ class Crystal(Molecule):
         return super(self.__class__, self).__eq__(other)
 
     def copy(self):
-        return Crystal(self.lattice.copy(), Molecule.copy().atoms)
+        return Crystal(self.lattice.copy(), Molecule(self.atoms).copy().atoms)
 
     def dump(self, fp, fmt):
         if fmt == 'fhiaims':
