@@ -1,32 +1,31 @@
 from pathlib import Path
-import yaml
 
 import imp
 import os
-from collections import namedtuple
+import re
 import json
-from contextlib import contextmanager
 import subprocess
 import hashlib
-import tempfile
 import shutil
 from string import Template
-import re
+from collections import namedtuple
+from contextlib import contextmanager
+from configparser import ConfigParser
 
 NULL_SHA = 40*'0'
 
 
-class Calculation(object):
-    def __init__(self, *args, **kwargs):
-        self.files = [File(f) for f in args]
+class Calculation:
+    def __init__(self, *files, **kwargs):
+        self.files = [File(f) for f in files]
         self.kwargs = kwargs
 
     def prepare(self):
         for f in self.files:
-            f.consume(self.kwargs)
+            f.substitute(self.kwargs)
 
 
-class File(object):
+class File:
     _cache = {}
 
     def __init__(self, path):
@@ -35,7 +34,7 @@ class File(object):
         if self.full_path not in File._cache:
             File._cache[self.full_path] = Template(self.path.open().read())
 
-    def consume(self, mapping):
+    def substitute(self, mapping):
         with self.path.open('w') as f:
             f.write(File._cache[self.full_path].substitute(mapping))
 
@@ -52,8 +51,8 @@ def get_sha_dir(top='.'):
     top = Path(top)
     h = hashlib.new('sha1')
     for path in sorted(top.glob('**/*')):
-        h.update(str(path))
-        with path.open() as f:
+        h.update(str(path).encode())
+        with path.open('rb') as f:
             h.update(f.read())
     return h.hexdigest()
 
@@ -70,11 +69,14 @@ def sha_to_path(sha, level=2, chunk=2):
 
 
 @contextmanager
-def mktmpdir():
-    tmpdir = tempfile.mkdtemp()
-    yield tmpdir
+def mktmpdir(prefix):
+    tmpdir = Path(prefix)/sha_to_path(NULL_SHA)
+    if tmpdir.is_dir():
+        shutil.rmtree(str(tmpdir))
+    tmpdir.mkdir(parents=True)
+    yield str(tmpdir)
     if Path(tmpdir).is_dir():
-        shutil.rmtree(tmpdir)
+        shutil.rmtree(str(tmpdir))
 
 
 @contextmanager
@@ -103,7 +105,7 @@ def _load_cscript():
     return cscript
 
 
-class Context(object):
+class Context:
     def __init__(self):
         if Path('HEAD').is_file():
             self.sha_repo = open('HEAD').read().strip()
@@ -119,8 +121,8 @@ class Context(object):
         self.tasks = []
         out = Path('build')
         self.rundir = out/(self.sha_repo[:7] + '_runs')
-        self.datafile = out/(self.sha_repo[:7] + '_data.p')
         self.resultdir = out/(self.sha_repo[:7] + '_results')
+        self.datalink = out/(self.sha_repo[:7] + '_data')
         cscript = _load_cscript()
         self.prepare = lambda: cscript.prepare(self)
         self.extract = lambda: cscript.extract(self)
@@ -128,18 +130,21 @@ class Context(object):
         cafdir = Path(os.environ['HOME'])/'.caf'
         self.cafdir = cafdir if cafdir.is_dir() else None
         if self.cafdir:
-            with (self.cafdir/'conf.yaml').open() as f:
-                conf = yaml.load(f)
+            conf = ConfigParser()
+            conf.read(str(self.cafdir/'config'))
         else:
             conf = {}
-        self.top = Path(getattr(cscript, 'top', conf.get('top'))).resolve()
-        if 'cache' in conf:
-            self.cache = Path(conf['cache']).resolve()
+        self.top = Path(getattr(cscript, 'top', conf['caf'].get('top'))).resolve()
+        if 'cache' in conf['caf']:
+            self.cache = Path(conf['caf']['cache']).resolve()
         else:
             cache = Path('_cache')
             if not cache.is_dir():
                 cache.mkdir()
             self.cache = cache
+        if not (self.cache/'objects').is_dir():
+            (self.cache/'objects').mkdir()
+        self.datadir = self.cache/'objects'/sha_to_path(self.sha_repo)
 
     def add_task(self, calc, **param):
         self.tasks.append(Task(param, calc))

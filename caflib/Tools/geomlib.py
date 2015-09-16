@@ -7,7 +7,7 @@ from collections import defaultdict
 from itertools import chain
 from functools import cmp_to_key
 import csv
-from StringIO import StringIO
+from io import StringIO
 
 settings = {
     'precision': 8,
@@ -16,15 +16,11 @@ settings = {
 
 ext_fmt_dict = {
     'xyz': 'xyz',
-    'aims': 'fhiaims',
+    'aims': 'aims',
     'vasp': 'vasp'
 }
 
 bohr = 0.52917721092
-
-
-class ParsingError(Exception):
-    pass
 
 
 def elemquery(what, where, val):
@@ -35,7 +31,7 @@ def elemquery(what, where, val):
 
 
 def scalartostr(x):
-    return '%*.*f' % (settings['width'], settings['precision'], x)
+    return '{:{w}.{p}f}'.format(x, w=settings['width'], p=settings['precision'])
 
 
 def vectortostr(v):
@@ -59,15 +55,15 @@ class Dictlike(object):
         if self.getter:
             return self.getter(k)
         else:
-            raise TypeError("%r object has no attribute '__getitem__'" %
-                            self.__class__.__name__)
+            raise TypeError("{!r} object has no attribute '__getitem__'"
+                            .format(self.__class__.__name__))
 
     def __setitem__(self, k, v):
         if self.setter:
             self.setter(k, v)
         else:
-            raise TypeError('This %r object does not support item assignment' %
-                            self.__class__.__name__)
+            raise TypeError('This {!r} object does not support item assignment'
+                            .format(self.__class__.__name__))
 
 
 class Atom(object):
@@ -81,12 +77,23 @@ class Atom(object):
         self.prop = Dictlike(lambda k: elemquery(k, 'number', self.number))
 
     def __repr__(self):
-        xyz = '(%s)' % ', '.join('%.*f' % (
-            settings['precision'], x) for x in self.xyz)
-        return 'Atom(%r, %s, %r)' % (self.number, xyz, self.flags)
+        xyz = '({})'.format(', '.join('{:.{p}}'
+                                      .format(x, p=settings['precision'])
+                                      for x in self.xyz))
+        return 'Atom({!r}, {}, {})'.format(self.number, xyz, self.flags)
 
-    def __str__(self):
-        return self.symbol
+    def __format__(self, fmt):
+        if fmt == 'xyz':
+            s = '{:>2} {}'.format(self.symbol, vectortostr(self.xyz))
+        elif fmt == 'aims':
+            if self.flags.get('dummy'):
+                name = 'empty'
+            else:
+                name = 'atom'
+                s = '{} {} {:>2}'.format(name, vectortostr(self.xyz), self.symbol)
+        else:
+            raise ValueError('Unknown format')
+        return s
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -108,19 +115,6 @@ class Atom(object):
     def copy(self):
         return Atom(self.number, self.xyz.copy(), self.flags.copy())
 
-    def dumps(self, fmt):
-        if fmt == 'xyz':
-            s = '%-2s %s' % (self, vectortostr(self.xyz))
-        elif fmt == 'fhiaims':
-            if self.flags.get('dummy'):
-                name = 'empty'
-            else:
-                name = 'atom'
-            s = '%s %s %-2s' % (name, vectortostr(self.xyz), self)
-        else:
-            raise ParsingError('Unknown format')
-        return s
-
     def dist(self, other):
         try:
             return np.sqrt(sum((self.xyz-other)**2))
@@ -134,8 +128,8 @@ class Atom(object):
             return min(self.dist(a.xyz) for a in other.atoms)
         except:
             pass
-        raise TypeError("Don't know how to treat %r object" %
-                        other.__class__.__name__)
+        raise TypeError("Don't know how to treat {!r} object"
+                        .format(other.__class__.__name__))
 
     def _group(self):
         n = self.number
@@ -164,14 +158,19 @@ class Molecule(object):
         self.flags = Dictlike(self._getflag, self._setflag)
 
     def __repr__(self):
-        return 'Molecule(%r)' % self.atoms
+        return 'Molecule({!r})'.format(self.atoms)
 
     def __str__(self):
         counter = defaultdict(int)
         for a in self.atoms:
             counter[a.symbol] += 1
-        return ''.join('%s%s' % (s, n if n > 1 else '')
+        return ''.join('{}{}'.format(s, n if n > 1 else '')
                        for s, n in sorted(counter.items()))
+
+    def __format__(self, fmt):
+        fp = StringIO()
+        self.dump(fp, fmt)
+        return fp.getvalue()
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -186,20 +185,15 @@ class Molecule(object):
 
     def dump(self, fp, fmt):
         if fmt == 'xyz':
-            fp.write('%i\n' % len(self.atoms))
-            fp.write('Formula: %s\n' % self)
+            fp.write('{}\n'.format(len(self.atoms)))
+            fp.write('Formula: {}\n'.format(self))
             for a in self.atoms:
-                fp.write('%s\n' % a.dumps('xyz'))
-        elif fmt == 'fhiaims':
+                fp.write('{:xyz}\n'.format(a))
+        elif fmt == 'aims':
             for a in self.atoms:
-                fp.write('%s\n' % a.dumps('fhiaims'))
+                fp.write('{:aims}\n'.format(a))
         else:
-            raise ParsingError('Unknown format')
-
-    def dumps(self, fmt):
-        fp = StringIO()
-        self.dump(fp, fmt)
-        return fp.getvalue()
+            raise ValueError('Unknown format')
 
     def write(self, path, fmt=None):
         path = Path(path)
@@ -330,7 +324,7 @@ class Crystal(Molecule):
         super(self.__class__, self).__init__(atoms)
 
     def __repr__(self):
-        return 'Crystal(%r, %r)' % (self.lattice, self.atoms)
+        return 'Crystal({!r}, {!r})'.format(self.lattice, self.atoms)
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -343,11 +337,11 @@ class Crystal(Molecule):
         return Crystal(self.lattice.copy(), Molecule(self.atoms).copy().atoms)
 
     def dump(self, fp, fmt):
-        if fmt == 'fhiaims':
+        if fmt == 'aims':
             for l in self.lattice:
-                fp.write('lattice_vector %s\n' % vectortostr(l))
+                fp.write('lattice_vector {}\n'.format(vectortostr(l)))
             for a in self.atoms:
-                fp.write('%s\n' % a.dumps('fhiaims'))
+                fp.write('{:aims}\n'.format(a))
         elif fmt == 'vasp':
             fp.write('Formula: %s\n' % self)
             fp.write('%s\n' % scalartostr(1))
@@ -366,7 +360,7 @@ class Crystal(Molecule):
             for a in atoms:
                 fp.write('%s\n' % vectortostr(a.xyz))
         else:
-            raise ParsingError('Unknown format')
+            raise ValueError('Unknown format')
 
 
 def load(fp, fmt):
@@ -378,7 +372,7 @@ def load(fp, fmt):
             l = fp.readline().split()
             atoms.append(Atom(l[0], [float(x) for x in l[1:4]]))
         return Molecule(atoms)
-    elif fmt == 'fhiaims':
+    elif fmt == 'aims':
         atoms = []
         lattice = []
         while True:
@@ -419,7 +413,7 @@ def load(fp, fmt):
                 atoms.append(Atom(sp, xyz))
         return Crystal(lattice, atoms)
     else:
-        raise ParsingError('Unknown format')
+        raise ValueError('Unknown format')
 
 
 def loads(s, fmt):

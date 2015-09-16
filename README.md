@@ -15,7 +15,9 @@ The motivation for having a system like Caf is the same as for Make: automatizat
 
 ### Prerequisites
 
-	pip install pyyaml docopt pathlib
+Caf is writen for Python 3 and requires docopt:
+
+	pip3 install docopt
 
 Some optional tools such as `geomlib` also require NumPy.
 
