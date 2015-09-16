@@ -199,6 +199,17 @@ def submit(remote, job):
     pass
 
 
+def monitor(ctx, remote):
+    subprocess.check_call(['ssh', remote, 'qmy'])
+
+
+# def check(ctx, remote, ):
+#     print('Connecting to {}...'.format(remote))
+#     subprocess.check_call(['ssh', remote, cd ${remotedir} && make check])
+# # 	@ssh $* "cd ${remotedir} && make check"
+# #
+
+
 def worker(myid, path):
     def sigint_handler(sig, frame):
         print('Worker {} interrupted, aborting.'.format(myid))
@@ -258,6 +269,10 @@ if __name__ == '__main__':
         process(ctx, not args['--no-check'])
     if args['upload']:
         upload(ctx, remote, remote_cwd)
+    # if args['check']:
+    #     check(ctx, remote)
+    if args['monitor']:
+        monitor(ctx, remote)
     # if args['submit']:
     #     submit(ctx.remote, ctx.job)
 
@@ -282,19 +297,12 @@ if __name__ == '__main__':
 # # TODO
 # distclean: clean cleanrun
 #
-# monitor_%:
-# 	@ssh $* qmy
-#
 # check: numoftasks
 #
 # numoftasks:
 # 	@echo "Number of initialized tasks: $(shell ls -d RUN/*.start 2>/dev/null | wc -l)"
 # 	@echo "Number of running tasks: $(shell ls -d RUN/*.running.* 2>/dev/null | wc -l)"
 # 	@echo "Number of finished tasks: $(shell ls -d RUN/*.done 2>/dev/null | wc -l)"
-#
-# check_%:
-# 	@echo "Connecting to $*..."
-# 	@ssh $* "cd ${remotedir} && make check"
 #
 # cleanrun_%:
 # 	@echo "Connecting to $*..."
