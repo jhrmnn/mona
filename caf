@@ -115,7 +115,8 @@ def extract(ctx):
             raise
         results.append((param, data))
     ctx.datadir.mkdir(parents=True)
-    ctx.datalink.unlink()
+    if ctx.datalink.is_symlink():
+        ctx.datalink.unlink()
     ctx.datalink.symlink_to(ctx.datadir)
     with (ctx.datadir/'data.p').open('wb') as f:
         pickle.dump(results, f, -1)
@@ -192,6 +193,8 @@ def extract_remote(ctx):
                 path=remote['path'],
                 datalink=ctx.datalink,
                 datadir=ctx.datadir).split())
+    if ctx.datalink.is_symlink():
+        ctx.datalink.unlink()
     ctx.datalink.symlink_to(ctx.datadir)
 
 
