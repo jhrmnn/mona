@@ -19,7 +19,7 @@ class AimsCalculation(Calculation):
 
     def prepare(self):
         super(self.__class__, self).prepare()
-        geom = geomlib.readfile('geometry.in', 'fhiaims')
+        geom = geomlib.readfile('geometry.in', 'aims')
         species = set((a.number, a.symbol) for a in geom.atoms)
         basis_root = self.aims.parents[1]/'aimsfiles/species_defaults'/self.basis
         with open('control.in', 'a') as f:
@@ -75,7 +75,7 @@ def parse_xmlarr(xmlarr, axis=None, typef=None):
                for v in xmlarr.findall('vector')]
         return np.concatenate(lst, axis)
     else:
-        return np.array(map(typef, xmlarr.text.split()))
+        return np.array([typef(x) for x in xmlarr.text.split()])
 
 
 pat_junk = re.compile(
@@ -129,7 +129,7 @@ def get_hirsh(parser):
                 continue
             words = parser.line.split('\t')
             key = words[0]
-            val = map(float, words[1:])
+            val = [float(x) for x in words[1:]]
             val = val[0] if len(val) == 1 else np.array(val)
             atom[key] = val
         atoms.append(atom)
@@ -144,7 +144,7 @@ def get_mbd(parser):
     labels = parser.line.split('\t')
     rows = []
     while '---' not in parser.readline():
-        rows.append(map(float, parser.line.split('\t')))
+        rows.append([float(x) for x in parser.line.split('\t')])
     alpha = {lab: c for lab, c in zip(labels, np.array(rows).T)}
     parser.results['MBD']['dynamic polarizability'] = alpha
     while '---' not in parser.readline():

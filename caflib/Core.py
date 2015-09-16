@@ -89,7 +89,7 @@ def cd(path):
 
 
 def find_program(cmd):
-    return Path(subprocess.check_output(['which', cmd]).strip()).resolve()
+    return Path(subprocess.check_output(['which', cmd]).decode().strip()).resolve()
 
 
 def _load_cscript():
@@ -117,7 +117,7 @@ class Context:
                 self.sha_repo = NULL_SHA
             else:
                 self.clean = True
-                self.sha_repo = subprocess.check_output('git rev-parse HEAD'.split()).strip()
+                self.sha_repo = subprocess.check_output('git rev-parse HEAD'.split()).strip().decode()
         self.tasks = []
         out = Path('build')
         self.rundir = out/(self.sha_repo[:7] + '_runs')
