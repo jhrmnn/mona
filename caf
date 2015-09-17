@@ -14,8 +14,8 @@ Usage:
     caf parent update <name>
     caf archive
     caf clean [<remote>]
+    caf check [<remote>]
     caf monitor <remote>
-    caf check <remote>
     caf worker <id> <path>
 
 Commands:
@@ -206,11 +206,13 @@ def monitor(ctx, remote):
     subprocess.check_call(['ssh', remote, 'qmy'])
 
 
-# def check(ctx, remote, ):
-#     print('Connecting to {}...'.format(remote))
-#     subprocess.check_call(['ssh', remote, cd ${remotedir} && make check])
-# # 	@ssh $* "cd ${remotedir} && make check"
-# #
+def check(ctx):
+    n_all = len(json.load((ctx.rundir/'tasks.json').open()))
+    n_locked = len(list(ctx.rundir.glob('*/.lock')))
+    n_sealed = len(list(ctx.rundir.glob('*/.lock/seal')))
+    print('Number of initialized tasks: {}'.format(n_all))
+    print('Number of running tasks: {}'.format(n_locked-n_sealed))
+    print('Number of finished tasks: {}'.format(n_sealed))
 
 
 def worker(myid, path):
@@ -272,8 +274,13 @@ if __name__ == '__main__':
         process(ctx, not args['--no-check'])
     if args['upload']:
         upload(ctx, remote, remote_cwd)
-    # if args['check']:
-    #     check(ctx, remote)
+    if args['check']:
+        if not remote:
+            check(ctx)
+        else:
+            print('Connecting to {}...'.format(remote))
+            subprocess.check_call(['ssh', remote,
+                                   'cd {} && ./caf check'.format(remote_cwd)])
     if args['monitor']:
         monitor(ctx, remote)
     # if args['submit']:
@@ -299,13 +306,6 @@ if __name__ == '__main__':
 #
 # # TODO
 # distclean: clean cleanrun
-#
-# check: numoftasks
-#
-# numoftasks:
-# 	@echo "Number of initialized tasks: $(shell ls -d RUN/*.start 2>/dev/null | wc -l)"
-# 	@echo "Number of running tasks: $(shell ls -d RUN/*.running.* 2>/dev/null | wc -l)"
-# 	@echo "Number of finished tasks: $(shell ls -d RUN/*.done 2>/dev/null | wc -l)"
 #
 # cleanrun_%:
 # 	@echo "Connecting to $*..."
