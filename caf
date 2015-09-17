@@ -42,7 +42,7 @@ Remote = namedtuple('Remote', ['host', 'top'])
 def upload(ctx, remote):
     print('Uploading to {}...'.format(remote.host))
     subprocess.check_call(['ssh', remote.host,
-                           'mkdir -p {0:.top} && cd {0:.top} && echo {1} >HEAD'
+                           'mkdir -p {0.top} && cd {0.top} && echo {1} >HEAD'
                            .format(remote, ctx.sha_repo)])
     subprocess.check_call(['rsync', '-ia',
                            '--exclude=.*',
@@ -51,7 +51,7 @@ def upload(ctx, remote):
                            '--exclude=*.pyc',
                            '--exclude=__pycache__',
                            '.',
-                           '{.host}:{.top}'.format(remote)])
+                           '{0.host}:{0.top}'.format(remote)])
 
 
 def prepare(ctx):
@@ -94,7 +94,7 @@ def link(ctx, remote):
             shutil.rmtree(str(ctx.rundir))
     ctx.rundir.mkdir(parents=True)
     with (ctx.rundir/'remote.json').open('w') as f:
-        json.dump(remote, f, indent=4)
+        json.dump((remote.host, str(remote.top)), f, indent=4)
 
 
 def run(ctx, profile):
@@ -241,7 +241,8 @@ if __name__ == '__main__':
         link(ctx, remote)
     else:
         try:
-            remote = Remote(*json.load((ctx.rundir/'remote.json').open()))
+            remote = json.load((ctx.rundir/'remote.json').open())
+            remote = Remote(remote[0], Path(remote[1]))
         except FileNotFoundError:
             remote = None
         if args['run']:
