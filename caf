@@ -2,26 +2,21 @@
 """caf -- Calculation framework.
 
 Usage:
-    caf run [<remote>] [-p PROFILE] [-j N]
-    caf process [--no-check]
-    caf prepare
-    caf extract
-    caf init
     caf upload <remote>
+    caf prepare [<remote>]
     caf link <remote>
-    caf submit <remote> [-p PROFILE] [-j N]
-    caf parent add <path> [<name>]
-    caf parent update <name>
+    caf run [-p PROFILE] [-j N]
+    caf check
+    caf extract
+    caf download <remote>
+    caf process
     caf archive
-    caf clean [<remote>]
-    caf check [<remote>]
-    caf monitor <remote>
     caf worker <id> <path>
 
 Commands:
 
 Options:
-    -j N              Number of workers [default: 2].
+    -j N              Number of workers [default: 1].
     -p PROFILE        Job profile [default: default].
     --no-check        Don't verify data.
 """
@@ -35,17 +30,36 @@ import signal
 import pickle
 from pathlib import Path
 from configparser import ConfigParser
+from collections import namedtuple
 
 from caflib.Core import Result, Context, cd, mktmpdir, get_sha_dir, \
     sha_to_path, slugify
 
 
+Remote = namedtuple('Remote', ['host', 'top'])
+
+
+def upload(ctx, remote):
+    print('Uploading to {}...'.format(remote.host))
+    subprocess.check_call(['ssh', remote.host,
+                           'mkdir -p {0:.top} && cd {0:.top} && echo {1} >HEAD'
+                           .format(remote, ctx.sha_repo)])
+    subprocess.check_call(['rsync', '-ia',
+                           '--exclude=.*',
+                           '--exclude=build',
+                           '--exclude=_cache',
+                           '--exclude=*.pyc',
+                           '--exclude=__pycache__',
+                           '.',
+                           '{.host}:{.top}'.format(remote)])
+
+
 def prepare(ctx):
-    if ctx.clean:
-        if ctx.rundir.is_dir():
+    if ctx.rundir.is_dir():
+        if ctx.clean:
+            print('Runs are prepared')
             return
-    else:
-        if ctx.rundir.is_dir():
+        else:
             shutil.rmtree(str(ctx.rundir))
     ctx.rundir.mkdir(parents=True)
     ctx.prepare()
@@ -71,139 +85,24 @@ def prepare(ctx):
         json.dump(task_db, f, indent=4)
 
 
-def init(ctx):
-    subprocess.check_call('git checkout -b calc'.split())
-    subprocess.check_call('git rm README.md'.split())
-    subprocess.check_call('git commit -m'.split() + ['init calc'])
-
-
-def run_local(ctx, profile):
-    prepare(ctx)
-    if ctx.cafdir:
-        subprocess.call('{} {}'.format(ctx.cafdir/'worker_{}'.format(profile),
-                                       ctx.rundir),
-                        shell=True)
-    else:
-        subprocess.call('python3 -u caf worker 1 {0} 2>{0}/job.err | tee {0}/job.out'
-                        .format(ctx.rundir),
-                        shell=True)
-
-
-def extract(ctx):
-    if ctx.clean:
-        if ctx.datadir.is_dir():
-            return
-    else:
-        if ctx.datadir.is_dir():
-            shutil.rmtree(str(ctx.datadir))
-    if (ctx.rundir/'remote.json').is_file():
-        extract_remote(ctx)
-        return
-    prepare(ctx)
-    task_db = json.load((ctx.rundir/'tasks.json').open())
-    for _, path in task_db:
-        if not (Path(path)/'.lock'/'seal').is_file():
-            print('Some tasks are not finished.')
-            sys.exit(1)
-    results = []
-    for param, path in task_db:
-        try:
-            with cd(path):
-                data = ctx.extract()
-        except:
-            print('info: Error occured in {}'.format(path))
-            raise
-        results.append((param, data))
-    ctx.datadir.mkdir(parents=True)
-    if ctx.datalink.is_symlink():
-        ctx.datalink.unlink()
-    ctx.datalink.symlink_to(ctx.datadir)
-    with (ctx.datadir/'data.p').open('wb') as f:
-        pickle.dump(results, f, -1)
-
-
-def process(ctx, check=True):
-    if ctx.clean:
-        if ctx.resultdir.is_dir():
-            return
-    if check:
-        extract(ctx)
-    if ctx.resultdir.is_dir():
-        shutil.rmtree(str(ctx.resultdir))
-    ctx.resultdir.mkdir(parents=True)
-    with (ctx.datadir/'data.p').open('rb') as f:
-        ctx.results = [Result(*x) for x in pickle.load(f)]
-    with cd(ctx.resultdir):
-        ctx.process()
-
-
-def get_remote_cwd(ctx, remote):
-    conf_str = subprocess.check_output(['ssh', remote, 'cat ~/.caf/config']).decode()
-    conf = ConfigParser()
-    conf.read_string(conf_str)
-    return Path(conf['caf']['top'])/Path('.').resolve().relative_to(ctx.top)
-
-
-def upload(ctx, remote, remote_cwd):
-    print('Uploading to {}...'.format(remote))
-    subprocess.check_call(['ssh', remote, 'mkdir -p {}'.format(remote_cwd)])
-    subprocess.check_call(['rsync', '-ia',
-                           '--exclude=.*',
-                           '--exclude=build',
-                           '--exclude=_cache',
-                           '--exclude=*.pyc',
-                           '--exclude=__pycache__',
-                           '.',
-                           '{}:{}'.format(remote, remote_cwd)])
-
-
-def link(ctx, remote, remote_cwd):
+def link(ctx, remote):
     if ctx.rundir.is_dir():
-        shutil.rmtree(str(ctx.rundir))
+        if ctx.clean:
+            print('Runs are prepared')
+            return
+        else:
+            shutil.rmtree(str(ctx.rundir))
     ctx.rundir.mkdir(parents=True)
     with (ctx.rundir/'remote.json').open('w') as f:
-        json.dump({'host': remote,
-                   'path': str(remote_cwd)},
-                  f, indent=4)
+        json.dump(remote, f, indent=4)
 
 
-def run_remote(ctx, remote, remote_cwd, profile):
-    upload(ctx, remote, remote_cwd)
-    link(ctx, remote, remote_cwd)
-    subprocess.check_call(
-        ['ssh', remote,
-         'cd {} && echo {} >HEAD && ./caf run -p {}'
-         .format(remote_cwd, ctx.sha_repo, profile)])
-
-
-def extract_remote(ctx):
-    remote = json.load((ctx.rundir/'remote.json').open())
-    upload(ctx, remote['host'], remote['path'])
-    ret = subprocess.call(
-        ['ssh', remote['host'],
-         'cd {} && echo {} >HEAD && ./caf extract'
-         .format(remote['path'], ctx.sha_repo)])
-    if ret:
-        return
-    if not ctx.datadir.is_dir():
-        ctx.datadir.mkdir(parents=True)
-    subprocess.check_call(
-        'rsync -ia {host}:{path}/{datalink}/ {datadir}/'
-        .format(host=remote['host'],
-                path=remote['path'],
-                datalink=ctx.datalink,
-                datadir=ctx.datadir).split())
-    if ctx.datalink.is_symlink():
-        ctx.datalink.unlink()
-    ctx.datalink.symlink_to(ctx.datadir)
-
-
-def submit(remote, job):
-    pass
-
-
-def monitor(ctx, remote):
-    subprocess.check_call(['ssh', remote, 'qmy'])
+def run(ctx, profile):
+    if not (ctx.rundir/'tasks.json').is_file():
+        raise RuntimeError('Runs have not been prepared')
+    subprocess.call('{} {}'.format(ctx.cafdir/'worker_{}'.format(profile),
+                                   ctx.rundir),
+                    shell=True)
 
 
 def check(ctx):
@@ -213,6 +112,66 @@ def check(ctx):
     print('Number of initialized tasks: {}'.format(n_all))
     print('Number of running tasks: {}'.format(n_locked-n_sealed))
     print('Number of finished tasks: {}'.format(n_sealed))
+
+
+def extract(ctx):
+    if not (ctx.rundir/'tasks.json').is_file():
+        raise RuntimeError('Runs have not been prepared')
+    task_db = json.load((ctx.rundir/'tasks.json').open())
+    for _, path in task_db:
+        if not (Path(path)/'.lock'/'seal').is_file():
+            raise RuntimeError('Some tasks are not finished')
+    if ctx.datadir.is_dir():
+        if ctx.clean:
+            print('Data are extracted')
+            return
+        else:
+            shutil.rmtree(str(ctx.datadir))
+    ctx.datadir.mkdir(parents=True)
+    results = []
+    for param, path in task_db:
+        try:
+            with cd(path):
+                data = ctx.extract()
+        except:
+            print('info: Error occured in {}'.format(path))
+            raise
+        results.append((param, data))
+    with (ctx.datadir/'data.p').open('wb') as f:
+        pickle.dump(results, f, -1)
+    if ctx.datalink.is_symlink():
+        ctx.datalink.unlink()
+    ctx.datalink.symlink_to(ctx.datadir)
+
+
+def download(ctx, remote):
+    print('Downloading from {}...'.format(remote.host))
+    if ctx.datadir.is_dir():
+        if ctx.clean:
+            print('Data are extracted')
+            return
+        else:
+            shutil.rmtree(str(ctx.datadir))
+    ctx.datadir.mkdir(parents=True)
+    subprocess.check_call('rsync -ia {.host}:{.top}/{}/ {}/'
+                          .format(remote, ctx.datalink, ctx.datadir).split())
+    if ctx.datalink.is_symlink():
+        ctx.datalink.unlink()
+    ctx.datalink.symlink_to(ctx.datadir)
+
+
+def process(ctx):
+    if ctx.resultdir.is_dir():
+        if ctx.clean:
+            print('Data are processed')
+            return
+        else:
+            shutil.rmtree(str(ctx.resultdir))
+    ctx.resultdir.mkdir(parents=True)
+    with (ctx.datadir/'data.p').open('rb') as f:
+        ctx.results = [Result(*x) for x in pickle.load(f)]
+    with cd(ctx.resultdir):
+        ctx.process()
 
 
 def worker(myid, path):
@@ -245,72 +204,63 @@ def worker(myid, path):
         (lock/'seal').touch()
         print('Worker {} finished working on {}.'.format(myid, name))
     print('Worker {} has no more tasks to do, aborting.'.format(myid))
-    sys.exit()
+
+
+def _get_remote_top(ctx, host):
+    conf_str = subprocess.check_output(['ssh', host, 'cat ~/.caf/config']).decode()
+    conf = ConfigParser()
+    conf.read_string(conf_str)
+    return Path(conf['caf']['top'])/Path('.').resolve().relative_to(ctx.top)
+
+
+def _remote_cmd(remote, cmd):
+    print('Connecting to {.host}...'.format(remote))
+    subprocess.check_call(['ssh', remote.host,
+                           'cd {.top} && ./caf {}'.format(remote, cmd)])
 
 
 if __name__ == '__main__':
     args = docopt(__doc__)
     if args['worker']:
         worker(args['<id>'], Path(args['<path>']))
+        sys.exit()
     ctx = Context()
     remote = args['<remote>']
     if remote:
-        remote_cwd = get_remote_cwd(ctx, remote)
-    profile = args['-p']
-    if args['init']:
-        init(ctx)
-    if args['prepare']:
-        prepare(ctx)
-    if args['run']:
-        if remote:
-            run_remote(ctx, remote, remote_cwd, profile)
-        else:
-            run_local(ctx, profile)
-    if args['link']:
-        link(ctx, remote, remote_cwd)
-    if args['extract']:
-        extract(ctx)
-    if args['process']:
-        process(ctx, not args['--no-check'])
+        remote = Remote(remote, _get_remote_top(ctx, remote))
     if args['upload']:
-        upload(ctx, remote, remote_cwd)
-    if args['check']:
-        if not remote:
-            check(ctx)
+        upload(ctx, remote)
+    elif args['prepare']:
+        if remote:
+            upload(ctx, remote)
+            _remote_cmd(remote, 'prepare')
+            link(ctx, remote)
         else:
-            print('Connecting to {}...'.format(remote))
-            subprocess.check_call(['ssh', remote,
-                                   'cd {} && ./caf check'.format(remote_cwd)])
-    if args['monitor']:
-        monitor(ctx, remote)
-    # if args['submit']:
-    #     submit(ctx.remote, ctx.job)
-
-
-# archive_%:
-# 	@${MAKE} --no-print-directory results_$*/$(notdir ${PWD}).tar.gz
-#
-# # TODO
-# results_%/$(notdir ${PWD}).tar.gz:
-# 	@echo "Creating archive $@..."
-#
-# clean:
-# ifneq ("$(wildcard *.pyc)", "")
-# 	rm *.pyc
-# endif
-#
-# cleanrun:
-# ifneq ("$(wildcard RUN)", "")
-# 	rm -r RUN
-# endif
-#
-# # TODO
-# distclean: clean cleanrun
-#
-# cleanrun_%:
-# 	@echo "Connecting to $*..."
-# 	@ssh $* "cd ${remotedir} && make cleanrun"
-#
-# distclean_%:
-# 	@echo "Connecting to $*..."
-# 	@ssh $* "cd ${remotedir} && make distclean"
+            prepare(ctx)
+    elif args['link']:
+        link(ctx, remote)
+    else:
+        try:
+            remote = Remote(*json.load((ctx.rundir/'remote.json').open()))
+        except FileNotFoundError:
+            remote = None
+        if args['run']:
+            if remote:
+                _remote_cmd(remote, 'run -p {} -j {}'.format(args['-p'], args['-j']))
+            else:
+                for _ in range(int(args['-j'])):
+                    run(ctx, args['-p'])
+        elif args['check']:
+            if remote:
+                subprocess.check_call(['ssh', remote.host, 'qmy'])
+                _remote_cmd(remote, 'check')
+            else:
+                check(ctx)
+        elif args['extract']:
+            if remote:
+                _remote_cmd(remote, 'extract')
+                download(remote)
+            else:
+                extract(ctx)
+        elif args['process']:
+            process(ctx)
