@@ -2,20 +2,22 @@
 """caf -- Calculation framework.
 
 Usage:
-    caf upload <remote>
-    caf prepare [<remote>]
-    caf link <remote>
+    caf upload REMOTE
+    caf prepare [REMOTE]
+    caf link REMOTE
+    caf clean [-r REMOTE] RESOURCE...
     caf run [-p PROFILE] [-j N]
     caf check
     caf extract
-    caf download <remote>
+    caf download REMOTE
     caf process
     caf archive
-    caf worker <id> <path>
+    caf worker ID PATH
 
 Commands:
 
 Options:
+    -r REMOTE         Remote.
     -j N              Number of workers [default: 1].
     -p PROFILE        Job profile [default: default].
     --no-check        Don't verify data.
@@ -30,13 +32,9 @@ import signal
 import pickle
 from pathlib import Path
 from configparser import ConfigParser
-from collections import namedtuple
 
 from caflib.Core import Result, Context, cd, mktmpdir, get_sha_dir, \
-    sha_to_path, slugify
-
-
-Remote = namedtuple('Remote', ['host', 'top'])
+    sha_to_path, slugify, ensure_dir, MissingDependency, Remote
 
 
 def upload(ctx, remote):
@@ -54,14 +52,8 @@ def upload(ctx, remote):
                            '{0.host}:{0.top}'.format(remote)])
 
 
+@ensure_dir('rundir')
 def prepare(ctx):
-    if ctx.rundir.is_dir():
-        if ctx.clean:
-            print('Runs are prepared')
-            return
-        else:
-            shutil.rmtree(str(ctx.rundir))
-    ctx.rundir.mkdir(parents=True)
     ctx.prepare()
     task_db = []
     for param, calc in ctx.tasks:
@@ -85,21 +77,15 @@ def prepare(ctx):
         json.dump(task_db, f, indent=4)
 
 
+@ensure_dir('rundir')
 def link(ctx, remote):
-    if ctx.rundir.is_dir():
-        if ctx.clean:
-            print('Runs are prepared')
-            return
-        else:
-            shutil.rmtree(str(ctx.rundir))
-    ctx.rundir.mkdir(parents=True)
     with (ctx.rundir/'remote.json').open('w') as f:
         json.dump((remote.host, str(remote.top)), f, indent=4)
 
 
 def run(ctx, profile):
     if not (ctx.rundir/'tasks.json').is_file():
-        raise RuntimeError('Runs have not been prepared')
+        raise MissingDependency('Runs have not been prepared')
     subprocess.call('{} {}'.format(ctx.cafdir/'worker_{}'.format(profile),
                                    ctx.rundir),
                     shell=True)
@@ -114,20 +100,14 @@ def check(ctx):
     print('Number of finished tasks: {}'.format(n_sealed))
 
 
+@ensure_dir('datadir')
 def extract(ctx):
     if not (ctx.rundir/'tasks.json').is_file():
-        raise RuntimeError('Runs have not been prepared')
+        raise MissingDependency('Runs have not been prepared')
     task_db = json.load((ctx.rundir/'tasks.json').open())
     for _, path in task_db:
         if not (Path(path)/'.lock'/'seal').is_file():
-            raise RuntimeError('Some tasks are not finished')
-    if ctx.datadir.is_dir():
-        if ctx.clean:
-            print('Data are extracted')
-            return
-        else:
-            shutil.rmtree(str(ctx.datadir))
-    ctx.datadir.mkdir(parents=True)
+            raise MissingDependency('Some tasks are not finished')
     results = []
     for param, path in task_db:
         try:
@@ -139,39 +119,39 @@ def extract(ctx):
         results.append((param, data))
     with (ctx.datadir/'data.p').open('wb') as f:
         pickle.dump(results, f, -1)
-    if ctx.datalink.is_symlink():
-        ctx.datalink.unlink()
-    ctx.datalink.symlink_to(ctx.datadir)
 
 
+@ensure_dir('datadir')
 def download(ctx, remote):
     print('Downloading from {}...'.format(remote.host))
-    if ctx.datadir.is_dir():
-        if ctx.clean:
-            print('Data are extracted')
-            return
-        else:
-            shutil.rmtree(str(ctx.datadir))
-    ctx.datadir.mkdir(parents=True)
-    subprocess.check_call('rsync -ia {.host}:{.top}/{}/ {}/'
-                          .format(remote, ctx.datalink, ctx.datadir).split())
-    if ctx.datalink.is_symlink():
-        ctx.datalink.unlink()
-    ctx.datalink.symlink_to(ctx.datadir)
+    subprocess.check_call('rsync -ia {0.host}:{0.top}/{1}/ {1}/'
+                          .format(remote, ctx.datadir).split())
 
 
+@ensure_dir('resultdir')
 def process(ctx):
-    if ctx.resultdir.is_dir():
-        if ctx.clean:
-            print('Data are processed')
-            return
-        else:
-            shutil.rmtree(str(ctx.resultdir))
-    ctx.resultdir.mkdir(parents=True)
+    if not (ctx.datadir/'data.p').is_file():
+        raise MissingDependency('Data have not been extracted')
     with (ctx.datadir/'data.p').open('rb') as f:
         ctx.results = [Result(*x) for x in pickle.load(f)]
     with cd(ctx.resultdir):
         ctx.process()
+
+
+def clean(ctx, items):
+    items = set(items)
+    if 'all' in items:
+        items.remove('all')
+        items.update(['runs', 'results', 'data'])
+    for item in items:
+        if item == 'runs':
+            shutil.rmtree(str(ctx.rundir))
+        elif item == 'results':
+            shutil.rmtree(str(ctx.resultdir))
+        elif item == 'data':
+            shutil.rmtree(str(ctx.datadir))
+        else:
+            raise RuntimeError('Unknown item: {}'.format(item))
 
 
 def worker(myid, path):
@@ -222,10 +202,10 @@ def _remote_cmd(remote, cmd):
 if __name__ == '__main__':
     args = docopt(__doc__)
     if args['worker']:
-        worker(args['<id>'], Path(args['<path>']))
+        worker(args['ID'], Path(args['PATH']))
         sys.exit()
     ctx = Context()
-    remote = args['<remote>']
+    remote = args['REMOTE'] or args['-r']
     if remote:
         remote = Remote(remote, _get_remote_top(ctx, remote))
     if args['upload']:
@@ -239,6 +219,12 @@ if __name__ == '__main__':
             prepare(ctx)
     elif args['link']:
         link(ctx, remote)
+    elif args['clean']:
+        if remote:
+            upload(ctx, remote)
+            _remote_cmd(remote, 'clean {}'.format(' '.join(args['RESOURCE'])))
+        else:
+            clean(ctx, args['RESOURCE'])
     else:
         try:
             remote = json.load((ctx.rundir/'remote.json').open())
@@ -247,6 +233,7 @@ if __name__ == '__main__':
             remote = None
         if args['run']:
             if remote:
+                upload(ctx, remote)
                 _remote_cmd(remote, 'run -p {} -j {}'.format(args['-p'], args['-j']))
             else:
                 for _ in range(int(args['-j'])):
@@ -259,6 +246,7 @@ if __name__ == '__main__':
                 check(ctx)
         elif args['extract']:
             if remote:
+                upload(ctx, remote)
                 _remote_cmd(remote, 'extract')
                 download(remote)
             else:

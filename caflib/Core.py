@@ -7,10 +7,12 @@ import json
 import subprocess
 import hashlib
 import shutil
+import sys
 from string import Template
 from collections import namedtuple
 from contextlib import contextmanager
 from configparser import ConfigParser
+from functools import wraps
 
 NULL_SHA = 40*'0'
 
@@ -41,6 +43,34 @@ class File:
 
 Result = namedtuple('Result', ['param', 'data'])
 Task = namedtuple('Task', ['param', 'calc'])
+Remote = namedtuple('Remote', ['host', 'top'])
+
+
+class MissingDependency(Exception):
+    pass
+
+
+def ensure_dir(directory):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(ctx, *args, **kwargs):
+            path = getattr(ctx, directory)
+            name = path.name
+            if path.is_dir():
+                if ctx.clean:
+                    print('Directory {} already exists'.format(name))
+                    sys.exit()
+                else:
+                    raise RuntimeError('Directory {} already exists, clean first'
+                                       .format(name))
+            path.mkdir(parents=True)
+            try:
+                f(ctx, *args, **kwargs)
+            except MissingDependency:
+                shutil.rmtree(str(path))
+                raise
+        return wrapper
+    return decorator
 
 
 def slugify(s):
@@ -121,8 +151,8 @@ class Context:
         self.tasks = []
         out = Path('build')
         self.rundir = out/(self.sha_repo[:7] + '_runs')
+        self.datadir = out/(self.sha_repo[:7] + '_data')
         self.resultdir = out/(self.sha_repo[:7] + '_results')
-        self.datalink = out/(self.sha_repo[:7] + '_data')
         cscript = _load_cscript()
         self.prepare = lambda: cscript.prepare(self)
         self.extract = lambda: cscript.extract(self)
@@ -144,7 +174,6 @@ class Context:
             self.cache = cache
         if not (self.cache/'objects').is_dir():
             (self.cache/'objects').mkdir()
-        self.datadir = self.cache/'objects'/sha_to_path(self.sha_repo)
 
     def add_task(self, calc, **param):
         self.tasks.append(Task(param, calc))
