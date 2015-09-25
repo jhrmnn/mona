@@ -39,6 +39,8 @@ if __name__ == '__main__':
             blddir = format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
             mkdir('build/{}'.format(blddir))
             os.system('ln -fns {} build/latest'.format(blddir))
+        mkdir('_caf/Cellar')
+        mkdir('_caf/Brewery')
         ctx.build()
     elif args['work']:
         from caflib.Worker import Worker
