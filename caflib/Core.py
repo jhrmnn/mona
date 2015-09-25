@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 # import re
-# import hashlib
+import hashlib
 import shutil
 # from string import Template
 from contextlib import contextmanager
@@ -27,16 +27,6 @@ import json
 
 # def slugify(s):
 #     return re.sub(r'[^0-9a-zA-Z.-]', '-', s)
-
-
-# def get_sha_dir(top='.'):
-#     top = Path(top)
-#     h = hashlib.new('sha1')
-#     for path in sorted(top.glob('**/*')):
-#         h.update(str(path).encode())
-#         with path.open('rb') as f:
-#             h.update(f.read())
-#     return h.hexdigest()
 
 
 # def sha_to_path(sha, level=2, chunk=2):
@@ -136,8 +126,9 @@ class Task:
     def is_touched(self):
         return (self.path/'.caf').is_dir()
 
-    def lock(self):
-        (self.path/'.caf/lock').touch()
+    def lock(self, hashes):
+        with (self.path/'.caf/lock').open('w') as f:
+            json.dump(hashes, f, sort_keys=True)
 
     def is_locked(self):
         return (self.path/'.caf/lock').is_file()
@@ -154,10 +145,11 @@ class Task:
             lnk.child.set_path(path/lnk.name)
 
     def build(self):
+        depnames = [lnk.name for lnk in self.children]
         if not self.is_touched():
             self.touch()
             with (self.path/'.caf/children').open('w') as f:
-                json.dump([lnk.name for lnk in self.children], f)
+                json.dump(depnames, f, sort_keys=True)
         if self.is_locked():
             print('{} already locked'.format(self))
             return
@@ -165,7 +157,6 @@ class Task:
             if lnk.needed and not lnk.child.is_sealed():
                 print('{} not sealed'.format(lnk.child))
                 return
-        mkdir(self.path)
         for filename in listify(self.consume('files')):
             shutil.copy(filename, str(self.path))
         with cd(self.path):
@@ -182,7 +173,26 @@ class Task:
                 f.write(self.consume('command'))
         if self.attrs:
             print('task has non-consumed attributs {}'.format(self.attrs.keys()))
-        self.lock()
+            return
+        with cd(self.path):
+            filepaths = []
+            for dirpath, dirnames, filenames in os.walk('.'):
+                if dirpath == '.':
+                    dirnames[:] = [name for name in dirnames
+                                   if name not in ['.caf'] + depnames]
+                for name in filenames:
+                    path = Path(dirpath)/name
+                    if not path.is_symlink():
+                        filepaths.append(path)
+            for name in depnames:
+                filepaths.append(Path(name)/'.caf/lock')
+            hashes = {}
+            for path in filepaths:
+                h = hashlib.new('sha1')
+                with path.open('rb') as f:
+                    h.update(f.read())
+                hashes[str(path)] = h.hexdigest()
+        self.lock(hashes)
 
 
 class Link:
