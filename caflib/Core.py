@@ -5,6 +5,8 @@ import os
 import shutil
 # from string import Template
 from contextlib import contextmanager
+import subprocess
+import json
 
 # NULL_SHA = 40*'0'
 
@@ -70,6 +72,10 @@ def cd(path):
         os.chdir(cwd)
 
 
+def mkdir(path):
+    subprocess.check_call(['mkdir', '-p', str(path)])
+
+
 def listify(obj):
     if not obj:
         return []
@@ -124,22 +130,59 @@ class Task:
     def consume(self, attr):
         return self.attrs.pop(attr, None)
 
-    def build(self, path):
-        path.mkdir()
+    def touch(self):
+        mkdir(self.path/'.caf')
+
+    def is_touched(self):
+        return (self.path/'.caf').is_dir()
+
+    def lock(self):
+        (self.path/'.caf/lock').touch()
+
+    def is_locked(self):
+        return (self.path/'.caf/lock').is_file()
+
+    def seal(self):
+        (self.path/'.caf/seal').touch()
+
+    def is_sealed(self):
+        return (self.path/'.caf/seal').is_file()
+
+    def set_path(self, path):
+        self.path = path
         for lnk in self.children:
-            lnk.child.build(path/lnk.name)
+            lnk.child.set_path(path/lnk.name)
+
+    def build(self):
+        if not self.is_touched():
+            self.touch()
+            with (self.path/'.caf/children').open('w') as f:
+                json.dump([lnk.name for lnk in self.children], f)
+        if self.is_locked():
+            print('{} already locked'.format(self))
+            return
+        for lnk in self.children:
+            if lnk.needed and not lnk.child.is_sealed():
+                print('{} not sealed'.format(lnk.child))
+                return
+        mkdir(self.path)
         for filename in listify(self.consume('files')):
-            shutil.copy(filename, str(path))
-        with cd(path):
+            shutil.copy(filename, str(self.path))
+        with cd(self.path):
+            for lnk in self.children:
+                for here, there in lnk.links.items():
+                    os.system('ln -s {}/{} {}'.format(lnk.name, there, here))
             for feat in listify(self.consume('features')):
                 try:
                     feat(self)
                 except Exception as e:
                     print(e)
+                    return
             with open('command', 'w') as f:
                 f.write(self.consume('command'))
         if self.attrs:
             print('task has non-consumed attributs {}'.format(self.attrs.keys()))
+        self.lock()
 
 
 class Link:
@@ -173,10 +216,9 @@ class View:
             self.children.append(obj)
         return self
 
-    def build(self, path):
-        path.mkdir()
+    def set_path(self, path):
         for lnk in self.children:
-            lnk.child.build(path/lnk.name)
+            lnk.child.set_path(path/lnk.name)
 
 
 class Context:
@@ -197,7 +239,12 @@ class Context:
         self.views.append(view)
         return view
 
-    def build(self):
+    def set_paths(self):
         for view in self.views:
             path = Path('build/latest')/view.name
-            view.build(path)
+            view.set_path(path)
+
+    def build(self):
+        self.set_paths()
+        for task in self.tasks:
+            task.build()

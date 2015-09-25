@@ -10,13 +10,10 @@ Commands:
 Options:
 """
 from docopt import docopt
-from caflib.Core import Context
-import imp
-import os
-from datetime import datetime
 
 
 def load_cscript():
+    import imp
     cscript = imp.new_module('cscript')
     try:
         exec(compile(open('cscript').read(), 'cscript', 'exec'), cscript.__dict__)
@@ -32,11 +29,18 @@ def load_cscript():
 if __name__ == '__main__':
     args = docopt(__doc__)
     if args['build']:
+        from datetime import datetime
+        import os
+        from caflib.Core import Context, mkdir
         cscript = load_cscript()
         ctx = Context()
         cscript.build(ctx)
         if args['new']:
             blddir = format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
-            os.system('mkdir -p build/{}'.format(blddir))
+            mkdir('build/{}'.format(blddir))
             os.system('ln -fns {} build/latest'.format(blddir))
         ctx.build()
+    elif args['work']:
+        from caflib.Worker import Worker
+        worker = Worker('build/latest')
+        worker.work()
