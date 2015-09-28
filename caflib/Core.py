@@ -226,10 +226,14 @@ class AddWrapper:
         self.kwargs = kwargs
 
     def __add__(self, x):
+        if hasattr(self, 'x'):
+            return NotImplemented
         self.x = x
         return self.run()
 
     def __radd__(self, y):
+        if hasattr(self, 'y'):
+            return NotImplemented
         self.y = y
         return self.run()
 
@@ -243,6 +247,16 @@ class AddWrapper:
 class Link(AddWrapper):
     def __init__(self, *args, **kwargs):
         return super().__init__('add_dependency', *args, **kwargs)
+
+    def __add__(self, x):
+        if isinstance(x, Link):
+            return NotImplemented
+        return super().__add__(x)
+
+    def __radd__(self, y):
+        if isinstance(y, Link):
+            return NotImplemented
+        return super().__radd__(y)
 
 
 class Target(AddWrapper):
