@@ -70,7 +70,7 @@ def mkdir(path):
 def listify(obj):
     if not obj:
         return []
-    if isinstance(obj, (str, bytes)):
+    if isinstance(obj, (str, bytes, tuple)):
         return [obj]
     try:
         return list(obj)
@@ -202,7 +202,10 @@ class Task:
 
     def prepare(self):
         for filename in listify(self.consume('files')):
-            shutil.copy(filename, str(self.path))
+            if isinstance(filename, tuple):
+                shutil.copy(filename[0], str(self.path/filename[1]))
+            else:
+                shutil.copy(filename, str(self.path))
         templates = [Template(path) for path in listify(self.consume('templates'))]
         with cd(self.path):
             for template in templates:
