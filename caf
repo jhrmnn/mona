@@ -3,8 +3,7 @@
 
 Usage:
     caf build [new] [REMOTE]
-    caf work (local | REMOTE) [TARGET...] [-p PROFILE]
-    caf exec ID [TARGET...]
+    caf work (local | REMOTE) [TARGET...] [-p PROFILE] [--id ID]
     caf remote add URL [NAME]
     caf fetch REMOTE [TARGET...]
     caf check [REMOTE]
@@ -12,7 +11,8 @@ Usage:
 Commands:
 
 Options:
-    -p, --profile PROFILE      Profile [default: default].
+    -p, --profile PROFILE      Run worker via ~/.caf/worker_PROFILE.
+    --id ID                    ID of worker [default: 1].
 """
 from docopt import docopt
 from pathlib import Path
@@ -64,7 +64,6 @@ if __name__ == '__main__':
                 timestamp = format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
                 mkdir(out)
                 os.system('ln -fns {} {}'.format(timestamp, out/latest))
-                os.system('ln -fns {} {}'.format(timestamp, cache/'Brewery'/latest))
             else:
                 timestamp = os.readlink(str(out/latest))
             if not cache.is_symlink():
@@ -73,28 +72,31 @@ if __name__ == '__main__':
                 cachepath.mkdir()
                 cache.symlink_to(cachepath)
             ctx.build(cache.resolve(), timestamp)
+            os.system('ln -fns {} {}'.format(timestamp, cache/'Brewery'/latest))
             ctx.make_targets(out/timestamp)
             sys.exit()
     if args['work']:
         if remote:
+            assert args['--profile']
             Remote.upload(**remote)
             command = 'work local {} -p {}'.format(' '.join(args['TARGET']),
                                                    args['--profile'])
             Remote.command(command, **remote)
             sys.exit()
         else:
-            import subprocess
-            subprocess.check_call('~/.caf/worker_{} {} {}'
-                                  .format(args['--profile'],
-                                          out/latest,
-                                          ' '.join(args['TARGET'])),
-                                  shell=True)
-            sys.exit()
-    if args['exec']:
-        from caflib.Worker import Worker
-        worker = Worker(args['ID'], out/latest)
-        worker.work(args['TARGET'])
-        sys.exit()
+            if args['--profile']:
+                import subprocess
+                subprocess.check_call('~/.caf/worker_{} {} {}'
+                                      .format(args['--profile'],
+                                              out/latest,
+                                              ' '.join(args['TARGET'])),
+                                      shell=True)
+                sys.exit()
+            else:
+                from caflib.Worker import Worker
+                worker = Worker(args['--id'], out/latest)
+                worker.work(args['TARGET'])
+                sys.exit()
     if args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
