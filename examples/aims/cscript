@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+from caflib.Tools.aims import AimsCalculation, parse_output, parse_xml
+from caflib.Tools.geomlib import Atom, Molecule
+
+
+top = '..'
+
+
+def prepare(ctx):
+    for xc in ['pbe0', 'pbe']:
+        for dist in [3.5, 4, 5]:
+            geom = Molecule([Atom('Ar', (0, 0, 0)),
+                             Atom('Ar', (dist, 0, 0))])
+            calc = AimsCalculation(basis='light',
+                                   xc=xc,
+                                   geom=geom.dumps('fhiaims'))
+            ctx.add_task(calc, xc=xc, dist=dist)
+
+
+def extract(ctx):
+    results = {}
+    results['output'] = parse_output('run.out')
+    results['xml'] = parse_xml('results.xml')
+    return results
+
+
+def process(ctx):
+    with open('results.txt', 'w') as f:
+        for param, data in ctx.results:
+            f.write('{}\n'.format(param))
+            for key, value in data['output'].items():
+                f.write('{}\n'.format(key))
+                f.write('{}\n'.format(value))
+            for key, value in data['xml'].items():
+                f.write('{}\n'.format(key))
+                f.write('{}\n'.format(value))
