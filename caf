@@ -6,7 +6,7 @@ Usage:
     caf work (local | REMOTE) [TARGET...] [-p PROFILE] [--id ID] [-j N]
     caf remote add URL [NAME]
     caf fetch REMOTE [TARGET...]
-    caf check [REMOTE]
+    caf status [REMOTE]
 
 Commands:
 
@@ -115,9 +115,9 @@ if __name__ == '__main__':
                      build=out/latest,
                      **remote)
         sys.exit()
-    if args['check']:
+    if args['status']:
         if remote:
-            Remote.command('check', **remote)
+            Remote.command('status', **remote)
             sys.exit()
         else:
             from caflib.Core import check, brewery
