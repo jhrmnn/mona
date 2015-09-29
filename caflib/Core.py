@@ -367,7 +367,8 @@ class Context:
     def make_targets(self, out):
         for target, tasks in self.targets.items():
             if len(tasks) == 1 and None in tasks:
-                os.system('ln -fns {} {}'.format(tasks[None.path], out/target))
+                mkdir(out)
+                os.system('ln -fns {} {}'.format(tasks[None].path, out/target))
             else:
                 mkdir(out/target)
                 for name, task in tasks.items():
