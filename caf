@@ -78,10 +78,10 @@ if __name__ == '__main__':
             sys.exit()
     if args['work']:
         if remote:
-            assert args['--profile']
             Remote.upload(**remote)
-            command = 'work local {} -p {}'.format(' '.join(args['TARGET']),
-                                                   args['--profile'])
+            command = 'work local {}'.format(' '.join(args['TARGET']))
+            if args['--profile']:
+                command += ' -p ' + args['--profile']
             Remote.command(command, **remote)
             sys.exit()
         else:
