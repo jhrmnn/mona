@@ -1,4 +1,4 @@
-/build
-/_cache
+build
+_cache
 *.pyc
 __pycache__
