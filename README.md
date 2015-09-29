@@ -1,4 +1,4 @@
-# `caf` — Calculation frameworpk
+# `caf` — Calculation framework
 
 **[prototype]**
 
