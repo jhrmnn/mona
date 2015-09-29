@@ -1,24 +1,36 @@
-#!/usr/bin/env python
-from caflib.Core import Calculation
-
-top = '..'
+#!/usr/bin/env python3
 
 
-class ExampleCalculation(Calculation):
-    def __init__(self, **kwargs):
-        super(self.__class__, self).__init__('a.in', 'b.in', **kwargs)
-        self.command = 'expr `cat a.in` + `cat b.in`'
+def prepare_sum(task):
+    with open('a.in', 'w') as f:
+        print(task.consume('a'), file=f)
+    with open('b.in', 'w') as f:
+        print(task.consume('b'), file=f)
+    task.attrs['command'] = 'expr `cat a.in` + `cat b.in`'
 
 
-def prepare(ctx):
-    for n in range(5):
-        ctx.add_task(ExampleCalculation(n=n), n=n)
+def prepare_square(task):
+    x = int(open('data.txt').read())
+    with open('x.in', 'w') as f:
+        print(x, file=f)
 
 
-def extract(ctx):
-    return int(open('run.out').read())
-
-
-def process(ctx):
-    with open('results.txt', 'w') as f:
-        f.write('{}\n'.format({r.param['n']: r.data for r in ctx.results}))
+def build(ctx):
+    for a in range(0, 10):
+        for b in range(0, a):
+            [ctx(features=prepare_sum,
+                 a=a,
+                 b=b+i) +
+             ctx.link(name,
+                      (name + '.in', 'run.out'))
+             for i, name
+             in [(1, 'x'), (2, 'y')]] + \
+                ctx(command='expr `cat x.in` \* `cat y.in` >data.txt') + \
+                ctx.target('data', (a, b)) + \
+                ctx.link('data',
+                         'data.txt',
+                         needed=True) + \
+                ctx(features=prepare_square,
+                    files='square.sh',
+                    command='./square.sh') + \
+                ctx.target('results', (a, b))
