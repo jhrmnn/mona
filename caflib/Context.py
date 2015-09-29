@@ -69,9 +69,6 @@ class Task:
         with (self.path/'.caf/lock').open('w') as f:
             json.dump(hashes, f, sort_keys=True)
 
-    def seal(self):
-        (self.path/'.caf/seal').touch()
-
     Link = namedtuple('Link', 'task links needed')
 
     def add_dependency(self, task, link, *links, needed=False):
