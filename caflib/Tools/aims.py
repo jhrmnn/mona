@@ -15,7 +15,7 @@ from caflib.Tools.logparser import Parser
 def prepare_aims(task):
         aims = find_program(task.consume('aims') or 'aims')
         geom = geomlib.readfile('geometry.in', 'aims')
-        species = set((a.number, a.symbol) for a in geom)
+        species = sorted(set((a.number, a.symbol) for a in geom))
         basis = task.consume('basis')
         assert basis
         basis_root = aims.parents[1]/'aimsfiles/species_defaults'/basis
