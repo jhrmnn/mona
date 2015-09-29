@@ -1,31 +1,17 @@
 from pathlib import Path
 import os
-# import re
+import re
 import hashlib
 import shutil
-# from string import Template
 from contextlib import contextmanager
 import subprocess
 import json
 from collections import defaultdict, namedtuple
-import re
 from math import log10, ceil
+import yaml
 
-cellar = '_caf/Cellar'
-brewery = '_caf/Brewery'
-
-# class File:
-#     _cache = {}
-#
-#     def __init__(self, path):
-#         self.path = Path(path)
-#         self.full_path = self.path.resolve()
-#         if self.full_path not in File._cache:
-#             File._cache[self.full_path] = Template(self.path.open().read())
-#
-#     def substitute(self, mapping):
-#         with self.path.open('w') as f:
-#             f.write(File._cache[self.full_path].substitute(mapping))
+cellar = 'Cellar'
+brewery = 'Brewery'
 
 
 def normalize_str(s):
@@ -81,6 +67,71 @@ def listify(obj):
         return list(obj)
     except TypeError:
         return [obj]
+
+
+def get_file_hash(path):
+    h = hashlib.new('sha1')
+    with path.open('rb') as f:
+        h.update(f.read())
+    return h.hexdigest()
+
+
+def check(brewery):
+    paths = Path(brewery).glob('*/.caf')
+    running = Path(brewery).glob('*/.lock')
+    sealed = Path(brewery).glob('*/.caf/seal')
+    print('Number of initialized tasks: {}'.format(len(list(paths))))
+    print('Number of running tasks: {}'.format(len(list(running))))
+    print('Number of finished tasks: {}'.format(len(list(sealed))))
+
+
+class Configuration:
+    def __init__(self, path):
+        self.path = Path(path)
+        self._dict = {}
+        self.load()
+
+    def __getitem__(self, key):
+        return self._dict[key]
+
+    def __setitem__(self, key, val):
+        self._dict[key] = val
+
+    def load(self):
+        if self.path.is_file():
+            with self.path.open() as f:
+                self._dict = yaml.load(f)
+
+    def save(self):
+        mkdir(self.path.parent)
+        with self.path.open('w') as f:
+            yaml.dump(self._dict, f)
+
+
+class Template:
+    _cache = {}
+
+    def __init__(self, path):
+        self.path = Path(path)
+        if self.path not in Template._cache:
+            Template._cache[self.path] = self.path.open().read()
+
+    def substitute(self, mapping):
+        used = set()
+
+        def replacer(m):
+            key = m.group(1)
+            if key not in mapping:
+                raise RuntimeError('{} not defined'.format(key))
+            else:
+                used.add(key)
+                return str(mapping[key])
+
+        with self.path.name.open('w') as f:
+            f.write(re.sub(r'{{{{\s*(\w+)\s*}}}}',
+                           replacer,
+                           Template._cache[self.path]))
+        return used
 
 
 class Task:
@@ -143,7 +194,12 @@ class Task:
     def prepare(self):
         for filename in listify(self.consume('files')):
             shutil.copy(filename, str(self.path))
+        templates = [Template(path) for path in listify(self.consume('templates'))]
         with cd(self.path):
+            for template in templates:
+                used = template.substitute(self.attrs)
+                for used_key in used:
+                    self.consume(used_key)
             for linkname, link in self.links.items():
                 for symlink in link.links:
                     try:
@@ -175,36 +231,30 @@ class Task:
                     filepath = Path(dirpath)/name
                     if not filepath.is_symlink():
                         filepaths.append(filepath)
-            for link in self.links.values():
-                filepaths.append(link.task.path/'.caf/lock')
+            for linkname in self.links:
+                filepaths.append(Path(linkname)/'.caf/lock')
             hashes = {}
             for path in filepaths:
-                h = hashlib.new('sha1')
-                with path.open('rb') as f:
-                    h.update(f.read())
-                hashes[str(path)] = h.hexdigest()
+                hashes[str(path)] = get_file_hash(path)
         return hashes
 
     def build(self, path):
         self.path = Path(path).resolve()
-        if not self.is_touched():
-            self.touch()
         if self.is_locked():
             print('{} already locked'.format(self))
             return
+        if not self.is_touched():
+            self.touch()
         for linkname, link in self.links.items():
             if link.needed and not link.task.is_sealed():
                 print('{} not sealed'.format(linkname))
                 return
-        self.prepare()
         if not all(child.is_locked() for child in self.children):
             return
+        self.prepare()
         hashes = self.get_hashes()
         self.lock(hashes)
-        h = hashlib.new('sha1')
-        with (self.path/'.caf/lock').open('rb') as f:
-            h.update(f.read())
-        myhash = h.hexdigest()
+        myhash = get_file_hash(self.path/'.caf/lock')
         cellarpath = self.ctx.cellar/hash_to_path(myhash)
         if cellarpath.is_dir():
             shutil.rmtree(str(self.path))
@@ -265,11 +315,9 @@ class Target(AddWrapper):
 
 
 class Context:
-    def __init__(self, top, timestamp):
+    def __init__(self):
         self.tasks = []
         self.targets = defaultdict(dict)
-        self.brewery = top/brewery/timestamp
-        self.cellar = top/cellar
 
     def add_task(self, **kwargs):
         task = Task(**kwargs)
@@ -306,7 +354,10 @@ class Context:
                 enqueue(task)
         self.tasks = reversed(queue)
 
-    def build(self):
+    def build(self, cache, timestamp):
+        cache = Path(cache)
+        self.brewery = cache/brewery/timestamp
+        self.cellar = cache/cellar
         ntskdigit = ceil(log10(len(self.tasks)+1))
         for i, task in enumerate(self.tasks):
             path = self.brewery/'{:0{n}d}'.format(i, n=ntskdigit)
