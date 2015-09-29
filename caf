@@ -62,8 +62,6 @@ if __name__ == '__main__':
             cscript.build(ctx)
             if args['new']:
                 timestamp = format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
-                mkdir(out)
-                os.system('ln -fns {} {}'.format(timestamp, out/latest))
             else:
                 timestamp = os.readlink(str(out/latest))
             if not cache.is_symlink():
@@ -71,8 +69,11 @@ if __name__ == '__main__':
                 cachepath = Path(conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
                 cachepath.mkdir()
                 cache.symlink_to(cachepath)
-            ctx.build(cache.resolve(), timestamp)
+            mkdir(cache/'Brewery')
             os.system('ln -fns {} {}'.format(timestamp, cache/'Brewery'/latest))
+            ctx.build(cache.resolve(), timestamp)
+            mkdir(out)
+            os.system('ln -fns {} {}'.format(timestamp, out/latest))
             ctx.make_targets(out/timestamp)
             sys.exit()
     if args['work']:
