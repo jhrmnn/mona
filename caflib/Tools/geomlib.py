@@ -158,14 +158,15 @@ class Molecule(object):
         self.flags = Dictlike(self._getflag, self._setflag)
 
     def __repr__(self):
-        return 'Molecule({!r})'.format(self.atoms)
-
-    def __str__(self):
         counter = defaultdict(int)
         for a in self.atoms:
             counter[a.symbol] += 1
         return ''.join('{}{}'.format(s, n if n > 1 else '')
                        for s, n in sorted(counter.items()))
+
+    def __iter__(self):
+        for atom in self.atoms:
+            yield atom
 
     def __format__(self, fmt):
         fp = StringIO()
@@ -186,7 +187,7 @@ class Molecule(object):
     def dump(self, fp, fmt):
         if fmt == 'xyz':
             fp.write('{}\n'.format(len(self.atoms)))
-            fp.write('Formula: {}\n'.format(self))
+            fp.write('Formula: {!s}\n'.format(self))
             for a in self.atoms:
                 fp.write('{:xyz}\n'.format(a))
         elif fmt == 'aims':
@@ -210,6 +211,19 @@ class Molecule(object):
     def cms(self):
         return sum(a.prop['mass']*a.xyz for a in self.atoms)/self.mass
 
+    @property
+    def moments(self):
+        cms = self.cms
+        mass = self.mass
+        return [sum(a.prop['mass']*(a.xyz[i]-cms[i])**2 for a in self.atoms)/mass
+                for i in range(3)]
+
+    @property
+    def dimensions(self):
+        return [max(a.xyz[i] for a in self.atoms) -
+                min(a.xyz[i] for a in self.atoms)
+                for i in range(3)]
+
     def shifted(self, delta):
         m = self.copy()
         for a in m.atoms:
@@ -227,7 +241,10 @@ class Molecule(object):
              0, cos(phi), -sin(phi),
              0, sin(phi), cos(phi)]
         ).reshape(3, 3)
-        shift = {'x': 0, 'y': 1, 'z': 2}[axis]
+        try:
+            shift = {'x': 0, 'y': 1, 'z': 2}[axis]
+        except KeyError:
+            shift = axis
         for i in [0, 1]:
             rotmat = np.roll(rotmat, shift, i)
         center = np.array(center) if center else self.cms
@@ -236,17 +253,35 @@ class Molecule(object):
             a.xyz = center+rotmat.dot(a.xyz-center)
         return m
 
+    def optimized(self):
+        import pybel
+        mol = pybel.readstring('xyz', format(self, 'xyz'))
+        mol.localopt()
+        return loads(mol.write('xyz'), 'xyz')
+
     def bondmatrix(self, scale):
-        n = len(self.atoms)
-        bond = np.zeros((n, n), bool)
-        Rs = [a.prop['covalent radius'] for a in self.atoms]
-        for i, ai in enumerate(self.atoms):
-            for j, aj in enumerate(self.atoms):
-                if i < j:
-                    continue
-                bond[i, j] = ai.dist(aj) < scale*(Rs[i]+Rs[j])
-                bond[j, i] = bond[i, j]
-        return bond
+        xyz = np.array([a.xyz for a in self.atoms])
+        Rs = np.array([a.prop['covalent radius'] for a in self.atoms])
+        dmatrix = np.sqrt(np.sum((xyz[None, :]-xyz[:, None])**2, 2))
+        thrmatrix = scale*(Rs[None, :]+Rs[:, None])
+        return dmatrix < thrmatrix
+
+    def to_json(self, scale=1.3):
+        bond = self.bondmatrix(scale)
+        return {'atoms': [{'element': a.symbol, 'location': a.xyz.tolist()}
+                          for a in self.atoms],
+                'bonds': [{'atoms': [i, j], 'order': 1}
+                          for i in range(len(self.atoms))
+                          for j in range(i)
+                          if bond[i, j]]}
+
+    def draw(self, method='imolecule', **kwargs):
+        if method == 'imolecule':
+            import imolecule
+            imolecule.draw(self.to_json(), 'json', **kwargs)
+
+    def dist(self, obj):
+        return min(a.dist(obj) for a in self)
 
     def getfragments(self, scale=1.3):
         bond = self.bondmatrix(scale)
@@ -412,6 +447,13 @@ def load(fp, fmt):
                     xyz = xyz.dot(lattice)
                 atoms.append(Atom(sp, xyz))
         return Crystal(lattice, atoms)
+    elif fmt == 'smi':
+        import pybel
+        smi = fp.read().strip()
+        mol = pybel.readstring('smi', smi)
+        mol.addh()
+        mol.make3D()
+        return loads(mol.write('xyz'), 'xyz')
     else:
         raise ValueError('Unknown format')
 
