@@ -16,21 +16,23 @@ def prepare_square(task):
 
 
 def build(ctx):
-    for a in range(0, 10):
-        for b in range(0, a):
-            [ctx(features=prepare_sum,
-                 a=a,
-                 b=b+i) +
-             ctx.link(name,
-                      (name + '.in', 'run.out'))
-             for i, name
-             in [(1, 'x'), (2, 'y')]] + \
-                ctx(command='expr `cat x.in` \* `cat y.in` >data.txt') + \
-                ctx.target('data', (a, b)) + \
-                ctx.link('data',
-                         'data.txt',
-                         needed=True) + \
-                ctx(features=prepare_square,
-                    files='square.sh',
-                    command='./square.sh') + \
-                ctx.target('results', (a, b))
+    [[ctx(features=prepare_sum,
+          a=a,
+          b=b+i) +
+      ctx.link(name,
+               (name + '.in', 'run.out'))
+      for i, name
+      in [(1, 'x'), (2, 'y')]] +
+     ctx(command='expr `cat x.in` \* `cat y.in` >data.txt') +
+     ctx.target('data', (a, b)) +
+     ctx.link('data',
+              'data.txt',
+              needed=True) +
+     ctx(features=prepare_square,
+         files='square.sh',
+         command='./square.sh') +
+     ctx.target('results', (a, b)) +
+     ctx.link((a, b))
+     for a in range(0, 10) for b in range(0, a)] + \
+        ctx(command='cat */run.out | python -c "import sys; print(sum(map(int, sys.stdin)))"') + \
+        ctx.target('analysis')
