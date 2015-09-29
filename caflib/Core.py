@@ -13,6 +13,15 @@ import yaml
 cellar = 'Cellar'
 brewery = 'Brewery'
 
+_features = {}
+
+
+def feature(name):
+    def decorator(f):
+        _features[name] = f
+        return f
+    return decorator
+
 
 def normalize_str(s):
     return re.sub(r'[^0-9a-zA-Z.-]', '-', s)
@@ -209,11 +218,9 @@ class Task:
                     os.system('ln -s {}/{} {}'
                               .format(linkname, target, symlink))
             for feat in listify(self.consume('features')):
-                try:
-                    feat(self)
-                except Exception as e:
-                    print(e)
-                    return
+                if isinstance(feat, str):
+                    feat = _features[feat]
+                feat(self)
             with open('command', 'w') as f:
                 f.write(self.consume('command'))
             if self.attrs:
@@ -373,3 +380,6 @@ class Context:
                 mkdir(out/target)
                 for name, task in tasks.items():
                     os.system('ln -fns {} {}'.format(task.path, out/target/name))
+
+    def load_tool(self, name):
+        __import__('caflib.Tools.' + name)
