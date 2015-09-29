@@ -6,27 +6,25 @@ import re
 import xml.etree.cElementTree as ET
 
 from caflib.Tools import geomlib
-from caflib.Core import find_program, Calculation
+from caflib.Core import feature
+from caflib.Utils import find_program
 from caflib.Tools.logparser import Parser
 
 
-class AimsCalculation(Calculation):
-    def __init__(self, basis, aims='aims', **kwargs):
-        super(self.__class__, self).__init__('control.in', 'geometry.in', **kwargs)
-        self.basis = basis
-        self.aims = find_program(aims)
-        self.command = 'AIMS={} run_aims'.format(self.aims.name)
-
-    def prepare(self):
-        super(self.__class__, self).prepare()
+@feature('aims')
+def prepare_aims(task):
+        aims = find_program(task.consume('aims') or 'aims')
         geom = geomlib.readfile('geometry.in', 'aims')
-        species = set((a.number, a.symbol) for a in geom.atoms)
-        basis_root = self.aims.parents[1]/'aimsfiles/species_defaults'/self.basis
+        species = set((a.number, a.symbol) for a in geom)
+        basis = task.consume('basis')
+        assert basis
+        basis_root = aims.parents[1]/'aimsfiles/species_defaults'/basis
         with open('control.in', 'a') as f:
             for specie in species:
                 f.write('\n')
                 with (basis_root/'{0[0]:02d}_{0[1]}_default'.format(specie)).open() as f_sp:
                     f.write(f_sp.read())
+        task.attrs['command'] = 'AIMS={} run_aims'.format(aims.name)
 
 
 def parse_xml(path):
