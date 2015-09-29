@@ -5,7 +5,7 @@ from pathlib import Path
 import signal
 import sys
 
-from caflib.Core import cd
+from caflib.Utils import cd
 
 
 class Worker:

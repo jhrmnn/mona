@@ -21,7 +21,7 @@ from pathlib import Path
 import os
 import sys
 
-from caflib.Core import Configuration
+from caflib.Utils import Configuration
 
 out = Path('build')
 latest = 'Latest'
@@ -42,6 +42,15 @@ def load_cscript():
     return cscript
 
 
+def check(brewery):
+    paths = Path(brewery).glob('*/.caf')
+    running = Path(brewery).glob('*/.lock')
+    sealed = Path(brewery).glob('*/.caf/seal')
+    print('Number of initialized tasks: {}'.format(len(list(paths))))
+    print('Number of running tasks: {}'.format(len(list(running))))
+    print('Number of finished tasks: {}'.format(len(list(sealed))))
+
+
 if __name__ == '__main__':
     args = docopt(__doc__)
     if args['REMOTE']:
@@ -58,7 +67,8 @@ if __name__ == '__main__':
             sys.exit()
         else:
             from datetime import datetime
-            from caflib.Core import Context, mkdir
+            from caflib.Context import Context
+            from caflib.Utils import mkdir
             cscript = load_cscript()
             ctx = Context()
             cscript.build(ctx)
@@ -110,7 +120,7 @@ if __name__ == '__main__':
             conf.save()
             sys.exit()
     if args['fetch']:
-        from caflib.Core import cellar
+        from caflib.Context import cellar
         Remote.fetch(args['TARGET'],
                      cellar=cache/cellar,
                      build=out/latest,
@@ -121,7 +131,7 @@ if __name__ == '__main__':
             Remote.command('status', **remote)
             sys.exit()
         else:
-            from caflib.Core import check, brewery
+            from caflib.Contxt import brewery
             check(cache/brewery/latest)
             sys.exit()
     if args['update']:

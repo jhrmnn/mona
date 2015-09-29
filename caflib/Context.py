@@ -1,14 +1,13 @@
-from pathlib import Path
 import os
-import re
 import hashlib
 import shutil
-from contextlib import contextmanager
-import subprocess
 import json
 from collections import defaultdict, namedtuple
+from pathlib import Path
 from math import log10, ceil
-import yaml
+
+from caflib.Utils import mkdir, slugify, cd, listify
+from caflib.Template import Template
 
 cellar = 'Cellar'
 brewery = 'Brewery'
@@ -23,23 +22,6 @@ def feature(name):
     return decorator
 
 
-def normalize_str(s):
-    return re.sub(r'[^0-9a-zA-Z.-]', '-', s)
-
-
-def slugify(x):
-    if isinstance(x, str):
-        s = x
-    elif isinstance(x, tuple):
-        s = '_'.join(normalize_str(str(x)) for x in x)
-    elif isinstance(x, dict):
-        s = '_'.join('{}={}'.format(normalize_str(k), normalize_str(v))
-                     for k, v in x.items())
-    elif x is None:
-        return None
-    return s
-
-
 def hash_to_path(sha, nlvls=2, lenlvl=2):
     levels = []
     for lvl in range(nlvls):
@@ -51,96 +33,11 @@ def hash_to_path(sha, nlvls=2, lenlvl=2):
     return path
 
 
-@contextmanager
-def cd(path):
-    path = str(path)
-    cwd = os.getcwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(cwd)
-
-
-def mkdir(path):
-    subprocess.check_call(['mkdir', '-p', str(path)])
-    return path
-
-
-def listify(obj):
-    if not obj:
-        return []
-    if isinstance(obj, (str, bytes, tuple)):
-        return [obj]
-    try:
-        return list(obj)
-    except TypeError:
-        return [obj]
-
-
 def get_file_hash(path):
     h = hashlib.new('sha1')
     with path.open('rb') as f:
         h.update(f.read())
     return h.hexdigest()
-
-
-def check(brewery):
-    paths = Path(brewery).glob('*/.caf')
-    running = Path(brewery).glob('*/.lock')
-    sealed = Path(brewery).glob('*/.caf/seal')
-    print('Number of initialized tasks: {}'.format(len(list(paths))))
-    print('Number of running tasks: {}'.format(len(list(running))))
-    print('Number of finished tasks: {}'.format(len(list(sealed))))
-
-
-class Configuration:
-    def __init__(self, path):
-        self.path = Path(path)
-        self._dict = {}
-        self.load()
-
-    def __getitem__(self, key):
-        return self._dict[key]
-
-    def __setitem__(self, key, val):
-        self._dict[key] = val
-
-    def load(self):
-        if self.path.is_file():
-            with self.path.open() as f:
-                self._dict = yaml.load(f)
-
-    def save(self):
-        mkdir(self.path.parent)
-        with self.path.open('w') as f:
-            yaml.dump(self._dict, f)
-
-
-class Template:
-    _cache = {}
-
-    def __init__(self, path):
-        self.path = Path(path)
-        if self.path not in Template._cache:
-            Template._cache[self.path] = self.path.open().read()
-
-    def substitute(self, mapping):
-        used = set()
-
-        def replacer(m):
-            key = m.group(1)
-            if key not in mapping:
-                raise RuntimeError('{} not defined'.format(key))
-            else:
-                used.add(key)
-                return str(mapping[key])
-
-        with open(self.path.name, 'w') as f:
-            f.write(re.sub(r'\{\{\s*(\w+)\s*\}\}',
-                           replacer,
-                           Template._cache[self.path]))
-        return used
 
 
 class Task:

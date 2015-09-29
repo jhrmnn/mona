@@ -6,7 +6,7 @@ import re
 import xml.etree.cElementTree as ET
 
 from caflib.Tools import geomlib
-from caflib.Core import feature
+from caflib.Context import feature
 from caflib.Utils import find_program
 from caflib.Tools.logparser import Parser
 
