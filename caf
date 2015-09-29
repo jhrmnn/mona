@@ -3,7 +3,7 @@
 
 Usage:
     caf build [new] [REMOTE]
-    caf work (local | REMOTE) [TARGET...] [-p PROFILE] [--id ID]
+    caf work (local | REMOTE) [TARGET...] [-p PROFILE] [--id ID] [-j N]
     caf remote add URL [NAME]
     caf fetch REMOTE [TARGET...]
     caf check [REMOTE]
@@ -12,6 +12,7 @@ Commands:
 
 Options:
     -p, --profile PROFILE      Run worker via ~/.caf/worker_PROFILE.
+    -j N                       Number of launched workers [default: 1].
     --id ID                    ID of worker [default: 1].
 """
 from docopt import docopt
@@ -79,7 +80,8 @@ if __name__ == '__main__':
     if args['work']:
         if remote:
             Remote.upload(**remote)
-            command = 'work local {}'.format(' '.join(args['TARGET']))
+            command = 'work local {} -j {}'.format(' '.join(args['TARGET']),
+                                                   args['-j'])
             if args['--profile']:
                 command += ' -p ' + args['--profile']
             Remote.command(command, **remote)
@@ -87,11 +89,11 @@ if __name__ == '__main__':
         else:
             if args['--profile']:
                 import subprocess
-                subprocess.check_call('~/.caf/worker_{} {} {}'
-                                      .format(args['--profile'],
-                                              out/latest,
-                                              ' '.join(args['TARGET'])),
-                                      shell=True)
+                for _ in range(int(args['-j'])):
+                    subprocess.check_call('~/.caf/worker_{} {}'
+                                          .format(args['--profile'],
+                                                  ' '.join(args['TARGET'])),
+                                          shell=True)
                 sys.exit()
             else:
                 from caflib.Worker import Worker
