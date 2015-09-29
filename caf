@@ -7,6 +7,7 @@ Usage:
     caf remote add URL [NAME]
     caf fetch REMOTE [TARGET...]
     caf status [REMOTE]
+    caf update REMOTE
 
 Commands:
 
@@ -123,3 +124,6 @@ if __name__ == '__main__':
             from caflib.Core import check, brewery
             check(cache/brewery/latest)
             sys.exit()
+    if args['update']:
+        Remote.upload(**remote)
+        sys.exit()
