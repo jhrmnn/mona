@@ -1,4 +1,3 @@
-from pathlib import Path
 import json
 import subprocess
 
@@ -7,24 +6,27 @@ from caflib.Core import cd
 
 class Worker:
     def __init__(self, path):
-        self.path = Path(path)
-        self.queue = []
+        self.path = path
 
-    def work(self):
+    def work(self, targets):
+        queue = []
 
-        def inspect(path):
+        def enqueue(path):
+            if path not in queue:
+                queue.append(path)
             children = [path/x for x in json.load((path/'.caf/children').open())]
             for child in children:
-                if child not in self.queue:
-                    self.queue.append(child)
-            for child in children:
-                inspect(child)
+                enqueue(child)
 
-        for p in self.path.glob('*/*'):
-            self.queue.append(p)
-            inspect(p)
-        while self.queue:
-            p = self.queue.pop()
+        for target in targets:
+            target = self.path/target
+            if target.is_symlink():
+                enqueue(target)
+            else:
+                for task in target.glob('*'):
+                    enqueue(task)
+        while queue:
+            p = queue.pop()
             if not (p/'.caf/lock').is_file() or (p/'.caf/seal').is_file():
                 continue
             print(p)

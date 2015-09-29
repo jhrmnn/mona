@@ -3,13 +3,20 @@
 
 Usage:
     caf build [new]
-    caf work
+    caf work [<target>...]
+    caf push <remote> [<target>...]
+    caf fetch [<target>...]
 
 Commands:
 
 Options:
+    -n      New build.
 """
 from docopt import docopt
+from pathlib import Path
+import os
+
+out = 'build'
 
 
 def load_cscript():
@@ -30,19 +37,19 @@ if __name__ == '__main__':
     args = docopt(__doc__)
     if args['build']:
         from datetime import datetime
-        import os
         from caflib.Core import Context, mkdir
         cscript = load_cscript()
-        ctx = Context()
-        cscript.build(ctx)
         if args['new']:
-            blddir = format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
-            mkdir('build/{}'.format(blddir))
-            os.system('ln -fns {} build/latest'.format(blddir))
-        mkdir('_caf/Cellar')
-        mkdir('_caf/Brewery')
+            timestamp = format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
+            mkdir(Path(out)/timestamp)
+            os.system('ln -fns {} {}/latest'.format(timestamp, out))
+        else:
+            timestamp = os.readlink('{}/latest'.format(out))
+        ctx = Context(Path().resolve(), timestamp)
+        cscript.build(ctx)
         ctx.build()
+        ctx.make_targets(Path().resolve()/out/timestamp)
     elif args['work']:
         from caflib.Worker import Worker
-        worker = Worker('build/latest')
-        worker.work()
+        worker = Worker(Path(out)/'latest')
+        worker.work(args['<target>'])

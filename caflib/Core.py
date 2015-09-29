@@ -7,9 +7,12 @@ import shutil
 from contextlib import contextmanager
 import subprocess
 import json
+from collections import defaultdict, namedtuple
+import re
+from math import log10, ceil
 
-# NULL_SHA = 40*'0'
-
+cellar = '_caf/Cellar'
+brewery = '_caf/Brewery'
 
 # class File:
 #     _cache = {}
@@ -25,30 +28,32 @@ import json
 #             f.write(File._cache[self.full_path].substitute(mapping))
 
 
-# def slugify(s):
-#     return re.sub(r'[^0-9a-zA-Z.-]', '-', s)
+def normalize_str(s):
+    return re.sub(r'[^0-9a-zA-Z.-]', '-', s)
 
 
-# def sha_to_path(sha, level=2, chunk=2):
-#     levels = []
-#     for l in range(level):
-#         levels.append(sha[l*chunk:(l+1)*chunk])
-#     levels.append(sha[level*chunk:])
-#     path = Path(levels[0])
-#     for l in levels[1:]:
-#         path = path/l
-#     return path
+def slugify(x):
+    if isinstance(x, str):
+        s = x
+    elif isinstance(x, tuple):
+        s = '_'.join(normalize_str(str(x)) for x in x)
+    elif isinstance(x, dict):
+        s = '_'.join('{}={}'.format(normalize_str(k), normalize_str(v))
+                     for k, v in x.items())
+    elif x is None:
+        return None
+    return s
 
 
-# @contextmanager
-# def mktmpdir(prefix):
-#     tmpdir = Path(prefix)/sha_to_path(NULL_SHA)
-#     if tmpdir.is_dir():
-#         shutil.rmtree(str(tmpdir))
-#     tmpdir.mkdir(parents=True)
-#     yield str(tmpdir)
-#     if Path(tmpdir).is_dir():
-#         shutil.rmtree(str(tmpdir))
+def hash_to_path(sha, nlvls=2, lenlvl=2):
+    levels = []
+    for lvl in range(nlvls):
+        levels.append(sha[lvl*lenlvl:(lvl+1)*lenlvl])
+    levels.append(sha[nlvls*lenlvl:])
+    path = Path(levels[0])
+    for l in levels[1:]:
+        path = path/l
+    return path
 
 
 @contextmanager
@@ -64,41 +69,18 @@ def cd(path):
 
 def mkdir(path):
     subprocess.check_call(['mkdir', '-p', str(path)])
+    return path
 
 
 def listify(obj):
     if not obj:
         return []
-    if isinstance(obj, str):
+    if isinstance(obj, (str, bytes)):
         return [obj]
     try:
-        return [x for x in obj]
+        return list(obj)
     except TypeError:
         return [obj]
-
-
-# def prepare(ctx):
-#     ctx.prepare()
-#     task_db = []
-#     for param, calc in ctx.tasks:
-#         with mktmpdir(ctx.cache) as tmpdir:
-#             with cd(tmpdir):
-#                 with open('command', 'w') as f:
-#                     f.write(calc.command)
-#                 calc.prepare()
-#                 sha_dir = get_sha_dir()
-#             path = ctx.cache/'objects'/sha_to_path(sha_dir)
-#             if not path.is_dir():
-#                 if not path.parent.is_dir():
-#                     path.parent.mkdir(parents=True)
-#                 shutil.move(tmpdir, str(path))
-#         stem = '_'.join('{}={}'.format(key, slugify(str(value)))
-#                         for key, value in param.items()) or '_'
-#         path_run = ctx.rundir/stem
-#         path_run.symlink_to(path if path.is_absolute() else Path('../..')/path)
-#         task_db.append((param, str(path_run)))
-#     with (ctx.rundir/'tasks.json').open('w') as f:
-#         json.dump(task_db, f, indent=4)
 
 
 class Task:
@@ -106,63 +88,70 @@ class Task:
         self.attrs = attrs
         self.children = []
         self.parents = []
-
-    def __radd__(self, obj):
-        try:
-            for link in obj:
-                link + self
-        except TypeError:
-            assert isinstance(obj, Link)
-            obj.child.parents.append(obj)
-            self.children.append(obj)
-        return self
+        self.links = {}
 
     def consume(self, attr):
         return self.attrs.pop(attr, None)
 
+    def is_touched(self):
+        return (self.path/'.caf/children').is_file()
+
+    def is_locked(self):
+        return (self.path/'.caf/lock').is_file()
+
+    def is_sealed(self):
+        return (self.path/'.caf/seal').is_file()
+
     def touch(self):
         mkdir(self.path/'.caf')
-
-    def is_touched(self):
-        return (self.path/'.caf').is_dir()
+        with (self.path/'.caf/children').open('w') as f:
+            json.dump(list(self.links), f, sort_keys=True)
+        self.link_deps()
 
     def lock(self, hashes):
         with (self.path/'.caf/lock').open('w') as f:
             json.dump(hashes, f, sort_keys=True)
 
-    def is_locked(self):
-        return (self.path/'.caf/lock').is_file()
-
     def seal(self):
         (self.path/'.caf/seal').touch()
 
-    def is_sealed(self):
-        return (self.path/'.caf/seal').is_file()
+    Link = namedtuple('Link', 'task links needed')
 
-    def set_path(self, path):
-        self.path = path
-        for lnk in self.children:
-            lnk.child.set_path(path/lnk.name)
+    def add_dependency(self, task, link, *links, needed=False):
+        if not isinstance(task, Task):
+            return NotImplemented
+        self.children.append(task)
+        self.links[slugify(link)] = Task.Link(task, links, needed)
+        task.parents.append(self)
+        return self
 
-    def build(self):
-        depnames = [lnk.name for lnk in self.children]
-        if not self.is_touched():
-            self.touch()
-            with (self.path/'.caf/children').open('w') as f:
-                json.dump(depnames, f, sort_keys=True)
-        if self.is_locked():
-            print('{} already locked'.format(self))
-            return
-        for lnk in self.children:
-            if lnk.needed and not lnk.child.is_sealed():
-                print('{} not sealed'.format(lnk.child))
-                return
+    def __radd__(self, iterable):
+        try:
+            for x in iterable:
+                x + self
+            return self
+        except TypeError:
+            return NotImplemented
+
+    def link_deps(self):
+        with cd(self.path):
+            for linkname, link in self.links.items():
+                os.system('ln -fns {} {}'
+                          .format(os.path.relpath(str(link.task.path)),
+                                  linkname))
+
+    def prepare(self):
         for filename in listify(self.consume('files')):
             shutil.copy(filename, str(self.path))
         with cd(self.path):
-            for lnk in self.children:
-                for here, there in lnk.links.items():
-                    os.system('ln -s {}/{} {}'.format(lnk.name, there, here))
+            for linkname, link in self.links.items():
+                for symlink in link.links:
+                    try:
+                        symlink, target = symlink
+                    except ValueError:
+                        target = symlink
+                    os.system('ln -s {}/{} {}'
+                              .format(linkname, target, symlink))
             for feat in listify(self.consume('features')):
                 try:
                     feat(self)
@@ -171,90 +160,150 @@ class Task:
                     return
             with open('command', 'w') as f:
                 f.write(self.consume('command'))
-        if self.attrs:
-            print('task has non-consumed attributs {}'.format(self.attrs.keys()))
-            return
+            if self.attrs:
+                raise RuntimeError('task has non-consumed attributs {}'
+                                   .format(list(self.attrs)))
+
+    def get_hashes(self):
         with cd(self.path):
             filepaths = []
             for dirpath, dirnames, filenames in os.walk('.'):
                 if dirpath == '.':
                     dirnames[:] = [name for name in dirnames
-                                   if name not in ['.caf'] + depnames]
+                                   if name not in ['.caf'] + list(self.links)]
                 for name in filenames:
-                    path = Path(dirpath)/name
-                    if not path.is_symlink():
-                        filepaths.append(path)
-            for name in depnames:
-                filepaths.append(Path(name)/'.caf/lock')
+                    filepath = Path(dirpath)/name
+                    if not filepath.is_symlink():
+                        filepaths.append(filepath)
+            for link in self.links.values():
+                filepaths.append(link.task.path/'.caf/lock')
             hashes = {}
             for path in filepaths:
                 h = hashlib.new('sha1')
                 with path.open('rb') as f:
                     h.update(f.read())
                 hashes[str(path)] = h.hexdigest()
+        return hashes
+
+    def build(self, path):
+        self.path = Path(path).resolve()
+        if not self.is_touched():
+            self.touch()
+        if self.is_locked():
+            print('{} already locked'.format(self))
+            return
+        for linkname, link in self.links.items():
+            if link.needed and not link.task.is_sealed():
+                print('{} not sealed'.format(linkname))
+                return
+        self.prepare()
+        if not all(child.is_locked() for child in self.children):
+            return
+        hashes = self.get_hashes()
         self.lock(hashes)
+        h = hashlib.new('sha1')
+        with (self.path/'.caf/lock').open('rb') as f:
+            h.update(f.read())
+        myhash = h.hexdigest()
+        cellarpath = self.ctx.cellar/hash_to_path(myhash)
+        if cellarpath.is_dir():
+            shutil.rmtree(str(self.path))
+        else:
+            mkdir(cellarpath.parent)
+            self.path.rename(cellarpath)
+        self.path.symlink_to(cellarpath)
+        self.path = cellarpath
+        self.link_deps()
 
 
-class Link:
-    def __init__(self, name, links=None, needed=False):
-        if isinstance(name, str):
-            self.name = name
-        elif isinstance(name, tuple):
-            self.name = '_'.join(str(x) for x in name)
-        elif isinstance(name, dict):
-            self.name = '_'.join('{}={}'.format(k, v) for k, v in name.items())
-        self.links = links
-        self.needed = needed
+class AddWrapper:
 
-    def __radd__(self, obj):
-        assert isinstance(obj, Task)
-        self.child = obj
-        return self
+    """Wraps `x.f(y, *args, **kwargs)` into `y + Wrapper('f', *args, **kwargs) + x`."""
 
+    def __init__(self, fname, *args, **kwargs):
+        self.fname = fname
+        self.args = args
+        self.kwargs = kwargs
 
-class View:
-    def __init__(self, name):
-        self.name = name
-        self.children = []
+    def __add__(self, x):
+        self.x = x
+        return self.run()
 
-    def __radd__(self, obj):
+    def __radd__(self, y):
+        self.y = y
+        return self.run()
+
+    def run(self):
         try:
-            for link in obj:
-                link + self
-        except TypeError:
-            assert isinstance(obj, Link)
-            self.children.append(obj)
-        return self
+            return getattr(self.x, self.fname)(self.y, *self.args, **self.kwargs)
+        except AttributeError:
+            return self
 
-    def set_path(self, path):
-        for lnk in self.children:
-            lnk.child.set_path(path/lnk.name)
+
+class Link(AddWrapper):
+    def __init__(self, *args, **kwargs):
+        return super().__init__('add_dependency', *args, **kwargs)
+
+
+class Target(AddWrapper):
+    def __init__(self, *args, **kwargs):
+        return super().__init__('add_to_target', *args, **kwargs)
 
 
 class Context:
-    def __init__(self):
+    def __init__(self, top, timestamp):
         self.tasks = []
-        self.views = []
-        self.link = Link
+        self.targets = defaultdict(dict)
+        self.brewery = top/brewery/timestamp
+        self.cellar = top/cellar
 
     def add_task(self, **kwargs):
         task = Task(**kwargs)
+        task.ctx = self
         self.tasks.append(task)
         return task
 
     __call__ = add_task
 
-    def view(self, *args, **kwargs):
-        view = View(*args, **kwargs)
-        self.views.append(view)
-        return view
+    def add_to_target(self, task, target, link=None):
+        if not isinstance(task, Task):
+            return NotImplemented
+        self.targets[target][slugify(link)] = task
+        return task
 
-    def set_paths(self):
-        for view in self.views:
-            path = Path('build/latest')/view.name
-            view.set_path(path)
+    def link(self, *args, **kwargs):
+        link = Link(*args, **kwargs)
+        return link
+
+    def target(self, *args, **kwargs):
+        return Target(*args, **kwargs) + self
+
+    def sort_tasks(self):
+        queue = []
+
+        def enqueue(task):
+            if task not in queue:
+                queue.append(task)
+            for child in task.children:
+                enqueue(child)
+
+        for task in self.tasks:
+            if not task.parents:
+                enqueue(task)
+        self.tasks = reversed(queue)
 
     def build(self):
-        self.set_paths()
-        for task in self.tasks:
-            task.build()
+        ntskdigit = ceil(log10(len(self.tasks)+1))
+        for i, task in enumerate(self.tasks):
+            path = self.brewery/'{:0{n}d}'.format(i, n=ntskdigit)
+            mkdir(path)
+            task.build(path)
+
+    def make_targets(self, out):
+        for target, tasks in self.targets.items():
+            if len(tasks) == 1 and None in tasks:
+                os.system('ln -fns {} {}'.format(tasks[None.path], out/target))
+            else:
+                mkdir(out/target)
+                for name, task in tasks.items():
+                    os.system('ln -fns {} {}'.format(task.path, out/target/name))
