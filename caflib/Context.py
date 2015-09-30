@@ -284,9 +284,12 @@ class Context:
     """Represent a complete build: tasks and targets."""
 
     def __init__(self, cellar):
+        try:
+            self.cellar = cellar.resolve()
+        except FileNotFoundError:
+            error('Cellar does not exist, maybe `caf init` first?')
         self.tasks = []
         self.targets = defaultdict(dict)
-        self.cellar = cellar
 
     def add_task(self, **kwargs):
         task = Task(**kwargs)
@@ -325,10 +328,6 @@ class Context:
         self.tasks = reversed(queue)
 
     def build(self, batch):
-        try:
-            self.cellar = self.cellar.resolve()
-        except FileNotFoundError:
-            error('Cellar does not exist, maybe `caf init` first?')
         try:
             batch = batch.resolve()
         except FileNotFoundError:
