@@ -20,19 +20,19 @@ def feature(name):
     return decorator
 
 
-def hash_to_path(sha, nlvls=2, lenlvl=2):
+def str_to_path(s, nlvls=2, lenlvl=2):
     levels = []
     for lvl in range(nlvls):
-        levels.append(sha[lvl*lenlvl:(lvl+1)*lenlvl])
-    levels.append(sha[nlvls*lenlvl:])
+        levels.append(s[lvl*lenlvl:(lvl+1)*lenlvl])
+    levels.append(s[nlvls*lenlvl:])
     path = Path(levels[0])
     for l in levels[1:]:
         path = path/l
     return path
 
 
-def get_file_hash(path):
-    h = hashlib.new('sha1')
+def get_file_hash(path, hashf='sha1'):
+    h = hashlib.new(hashf)
     with path.open('rb') as f:
         h.update(f.read())
     return h.hexdigest()
@@ -44,6 +44,14 @@ class Task:
         self.children = []
         self.parents = []
         self.links = {}
+
+    def __radd__(self, iterable):
+        try:
+            for x in iterable:
+                x + self
+            return self
+        except TypeError:
+            return NotImplemented
 
     def consume(self, attr):
         return self.attrs.pop(attr, None)
@@ -70,20 +78,10 @@ class Task:
     Link = namedtuple('Link', 'task links needed')
 
     def add_dependency(self, task, link, *links, needed=False):
-        if not isinstance(task, Task):
-            return NotImplemented
         self.children.append(task)
         self.links[slugify(link)] = Task.Link(task, links, needed)
         task.parents.append(self)
         return self
-
-    def __radd__(self, iterable):
-        try:
-            for x in iterable:
-                x + self
-            return self
-        except TypeError:
-            return NotImplemented
 
     def link_deps(self):
         with cd(self.path):
@@ -102,13 +100,13 @@ class Task:
         with cd(self.path):
             for template in templates:
                 used = template.substitute(self.attrs)
-                for used_key in used:
-                    self.consume(used_key)
+                for attr in used:
+                    self.consume(attr)
             for linkname, link in self.links.items():
                 for symlink in link.links:
-                    try:
+                    if isinstance(symlink, tuple):
                         symlink, target = symlink
-                    except ValueError:
+                    else:
                         target = symlink
                     os.system('ln -s {}/{} {}'
                               .format(linkname, target, symlink))
@@ -160,7 +158,7 @@ class Task:
         hashes = self.get_hashes()
         self.lock(hashes)
         myhash = get_file_hash(self.path/'.caf/lock')
-        cellarpath = self.ctx.cellar/hash_to_path(myhash)
+        cellarpath = self.ctx.cellar/str_to_path(myhash)
         if cellarpath.is_dir():
             info('{} already stored'.format(self))
             shutil.rmtree(str(self.path))
@@ -205,12 +203,12 @@ class Link(AddWrapper):
         return super().__init__('add_dependency', *args, **kwargs)
 
     def __add__(self, x):
-        if isinstance(x, Link):
+        if not isinstance(x, Task):
             return NotImplemented
         return super().__add__(x)
 
     def __radd__(self, y):
-        if isinstance(y, Link):
+        if not isinstance(y, Task):
             return NotImplemented
         return super().__radd__(y)
 
@@ -218,6 +216,16 @@ class Link(AddWrapper):
 class Target(AddWrapper):
     def __init__(self, *args, **kwargs):
         return super().__init__('add_to_target', *args, **kwargs)
+
+    def __add__(self, x):
+        if not isinstance(x, Context):
+            return NotImplemented
+        return super().__add__(x)
+
+    def __radd__(self, y):
+        if not isinstance(y, Task):
+            return NotImplemented
+        return super().__radd__(y)
 
 
 class Context:
@@ -235,8 +243,6 @@ class Context:
     __call__ = add_task
 
     def add_to_target(self, task, target, link=None):
-        if not isinstance(task, Task):
-            return NotImplemented
         self.targets[target][slugify(link)] = task
         return task
 

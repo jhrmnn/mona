@@ -14,11 +14,6 @@ class Worker:
         self.path = path
 
     def work(self, targets):
-        def sigint_handler(sig, frame):
-            print('Worker {} interrupted, aborting.'.format(self.myid))
-            sys.exit()
-        signal.signal(signal.SIGINT, sigint_handler)
-
         queue = []
 
         def enqueue(path):
@@ -29,6 +24,11 @@ class Worker:
             children = [path/x for x in json.load((path/'.caf/children').open())]
             for child in children:
                 enqueue(child)
+
+        def sigint_handler(sig, frame):
+            print('Worker {} interrupted, aborting.'.format(self.myid))
+            sys.exit()
+        signal.signal(signal.SIGINT, sigint_handler)
 
         print('Worker {} alive and ready.'.format(self.myid))
         if targets:
