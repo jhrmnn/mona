@@ -11,7 +11,8 @@ from io import StringIO
 
 settings = {
     'precision': 8,
-    'width': 15
+    'width': 15,
+    'real_eq': 1e-10
 }
 
 ext_fmt_dict = {
@@ -23,30 +24,23 @@ ext_fmt_dict = {
 bohr = 0.52917721092
 
 
-def elemquery(what, where, val):
-    for row in elems:
-        if row[where] == val:
-            return row[what]
-    raise LookupError('{} = {} not found for any element'.format(where, val))
-
-
-def scalartostr(x):
+def scalar2str(x):
     return '{:{w}.{p}f}'.format(x, w=settings['width'], p=settings['precision'])
 
 
-def vectortostr(v):
-    return ' '.join(scalartostr(x) for x in v)
+def vector2str(v):
+    return ' '.join(scalar2str(x) for x in v)
 
 
 def cmp3d(x, y):
     for i in range(3):
         diff = x[i]-y[i]
-        if abs(diff) > 1e-10:
+        if abs(diff) > settings['real_eq']:
             return int(np.sign(diff))
     return 0
 
 
-class Dictlike(object):
+class Dictlike:
     def __init__(self, getter=None, setter=None):
         self.getter = getter
         self.setter = setter
@@ -66,31 +60,33 @@ class Dictlike(object):
                             .format(self.__class__.__name__))
 
 
-class Atom(object):
+class Atom:
     def __init__(self, x, xyz=None, flags=None):
         try:
             self.number = int(x)
+            self.symbol = elems_number[self.number]['symbol']
         except ValueError:
-            self.number = elemquery('number', 'symbol', x.capitalize())
+            self.symbol = x.capitalize()
+            self.number = elems_symbol[self.symbol]['number']
         self.xyz = np.array(xyz if xyz is not None else [0, 0, 0], float)
         self.flags = flags or {}
-        self.prop = Dictlike(lambda k: elemquery(k, 'number', self.number))
+        self.prop = elems_number[self.number]
 
     def __repr__(self):
         xyz = '({})'.format(', '.join('{:.{p}}'
                                       .format(x, p=settings['precision'])
                                       for x in self.xyz))
-        return 'Atom({!r}, {}, {})'.format(self.number, xyz, self.flags)
+        return 'Atom({!r}, {}, flags={})'.format(self.number, xyz, self.flags)
 
     def __format__(self, fmt):
         if fmt == 'xyz':
-            s = '{:>2} {}'.format(self.symbol, vectortostr(self.xyz))
+            s = '{:>2} {}'.format(self.symbol, vector2str(self.xyz))
         elif fmt == 'aims':
             if self.flags.get('dummy'):
                 name = 'empty'
             else:
                 name = 'atom'
-                s = '{} {} {:>2}'.format(name, vectortostr(self.xyz), self.symbol)
+                s = '{} {} {:>2}'.format(name, vector2str(self.xyz), self.symbol)
         else:
             raise ValueError('Unknown format')
         return s
@@ -100,17 +96,7 @@ class Atom(object):
             return False
         if self.symbol != self.symbol:
             return False
-        if np.linalg.norm(self.xyz-other.xyz) > 1e-10:
-            return False
-        return True
-
-    @property
-    def group(self):
-        return self._group()
-
-    @property
-    def symbol(self):
-            return elemquery('symbol', 'number', self.number)
+        return cmp3d(self.xyz, other.xyz) == 0
 
     def copy(self):
         return Atom(self.number, self.xyz.copy(), self.flags.copy())
@@ -125,13 +111,13 @@ class Atom(object):
         except:
             pass
         try:
-            return min(self.dist(a.xyz) for a in other.atoms)
+            return min(self.dist(atom.xyz) for atom in other)
         except:
             pass
         raise TypeError("Don't know how to treat {!r} object"
                         .format(other.__class__.__name__))
 
-    def _group(self):
+    def group(self):
         n = self.number
         if n <= 2:
             return 1 if n == 1 else 8
@@ -151,21 +137,20 @@ class Atom(object):
                 return n-24
 
 
-class Molecule(object):
-
+class Molecule:
     def __init__(self, atoms=None):
         self.atoms = atoms if atoms else []
         self.flags = Dictlike(self._getflag, self._setflag)
 
     def __repr__(self):
         counter = defaultdict(int)
-        for a in self.atoms:
-            counter[a.symbol] += 1
+        for atom in self:
+            counter[atom.symbol] += 1
         return ''.join('{}{}'.format(s, n if n > 1 else '')
                        for s, n in sorted(counter.items()))
 
     def __iter__(self):
-        for atom in self.atoms:
+        for atom in self:
             yield atom
 
     def __format__(self, fmt):
@@ -178,21 +163,23 @@ class Molecule(object):
             return False
         key = cmp_to_key(lambda a, b: cmp3d(a.xyz, b.xyz))
         return all(a == b for a, b in
-                   zip(sorted(list(self.atoms), key=key),
-                       sorted(list(other.atoms), key=key)))
+                   zip(sorted(list(self), key=key),
+                       sorted(list(other), key=key)))
 
     def copy(self):
-        return Molecule([a.copy() for a in self.atoms])
+        return Molecule([atom.copy() for atom in self])
+
+    dumps = __format__
 
     def dump(self, fp, fmt):
         if fmt == 'xyz':
             fp.write('{}\n'.format(len(self.atoms)))
-            fp.write('Formula: {!s}\n'.format(self))
-            for a in self.atoms:
-                fp.write('{:xyz}\n'.format(a))
+            fp.write('Formula: {!r}\n'.format(self))
+            for atom in self:
+                fp.write('{:xyz}\n'.format(atom))
         elif fmt == 'aims':
-            for a in self.atoms:
-                fp.write('{:aims}\n'.format(a))
+            for atom in self:
+                fp.write('{:aims}\n'.format(atom))
         else:
             raise ValueError('Unknown format')
 
@@ -205,33 +192,33 @@ class Molecule(object):
 
     @property
     def mass(self):
-        return sum(a.prop['mass'] for a in self.atoms)
+        return sum(atom.prop['mass'] for atom in self)
 
     @property
     def cms(self):
-        return sum(a.prop['mass']*a.xyz for a in self.atoms)/self.mass
+        return sum(atom.prop['mass']*atom.xyz for atom in self)/self.mass
 
     @property
     def moments(self):
         cms = self.cms
         mass = self.mass
-        return [sum(a.prop['mass']*(a.xyz[i]-cms[i])**2 for a in self.atoms)/mass
+        return [sum(atom.prop['mass']*(atom.xyz[i]-cms[i])**2 for atom in self)/mass
                 for i in range(3)]
 
     @property
     def dimensions(self):
-        return [max(a.xyz[i] for a in self.atoms) -
-                min(a.xyz[i] for a in self.atoms)
+        return [max(a.xyz[i] for a in self) -
+                min(a.xyz[i] for a in self)
                 for i in range(3)]
 
     def shifted(self, delta):
         m = self.copy()
-        for a in m.atoms:
-            a.xyz += delta
+        for atom in m:
+            atom.xyz += delta
         return m
 
     def part(self, idxs):
-        return Molecule([a.copy() for i, a in enumerate(self.atoms)
+        return Molecule([atom.copy() for i, atom in enumerate(self)
                          if i+1 in idxs])
 
     def rotated(self, axis, phi, center=None):
@@ -249,27 +236,27 @@ class Molecule(object):
             rotmat = np.roll(rotmat, shift, i)
         center = np.array(center) if center else self.cms
         m = self.copy()
-        for a in m.atoms:
-            a.xyz = center+rotmat.dot(a.xyz-center)
+        for atom in m:
+            atom.xyz = center+rotmat.dot(atom.xyz-center)
         return m
 
     def optimized(self):
         import pybel
-        mol = pybel.readstring('xyz', format(self, 'xyz'))
+        mol = pybel.readstring('xyz', self.dumps('xyz'))
         mol.localopt()
         return loads(mol.write('xyz'), 'xyz')
 
     def bondmatrix(self, scale):
-        xyz = np.array([a.xyz for a in self.atoms])
-        Rs = np.array([a.prop['covalent radius'] for a in self.atoms])
+        xyz = np.array([atom.xyz for atom in self])
+        Rs = np.array([atom.prop['covalent radius'] for atom in self])
         dmatrix = np.sqrt(np.sum((xyz[None, :]-xyz[:, None])**2, 2))
         thrmatrix = scale*(Rs[None, :]+Rs[:, None])
         return dmatrix < thrmatrix
 
     def to_json(self, scale=1.3):
         bond = self.bondmatrix(scale)
-        return {'atoms': [{'element': a.symbol, 'location': a.xyz.tolist()}
-                          for a in self.atoms],
+        return {'atoms': [{'element': atom.symbol, 'location': atom.xyz.tolist()}
+                          for atom in self],
                 'bonds': [{'atoms': [i, j], 'order': 1}
                           for i in range(len(self.atoms))
                           for j in range(i)
@@ -281,9 +268,9 @@ class Molecule(object):
             imolecule.draw(self.to_json(), 'json', **kwargs)
 
     def dist(self, obj):
-        return min(a.dist(obj) for a in self)
+        return min(atom.dist(obj) for atom in self)
 
-    def getfragments(self, scale=1.3):
+    def get_fragments(self, scale=1.3):
         bond = self.bondmatrix(scale)
         fragments = getfragments(bond)
         fragments = [Molecule([self.atoms[i].copy() for i in fragment])
@@ -299,15 +286,15 @@ class Molecule(object):
         return m
 
     def _getflag(self, k):
-        flags = set(a.flags.get(k) for a in self.atoms)
+        flags = set(atom.flags.get(k) for atom in self)
         if len(flags) == 1:
             return flags.pop()
         else:
             return list(flags)
 
     def _setflag(self, k, v):
-        for a in self.atoms:
-            a.flags[k] = v
+        for atom in self:
+            atom.flags[k] = v
 
 
 def concat(objs):
@@ -356,17 +343,11 @@ def getfragments(C):
 class Crystal(Molecule):
     def __init__(self, lattice, atoms=None):
         self.lattice = np.array(lattice)
-        super(self.__class__, self).__init__(atoms)
-
-    def __repr__(self):
-        return 'Crystal({!r}, {!r})'.format(self.lattice, self.atoms)
+        super().__init__(atoms)
 
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        if np.linalg.norm(self.lattice-other.lattice) > 1e-10:
-            return False
-        return super(self.__class__, self).__eq__(other)
+        return np.linalg.norm(self.lattice-other.lattice) < settings['real_eq'] and \
+            super().__eq__(other)
 
     def copy(self):
         return Crystal(self.lattice.copy(), Molecule(self.atoms).copy().atoms)
@@ -374,26 +355,24 @@ class Crystal(Molecule):
     def dump(self, fp, fmt):
         if fmt == 'aims':
             for l in self.lattice:
-                fp.write('lattice_vector {}\n'.format(vectortostr(l)))
+                fp.write('lattice_vector {}\n'.format(vector2str(l)))
             for a in self.atoms:
                 fp.write('{:aims}\n'.format(a))
         elif fmt == 'vasp':
             fp.write('Formula: %s\n' % self)
-            fp.write('%s\n' % scalartostr(1))
+            fp.write('%s\n' % scalar2str(1))
             for l in self.lattice:
-                fp.write('%s\n' % vectortostr(l))
+                fp.write('%s\n' % vector2str(l))
             species = list(set([a.number for a in self.atoms]))
-            fp.write('%s\n' % ' '.join(elemquery('symbol', 'number', s)
-                                       for s in species))
+            fp.write('%s\n' % ' '.join(elems_number[s]['symbol'] for s in species))
             packs = [[] for _ in species]
-            for a in self.atoms:
-                packs[species.index(a.number)].append(a)
-            fp.write('%s\n' % ' '.join('%i' % len(atoms)
-                                       for atoms in packs))
+            for atom in self:
+                packs[species.index(atom.number)].append(atom)
+            fp.write('%s\n' % ' '.join('%i' % len(atoms) for atoms in packs))
             atoms = list(chain(*packs))
             fp.write('cartesian\n')
             for a in atoms:
-                fp.write('%s\n' % vectortostr(a.xyz))
+                fp.write('%s\n' % vector2str(a.xyz))
         else:
             raise ValueError('Unknown format')
 
@@ -578,3 +557,5 @@ for row in elems:
             row[key] = float(row[key])
         except ValueError:
             pass
+elems_symbol = {row['symbol']: row for row in elems}
+elems_number = {row['number']: row for row in elems}
