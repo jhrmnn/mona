@@ -2,6 +2,7 @@
 """caf -- Calculation framework.
 
 Usage:
+    caf init [REMOTE]
     caf build [new] [REMOTE]
     caf work (local | REMOTE) [TARGET...] [-p PROFILE] [--id ID] [-j N]
     caf remote add URL [NAME]
@@ -22,7 +23,7 @@ from pathlib import Path
 import os
 import sys
 
-from caflib.Utils import Configuration
+from caflib.Utils import Configuration, mkdir, get_timestamp
 from caflib.Logging import error
 
 out = Path('build')
@@ -48,6 +49,24 @@ def status(brewery):
     paths = brewery.glob('*/.caf')
     running = brewery.glob('*/.lock')
     sealed = brewery.glob('*/.caf/seal')
+def init():
+    conf = Configuration(os.environ['HOME'] + '/.caf/conf.yaml')
+    timestamp = get_timestamp()
+    cachepath = Path(conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
+    mkdir(cachepath)
+    os.system('ln -fns {} {}'.format(cachepath, cache))
+    mkdir(cache/cellar)
+    mkdir(cache/brewery)
+
+
+def make_new_build():
+    timestamp = get_timestamp()
+    mkdir(cache/brewery/timestamp)
+    os.system('ln -fns {} {}'.format(timestamp, cache/brewery/latest))
+    mkdir(out/timestamp, parents=True)
+    os.system('ln -fns {} {}'.format(timestamp, out/latest))
+
+
     print('Number of initialized tasks: {}'.format(len(list(paths))))
     print('Number of running tasks: {}'.format(len(list(running))))
     print('Number of finished tasks: {}'.format(len(list(sealed))))
@@ -66,39 +85,28 @@ if __name__ == '__main__':
     else:
         remote = None
     if args['build']:
+    if args['init']:
+        if remote:
+            Remote.upload(**remote)
+            Remote.command('init', **remote)
+        else:
+            init()
         if remote:
             Remote.upload(**remote)
             command = 'build new' if args['new'] else 'build'
             Remote.command(command, **remote)
             sys.exit()
         else:
-            from datetime import datetime
             from caflib.Context import Context
-            from caflib.Utils import mkdir
             cscript = load_cscript()
             ctx = Context(cache/cellar)
             cscript.build(ctx)
             if args['new']:
-                timestamp = format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
-                if not cache.is_symlink():
-                    conf = Configuration(os.environ['HOME'] + '/.caf/conf.yaml')
-                    cachepath = Path(conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
-                    cachepath.mkdir()
-                    cache.symlink_to(cachepath)
-                    mkdir(cache/cellar)
-                mkdir(cache/brewery/timestamp, p=True)
-                os.system('ln -fns {} {}'.format(timestamp, cache/brewery/latest))
-                mkdir(out/timestamp, p=True)
-                os.system('ln -fns {} {}'.format(timestamp, out/latest))
-            else:
-                try:
-                    timestamp = os.readlink(str(out/latest))
-                except FileNotFoundError:
-                    error('There is no latest build')
-            ctx.build(cache/brewery/timestamp)
-            ctx.make_targets(out/timestamp)
             sys.exit()
     if args['work']:
+                make_new_build()
+            ctx.build(cache/brewery/latest)
+            ctx.make_targets(out/latest)
         if remote:
             Remote.upload(**remote)
             command = 'work local {} -j {}'.format(' '.join(args['TARGET']),

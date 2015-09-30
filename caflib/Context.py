@@ -8,7 +8,7 @@ from math import log10, ceil
 
 from caflib.Utils import mkdir, slugify, cd, listify
 from caflib.Template import Template
-from caflib.Logging import warn, info
+from caflib.Logging import warn, info, error
 
 _features = {}
 
@@ -208,7 +208,7 @@ class Task:
             info('{} already stored'.format(self))
             shutil.rmtree(str(self.path))
         else:
-            mkdir(cellarpath.parent, p=True)
+            mkdir(cellarpath.parent, parents=True)
             self.path.rename(cellarpath)
         self.path.symlink_to(cellarpath)
         self.path = cellarpath
@@ -324,12 +324,18 @@ class Context:
                 enqueue(task)
         self.tasks = reversed(queue)
 
-    def build(self, brewery):
-        self.cellar = self.cellar.resolve()
-        brewery = brewery.resolve()
+    def build(self, batch):
+        try:
+            self.cellar = self.cellar.resolve()
+        except FileNotFoundError:
+            error('Cellar does not exist, maybe `caf init` first?')
+        try:
+            batch = batch.resolve()
+        except FileNotFoundError:
+            error('Batch does not exist, maybe `caf build new` first?')
         ntskdigit = ceil(log10(len(self.tasks)+1))
         for i, task in enumerate(self.tasks):
-            path = brewery/'{:0{n}d}'.format(i, n=ntskdigit)
+            path = batch/'{:0{n}d}'.format(i, n=ntskdigit)
             if not path.is_dir():
                 mkdir(path)
             task.set_path(path)

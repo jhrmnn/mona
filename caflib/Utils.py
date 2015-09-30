@@ -4,6 +4,7 @@ import yaml
 import re
 import os
 from contextlib import contextmanager
+from datetime import datetime
 
 
 def normalize_str(s):
@@ -23,11 +24,22 @@ def slugify(x):
     return s
 
 
-def mkdir(path, p=False):
+def get_timestamp():
+    return format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
+
+
+def mkdir(path, parents=False):
     command = ['mkdir', str(path)]
-    if p:
+    if parents:
         command.insert(1, '-p')
-    subprocess.check_call(command)
+    p = subprocess.Popen(command, stderr=subprocess.PIPE)
+    _, stderr = p.communicate()
+    if p.returncode:
+        stderr = stderr.decode()
+        m = re.match(r'mkdir: (.*): No such file or directory\n', stderr)
+        if m:
+            raise FileNotFoundError(m.group().strip())
+        raise OSError(stderr)
     return path
 
 
