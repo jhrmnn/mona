@@ -23,7 +23,7 @@ import os
 import sys
 
 from caflib.Utils import Configuration
-from caflib.Logging import error, info
+from caflib.Logging import error
 
 out = Path('build')
 cache = Path('_caf')
@@ -44,13 +44,13 @@ def load_cscript():
     return cscript
 
 
-def check():
+def status(brewery):
     paths = brewery.glob('*/.caf')
     running = brewery.glob('*/.lock')
     sealed = brewery.glob('*/.caf/seal')
-    info('Number of initialized tasks: {}'.format(len(list(paths))))
-    info('Number of running tasks: {}'.format(len(list(running))))
-    info('Number of finished tasks: {}'.format(len(list(sealed))))
+    print('Number of initialized tasks: {}'.format(len(list(paths))))
+    print('Number of running tasks: {}'.format(len(list(running))))
+    print('Number of finished tasks: {}'.format(len(list(sealed))))
 
 
 if __name__ == '__main__':
@@ -140,8 +140,7 @@ if __name__ == '__main__':
             Remote.command('status', **remote)
             sys.exit()
         else:
-            from caflib.Contxt import brewery
-            check(cache/brewery/latest)
+            status(cache/brewery/latest)
             sys.exit()
     if args['update']:
         Remote.upload(**remote)
