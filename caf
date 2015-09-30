@@ -22,6 +22,7 @@ import os
 import sys
 
 from caflib.Utils import Configuration
+from caflib.Logging import error, info
 
 out = Path('build')
 latest = 'Latest'
@@ -35,10 +36,8 @@ def load_cscript():
         exec(compile(open('cscript').read(), 'cscript', 'exec'), cscript.__dict__)
     except:
         import traceback
-        import sys
-        print('There was an error while reading cscript.')
         traceback.print_exc()
-        sys.exit(1)
+        error('There was an error while reading cscript.')
     return cscript
 
 
@@ -46,9 +45,9 @@ def check(brewery):
     paths = Path(brewery).glob('*/.caf')
     running = Path(brewery).glob('*/.lock')
     sealed = Path(brewery).glob('*/.caf/seal')
-    print('Number of initialized tasks: {}'.format(len(list(paths))))
-    print('Number of running tasks: {}'.format(len(list(running))))
-    print('Number of finished tasks: {}'.format(len(list(sealed))))
+    info('Number of initialized tasks: {}'.format(len(list(paths))))
+    info('Number of running tasks: {}'.format(len(list(running))))
+    info('Number of finished tasks: {}'.format(len(list(sealed))))
 
 
 if __name__ == '__main__':
@@ -56,7 +55,11 @@ if __name__ == '__main__':
     if args['REMOTE']:
         import caflib.Remote as Remote
         remote_conf = Configuration('.caf/remotes.yaml')
-        remote = remote_conf[args['REMOTE']]
+        remote = args['REMOTE']
+        try:
+            remote = remote_conf[remote]
+        except KeyError:
+            error('Remote {!r} is not defined'.format(remote))
     else:
         remote = None
     if args['build']:

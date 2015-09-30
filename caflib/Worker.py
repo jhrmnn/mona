@@ -52,11 +52,15 @@ class Worker:
             with cd(path):
                 with open('run.out', 'w') as stdout, \
                         open('run.err', 'w') as stderr:
-                    subprocess.check_call(open('command').read(),
-                                          shell=True,
-                                          stdout=stdout,
-                                          stderr=stderr)
             (path/'.lock').rmdir()
+                    try:
+                        subprocess.check_call(open('command').read(),
+                                              shell=True,
+                                              stdout=stdout,
+                                              stderr=stderr)
+                    except subprocess.CalledProcessError as e:
+                        print(e)
+                        print('error: There was an error when working on {}'.format(path))
             (path/'.caf/seal').touch()
             print('Worker {} finished working on {}.'.format(self.myid, path))
         print('Worker {} has no more tasks to do, aborting.'.format(self.myid))

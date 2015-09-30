@@ -11,6 +11,7 @@ from caflib.Template import Template
 
 cellar = 'Cellar'
 brewery = 'Brewery'
+from caflib.Logging import warn, info
 
 _features = {}
 
@@ -145,22 +146,24 @@ class Task:
     def build(self, path):
         self.path = Path(path).resolve()
         if self.is_locked():
-            print('{} already locked'.format(self))
+            warn('{} already locked'.format(self))
             return
         if not self.is_touched():
             self.touch()
         for linkname, link in self.links.items():
             if link.needed and not link.task.is_sealed():
-                print('{} not sealed'.format(linkname))
+                warn('{}: dependency {!r} not sealed'.format(self, linkname))
                 return
         if not all(child.is_locked() for child in self.children):
             return
+        info('Preparing task {}...'.format(self))
         self.prepare()
         hashes = self.get_hashes()
         self.lock(hashes)
         myhash = get_file_hash(self.path/'.caf/lock')
         cellarpath = self.ctx.cellar/hash_to_path(myhash)
         if cellarpath.is_dir():
+            info('{} already stored'.format(self))
             shutil.rmtree(str(self.path))
         else:
             mkdir(cellarpath.parent)

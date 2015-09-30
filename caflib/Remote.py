@@ -1,10 +1,11 @@
 import subprocess
 from pathlib import Path
 import glob
+from caflib.Logging import info
 
 
 def upload(host, path):
-    print('Uploading to {}...'.format(host))
+    info('Uploading to {}...'.format(host))
     subprocess.check_call(['ssh', host, 'mkdir -p {}'.format(path)])
     subprocess.check_call(['rsync',
                            '-ia',
@@ -18,13 +19,13 @@ def upload(host, path):
 
 
 def command(cmd, host, path):
-    print('Connecting to {}...'.format(host))
+    info('Connecting to {}...'.format(host))
     subprocess.check_call(['ssh', host,
                            'cd {} && ./caf {}'.format(path, cmd)])
 
 
 def fetch(targets, cellar, build, host, path):
-    print('Downloading from {}...'.format(host))
+    info('Downloading from {}...'.format(host))
     if targets:
         targets = [build/t for t in targets]
     else:
