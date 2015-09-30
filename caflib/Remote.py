@@ -43,3 +43,8 @@ def fetch(targets, cellar, build, host, path):
                           str(cellar)],
                          stdin=subprocess.PIPE)
     p.communicate('\n'.join(paths).encode())
+
+
+def go(host, path):
+    subprocess.call(['ssh', '-t', host,
+                     'cd {} && $SHELL -l'.format(path)])

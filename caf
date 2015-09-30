@@ -128,6 +128,11 @@ if __name__ == '__main__':
                 from caflib.Worker import Worker
                 worker = Worker(args['--id'], out/latest)
                 worker.work(args['TARGET'])
+    elif args['status']:
+        if remote:
+            Remote.command('status', **remote)
+        else:
+            status(cache/brewery/latest)
     elif args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
@@ -140,14 +145,7 @@ if __name__ == '__main__':
                      cellar=cache/cellar,
                      build=out/latest,
                      **remote)
-    elif args['status']:
-        if remote:
-            Remote.command('status', **remote)
-        else:
-            status(cache/brewery/latest)
     elif args['update']:
         Remote.upload(**remote)
     elif args['go']:
-        import subprocess
-        subprocess.call(['ssh', '-t', remote['host'],
-                         'cd {[path]} && $SHELL -l'.format(remote)])
+        Remote.go(**remote)
