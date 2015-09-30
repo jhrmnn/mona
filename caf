@@ -119,11 +119,17 @@ if __name__ == '__main__':
             if args['--profile']:
                 import subprocess
                 for _ in range(int(args['-j'])):
-                    subprocess.check_call('~/.caf/worker_{} {}'
-                                          .format(args['--profile'],
-                                                  ' '.join(args['TARGET'])),
-                                          shell=True)
                 sys.exit()
+                    p = subprocess.Popen('~/.caf/worker_{} {}'
+                                         .format(args['--profile'],
+                                                 ' '.join(args['TARGET'])),
+                                         shell=True,
+                                         stderr=subprocess.PIPE)
+                    _, stderr = p.communicate()
+                    if p.returncode:
+                        print(stderr.decode(), end='')
+                        error('Running ~/.caf/worker_{} did not succeed.'
+                              .format(args['--profile']))
             else:
                 from caflib.Worker import Worker
                 worker = Worker(args['--id'], out/latest)
