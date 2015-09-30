@@ -8,9 +8,6 @@ from math import log10, ceil
 
 from caflib.Utils import mkdir, slugify, cd, listify
 from caflib.Template import Template
-
-cellar = 'Cellar'
-brewery = 'Brewery'
 from caflib.Logging import warn, info
 
 _features = {}
@@ -143,8 +140,10 @@ class Task:
                 hashes[str(path)] = get_file_hash(path)
         return hashes
 
-    def build(self, path):
+    def set_path(self, path):
         self.path = Path(path).resolve()
+
+    def build(self):
         if self.is_locked():
             warn('{} already locked'.format(self))
             return
@@ -166,7 +165,7 @@ class Task:
             info('{} already stored'.format(self))
             shutil.rmtree(str(self.path))
         else:
-            mkdir(cellarpath.parent)
+            mkdir(cellarpath.parent, p=True)
             self.path.rename(cellarpath)
         self.path.symlink_to(cellarpath)
         self.path = cellarpath
@@ -222,9 +221,10 @@ class Target(AddWrapper):
 
 
 class Context:
-    def __init__(self):
+    def __init__(self, cellar):
         self.tasks = []
         self.targets = defaultdict(dict)
+        self.cellar = cellar
 
     def add_task(self, **kwargs):
         task = Task(**kwargs)
@@ -261,23 +261,24 @@ class Context:
                 enqueue(task)
         self.tasks = reversed(queue)
 
-    def build(self, cache, timestamp):
-        cache = Path(cache)
-        self.brewery = cache/brewery/timestamp
-        self.cellar = cache/cellar
+    def build(self, brewery):
+        self.cellar = self.cellar.resolve()
+        brewery = brewery.resolve()
         ntskdigit = ceil(log10(len(self.tasks)+1))
         for i, task in enumerate(self.tasks):
-            path = self.brewery/'{:0{n}d}'.format(i, n=ntskdigit)
-            mkdir(path)
-            task.build(path)
+            path = brewery/'{:0{n}d}'.format(i, n=ntskdigit)
+            if not path.is_dir():
+                mkdir(path)
+            task.set_path(path)
+            task.build()
 
     def make_targets(self, out):
         for target, tasks in self.targets.items():
             if len(tasks) == 1 and None in tasks:
-                mkdir(out)
                 os.system('ln -fns {} {}'.format(tasks[None].path, out/target))
             else:
-                mkdir(out/target)
+                if not (out/target).is_dir():
+                    mkdir(out/target)
                 for name, task in tasks.items():
                     os.system('ln -fns {} {}'.format(task.path, out/target/name))
 

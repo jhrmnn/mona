@@ -25,8 +25,10 @@ from caflib.Utils import Configuration
 from caflib.Logging import error, info
 
 out = Path('build')
-latest = 'Latest'
 cache = Path('_caf')
+cellar = 'Cellar'
+brewery = 'Brewery'
+latest = 'Latest'
 
 
 def load_cscript():
@@ -41,10 +43,10 @@ def load_cscript():
     return cscript
 
 
-def check(brewery):
-    paths = Path(brewery).glob('*/.caf')
-    running = Path(brewery).glob('*/.lock')
-    sealed = Path(brewery).glob('*/.caf/seal')
+def check():
+    paths = brewery.glob('*/.caf')
+    running = brewery.glob('*/.lock')
+    sealed = brewery.glob('*/.caf/seal')
     info('Number of initialized tasks: {}'.format(len(list(paths))))
     info('Number of running tasks: {}'.format(len(list(running))))
     info('Number of finished tasks: {}'.format(len(list(sealed))))
@@ -73,22 +75,26 @@ if __name__ == '__main__':
             from caflib.Context import Context
             from caflib.Utils import mkdir
             cscript = load_cscript()
-            ctx = Context()
+            ctx = Context(cache/cellar)
             cscript.build(ctx)
             if args['new']:
                 timestamp = format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
+                if not cache.is_symlink():
+                    conf = Configuration(os.environ['HOME'] + '/.caf/conf.yaml')
+                    cachepath = Path(conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
+                    cachepath.mkdir()
+                    cache.symlink_to(cachepath)
+                    mkdir(cache/cellar)
+                mkdir(cache/brewery/timestamp, p=True)
+                os.system('ln -fns {} {}'.format(timestamp, cache/brewery/latest))
+                mkdir(out/timestamp, p=True)
+                os.system('ln -fns {} {}'.format(timestamp, out/latest))
             else:
-                timestamp = os.readlink(str(out/latest))
-            if not cache.is_symlink():
-                conf = Configuration(os.environ['HOME'] + '/.caf/conf.yaml')
-                cachepath = Path(conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
-                cachepath.mkdir()
-                cache.symlink_to(cachepath)
-            mkdir(cache/'Brewery')
-            os.system('ln -fns {} {}'.format(timestamp, cache/'Brewery'/latest))
-            ctx.build(cache.resolve(), timestamp)
-            mkdir(out)
-            os.system('ln -fns {} {}'.format(timestamp, out/latest))
+                try:
+                    timestamp = os.readlink(str(out/latest))
+                except FileNotFoundError:
+                    error('There is no latest build')
+            ctx.build(cache/brewery/timestamp)
             ctx.make_targets(out/timestamp)
             sys.exit()
     if args['work']:
@@ -123,7 +129,6 @@ if __name__ == '__main__':
             conf.save()
             sys.exit()
     if args['fetch']:
-        from caflib.Context import cellar
         Remote.fetch(args['TARGET'],
                      cellar=cache/cellar,
                      build=out/latest,

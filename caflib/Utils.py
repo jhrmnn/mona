@@ -23,8 +23,11 @@ def slugify(x):
     return s
 
 
-def mkdir(path):
-    subprocess.check_call(['mkdir', '-p', str(path)])
+def mkdir(path, p=False):
+    command = ['mkdir', str(path)]
+    if p:
+        command.insert(1, '-p')
+    subprocess.check_call(command)
     return path
 
 
