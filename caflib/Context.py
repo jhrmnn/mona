@@ -43,6 +43,7 @@ class Task:
         self.attrs = attrs
         self.children = []
         self.parents = []
+        self.targets = []
         self.links = {}
 
     def __radd__(self, iterable):
@@ -243,7 +244,9 @@ class Context:
     __call__ = add_task
 
     def add_to_target(self, task, target, link=None):
-        self.targets[target][slugify(link)] = task
+        linkname = slugify(link)
+        self.targets[target][linkname] = task
+        task.targets.append((target, linkname))
         return task
 
     def link(self, *args, **kwargs):
