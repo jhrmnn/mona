@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 import glob
-from caflib.Logging import info
+from caflib.Logging import info, error
 
 
 def upload(host, path):
@@ -20,8 +20,12 @@ def upload(host, path):
 
 def command(cmd, host, path):
     info('Running `./caf {}` on {}...'.format(cmd, host))
-    subprocess.check_call(['ssh', host,
-                           'cd {} && ./caf {}'.format(path, cmd)])
+    try:
+        subprocess.check_call(['ssh', host,
+                               'cd {} && ./caf {}'.format(path, cmd)])
+    except subprocess.CalledProcessError:
+        error('Command `./caf {}` on {} ended with error'
+              .format(cmd, host))
 
 
 def fetch(targets, cellar, build, host, path):
