@@ -80,8 +80,9 @@ class Task:
 
     def add_dependency(self, task, link, *links, needed=False):
         self.children.append(task)
+        linkname = slugify(link)
         self.links[slugify(link)] = Task.Link(task, links, needed)
-        task.parents.append(self)
+        task.parents.append((self, linkname))
         return self
 
     def link_deps(self):
