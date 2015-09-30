@@ -74,26 +74,25 @@ def status(batch):
 if __name__ == '__main__':
     args = docopt(__doc__)
     if args['REMOTE']:
-        import caflib.Remote as Remote
+        from caflib.Remote import Remote
         remote_conf = Configuration('.caf/remotes.yaml')
         remote = args['REMOTE']
         try:
-            remote = remote_conf[remote]
+            remote = Remote(**remote_conf[remote])
         except KeyError:
             error('Remote {!r} is not defined'.format(remote))
     else:
         remote = None
     if args['init']:
         if remote:
-            Remote.upload(**remote)
-            Remote.command('init', **remote)
+            remote.update()
+            remote.command()
         else:
             init()
     elif args['build']:
         if remote:
-            Remote.upload(**remote)
-            command = 'build new' if args['new'] else 'build'
-            Remote.command(command, **remote)
+            remote.update()
+            remote.command()
         else:
             from caflib.Context import Context
             cscript = load_cscript()
@@ -105,13 +104,8 @@ if __name__ == '__main__':
             ctx.make_targets(out/latest)
     elif args['work']:
         if remote:
-            Remote.upload(**remote)
-            command = 'work local'
-            if args['TARGET']:
-                command += ' '.join(args['TARGET'])
-            if args['--profile']:
-                command += ' -p {} -j {}'.format(args['--profile'], args['-j'])
-            Remote.command(command, **remote)
+            remote.update()
+            remote.command(replace='local')
         else:
             if args['--profile']:
                 import subprocess
@@ -130,7 +124,7 @@ if __name__ == '__main__':
                 worker.work(args['TARGET'])
     elif args['status']:
         if remote:
-            Remote.command('status', **remote)
+            remote.command()
         else:
             status(cache/brewery/latest)
     elif args['remote']:
@@ -141,11 +135,8 @@ if __name__ == '__main__':
             conf[name] = {'host': host, 'path': path}
             conf.save()
     elif args['fetch']:
-        Remote.fetch(args['TARGET'],
-                     cellar=cache/cellar,
-                     build=out/latest,
-                     **remote)
+        remote.fetch(args['TARGET'], cache/cellar, out/latest)
     elif args['update']:
-        Remote.upload(**remote)
+        remote.update()
     elif args['go']:
-        Remote.go(**remote)
+        remote.go()
