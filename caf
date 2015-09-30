@@ -5,9 +5,9 @@ Usage:
     caf init [REMOTE]
     caf build [new] [REMOTE]
     caf work (local | REMOTE) [TARGET...] [-p PROFILE [-j N] | --id ID]
+    caf status [REMOTE]
     caf remote add URL [NAME]
     caf fetch REMOTE [TARGET...]
-    caf status [REMOTE]
     caf update REMOTE
     caf go REMOTE
 
