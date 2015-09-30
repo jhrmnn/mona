@@ -14,6 +14,13 @@ _features = {}
 
 
 def feature(name):
+    """Register function as a feature in Context.
+
+    Example:
+
+        @feature('myfeat')
+        def my_feature(...
+    """
     def decorator(f):
         _features[name] = f
         return f
@@ -21,6 +28,12 @@ def feature(name):
 
 
 def str_to_path(s, nlvls=2, lenlvl=2):
+    """Return relative path constructed from a sttring.
+
+    Example:
+
+        str_to_path('abcdefghij', 3, 1) -> a/b/c/defghij
+    """
     levels = []
     for lvl in range(nlvls):
         levels.append(s[lvl*lenlvl:(lvl+1)*lenlvl])
@@ -32,6 +45,7 @@ def str_to_path(s, nlvls=2, lenlvl=2):
 
 
 def get_file_hash(path, hashf='sha1'):
+    """Return hashed contents of a file."""
     h = hashlib.new(hashf)
     with path.open('rb') as f:
         h.update(f.read())
@@ -39,6 +53,9 @@ def get_file_hash(path, hashf='sha1'):
 
 
 class Task:
+
+    """Represents a single build task."""
+
     def __init__(self, **attrs):
         self.attrs = attrs
         self.children = []
@@ -62,6 +79,7 @@ class Task:
             return '{0[0]!s}'.format(up)
 
     def consume(self, attr):
+        """Return and clear a Task attribute."""
         return self.attrs.pop(attr, None)
 
     def is_touched(self):
@@ -100,6 +118,12 @@ class Task:
                                   linkname))
 
     def prepare(self):
+        """Prepare a task.
+
+        Pull in files and templates, link in files from children, execute
+        features and save the command. Check that all attributes have been
+        consumed.
+        """
         for filename in listify(self.consume('files')):
             if isinstance(filename, tuple):
                 shutil.copy(filename[0], str(self.path/filename[1]))
@@ -130,6 +154,10 @@ class Task:
                                    .format(list(self.attrs)))
 
     def get_hashes(self):
+        """Get hashes of task's dependencies.
+
+        Dependencies consist of non-symlinked files and locks of children.
+        """
         with cd(self.path):
             filepaths = []
             for dirpath, dirnames, filenames in os.walk('.'):
@@ -151,6 +179,14 @@ class Task:
         self.path = Path(path).resolve()
 
     def build(self):
+        """Prepare, lock and store the task.
+
+        Check if not already locked. Touch (link in children, save chilren to
+        .caf/children). Check if needed children are already sealed. Check if
+        children are already locked. Prepare task. Get hashes.  Lock task with
+        hashes. Check if a task has been already stored previously and if not,
+        store it and relink children.
+        """
         if self.is_locked():
             warn('{} already locked'.format(self))
             return
@@ -208,6 +244,9 @@ class AddWrapper:
 
 
 class Link(AddWrapper):
+
+    """Represents dependency links between tasks."""
+
     def __init__(self, *args, **kwargs):
         return super().__init__('add_dependency', *args, **kwargs)
 
@@ -223,6 +262,9 @@ class Link(AddWrapper):
 
 
 class Target(AddWrapper):
+
+    """Represents adding a task to a build context as a target."""
+
     def __init__(self, *args, **kwargs):
         return super().__init__('add_to_target', *args, **kwargs)
 
@@ -238,6 +280,9 @@ class Target(AddWrapper):
 
 
 class Context:
+
+    """Represent a complete build: tasks and targets."""
+
     def __init__(self, cellar):
         self.tasks = []
         self.targets = defaultdict(dict)
@@ -265,6 +310,7 @@ class Context:
         return Target(*args, **kwargs) + self
 
     def sort_tasks(self):
+        """Sort tasks such that children precede parents."""
         queue = []
 
         def enqueue(task):
