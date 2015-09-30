@@ -4,7 +4,7 @@
 Usage:
     caf init [REMOTE]
     caf build [new] [REMOTE]
-    caf work (local | REMOTE) [TARGET...] [-p PROFILE] [--id ID] [-j N]
+    caf work (local | REMOTE) [TARGET...] [-p PROFILE [-j N] | --id ID]
     caf remote add URL [NAME]
     caf fetch REMOTE [TARGET...]
     caf status [REMOTE]
@@ -21,7 +21,6 @@ Options:
 from docopt import docopt
 from pathlib import Path
 import os
-import sys
 
 from caflib.Utils import Configuration, mkdir, get_timestamp
 from caflib.Logging import error
@@ -45,10 +44,6 @@ def load_cscript():
     return cscript
 
 
-def status(brewery):
-    paths = brewery.glob('*/.caf')
-    running = brewery.glob('*/.lock')
-    sealed = brewery.glob('*/.caf/seal')
 def init():
     conf = Configuration(os.environ['HOME'] + '/.caf/conf.yaml')
     timestamp = get_timestamp()
@@ -67,6 +62,10 @@ def make_new_build():
     os.system('ln -fns {} {}'.format(timestamp, out/latest))
 
 
+def status(batch):
+    paths = batch.glob('*/.caf')
+    running = batch.glob('*/.lock')
+    sealed = batch.glob('*/.caf/seal')
     print('Number of initialized tasks: {}'.format(len(list(paths))))
     print('Number of running tasks: {}'.format(len(list(running))))
     print('Number of finished tasks: {}'.format(len(list(sealed))))
@@ -84,42 +83,37 @@ if __name__ == '__main__':
             error('Remote {!r} is not defined'.format(remote))
     else:
         remote = None
-    if args['build']:
     if args['init']:
         if remote:
             Remote.upload(**remote)
             Remote.command('init', **remote)
         else:
             init()
+    elif args['build']:
         if remote:
             Remote.upload(**remote)
             command = 'build new' if args['new'] else 'build'
             Remote.command(command, **remote)
-            sys.exit()
         else:
             from caflib.Context import Context
             cscript = load_cscript()
             ctx = Context(cache/cellar)
             cscript.build(ctx)
             if args['new']:
-            sys.exit()
-    if args['work']:
                 make_new_build()
             ctx.build(cache/brewery/latest)
             ctx.make_targets(out/latest)
+    elif args['work']:
         if remote:
             Remote.upload(**remote)
-            command = 'work local {} -j {}'.format(' '.join(args['TARGET']),
-                                                   args['-j'])
+            command = 'work local {}'.format(' '.join(args['TARGET']))
             if args['--profile']:
-                command += ' -p ' + args['--profile']
+                command += ' -p {} -j {}'.format(args['--profile'], args['-j'])
             Remote.command(command, **remote)
-            sys.exit()
         else:
             if args['--profile']:
                 import subprocess
                 for _ in range(int(args['-j'])):
-                sys.exit()
                     p = subprocess.Popen('~/.caf/worker_{} {}'
                                          .format(args['--profile'],
                                                  ' '.join(args['TARGET'])),
@@ -134,32 +128,26 @@ if __name__ == '__main__':
                 from caflib.Worker import Worker
                 worker = Worker(args['--id'], out/latest)
                 worker.work(args['TARGET'])
-                sys.exit()
-    if args['remote']:
+    elif args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
             host, path = args['URL'].split(':')
             name = args['NAME'] or host
             conf[name] = {'host': host, 'path': path}
             conf.save()
-            sys.exit()
-    if args['fetch']:
+    elif args['fetch']:
         Remote.fetch(args['TARGET'],
                      cellar=cache/cellar,
                      build=out/latest,
                      **remote)
-        sys.exit()
-    if args['status']:
+    elif args['status']:
         if remote:
             Remote.command('status', **remote)
-            sys.exit()
         else:
             status(cache/brewery/latest)
-            sys.exit()
-    if args['update']:
+    elif args['update']:
         Remote.upload(**remote)
-        sys.exit()
-    if args['go']:
+    elif args['go']:
         import subprocess
         subprocess.call(['ssh', '-t', remote['host'],
                          'cd {[path]} && $SHELL -l'.format(remote)])

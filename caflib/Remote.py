@@ -19,7 +19,7 @@ def upload(host, path):
 
 
 def command(cmd, host, path):
-    info('Connecting to {}...'.format(host))
+    info('Running `./caf {}` on {}...'.format(cmd, host))
     subprocess.check_call(['ssh', host,
                            'cd {} && ./caf {}'.format(path, cmd)])
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from caflib.Tools.aims import AimsCalculation, parse_output, parse_xml
 from caflib.Tools.geomlib import Atom, Molecule
 

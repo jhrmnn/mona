@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from pathlib import Path
 import numpy as np
 from numpy import sin, cos
