@@ -74,7 +74,7 @@ class Task:
     def __repr__(self):
         up = self.parents[-1] if self.parents else self.targets[-1]
         if up[1]:
-            return '{0[0]!s}->{0[1]}'.format(up)
+            return '{0[1]}<-{0[0]!s}'.format(up)
         else:
             return '{0[0]!s}'.format(up)
 
