@@ -8,6 +8,7 @@ Usage:
     caf fetch REMOTE [TARGET...]
     caf status [REMOTE]
     caf update REMOTE
+    caf go REMOTE
 
 Commands:
 
@@ -145,3 +146,7 @@ if __name__ == '__main__':
     if args['update']:
         Remote.upload(**remote)
         sys.exit()
+    if args['go']:
+        import subprocess
+        subprocess.call(['ssh', '-t', remote['host'],
+                         'cd {[path]} && $SHELL -l'.format(remote)])
