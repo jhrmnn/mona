@@ -48,11 +48,13 @@ class Worker:
                 lock.mkdir()
             except OSError:
                 continue
+            if (path/'.caf/seal').is_file():
+                (path/'.lock').rmdir()
+                continue
             print('Worker {} started working on {}...'.format(self.myid, path))
             with cd(path):
                 with open('run.out', 'w') as stdout, \
                         open('run.err', 'w') as stderr:
-            (path/'.lock').rmdir()
                     try:
                         subprocess.check_call(open('command').read(),
                                               shell=True,
@@ -62,5 +64,6 @@ class Worker:
                         print(e)
                         print('error: There was an error when working on {}'.format(path))
             (path/'.caf/seal').touch()
+            (path/'.lock').rmdir()
             print('Worker {} finished working on {}.'.format(self.myid, path))
         print('Worker {} has no more tasks to do, aborting.'.format(self.myid))
