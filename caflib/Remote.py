@@ -2,7 +2,6 @@ import subprocess
 from pathlib import Path
 import glob
 from caflib.Logging import info, error
-import sys
 
 
 class Remote:
@@ -23,15 +22,11 @@ class Remote:
                                '.',
                                '{0.host}:{0.path}'.format(self)])
 
-    def command(self, replace=None):
-        if replace:
-            cmd = ' '.join(a if a != self.host else replace for a in sys.argv)
-        else:
-            cmd = ' '.join(a for a in sys.argv if a != self.host)
-        info('Running `{}` on {.host}...'.format(cmd, self))
+    def command(self, cmd):
+        info('Running `./caf {}` on {.host}...'.format(cmd, self))
         try:
             subprocess.check_call(['ssh', self.host,
-                                   'cd {.path} && {}'.format(self, cmd)])
+                                   'cd {.path} && exec ./caf {}'.format(self, cmd)])
         except subprocess.CalledProcessError:
             error('Command `{}` on {.host} ended with error'
                   .format(cmd, self))

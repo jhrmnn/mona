@@ -2,13 +2,13 @@
 """caf -- Calculation framework.
 
 Usage:
-    caf init [REMOTE]
-    caf build [new] [REMOTE]
-    caf work (local | REMOTE) [TARGET...] [-p PROFILE [-j N] | --id ID]
-    caf status [REMOTE]
+    caf init
+    caf build [new]
+    caf work [TARGET...] [-n] [-p PROFILE [-j N] | --id ID]
+    caf status
     caf remote add URL [NAME]
-    caf fetch REMOTE [TARGET...]
-    caf update REMOTE
+    caf push REMOTE [--] [CMD...]
+    caf fetch REMOTE [TARGET...] [-n]
     caf go REMOTE
 
 Commands:
@@ -22,9 +22,10 @@ Options:
 from docopt import docopt
 from pathlib import Path
 import os
+import sys
 
 from caflib.Utils import Configuration, mkdir, get_timestamp
-from caflib.Logging import error
+from caflib.Logging import error, info
 
 out = Path('build')
 cache = Path('_caf')
@@ -45,16 +46,6 @@ def load_cscript():
     return cscript
 
 
-def init():
-    conf = Configuration(os.environ['HOME'] + '/.caf/conf.yaml')
-    timestamp = get_timestamp()
-    cachepath = Path(conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
-    mkdir(cachepath)
-    os.system('ln -fns {} {}'.format(cachepath, cache))
-    mkdir(cache/cellar)
-    mkdir(cache/brewery)
-
-
 def make_new_build():
     timestamp = get_timestamp()
     mkdir(cache/brewery/timestamp)
@@ -73,8 +64,10 @@ def status(batch):
 
 
 if __name__ == '__main__':
+    if sys.argv[1] == 'push' and len(sys.argv) > 3 and sys.argv[3] != '--':
+        sys.argv.insert(3, '--')
     args = docopt(__doc__)
-    if args['REMOTE']:
+    if args['push'] or args['REMOTE']:
         from caflib.Remote import Remote
         remote_conf = Configuration('.caf/remotes.yaml')
         remote = args['REMOTE']
@@ -82,52 +75,45 @@ if __name__ == '__main__':
             remote = Remote(**remote_conf[remote])
         except KeyError:
             error('Remote {!r} is not defined'.format(remote))
-    else:
-        remote = None
     if args['init']:
-        if remote:
-            remote.update()
-            remote.command()
+        conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
+        if conf['cache']:
+            timestamp = get_timestamp()
+            cache_path = Path(conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
+            mkdir(cache_path)
+            os.system('ln -fns {} {}'.format(cache_path, cache))
         else:
-            init()
+            info('Global cache not found in ~/.config/caf/conf.yaml, using a local one.')
+            mkdir(cache)
+        mkdir(cache/cellar)
+        mkdir(cache/brewery)
     elif args['build']:
-        if remote:
-            remote.update()
-            remote.command()
-        else:
-            from caflib.Context import Context
-            cscript = load_cscript()
-            ctx = Context(cache/cellar)
-            cscript.build(ctx)
-            if args['new']:
-                make_new_build()
-            ctx.build(cache/brewery/latest)
-            ctx.make_targets(out/latest)
+        from caflib.Context import Context
+        cscript = load_cscript()
+        ctx = Context(cache/cellar)
+        cscript.build(ctx)
+        if args['new']:
+            make_new_build()
+        ctx.build(cache/brewery/latest)
+        ctx.make_targets(out/latest)
     elif args['work']:
-        if remote:
-            remote.update()
-            remote.command(replace='local')
+        if args['--profile']:
+            import subprocess
+            for _ in range(int(args['-j'])):
+                try:
+                    subprocess.check_call('~/.caf/worker_{} {}'
+                                          .format(args['--profile'],
+                                                  ' '.join(args['TARGET'])),
+                                          shell=True)
+                except subprocess.CalledProcessError:
+                    error('Running ~/.caf/worker_{} did not succeed.'
+                          .format(args['--profile']))
         else:
-            if args['--profile']:
-                import subprocess
-                for _ in range(int(args['-j'])):
-                    try:
-                        subprocess.check_call('~/.caf/worker_{} {}'
-                                              .format(args['--profile'],
-                                                      ' '.join(args['TARGET'])),
-                                              shell=True)
-                    except subprocess.CalledProcessError:
-                        error('Running ~/.caf/worker_{} did not succeed.'
-                              .format(args['--profile']))
-            else:
-                from caflib.Worker import Worker
-                worker = Worker(args['--id'], out/latest)
+            from caflib.Worker import Worker
+            worker = Worker(args['--id'], out/latest)
             worker.work(args['TARGET'], args['--dry'])
     elif args['status']:
-        if remote:
-            remote.command()
-        else:
-            status(cache/brewery/latest)
+        status(cache/brewery/latest)
     elif args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
@@ -135,9 +121,12 @@ if __name__ == '__main__':
             name = args['NAME'] or host
             conf[name] = {'host': host, 'path': path}
             conf.save()
+    elif args['push']:
+        if not args['CMD'] or args['CMD'][0] in ['init', 'build', 'work']:
+            remote.update()
+        if args['CMD']:
+            remote.command(' '.join(args['CMD']))
     elif args['fetch']:
-    elif args['update']:
-        remote.update()
         remote.fetch(args['TARGET'], cache/cellar, out/latest, args['--dry'])
     elif args['go']:
         remote.go()
