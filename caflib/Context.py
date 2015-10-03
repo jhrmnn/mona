@@ -201,7 +201,7 @@ class Task:
                 return
         if not all(child.is_locked() for child in self.children):
             return
-        info('Preparing task {}...'.format(self))
+        print('Preparing task {}...'.format(self))
         self.prepare()
         hashes = self.get_hashes()
         self.lock(hashes)
