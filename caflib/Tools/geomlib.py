@@ -149,7 +149,7 @@ class Molecule:
                        for s, n in sorted(counter.items()))
 
     def __iter__(self):
-        for atom in self:
+        for atom in self.atoms:
             yield atom
 
     def __format__(self, fmt):
