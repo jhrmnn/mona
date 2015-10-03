@@ -3,7 +3,7 @@
 
 Usage:
     caf init
-    caf build [new]
+    caf build
     caf work [TARGET...] [-n] [-0] [-p PROFILE [-j N] | --id ID]
     caf status
     caf remote add URL [NAME]
@@ -30,9 +30,6 @@ Commands:
         depened on unfinished tasks, they are stored in ./_caf/Cellar based on
         their SHA1 hash. Targets (collections of symlinks to tasks) are created
         in ./build/Latest.
-
-        new
-            First initialize new build and targets "Latest" directories.
 
     work
         Execute all prepared build tasks.
@@ -126,8 +123,7 @@ if __name__ == '__main__':
         cscript = load_cscript()
         ctx = Context(cache/cellar)
         cscript.build(ctx)
-        if args['new']:
-            make_new_build()
+        make_new_build()
         ctx.build(cache/brewery/latest)
         ctx.make_targets(out/latest)
     elif args['work']:
