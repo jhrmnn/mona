@@ -13,17 +13,22 @@ class Worker:
         self.myid = myid
         self.path = path
 
-    def work(self, targets, dry=False):
+    def work(self, targets, dry=False, descend=True):
         queue = []
 
-        def enqueue(path):
+        def enqueue(path, descend):
             if (path/'.caf/seal').is_file():
                 return
-            if path not in queue and (path/'.caf/lock').is_file():
-                queue.append(path)
             children = [path/x for x in json.load((path/'.caf/children').open())]
-            for child in children:
-                enqueue(child)
+            if descend:
+                if path not in queue and (path/'.caf/lock').is_file():
+                    queue.append(path)
+                for child in children:
+                    enqueue(child, True)
+            else:
+                if path not in queue and (path/'.caf/lock').is_file() and \
+                        all((child/'.caf/seal').is_file() for child in children):
+                    queue.append(path)
 
         def sigint_handler(sig, frame):
             print('Worker {} interrupted, aborting.'.format(self.myid))
@@ -37,10 +42,10 @@ class Worker:
             targets = [Path(p) for p in glob.glob('{}/*'.format(self.path))]
         for target in targets:
             if target.is_symlink():
-                enqueue(target)
+                enqueue(target, descend)
             else:
                 for task in target.glob('*'):
-                    enqueue(task)
+                    enqueue(task, descend)
         while queue:
             path = queue.pop()
             lock = path/'.lock'

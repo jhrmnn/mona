@@ -4,7 +4,7 @@
 Usage:
     caf init
     caf build [new]
-    caf work [TARGET...] [-n] [-p PROFILE [-j N] | --id ID]
+    caf work [TARGET...] [-n] [-0] [-p PROFILE [-j N] | --id ID]
     caf status
     caf remote add URL [NAME]
     caf push REMOTE [--] [CMD...]
@@ -16,6 +16,7 @@ Options:
     -j N                       Number of launched workers [default: 1].
     --id ID                    ID of worker [default: 1].
     -n, --dry                  Dry run.
+    -0                         Do not descend into dependencies.
 
 Commands:
     init
@@ -137,7 +138,8 @@ if __name__ == '__main__':
                 try:
                     subprocess.check_call('~/.config/caf/worker_{} {}'
                                           .format(args['--profile'],
-                                                  ' '.join(args['TARGET'])),
+                                                  ' '.join(args['TARGET'])) +
+                                          ' -0' if args['-0'] else '',
                                           shell=True)
                 except subprocess.CalledProcessError:
                     error('Running ~/.config/caf/worker_{} did not succeed.'
@@ -145,7 +147,7 @@ if __name__ == '__main__':
         else:
             from caflib.Worker import Worker
             worker = Worker(args['--id'], out/latest)
-            worker.work(args['TARGET'], args['--dry'])
+            worker.work(args['TARGET'], dry=args['--dry'], descend=not args['-0'])
     elif args['status']:
         status(cache/brewery/latest)
     elif args['remote']:
