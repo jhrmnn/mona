@@ -55,4 +55,4 @@ class Remote:
 
     def go(self):
         subprocess.call(['ssh', '-t', self.host,
-                        'cd {.path} && $SHELL -l'.format(self)])
+                        'cd {.path} && exec $SHELL -l'.format(self)])
