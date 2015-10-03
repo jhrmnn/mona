@@ -36,7 +36,7 @@ class Remote:
             error('Command `{}` on {.host} ended with error'
                   .format(cmd, self))
 
-    def fetch(self, targets, cellar, batch):
+    def fetch(self, targets, cellar, batch, dry=False):
         info('Fetching from {}...'.format(self.host))
         if targets:
             targets = [batch/t for t in targets]
@@ -49,8 +49,9 @@ class Remote:
                 assert task.parts[-4] == 'Cellar'
                 paths.add('/'.join(task.parts[-3:]))
         p = subprocess.Popen(['rsync',
-                              '-iar',
-                              '--files-from=-',
+                              '-iar'] +
+                             (['--dry-run'] if dry else []) +
+                             ['--files-from=-',
                               '{0.host}:{0.path}/{1}'.format(self, cellar),
                               str(cellar)],
                              stdin=subprocess.PIPE)

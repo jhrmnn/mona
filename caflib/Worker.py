@@ -13,7 +13,7 @@ class Worker:
         self.myid = myid
         self.path = path
 
-    def work(self, targets):
+    def work(self, targets, dry=False):
         queue = []
 
         def enqueue(path):
@@ -52,18 +52,19 @@ class Worker:
                 (path/'.lock').rmdir()
                 continue
             print('Worker {} started working on {}...'.format(self.myid, path))
-            with cd(path):
-                with open('run.out', 'w') as stdout, \
-                        open('run.err', 'w') as stderr:
-                    try:
-                        subprocess.check_call(open('command').read(),
-                                              shell=True,
-                                              stdout=stdout,
-                                              stderr=stderr)
-                    except subprocess.CalledProcessError as e:
-                        print(e)
-                        print('error: There was an error when working on {}'.format(path))
-            (path/'.caf/seal').touch()
+            if not dry:
+                with cd(path):
+                    with open('run.out', 'w') as stdout, \
+                            open('run.err', 'w') as stderr:
+                        try:
+                            subprocess.check_call(open('command').read(),
+                                                  shell=True,
+                                                  stdout=stdout,
+                                                  stderr=stderr)
+                        except subprocess.CalledProcessError as e:
+                            print(e)
+                            print('error: There was an error when working on {}'.format(path))
+                (path/'.caf/seal').touch()
             (path/'.lock').rmdir()
             print('Worker {} finished working on {}.'.format(self.myid, path))
         print('Worker {} has no more tasks to do, aborting.'.format(self.myid))

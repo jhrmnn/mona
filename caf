@@ -17,6 +17,7 @@ Options:
     -p, --profile PROFILE      Run worker via ~/.caf/worker_PROFILE.
     -j N                       Number of launched workers [default: 1].
     --id ID                    ID of worker [default: 1].
+    -n, --dry                  Dry run.
 """
 from docopt import docopt
 from pathlib import Path
@@ -121,7 +122,7 @@ if __name__ == '__main__':
             else:
                 from caflib.Worker import Worker
                 worker = Worker(args['--id'], out/latest)
-                worker.work(args['TARGET'])
+            worker.work(args['TARGET'], args['--dry'])
     elif args['status']:
         if remote:
             remote.command()
@@ -135,8 +136,8 @@ if __name__ == '__main__':
             conf[name] = {'host': host, 'path': path}
             conf.save()
     elif args['fetch']:
-        remote.fetch(args['TARGET'], cache/cellar, out/latest)
     elif args['update']:
         remote.update()
+        remote.fetch(args['TARGET'], cache/cellar, out/latest, args['--dry'])
     elif args['go']:
         remote.go()
