@@ -89,13 +89,12 @@ def make_new_build():
     os.system('ln -fns {} {}'.format(timestamp, out/latest))
 
 
-def status(batch):
-    paths = batch.glob('*/.caf')
-    running = batch.glob('*/.lock')
-    sealed = batch.glob('*/.caf/seal')
-    print('Number of initialized tasks: {}'.format(len(list(paths))))
-    print('Number of running tasks: {}'.format(len(list(running))))
-    print('Number of finished tasks: {}'.format(len(list(sealed))))
+def report(path, *paths):
+    print('{}: number of initialized/running/finished tasks: {}/{}/{}'
+          .format(path,
+                  len([p for p in paths if (p/'.caf').is_dir()]),
+                  len([p for p in paths if (p/'.lock').is_dir()]),
+                  len([p for p in paths if (p/'.caf/seal').is_file()])))
 
 
 if __name__ == '__main__':
@@ -149,7 +148,17 @@ if __name__ == '__main__':
             worker = Worker(args['--id'], out/latest)
             worker.work(args['TARGET'], dry=args['--dry'], descend=not args['-0'])
     elif args['status']:
-        status(cache/brewery/latest)
+        import glob
+        report(cache/brewery/latest, *(cache/brewery/latest).glob('*'))
+        for target in glob.glob(str(out/latest) + '/*'):
+            target = Path(target)
+            if not target.is_dir():
+                continue
+            if target.is_symlink():
+                report(target, target)
+            else:
+                report(target, *target.glob('*'))
+
     elif args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
