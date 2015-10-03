@@ -44,13 +44,14 @@ Commands:
             Define a new remote and save it in ./.caf/remotes.yaml.
 
     push
-        Push the contents of . to remote excluding ./_caf and ./build.
+        Without CMD, push the contents of . to remote excluding ./_caf and
+        ./build. With CMD, execute './caf CMD' in remote caf repository.
 
     fetch
         Fetch targets from remote and store them in local Cellar.
 
     go
-        SSH into the remote directory.
+        SSH into the remote caf repository.
 """
 from docopt import docopt
 from pathlib import Path
