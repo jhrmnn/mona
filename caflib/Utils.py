@@ -76,7 +76,7 @@ class Configuration:
         self.load()
 
     def __getitem__(self, key):
-        return self._dict[key]
+        return self._dict.get(key, None)
 
     def __setitem__(self, key, val):
         self._dict[key] = val
