@@ -44,10 +44,11 @@ class Remote:
             targets = [Path(p) for p in glob.glob('{}/*'.format(batch))]
         paths = set()
         for target in targets:
-            for task in target.glob('*'):
-                task = task.resolve()
-                assert task.parts[-4] == 'Cellar'
-                paths.add('/'.join(task.parts[-3:]))
+            for task in [target] if target.is_symlink() else target.glob('*'):
+                task_full = task.resolve()
+                if task_full.parts[-4] != 'Cellar':
+                    error('{}: Task has to be in Cellar before fetching'.format(task))
+                paths.add('/'.join(task_full.parts[-3:]))
         p = subprocess.Popen(['rsync',
                               '-iar'] +
                              (['--dry-run'] if dry else []) +
