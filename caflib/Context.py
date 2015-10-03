@@ -72,7 +72,10 @@ class Task:
             return NotImplemented
 
     def __repr__(self):
-        up = self.parents[-1] if self.parents else self.targets[-1]
+        try:
+            up = self.parents[-1] if self.parents else self.targets[-1]
+        except IndexError:
+            error('Some tasks have no parents and are not part of any target')
         if up[1]:
             return '{0[1]}<-{0[0]!s}'.format(up)
         else:
