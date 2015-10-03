@@ -201,16 +201,15 @@ class Task:
                 return
         if not all(child.is_locked() for child in self.children):
             return
-        print('Preparing task {}...'.format(self))
         self.prepare()
         hashes = self.get_hashes()
         self.lock(hashes)
         myhash = get_file_hash(self.path/'.caf/lock')
         cellarpath = self.ctx.cellar/str_to_path(myhash)
         if cellarpath.is_dir():
-            info('{} already stored'.format(self))
             shutil.rmtree(str(self.path))
         else:
+            info('Stored new task {}'.format(self))
             mkdir(cellarpath.parent, parents=True)
             self.path.rename(cellarpath)
         self.path.symlink_to(cellarpath)
