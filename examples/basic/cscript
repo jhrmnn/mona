@@ -33,6 +33,6 @@ def build(ctx):
          command='./square.sh') +
      ctx.target('results', (a, b)) +
      ctx.link((a, b))
-     for a in range(0, 10) for b in range(0, a)] + \
+     for a in range(0, 5) for b in range(0, a)] + \
         ctx(command='cat */run.out | python -c "import sys; print(sum(map(int, sys.stdin)))"') + \
         ctx.target('analysis')
