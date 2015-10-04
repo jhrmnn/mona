@@ -87,6 +87,7 @@ class Configuration:
                 self._dict = yaml.load(f)
 
     def save(self):
-        mkdir(self.path.parent)
+        if not self.path.parent.is_dir():
+            mkdir(self.path.parent)
         with self.path.open('w') as f:
             yaml.dump(self._dict, f)
