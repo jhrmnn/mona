@@ -1,3 +1,5 @@
+from progressbar import ProgressBar
+
 import os
 import hashlib
 import shutil
@@ -335,12 +337,14 @@ class Context:
         except FileNotFoundError:
             error('Batch does not exist, maybe `caf build new` first?')
         ntskdigit = ceil(log10(len(self.tasks)+1))
-        for i, task in enumerate(self.tasks):
-            path = batch/'{:0{n}d}'.format(i, n=ntskdigit)
-            if not path.is_dir():
-                mkdir(path)
-            task.set_path(path)
-            task.build()
+        with ProgressBar(maxval=len(self.tasks)) as progress:
+            for i, task in enumerate(self.tasks):
+                path = batch/'{:0{n}d}'.format(i, n=ntskdigit)
+                if not path.is_dir():
+                    mkdir(path)
+                task.set_path(path)
+                task.build()
+                progress.update(i)
 
     def make_targets(self, out):
         for target, tasks in self.targets.items():
