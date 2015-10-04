@@ -7,8 +7,10 @@ Usage:
     caf work [TARGET...] [-0] [-p PROFILE [-j N] | [--id ID] [-n]]
     caf status
     caf remote add URL [NAME]
-    caf push REMOTE [--] [CMD...]
+    caf update REMOTE
+    caf push REMOTE [TARGET...] [-n]
     caf fetch REMOTE [TARGET...] [-n]
+    caf run REMOTE [--] CMD...
     caf go REMOTE
 
 Options:
@@ -41,12 +43,17 @@ Commands:
         add
             Define a new remote and save it in ./.caf/remotes.yaml.
 
+    update
+        Sync the contents of . to remote excluding ./_caf and ./build.
+
     push
-        Without CMD, push the contents of . to remote excluding ./_caf and
-        ./build. With CMD, execute './caf CMD' in remote caf repository.
+        Push targets to remote and store them in remote Cellar.
 
     fetch
         Fetch targets from remote and store them in local Cellar.
+
+    run
+        Run './caf CMD' in remote caf repository.
 
     go
         SSH into the remote caf repository.
@@ -95,10 +102,10 @@ def report(path, *paths):
 
 
 if __name__ == '__main__':
-    if sys.argv[1] == 'push' and len(sys.argv) > 3 and sys.argv[3] != '--':
+    if sys.argv[1] == 'run' and sys.argv[3] != '--':
         sys.argv.insert(3, '--')
     args = docopt(__doc__)
-    if args['push'] or args['REMOTE']:
+    if args['REMOTE']:
         from caflib.Remote import Remote
         remote_conf = Configuration('.caf/remotes.yaml')
         remote = args['REMOTE']
@@ -154,7 +161,6 @@ if __name__ == '__main__':
                 report(target, target)
             else:
                 report(target, *target.glob('*'))
-
     elif args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
@@ -162,12 +168,15 @@ if __name__ == '__main__':
             name = args['NAME'] or host
             conf[name] = {'host': host, 'path': path}
             conf.save()
+    elif args['update']:
+        remote.update()
     elif args['push']:
-        if not args['CMD'] or args['CMD'][0] in ['init', 'build', 'work']:
-            remote.update()
-        if args['CMD']:
-            remote.command(' '.join(args['CMD']))
+        remote.push(args['TARGET'], cache/cellar, out/latest, args['--dry'])
     elif args['fetch']:
         remote.fetch(args['TARGET'], cache/cellar, out/latest, args['--dry'])
+    elif args['run']:
+        if args['CMD'][0] in ['init', 'build', 'work']:
+            remote.update()
+        remote.command(' '.join(args['CMD']))
     elif args['go']:
         remote.go()

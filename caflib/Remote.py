@@ -53,6 +53,28 @@ class Remote:
                              stdin=subprocess.PIPE)
         p.communicate('\n'.join(paths).encode())
 
+    def push(self, targets, cellar, batch, dry=False):
+        info('Pushing to {}...'.format(self.host))
+        if targets:
+            targets = [batch/t for t in targets]
+        else:
+            targets = [Path(p) for p in glob.glob('{}/*'.format(batch))]
+        paths = set()
+        for target in targets:
+            for task in [target] if target.is_symlink() else target.glob('*'):
+                task_full = task.resolve()
+                if task_full.parts[-4] != 'Cellar':
+                    error('{}: Task has to be in Cellar for pushing'.format(task))
+                paths.add('/'.join(task_full.parts[-3:]))
+        p = subprocess.Popen(['rsync',
+                              '-cirl'] +
+                             (['--dry-run'] if dry else []) +
+                             ['--files-from=-',
+                              str(cellar),
+                              '{0.host}:{0.path}/{1}'.format(self, cellar)],
+                             stdin=subprocess.PIPE)
+        p.communicate('\n'.join(paths).encode())
+
     def go(self):
         subprocess.call(['ssh', '-t', self.host,
                         'cd {.path} && exec $SHELL -l'.format(self)])
