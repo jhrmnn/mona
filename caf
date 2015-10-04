@@ -102,7 +102,7 @@ def report(path, *paths):
 
 
 if __name__ == '__main__':
-    if sys.argv[1] == 'run' and sys.argv[3] != '--':
+    if len(sys.argv) > 1 and sys.argv[1] == 'run' and sys.argv[3] != '--':
         sys.argv.insert(3, '--')
     args = docopt(__doc__)
     if args['REMOTE']:
