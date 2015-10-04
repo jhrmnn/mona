@@ -26,7 +26,7 @@ class Remote:
         info('Running `./caf {}` on {.host}...'.format(cmd, self))
         try:
             subprocess.check_call(['ssh', self.host,
-                                   'cd {.path} && exec ./caf {}'.format(self, cmd)])
+                                   'cd {.path} && exec python3 -u caf {}'.format(self, cmd)])
         except subprocess.CalledProcessError:
             error('Command `{}` on {.host} ended with error'
                   .format(cmd, self))
