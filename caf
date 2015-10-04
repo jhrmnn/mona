@@ -148,7 +148,7 @@ if __name__ == '__main__':
                           .format(args['--profile']))
         else:
             from caflib.Worker import Worker
-            worker = Worker(args['--id'], out/latest)
+            worker = Worker(args['--id'], (out/latest).resolve())
             worker.work(args['TARGET'], dry=args['--dry'], descend=not args['-0'])
     elif args['status']:
         import glob
