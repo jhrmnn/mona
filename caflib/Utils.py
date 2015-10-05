@@ -5,6 +5,7 @@ import re
 import os
 from contextlib import contextmanager
 from datetime import datetime
+import json
 
 
 def normalize_str(s):
@@ -67,6 +68,14 @@ def listify(obj):
         return list(obj)
     except TypeError:
         return [obj]
+
+
+class ArrayEncoder(json.JSONEncoder):
+    def default(self, obj):
+        try:
+            return obj.tolist()
+        except AttributeError:
+            return super().default(obj)
 
 
 class Configuration:
