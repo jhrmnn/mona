@@ -338,6 +338,7 @@ class Context:
             batch = batch.resolve()
         except FileNotFoundError:
             error('Batch does not exist, maybe `caf build new` first?')
+        self.sort_tasks()
         ntskdigit = ceil(log10(len(self.tasks)+1))
         with ProgressBar(maxval=len(self.tasks)) as progress:
             for i, task in enumerate(self.tasks):
