@@ -45,7 +45,9 @@ class Remote:
                     error('{}: Task has to be in Cellar before fetching'.format(task))
                 paths.add('/'.join(task_full.parts[-3:]))
         p = subprocess.Popen(['rsync',
-                              '-cirl'] +
+                              '-cirl',
+                              '--exclude=*.pyc',
+                              '--exclude=__pycache__'] +
                              (['--dry-run'] if dry else []) +
                              ['--files-from=-',
                               '{0.host}:{0.path}/{1}'.format(self, cellar),
