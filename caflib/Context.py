@@ -144,7 +144,7 @@ class Task:
             for linkname, link in self.links.items():
                 for symlink in link.links:
                     if isinstance(symlink, tuple):
-                        symlink, target = symlink
+                        target, symlink = symlink
                     else:
                         target = symlink
                     os.system('ln -s {}/{} {}'
