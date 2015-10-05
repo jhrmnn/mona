@@ -66,10 +66,12 @@ class Worker:
                                                   shell=True,
                                                   stdout=stdout,
                                                   stderr=stderr)
+                            with (path/'.caf/seal').open('w') as f:
+                                print(self.myid, file=f)
                         except subprocess.CalledProcessError as e:
                             print(e)
-                            print('error: There was an error when working on {}'.format(path))
-                (path/'.caf/seal').touch()
+                            print('error: There was an error when working on {}'
+                                  .format(path))
             (path/'.lock').rmdir()
             print('Worker {} finished working on {}.'.format(self.myid, path))
         print('Worker {} has no more tasks to do, aborting.'.format(self.myid))
