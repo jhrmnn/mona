@@ -64,6 +64,7 @@ class Task:
         self.parents = []
         self.targets = []
         self.links = {}
+        self._parent_counter = 0
 
     def __radd__(self, iterable):
         try:
@@ -317,19 +318,19 @@ class Context:
         return Target(*args, **kwargs) + self
 
     def sort_tasks(self):
-        """Sort tasks such that children precede parents."""
+        """Sort tasks such that children precede parents (topological sort)."""
         queue = []
-
-        def enqueue(task):
-            if task not in queue:
-                queue.append(task)
-            for child in task.children:
-                enqueue(child)
-
-        for task in self.tasks:
-            if not task.parents:
-                enqueue(task)
-        self.tasks = reversed(queue)
+        tops = [task for task in self.tasks if not task.parents]
+        while tops:
+            node = tops.pop()
+            queue.insert(0, node)
+            for child in node.children:
+                child._parent_counter += 1
+                if child._parent_counter == len(child.parents):
+                    tops.append(child)
+        assert all(task._parent_counter == len(task.parents)
+                   for task in self.tasks)
+        self.tasks = queue
 
     def build(self, batch):
         try:
