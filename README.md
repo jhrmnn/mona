@@ -25,7 +25,7 @@ The single argument `ctx` of the `build` function is a so-called build context t
 ctx(command='')
 ```
 
-Other notable task attributes that might by present are:
+Other notable task attributes that might be present are:
 
 - *files*: A list of filenames or a 2-tuples of filenames, that are to be copied from project's directory to the task directory. If a tuple `t` is given, file `t[0]` in the project directory is copied to file `t[1]` in the task directory.
 - *templates*: Similar to `files`, but the file is first processed and all instances of `{{ <task attribute> }}` are replaced.
