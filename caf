@@ -94,12 +94,12 @@ def make_new_build():
 
 
 def report(path, *paths):
-    print('{}: number of all/prepared/running/finished tasks: {}/{}/{}/{}'
+    print('{}: number of running/finished/prepared/all tasks: {}/{}/{}/{}'
           .format(path,
-                  len([p for p in paths if (p/'.caf').is_dir()]),
-                  len([p for p in paths if (p/'.caf/lock').is_file()]),
                   len([p for p in paths if (p/'.lock').is_dir()]),
-                  len([p for p in paths if (p/'.caf/seal').is_file()])))
+                  len([p for p in paths if (p/'.caf/seal').is_file()]),
+                  len([p for p in paths if (p/'.caf/lock').is_file()]),
+                  len([p for p in paths if (p/'.caf').is_dir()])))
 
 
 if __name__ == '__main__':
