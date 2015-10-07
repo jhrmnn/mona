@@ -162,24 +162,22 @@ class Task:
     def get_hashes(self):
         """Get hashes of task's dependencies.
 
-        Dependencies consist of all files except for non-existent symlinks and
-        on locks of children.
+        Dependencies consist of all files and on locks of children.
         """
         with cd(self.path):
-            filepaths = []
+            hashes = {}
             for dirpath, dirnames, filenames in os.walk('.'):
                 if dirpath == '.':
                     dirnames[:] = [name for name in dirnames
                                    if name not in ['.caf'] + list(self.links)]
                 for name in filenames:
                     filepath = Path(dirpath)/name
-                    if not (filepath.is_symlink() and not filepath.exists()):
-                        filepaths.append(filepath)
+                    if filepath.is_symlink():
+                        hashes[str(filepath)] = os.readlink(str(filepath))
+                    else:
+                        hashes[str(filepath)] = get_file_hash(filepath)
             for linkname in self.links:
-                filepaths.append(Path(linkname)/'.caf/lock')
-            hashes = {}
-            for path in filepaths:
-                hashes[str(path)] = get_file_hash(path)
+                hashes[linkname] = get_file_hash(Path(linkname)/'.caf/lock')
         return hashes
 
     def set_path(self, path):
