@@ -13,22 +13,18 @@ class Worker:
         self.myid = myid
         self.path = path
 
-    def work(self, targets, dry=False, descend=True):
+    def work(self, targets, dry=False, maxdepth=None, limit=None):
         queue = []
 
-        def enqueue(path, descend):
+        def enqueue(path, depth=1):
             if (path/'.caf/seal').is_file():
                 return
+            if (path/'.caf/lock').is_file():
+                queue.append(path)
             children = [path/x for x in json.load((path/'.caf/children').open())]
-            if descend:
-                if path not in queue and (path/'.caf/lock').is_file():
-                    queue.append(path)
+            if not maxdepth or depth < maxdepth:
                 for child in children:
-                    enqueue(child, True)
-            else:
-                if path not in queue and (path/'.caf/lock').is_file() and \
-                        all((child/'.caf/seal').is_file() for child in children):
-                    queue.append(path)
+                    enqueue(child, depth+1)
 
         def sigint_handler(sig, frame):
             print('Worker {} interrupted, aborting.'.format(self.myid))
@@ -42,10 +38,12 @@ class Worker:
             targets = [Path(p) for p in glob.glob('{}/*'.format(self.path))]
         for target in targets:
             if target.is_symlink():
-                enqueue(target, descend)
+                enqueue(target)
             else:
                 for task in target.glob('*'):
-                    enqueue(task, descend)
+                    enqueue(task)
+
+        n = 0
         while queue:
             path = queue.pop()
             lock = path/'.lock'
@@ -54,6 +52,13 @@ class Worker:
             except OSError:
                 continue
             if (path/'.caf/seal').is_file():
+                print('Worker {}: {} alread sealed.'.format(self.myid, path))
+                (path/'.lock').rmdir()
+                continue
+            children = [path/x for x in json.load((path/'.caf/children').open())]
+            if not all((child/'.caf/seal').is_file() for child in children) and not dry:
+                print('Worker {}: {} has unsealed children.'.format(self.myid, path))
+                queue.insert(0, path)
                 (path/'.lock').rmdir()
                 continue
             print('Worker {} started working on {}...'.format(self.myid, path))
@@ -74,4 +79,8 @@ class Worker:
                                   .format(path))
             (path/'.lock').rmdir()
             print('Worker {} finished working on {}.'.format(self.myid, path))
+            n += 1
+            if limit and n >= limit:
+                print('Worker {} reached limit of tasks, aborting.'.format(self.myid))
+                break
         print('Worker {} has no more tasks to do, aborting.'.format(self.myid))
