@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 import glob
-from caflib.Logging import info, error
+from caflib.Logging import info, error, warn
 
 
 class Remote:
@@ -41,9 +41,10 @@ class Remote:
         for target in targets:
             for task in [target] if target.is_symlink() else target.glob('*'):
                 task_full = task.resolve()
-                if task_full.parts[-4] != 'Cellar':
-                    error('{}: Task has to be in Cellar before fetching'.format(task))
-                paths.add('/'.join(task_full.parts[-3:]))
+                if task_full.parts[-4] == 'Cellar':
+                    paths.add('/'.join(task_full.parts[-3:]))
+                else:
+                    warn('{}: Task has to be in Cellar before fetching'.format(task))
         p = subprocess.Popen(['rsync',
                               '-cirlP',
                               '--exclude=*.pyc',
@@ -65,9 +66,10 @@ class Remote:
         for target in targets:
             for task in [target] if target.is_symlink() else target.glob('*'):
                 task_full = task.resolve()
-                if task_full.parts[-4] != 'Cellar':
-                    error('{}: Task has to be in Cellar for pushing'.format(task))
-                paths.add('/'.join(task_full.parts[-3:]))
+                if task_full.parts[-4] == 'Cellar':
+                    paths.add('/'.join(task_full.parts[-3:]))
+                else:
+                    warn('{}: Task has to be in Cellar for pushing'.format(task))
         p = subprocess.Popen(['rsync',
                               '-cirlP'] +
                              (['--dry-run'] if dry else []) +
