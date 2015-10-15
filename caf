@@ -94,13 +94,17 @@ def make_new_build():
     os.system('ln -fns {} {}'.format(timestamp, out/latest))
 
 
-def report(path, *paths):
+def report(path, *paths, print_running=False):
     print('{}: number of running/finished/prepared/all tasks: {}/{}/{}/{}'
           .format(path,
                   len([p for p in paths if (p/'.lock').is_dir()]),
                   len([p for p in paths if (p/'.caf/seal').is_file()]),
                   len([p for p in paths if (p/'.caf/lock').is_file()]),
                   len([p for p in paths if (p/'.caf').is_dir()])))
+    if print_running:
+        for p in paths:
+            if (p/'.lock').is_dir():
+                print('- running: {}'.format(p))
 
 
 if __name__ == '__main__':
@@ -165,9 +169,9 @@ if __name__ == '__main__':
             if not target.is_dir():
                 continue
             if target.is_symlink():
-                report(target, target)
+                report(target, target, print_running=True)
             else:
-                report(target, *target.glob('*'))
+                report(target, *target.glob('*'), print_running=True)
     elif args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
