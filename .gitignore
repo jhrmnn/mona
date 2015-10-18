@@ -1,5 +1,7 @@
-build
-_caf
+/results
+/geoms
+/build
+/_caf
+/.caf
 *.pyc
 __pycache__
-/.caf
