@@ -3,7 +3,7 @@
 
 Usage:
     caf init
-    caf build
+    caf build [-n]
     caf work [TARGET...] [-d N] [-l N] [-p PROFILE [-j N] | [--id ID] [-n]]
     caf status
     caf remote add URL [NAME]
@@ -135,9 +135,10 @@ if __name__ == '__main__':
         cscript = load_cscript()
         ctx = Context(cache/cellar)
         cscript.build(ctx)
-        make_new_build()
-        ctx.build(cache/brewery/latest)
-        ctx.make_targets(out/latest)
+        if not args['--dry']:
+            make_new_build()
+            ctx.build(cache/brewery/latest)
+            ctx.make_targets(out/latest)
     elif args['work']:
         if args['--profile']:
             import subprocess
