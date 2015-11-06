@@ -305,6 +305,8 @@ class Context:
 
     def add_to_target(self, task, target, link=None):
         linkname = slugify(link)
+        if linkname in self.targets[target]:
+            error('Link {} already in target {}'.format(linkname, target))
         self.targets[target][linkname] = task
         task.targets.append((target, linkname))
         return task
