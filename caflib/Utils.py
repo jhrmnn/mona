@@ -13,15 +13,14 @@ def normalize_str(s):
 
 
 def slugify(x):
-    if isinstance(x, str):
-        s = x
-    elif isinstance(x, tuple):
+    if isinstance(x, tuple):
         s = '_'.join(normalize_str(str(x)) for x in x)
     elif isinstance(x, dict):
-        s = '_'.join('{}={}'.format(normalize_str(k), normalize_str(v))
+        s = '_'.join('{}={}'.format(normalize_str(str(k)),
+                                    normalize_str(str(v)))
                      for k, v in x.items())
-    elif x is None:
-        return None
+    else:
+        s = str(x)
     return s
 
 
