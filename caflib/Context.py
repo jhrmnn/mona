@@ -239,17 +239,21 @@ class AddWrapper:
         if hasattr(self, 'x'):
             return NotImplemented
         self.x = x
+        self.last = 'x'
         return self.run()
 
     def __radd__(self, y):
         if hasattr(self, 'y'):
             return NotImplemented
         self.y = y
+        self.last = 'y'
         return self.run()
 
     def run(self):
         try:
-            return getattr(self.x, self.fname)(self.y, *self.args, **self.kwargs)
+            val = getattr(self.x, self.fname)(self.y, *self.args, **self.kwargs)
+            delattr(self, self.last)
+            return val
         except AttributeError:
             return self
 
