@@ -228,6 +228,13 @@ class AddWrapper:
         self.args = args
         self.kwargs = kwargs
 
+    def __repr__(self):
+        return '{}.{}({}, *{}, **{})'.format(getattr(self, 'x', None),
+                                             self.fname,
+                                             getattr(self, 'y', None),
+                                             self.args,
+                                             self.kwargs)
+
     def __add__(self, x):
         if hasattr(self, 'x'):
             return NotImplemented
