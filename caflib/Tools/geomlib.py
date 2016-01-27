@@ -3,7 +3,7 @@ import numpy as np
 from numpy import sin, cos
 
 from collections import defaultdict
-from itertools import chain
+from itertools import chain, product, groupby
 from functools import cmp_to_key
 import csv
 from io import StringIO
@@ -297,7 +297,8 @@ class Molecule:
 
 
 def concat(objs):
-    assert len(objs) >= 2
+    if len(objs) == 1:
+        return objs[0]
     c = objs[0].joined(objs[1])
     for o in objs[2:]:
         c.join(o)
@@ -350,6 +351,30 @@ class Crystal(Molecule):
 
     def copy(self):
         return Crystal(self.lattice.copy(), Molecule(self.atoms).copy().atoms)
+
+    def supercell(self, ns):
+        atoms = []
+        for shift in product(*[range(n) for n in ns]):
+            for atom in self.atoms:
+                atom = atom.copy()
+                atom.xyz += sum(k*v for k, v in zip(shift, self.lattice))
+                atom.flags['cell'] = shift
+                atoms.append(atom)
+        return Crystal(np.array(ns)[:, None]*self.lattice, atoms)
+
+    def complete_molecules(self):
+        def key(x):
+            return x.flags['cell']
+        central = []
+        for frag in self.supercell((3, 3, 3)).get_fragments():
+            atoms = sorted(frag.atoms, key=key)
+            groups = [(cell, list(g)) for cell, g in groupby(atoms, key=key)]
+            highest = max(len(g) for cell, g in groups)
+            first = [cell for cell, g in groups if len(g) == highest][0]
+            if first == (1, 1, 1):
+                central.append(frag)
+        return Crystal(self.lattice,
+                       concat(central).shifted(-sum(self.lattice)).atoms)
 
     def dump(self, fp, fmt):
         if fmt == 'aims':
@@ -419,11 +444,21 @@ def load(fp, fmt):
             assert coordtype == 'd'
         atoms = []
         for sp, n in zip(species, nspecies):
-            for _ in n:
+            for _ in range(n):
                 xyz = [float(x) for x in fp.readline().split()]
                 if coordtype == 'd':
                     xyz = xyz.dot(lattice)
                 atoms.append(Atom(sp, xyz))
+        return Crystal(lattice, atoms)
+    elif fmt == 'xyzc':
+        n = int(fp.readline())
+        lattice = np.array([
+            [float(x) for x in fp.readline().split()]
+            for _ in range(3)])
+        atoms = []
+        for _ in range(n):
+            l = fp.readline().split()
+            atoms.append(Atom(l[0], [float(x) for x in l[1:4]]))
         return Crystal(lattice, atoms)
     elif fmt == 'smi':
         import pybel
