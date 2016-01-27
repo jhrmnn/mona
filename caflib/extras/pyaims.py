@@ -1,7 +1,10 @@
 import xml.etree.cElementTree as ET
 import numpy as np
 import re
-from logparser import Parser
+try:
+    from caflib.extras.logparser import Parser
+except ImportError:
+    from logparser import Parser
 
 
 def parse_xml(source):
@@ -38,7 +41,7 @@ def parse_xmlarr(xmlarr, axis=None, typef=None):
         axis = len(xmlarr.attrib['size'].split())-1
     if not typef:
         typename = xmlarr.attrib['type']
-        if typename == 'real':
+        if typename == 'dble':
             typef = float
         elif typename == 'int':
             typef = int
