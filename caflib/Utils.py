@@ -43,6 +43,18 @@ def mkdir(path, parents=False):
     return path
 
 
+def build_cmd(*args):
+    cmd = ''
+    for arg in args:
+        if isinstance(arg, tuple):
+            option, value = arg
+            if value:
+                cmd += ' {} {}'.format(option, value)
+        else:
+            cmd += ' {}'.format(arg)
+    return cmd
+
+
 def find_program(cmd):
     return Path(subprocess.check_output(['which', cmd]).decode().strip()).resolve()
 
