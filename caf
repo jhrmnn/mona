@@ -28,11 +28,11 @@ Commands:
         to ./_caf, otherwise it is created locally.
 
     build
-        Prepare build tasks and targets defined in ./cscript. Tasks are
-        prepared in ./_caf/Brewery/Latest and if their preparation does not
-        depened on unfinished tasks, they are stored in ./_caf/Cellar based on
-        their SHA1 hash. Targets (collections of symlinks to tasks) are created
-        in ./build/Latest.
+        Prepare build tasks and targets defined in ./cscript. Tasks are created
+        in ./_caf/Brewery/Latest and if their preparation does not depened on
+        unfinished tasks, they are prepared and stored in ./_caf/Cellar based
+        on their SHA1 hash. Targets (collections of symlinks to tasks) are
+        created in ./build/Latest.
 
     work
         Execute all prepared build tasks.
