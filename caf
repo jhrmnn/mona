@@ -6,6 +6,7 @@ Usage:
     caf build [-n]
     caf work [TARGET...] [-d N] [-l N] [-p PROFILE [-j N] | [--id ID] [-n]]
     caf status
+    caf list --workers
     caf remote add URL [NAME]
     caf update REMOTE
     caf push REMOTE [TARGET...] [-n]
@@ -20,6 +21,7 @@ Options:
     -j N                       Number of launched workers [default: 1].
     -d, --depth N              Limit depth of descending to children.
     -l, --limit N              Limit number of tasks to N.
+    --workers                  List workers.
 
 Commands:
     init
@@ -159,6 +161,10 @@ if __name__ == '__main__':
                         dry=args['--dry'],
                         maxdepth=int(args['--depth']) if args['--depth'] else None,
                         limit=int(args['--limit']) if args['--limit'] else None)
+    elif args['list']:
+        if args['--workers']:
+            for p in Path(os.environ['HOME']).glob('.config/caf/worker_*'):
+                print(p.name)
     elif args['status']:
         import glob
         report(cache/brewery/latest, *(cache/brewery/latest).glob('*'))
