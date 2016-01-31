@@ -11,9 +11,10 @@ def prepare_aims(task):
         basis = task.consume('basis')
         assert basis
         basis_root = aims.parents[1]/'aimsfiles/species_defaults'/basis
-        with open('control.in', 'a') as f:
-            for specie in species:
-                f.write('\n')
-                with (basis_root/'{0[0]:02d}_{0[1]}_default'.format(specie)).open() as f_sp:
-                    f.write(f_sp.read())
+        if not basis == 'none':
+            with open('control.in', 'a') as f:
+                for specie in species:
+                    f.write('\n')
+                    with (basis_root/'{0[0]:02d}_{0[1]}_default'.format(specie)).open() as f_sp:
+                        f.write(f_sp.read())
         task.attrs['command'] = 'AIMS={} run_aims'.format(aims.name)
