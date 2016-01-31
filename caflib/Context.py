@@ -315,7 +315,7 @@ class Context:
     __call__ = add_task
 
     def add_to_target(self, task, target, link=None):
-        linkname = slugify(link)
+        linkname = slugify(link) if link else None
         if linkname in self.targets[target]:
             error('Link {} already in target {}'.format(linkname, target))
         self.targets[target][linkname] = task
