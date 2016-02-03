@@ -165,6 +165,9 @@ class Molecule:
                    zip(sorted(list(self), key=key),
                        sorted(list(other), key=key)))
 
+    def __add__(self, y):
+        return concat([self, y])
+
     def copy(self):
         return Molecule([atom.copy() for atom in self])
 
