@@ -16,21 +16,13 @@ def prepare_square(task):
 
 
 def build(ctx):
-    [[ctx(features=prepare_sum,
-          a=a,
-          b=b+i) +
-      ctx.link(name,
-               (name + '.in', 'run.out'))
-      for i, name
-      in [(1, 'x'), (2, 'y')]] +
+    [[ctx(features=prepare_sum, a=a, b=b+i) +
+      ctx.link(name, ('run.out', name + '.in'))
+      for i, name in [(1, 'x'), (2, 'y')]] +
      ctx(command='expr `cat x.in` \* `cat y.in` >data.txt') +
      ctx.target('data', (a, b)) +
-     ctx.link('data',
-              'data.txt',
-              needed=True) +
-     ctx(features=prepare_square,
-         files='square.sh',
-         command='./square.sh') +
+     ctx.link('data', 'data.txt', needed=True) +
+     ctx(features=prepare_square, files='square.sh', command='./square.sh') +
      ctx.target('results', (a, b)) +
      ctx.link((a, b))
      for a in range(0, 5) for b in range(0, a)] + \
