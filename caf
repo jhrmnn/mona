@@ -3,8 +3,8 @@
 
 Usage:
     caf init
-    caf build [-n]
-    caf work [TARGET...] [-d N] [-l N] [-p PROFILE [-j N] | [--id ID] [-n]]
+    caf [init] build [-n]
+    caf [[init] build] work [TARGET...] [-d N] [-l N] [-p PROFILE [-j N] | [--id ID] [-n]]
     caf status
     caf list --workers
     caf remote add URL [NAME]
@@ -132,7 +132,7 @@ if __name__ == '__main__':
             mkdir(cache)
         mkdir(cache/cellar)
         mkdir(cache/brewery)
-    elif args['build']:
+    if args['build']:
         from caflib.Context import Context
         cscript = load_cscript()
         ctx = Context(cache/cellar)
@@ -141,7 +141,7 @@ if __name__ == '__main__':
             make_new_build()
             ctx.build(cache/brewery/latest)
             ctx.make_targets(out/latest)
-    elif args['work']:
+    if args['work']:
         if args['--profile']:
             import subprocess
             for _ in range(int(args['-j'])):
