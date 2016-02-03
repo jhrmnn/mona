@@ -2,5 +2,5 @@
 
 int main()
 {
-    printf("Hello ${name}\n");
+    printf("Hello {{ name }}\n");
 }

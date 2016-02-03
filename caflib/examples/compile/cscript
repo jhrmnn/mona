@@ -1,32 +1,27 @@
-from pathlib import Path
-import os
-from caflib.Core import Calculation
-
-top = '..'
+#!/usr/bin/env python3
 
 
-class Compilation(Calculation):
-    def __init__(self, src, **kwargs):
-        super(self.__class__, self).__init__(src, **kwargs)
-        self.command = \
-            'gcc -o {0} {1} && tar -zcf {0}.tar.gz {0}' \
-            .format(Path(src).stem, src)
+def _compile(task):
+    from pathlib import Path
+    src = task.consume('src')
+    task.attrs['command'] = 'gcc -o {0} {1}'.format(Path(src).stem, src)
 
 
-def prepare(ctx):
-    for name in ['Alice', 'Bob', 'Eve']:
-        ctx.add_task(Compilation('hello.c', name=name), name=name)
+def compress(task):
+    task.attrs['command'] = 'tar -zchf {0}.tar.gz {0}'.format(task.consume('file'))
 
 
-def extract(ctx):
-    return open('hello.tar.gz', 'rb').read()
-
-
-def process(ctx):
-    for r in ctx.results:
-        name = r.param['name']
-        with open('hello_{}.tar.gz'.format(name), 'wb') as f:
-            f.write(r.data)
-        print(name)
-        os.system('tar -xf hello_{0}.tar.gz && ./hello && mv hello hello_{0}'
-                  .format(name))
+def build(ctx):
+    [ctx(features=_compile,
+         src='hello.c',
+         templates='hello.c',
+         name=name) +
+     ctx.target('build', name) +
+     ctx.link('build', 'hello') +
+     ctx(features=compress,
+         file='hello') +
+     ctx.target('package', name) +
+     ctx.link(name)
+     for name in ['Alice', 'Bob', 'Eve']] +\
+        ctx(command='for f in */hello.tar.gz; do tar -xf $f && ./hello && mv hello hello_`dirname $f`; done') +\
+        ctx.target('run')
