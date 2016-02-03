@@ -33,10 +33,7 @@ class Remote:
 
     def check(self, targets, cellar, batch):
         info('Checking {}...'.format(self.host))
-        if targets:
-            targets = [batch/t for t in targets]
-        else:
-            targets = [Path(p) for p in glob.glob('{}/*'.format(batch))]
+        targets = get_targets(targets, batch)
         paths = set()
         for target in targets:
             for task in [target] if target.is_symlink() else target.glob('*'):
@@ -55,10 +52,7 @@ class Remote:
 
     def fetch(self, targets, cellar, batch, dry=False):
         info('Fetching from {}...'.format(self.host))
-        if targets:
-            targets = [batch/t for t in targets]
-        else:
-            targets = [Path(p) for p in glob.glob('{}/*'.format(batch))]
+        targets = get_targets(targets, batch)
         paths = set()
         for target in targets:
             for task in [target] if target.is_symlink() else target.glob('*'):
@@ -80,10 +74,7 @@ class Remote:
 
     def push(self, targets, cellar, batch, dry=False):
         info('Pushing to {}...'.format(self.host))
-        if targets:
-            targets = [batch/t for t in targets]
-        else:
-            targets = [Path(p) for p in glob.glob('{}/*'.format(batch))]
+        targets = get_targets(targets, batch)
         paths = set()
         for target in targets:
             for task in [target] if target.is_symlink() else target.glob('*'):
@@ -104,3 +95,10 @@ class Remote:
     def go(self):
         subprocess.call(['ssh', '-t', self.host,
                         'cd {.path} && exec $SHELL -l'.format(self)])
+
+
+def get_targets(targets, batch):
+    if targets:
+        return [batch/t for t in targets]
+    else:
+        return [Path(p) for p in glob.glob('{}/*'.format(batch))]
