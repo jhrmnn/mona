@@ -11,8 +11,8 @@ Usage:
     caf update REMOTE
     caf push REMOTE [TARGET...] [-n]
     caf fetch REMOTE [TARGET...] [-n]
-    caf run REMOTE [--] CMD...
     caf go REMOTE
+    caf REMOTE [--] CMD...
 
 Options:
     -n, --dry                  Dry run.
@@ -55,11 +55,12 @@ Commands:
     fetch
         Fetch targets from remote and store them in local Cellar.
 
-    run
-        Run './caf CMD' in remote caf repository.
-
     go
         SSH into the remote caf repository.
+
+    REMOTE
+        Run './caf CMD' in remote caf repository.
+
 """
 from docopt import docopt
 from pathlib import Path
@@ -110,16 +111,18 @@ def report(path, *paths, print_running=False):
 
 
 if __name__ == '__main__':
-    if sys.argv[1] == 'run' and len(sys.argv) > 1 and sys.argv[3] != '--':
-        sys.argv.insert(3, '--')  # fix cmd arguments for ./caf run
+    remote_conf = Configuration('.caf/remotes.yaml')
+    if len(sys.argv) > 1 and sys.argv[1] in remote_conf and sys.argv[2] != '--':
+        sys.argv.insert(2, '--')  # fix cmd arguments for ./caf REMOTE
     args = docopt(__doc__)
     if args['REMOTE']:
         from caflib.Remote import Remote
-        remote_conf = Configuration('.caf/remotes.yaml')
         remote = remote_conf[args['REMOTE']]
         if not remote:
             error('Remote {!r} is not defined'.format(args['REMOTE']))
         remote = Remote(**remote)
+    else:
+        remote = None
     if args['init']:
         conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
         if conf['cache']:
@@ -189,9 +192,9 @@ if __name__ == '__main__':
         remote.push(args['TARGET'], cache/cellar, out/latest, args['--dry'])
     elif args['fetch']:
         remote.fetch(args['TARGET'], cache/cellar, out/latest, args['--dry'])
-    elif args['run']:
+    elif args['go']:
+        remote.go()
+    elif remote:
         if args['CMD'][0] in ['init', 'build', 'work']:
             remote.update()
         remote.command(' '.join(args['CMD']))
-    elif args['go']:
-        remote.go()

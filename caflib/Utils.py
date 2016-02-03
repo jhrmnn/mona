@@ -101,6 +101,9 @@ class Configuration:
     def __setitem__(self, key, val):
         self._dict[key] = val
 
+    def __contains__(self, x):
+        return x in self._dict
+
     def load(self):
         if self.path.is_file():
             with self.path.open() as f:
