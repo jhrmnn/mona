@@ -9,6 +9,7 @@ Usage:
     caf list --workers
     caf remote add URL [NAME]
     caf update REMOTE
+    caf check REMOTE [TARGET...]
     caf push REMOTE [TARGET...] [-n]
     caf fetch REMOTE [TARGET...] [-n]
     caf go REMOTE
@@ -188,6 +189,8 @@ if __name__ == '__main__':
             conf.save()
     elif args['update']:
         remote.update()
+    elif args['check']:
+        remote.check(args['TARGET'], cache/cellar, out/latest)
     elif args['push']:
         remote.push(args['TARGET'], cache/cellar, out/latest, args['--dry'])
     elif args['fetch']:

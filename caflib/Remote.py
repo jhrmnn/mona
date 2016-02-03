@@ -31,6 +31,28 @@ class Remote:
             error('Command `{}` on {.host} ended with error'
                   .format(cmd, self))
 
+    def check(self, targets, cellar, batch):
+        info('Checking {}...'.format(self.host))
+        if targets:
+            targets = [batch/t for t in targets]
+        else:
+            targets = [Path(p) for p in glob.glob('{}/*'.format(batch))]
+        paths = set()
+        for target in targets:
+            for task in [target] if target.is_symlink() else target.glob('*'):
+                task_full = task.resolve()
+                if task_full.parts[-4] == 'Cellar':
+                    paths.add('/'.join(task_full.parts[-3:]))
+        try:
+            subprocess.check_call(['ssh', self.host,
+                                   'cd {0.path}/{1} && ls -d {2} &>/dev/null'
+                                   .format(self, cellar, ' '.join(paths))],
+                                  stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError:
+            error('Local Tasks are not in remote Cellar')
+        else:
+            info('Local Tasks are in remote Cellar.')
+
     def fetch(self, targets, cellar, batch, dry=False):
         info('Fetching from {}...'.format(self.host))
         if targets:
