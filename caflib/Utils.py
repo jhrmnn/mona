@@ -107,7 +107,7 @@ class Configuration:
     def load(self):
         if self.path.is_file():
             with self.path.open() as f:
-                self._dict = yaml.load(f)
+                self._dict = yaml.load(f) or {}
 
     def save(self):
         if not self.path.parent.is_dir():
