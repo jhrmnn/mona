@@ -1,32 +1,43 @@
 # `caf` — Calculation framework
 
-Caf is a distributed build system, inspired by [Waf](https://waf.io), [Git](https://git-scm.com) and [Homebrew](http://brew.sh) and written in Python 3. It is based on a build model in which
+Caf is a distributed build system, inspired by [Waf](https://waf.io), [Git](https://git-scm.com) and [Homebrew](http://brew.sh) and written in Python 3. It is based on a data model in which
 
 - each build task lives in its own directory
 - tasks can have other tasks as dependencies and these are recorded as symlinks
-- each task goes through three stages: creation, preparation and execution
-- both preparation and execution of a task can be blocked by unexecuted dependencies, but creation is never blocked; that is, the dependency tree is static
-- when the preparation of a task is unblocked, it is prepared, hashed by the contents of its directory and stored by the hash
-- tasks are organised in targets, which are simply collections of tasks
-- execution of tasks is performed by independent workers which communicate only via the file system
+- each task goes through two stages: preparation and execution
+- in the preparation stage, any agent can modify the contents of the task's directory
+- a task's preparation can depend on the results of the execution of its dependencies
+- when preparation is finished, the contents of the task's directory are hashed and the task is stored by its hash, which uniquely defines the task across any machine
+- the dependencies are hashed via their own hashes and hence a task is prepared only when all its dependencies are prepared
+- the execution of a task is performed by running a single command, which is a part of the hashed contents, is deterministic, has no side effects beyond the task's directory and its results depend only on the task's hashed contents
+- as a result, executed tasks can be exchanged between machines based purely on their hashes and disregarding how the task was prepared
 
-The above model is implemented in an offline manner, which means that creation and preparation are handled with `caf build`, the execution is handled with `caf work` and these two need to be repeated as many times as needed for all tasks to be completed. In scenarios that are typically handled by build systems, however, preparation of tasks does not depend on its dependencies (only the execution) and hence a single run of `caf build work` is needed to prepare and execute all tasks.
+In Caf, the above data model is implemented in a partially static and offline manner, in which
 
-Caf creates files in two directories.
+- the dependency tree is defined statically in a build script and is hence known prior to any preparations or executions
+- the preparation of tasks is handled by `caf build`  which fully prepares all tasks within the dependency tree, the preparations of which do not depend on yet unexecuted dependencies
+- the execution of tasks is handled by `caf work`, which dispatches independent workers communicating only via the file system which execute prepared tasks
+- as a result, if there are tasks whose preparation depends on the results of its dependencies, `caf build work` needs to be run several times to prepare and execute all tasks
 
-1. `_caf` is the repository of tasks. It contains `Brewery` with multiple batches of created but not prepared tasks and a single `Cellar` with prepared and hashed tasks.
-2. `build` is the repository of targets. It contains batches of targets which are collections of symlinks to tasks in `Brewery` or `Cellar`.
+In the project directory, Caf organizes the builds and tasks in a following way:
+
+- `_caf` is the repository of tasks
+- `build` is the repository of builds, which are collections of targets, which are collections of tasks
+- each run of `caf build` creates a timestamped batch in `_caf/Brewery` where all tasks defined in a build script are initialized
+- in addition, all tasks that can be prepared are prepared and stored in `_caf/Cellar` akin to Git; if the task of the same hash is already stored in the cellar, it is discarded from the brewery and symlinked from the cellar
+- `caf build` also creates a timestamped build directory in `build` where symlinks to tasks in the brewery or in the cellar are created in directories corresponding to targets
+- `caf work` dispatches workers that execute tasks in the cellar
 
 ## Cscript
 
-The equivalent of a Makefile in Caf is `cscript`. A minimal Cscript, which does nothing, contains
+The dependency tree as well as the definition of the individual tasks and targets is defined in a build script named `csript` (calculation script), which is an equivalent of a Makefile for Make. A minimal Cscript, which does nothing, contains
 
 ``` python
 def build(ctx):
     pass
 ```
 
-The single argument `ctx` of the `build` function is a so-called build context which gives access to the API of Caf. Tasks are defined by calling the build context with keyword arguments (task attributes), the only mandatory attribute being `command`. A minimal task, which does nothing, is defined by
+The single argument `ctx` of the `build` function is a so-called build context which gives access to the API of Caf. Tasks are defined by calling the build context with keyword arguments (task attributes), the only mandatory attribute being `command`, which is the shell command that performs the execution of a task. A minimal task, which does nothing, is defined by
 
 ``` python
 ctx(command='')
@@ -38,12 +49,12 @@ Other notable task attributes that might be present are:
 - *templates*: Similar to `files`, but the file is first processed and all instances of `{{ <task attribute> }}` are replaced.
 - *features*: A list of functions or names of registered functions that are executed in the task directory after *files* and *templates* are applied. Features accept a single argument, the task object, and access to task attributes is given by `task.consume(attribute)`.
 
-For all three attributes above, passing `[x]` is equivalent to passing `x`. Any other user attributes might be passed to `ctx`, and those can then be consumed by various `features`. An important rule is that after the task's preparation is done, all task attributes must be consumed.
+For all three attributes above, passing `[x]` is equivalent to passing `x`. Any other user attributes might be passed to `ctx`, and those can then be consumed by various features. An important rule is that after the task's preparation is done, all task attributes must be consumed.
 
 Dependencies are represented by links. A link is created by
 
 ``` python
-ctx.link(linkname, file1, file2,...)
+ctx.link(linkname, *files)
 ```
 
 The files can be again filenames or 2-tuples and define which files from the dependency will by symlinked to the dependant's directory. If the dependency blocks parent's preparation, the link can be created with keyword argument `needed=True`. The actual dependency between tasks is created with
@@ -77,7 +88,7 @@ for link in links:
 	task + link
 ```
 
-Builds in Caf are simply views of tasks. Builds are organized in targets. A task is added to a target with
+Builds in Caf are simply collections of tasks. Builds are organized in targets. A task is added to a target with
 
 ``` python
 task + ctx.target(targetname, linkname)
