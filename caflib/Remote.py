@@ -13,7 +13,7 @@ class Remote:
         info('Updating {.host}...'.format(self))
         subprocess.check_call(['ssh', self.host, 'mkdir -p {.path}'.format(self)])
         subprocess.check_call(['rsync',
-                               '-ia',
+                               '-cirl',
                                '--exclude=.*',
                                '--exclude=build',
                                '--exclude=_caf',
