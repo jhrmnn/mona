@@ -7,6 +7,7 @@ Usage:
     caf [[init] build] work [TARGET...] [-d N] [-l N] [-p PROFILE [-j N] | [--id ID] [-n]]
     caf status
     caf list --workers
+    caf search [--contains PATTERN] [--older TIME]
     caf remote add URL [NAME]
     caf update REMOTE
     caf check REMOTE [TARGET...]
@@ -23,6 +24,8 @@ Options:
     -d, --depth N              Limit depth of descending to children.
     -l, --limit N              Limit number of tasks to N.
     --workers                  List workers.
+    --contains PATTERN         Search tasks containing PATTERN.
+    --older TIME               Search tasks older than.
 
 Commands:
     init
@@ -169,6 +172,17 @@ if __name__ == '__main__':
         if args['--workers']:
             for p in Path(os.environ['HOME']).glob('.config/caf/worker_*'):
                 print(p.name)
+    elif args['search']:
+        cmd = 'find {} -maxdepth 3 -mindepth 3 -type d'.format(cache/cellar)
+        if args['--older']:
+            lim = args['--older']
+            if lim[0] not in ['-', '+']:
+                lim = '+' + lim
+            cmd += ' -ctime {}'.format(lim)
+        if args['--contains']:
+            cmd += ' -exec test -f "{{}}/{}" \;'.format(args['--contains'])
+        cmd += ' -print'
+        os.system(cmd)
     elif args['status']:
         import glob
         report(cache/brewery/latest, *(cache/brewery/latest).glob('*'))
