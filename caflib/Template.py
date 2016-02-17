@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+from caflib.Logging import error
 
 
 class Template:
@@ -8,7 +9,10 @@ class Template:
     def __init__(self, path):
         self.path = Path(path)
         if self.path not in Template._cache:
-            Template._cache[self.path] = self.path.open().read()
+            try:
+                Template._cache[self.path] = self.path.open().read()
+            except FileNotFoundError:
+                error('Template {} does not exist'.format(path))
 
     def substitute(self, mapping):
         used = set()
