@@ -6,7 +6,7 @@ Usage:
     caf [init] build [-n]
     caf [[init] build] work [TARGET...] [-d N] [-l N] [-p PROFILE [-j N] | [--id ID] [-n]]
     caf status
-    caf list (--workers | --remotes)
+    caf list (--workers | --remotes | --finished)
     caf search [--contains PATTERN] [--older TIME]
     caf remote add URL [NAME]
     caf update REMOTE
@@ -25,6 +25,7 @@ Options:
     -l, --limit N              Limit number of tasks to N.
     --workers                  List workers.
     --remotes                  List reomtes.
+    --finished                 List finished tasks.
     --contains PATTERN         Search tasks containing PATTERN.
     --older TIME               Search tasks older than.
 
@@ -71,6 +72,7 @@ from docopt import docopt
 from pathlib import Path
 import os
 import sys
+import subprocess
 
 from caflib.Utils import Configuration, mkdir, get_timestamp, build_cmd
 from caflib.Logging import error, info
@@ -112,7 +114,7 @@ def report(path, *paths, print_running=False):
     if print_running:
         for p in paths:
             if (p/'.lock').is_dir():
-                print('- running: {}'.format(p))
+                print('>> {}'.format(p))
 
 
 if __name__ == '__main__':
@@ -158,7 +160,6 @@ if __name__ == '__main__':
             ctx.make_targets(out/latest)
     if args['work']:
         if args['--profile']:
-            import subprocess
             for _ in range(int(args['-j'])):
                 cmd = build_cmd('~/.config/caf/worker_' + args['--profile'],
                                 ' '.join(args['TARGET']),
@@ -182,6 +183,9 @@ if __name__ == '__main__':
                 print(p.name)
         elif args['--remotes']:
             print(remote_conf)
+        elif args['--finished']:
+            subprocess.call('find -H build/Latest -exec test -f "{}/.caf/seal" \; -print',
+                            shell=True)
     elif args['search']:
         cmd = 'find {} -maxdepth 3 -mindepth 3 -type d'.format(cache/cellar)
         if args['--older']:
