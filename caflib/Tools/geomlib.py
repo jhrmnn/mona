@@ -7,6 +7,7 @@ from itertools import chain, product, groupby
 from functools import cmp_to_key
 import csv
 from io import StringIO
+import json
 
 settings = {
     'precision': 8,
@@ -182,6 +183,8 @@ class Molecule:
         elif fmt == 'aims':
             for atom in self:
                 fp.write('{:aims}\n'.format(atom))
+        elif fmt == 'json':
+            json.dump({'atoms': [[a.symbol, list(a.xyz)] for a in self]}, fp)
         else:
             raise ValueError('Unknown format')
 
@@ -400,6 +403,9 @@ class Crystal(Molecule):
             fp.write('cartesian\n')
             for a in atoms:
                 fp.write('%s\n' % vector2str(a.xyz))
+        elif fmt == 'json':
+            json.dump({'atoms': [[a.symbol, a.xyz.tolist()] for a in self],
+                       'lattice': self.lattice.tolist()}, fp)
         else:
             raise ValueError('Unknown format')
 
