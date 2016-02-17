@@ -214,6 +214,6 @@ if __name__ == '__main__':
     elif remote:
         if args['CMD'][0] in ['init', 'build', 'work']:
             remote.update()
-        if 'work' in args['CMD']:
+        if 'work' in args['CMD'] and 'build' not in args['CMD']:
             remote.check(args['TARGET'], cache/cellar, out/latest)
         remote.command(' '.join(args['CMD']))
