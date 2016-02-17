@@ -95,6 +95,9 @@ class Configuration:
         self._dict = {}
         self.load()
 
+    def __str__(self):
+        return '\n'.join('{}\n\t{}'.format(name, val) for name, val in self._dict.items())
+
     def __getitem__(self, key):
         return self._dict.get(key, None)
 
