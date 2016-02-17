@@ -9,14 +9,14 @@ Caf is a distributed build system, inspired by [Waf](https://waf.io), [Git](http
 - a task's preparation can depend on the results of the execution of its dependencies
 - when preparation is finished, the contents of the task's directory are hashed and the task is stored by its hash, which uniquely defines the task across any machine
 - the dependencies are hashed via their own hashes and hence a task is prepared only when all its dependencies are prepared
-- the execution of a task is performed by running a single command, which is a part of the hashed contents, is deterministic, has no side effects beyond the task's directory and its results depend only on the task's hashed contents
-- as a result, executed tasks can be exchanged between machines based purely on their hashes and disregarding how the task was prepared
+- the execution of a task is performed by running a single command, which is a part of the hashed contents, is deterministic, has no side effects beyond the task's directory and its results depend only on the task's hashed contents (which means also its dependencies, which are hashed)
+- executed tasks can be exchanged between machines based purely on their hashes and disregarding how the task was prepared
 
 In Caf, the above data model is implemented in a partially static and offline manner, in which
 
 - the dependency tree is defined statically in a build script and is hence known prior to any preparations or executions
 - the preparation of tasks is handled by `caf build`  which fully prepares all tasks within the dependency tree, the preparations of which do not depend on yet unexecuted dependencies
-- the execution of tasks is handled by `caf work`, which dispatches independent workers communicating only via the file system which execute prepared tasks
+- the execution of tasks is handled by `caf work`, which dispatches independent workers communicating only via the file system, which execute prepared tasks
 - as a result, if there are tasks whose preparation depends on the results of its dependencies, `caf build work` needs to be run several times to prepare and execute all tasks
 
 In the project directory, Caf organizes the builds and tasks in a following way:
