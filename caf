@@ -117,17 +117,24 @@ def report(path, *paths, print_running=False):
 
 if __name__ == '__main__':
     remote_conf = Configuration('.caf/remotes.yaml')
-    if len(sys.argv) > 1 and sys.argv[1] in remote_conf and sys.argv[2] != '--':
-        sys.argv.insert(2, '--')  # fix cmd arguments for ./caf REMOTE
+    if len(sys.argv) > 1:
+        if (any(r in remote_conf for r in sys.argv[1].split(',')) or
+            sys.argv[1] == 'all') \
+                and sys.argv[2] != '--':
+            sys.argv.insert(2, '--')  # fix cmd arguments for ./caf REMOTE
     args = docopt(__doc__)
     if args['REMOTE']:
         from caflib.Remote import Remote
-        remote = remote_conf[args['REMOTE']]
-        if not remote:
-            error('Remote {!r} is not defined'.format(args['REMOTE']))
-        remote = Remote(**remote)
+        try:
+            if args['REMOTE'] == 'all':
+                remotes = remote_conf._dict.keys()
+            else:
+                remotes = args['REMOTE'].split(',')
+            remotes = [Remote(**remote_conf[r]) for r in remotes]
+        except KeyError as e:
+            error('Remote {!r} is not defined'.format(e.args[0]))
     else:
-        remote = None
+        remotes = []
     if args['init']:
         conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
         if conf['cache']:
@@ -205,18 +212,25 @@ if __name__ == '__main__':
             conf[name] = {'host': host, 'path': path}
             conf.save()
     elif args['update']:
-        remote.update()
+        for remote in remotes:
+            remote.update()
     elif args['check']:
-        remote.check(args['TARGET'], cache/cellar, out/latest)
+        for remote in remotes:
+            remote.check(args['TARGET'], cache/cellar, out/latest)
     elif args['push']:
-        remote.push(args['TARGET'], cache/cellar, out/latest, args['--dry'])
+        for remote in remotes:
+            remote.push(args['TARGET'], cache/cellar, out/latest, args['--dry'])
     elif args['fetch']:
-        remote.fetch(args['TARGET'], cache/cellar, out/latest, args['--dry'])
+        for remote in remotes:
+            remote.fetch(args['TARGET'], cache/cellar, out/latest, args['--dry'])
     elif args['go']:
         remote.go()
-    elif remote:
+    elif remotes:
         if args['CMD'][0] in ['init', 'build', 'work']:
-            remote.update()
+            for remote in remotes:
+                remote.update()
         if 'work' in args['CMD'] and 'build' not in args['CMD']:
-            remote.check(args['TARGET'], cache/cellar, out/latest)
-        remote.command(' '.join(args['CMD']))
+            for remote in remotes:
+                remote.check(args['TARGET'], cache/cellar, out/latest)
+        for remote in remotes:
+            remote.command(' '.join(args['CMD']))
