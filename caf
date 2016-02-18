@@ -214,7 +214,7 @@ if __name__ == '__main__':
             else:
                 report(target, *target.glob('*'), print_running=True)
     elif args['cmd']:
-        subprocess.call(['bash', '-ic', args['CMD'][0]])
+        subprocess.call(['bash', '-c', '. ~/.bashrc; ' + args['CMD'][0]])
     elif args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
