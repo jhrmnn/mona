@@ -127,11 +127,11 @@ if __name__ == '__main__':
     args = docopt(__doc__)
     if args['REMOTE']:
         from caflib.Remote import Remote
+        if args['REMOTE'] == 'all':
+            remotes = remote_conf.keys()
+        else:
+            remotes = args['REMOTE'].split(',')
         try:
-            if args['REMOTE'] == 'all':
-                remotes = remote_conf._dict.keys()
-            else:
-                remotes = args['REMOTE'].split(',')
             remotes = [Remote(**remote_conf[r]) for r in remotes]
         except KeyError as e:
             error('Remote {!r} is not defined'.format(e.args[0]))

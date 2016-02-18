@@ -107,13 +107,19 @@ class Configuration:
         return '\n'.join('{}\n\t{}'.format(name, val) for name, val in self._dict.items())
 
     def __getitem__(self, key):
-        return self._dict.get(key, None)
+        return self._dict[key]
 
     def __setitem__(self, key, val):
         self._dict[key] = val
 
     def __contains__(self, x):
         return x in self._dict
+
+    def get(self, key, default=None):
+        return self._dict.get(key, default)
+
+    def keys(self):
+        return self._dict.keys()
 
     def load(self):
         if self.path.is_file():
