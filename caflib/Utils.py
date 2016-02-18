@@ -6,6 +6,7 @@ import os
 from contextlib import contextmanager
 from datetime import datetime
 import json
+import itertools
 
 
 def normalize_str(s):
@@ -87,6 +88,13 @@ class ArrayEncoder(json.JSONEncoder):
             return obj.tolist()
         except AttributeError:
             return super().default(obj)
+
+
+def groupby(lst, key):
+    lst = [(key(x), x) for x in lst]
+    lst.sort(key=lambda x: x[0])
+    for k, group in itertools.groupby(lst, key=lambda x: x[0]):
+        yield k, [x[1] for x in group]
 
 
 class Configuration:
