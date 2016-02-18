@@ -125,6 +125,10 @@ if __name__ == '__main__':
                 and sys.argv[2] != '--':
             sys.argv.insert(2, '--')  # fix cmd arguments for ./caf REMOTE
     args = docopt(__doc__)
+    if args['REMOTE'] and args['CMD']:
+        remote_args = docopt(__doc__, argv=args['CMD'])
+        if remote_args['REMOTE']:
+            docopt(__doc__, argv=['./caf'])
     if args['REMOTE']:
         from caflib.Remote import Remote
         if args['REMOTE'] == 'all':
