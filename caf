@@ -244,4 +244,6 @@ if __name__ == '__main__':
             for remote in remotes:
                 remote.check(args['TARGET'], cache/cellar, out/latest)
         for remote in remotes:
+            if args['CMD'][0] == 'cmd':
+                args['CMD'][1] = repr(args['CMD'][1])
             remote.command(' '.join(args['CMD']))
