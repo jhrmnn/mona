@@ -8,6 +8,7 @@ Usage:
     caf status
     caf list (--workers | --remotes | --finished)
     caf search [--contains PATTERN] [--older TIME]
+    caf cmd CMD
     caf remote add URL [NAME]
     caf update REMOTE
     caf check REMOTE [TARGET...]
@@ -212,6 +213,8 @@ if __name__ == '__main__':
                 report(target, target, print_running=True)
             else:
                 report(target, *target.glob('*'), print_running=True)
+    elif args['cmd']:
+        subprocess.call(['bash', '-ic', args['CMD'][0]])
     elif args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
