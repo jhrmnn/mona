@@ -228,7 +228,7 @@ if __name__ == '__main__':
         for remote in remotes:
             remote.fetch(args['TARGET'], cache/cellar, out/latest, args['--dry'])
     elif args['go']:
-        remote.go()
+        remotes[0].go()
     elif remotes:
         if args['CMD'][0] in ['init', 'build', 'work']:
             for remote in remotes:
