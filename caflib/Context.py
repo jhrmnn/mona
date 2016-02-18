@@ -152,8 +152,10 @@ class Task:
                 if isinstance(feat, str):
                     feat = _features[feat]
                 feat(self)
-            with open('command', 'w') as f:
-                f.write(self.consume('command'))
+            command = self.consume('command')
+            if command:
+                with open('command', 'w') as f:
+                    f.write(command)
             if self.attrs:
                 raise RuntimeError('task has non-consumed attributs {}'
                                    .format(list(self.attrs)))
@@ -205,6 +207,9 @@ class Task:
         self.prepare()
         hashes = self.get_hashes()
         self.lock(hashes)
+        if 'command' not in hashes:
+            with (self.path/'.caf/seal').open('w') as f:
+                print('build', file=f)
         myhash = get_file_hash(self.path/'.caf/lock')
         cellarpath = self.ctx.cellar/str_to_path(myhash)
         if cellarpath.is_dir():
