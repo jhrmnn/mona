@@ -4,6 +4,7 @@ import os
 import hashlib
 import shutil
 import json
+from glob import glob
 from collections import defaultdict, namedtuple
 from pathlib import Path
 from math import log10, ceil
@@ -59,6 +60,7 @@ class Task:
 
     def __init__(self, **attrs):
         self.attrs = attrs
+        self.files = {}
         self.children = []
         self.parents = []
         self.targets = []
@@ -121,6 +123,24 @@ class Task:
                 os.system('ln -fns {} {}'
                           .format(os.path.relpath(str(link.task.path)),
                                   linkname))
+            for filename, path in self.files.items():
+                os.system('ln -fns {} {}'
+                          .format(os.path.relpath(str(path)),
+                                  filename))
+
+    def store_link_file(self, source, target=None):
+        if not target:
+            target = source
+        filehash = get_file_hash(Path(source))
+        cellarpath = self.ctx.cellar/str_to_path(filehash)
+        if not cellarpath.is_file():
+            info('Stored new file {}'.format(source))
+            mkdir(cellarpath.parent, parents=True)
+            shutil.copy(source, str(cellarpath))
+        with cd(self.path):
+            os.system('ln -fns {} {}'
+                      .format(os.path.relpath(str(cellarpath)), target))
+        self.files[target] = cellarpath
 
     def prepare(self):
         """Prepare a task.
@@ -131,9 +151,13 @@ class Task:
         """
         for filename in listify(self.consume('files')):
             if isinstance(filename, tuple):
-                shutil.copy(filename[0], str(self.path/filename[1]))
+                self.store_link_file(filename[0], filename[1])
             else:
-                shutil.copy(filename, str(self.path))
+                if '*' in filename or '?' in filename:
+                    for member in glob(filename):
+                        self.store_link_file(member)
+                else:
+                    self.store_link_file(filename)
         templates = [Template(path) for path in listify(self.consume('templates'))]
         with cd(self.path):
             for template in templates:
@@ -174,7 +198,13 @@ class Task:
                 for name in filenames:
                     filepath = Path(dirpath)/name
                     if filepath.is_symlink():
-                        hashes[str(filepath)] = os.readlink(str(filepath))
+                        target = os.readlink(str(filepath))
+                        if Path(target).is_absolute():
+                            hashes[str(filepath)] = get_file_hash(Path(target))
+                        elif str(filepath) in self.files:
+                            hashes[str(filepath)] = get_file_hash(Path(target))
+                        else:
+                            hashes[str(filepath)] = target
                     else:
                         hashes[str(filepath)] = get_file_hash(filepath)
             for linkname in self.links:
