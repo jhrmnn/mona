@@ -55,7 +55,6 @@ def get_file_hash(path, hashf='sha1'):
 
 
 class Task:
-
     """Represents a single build task."""
 
     def __init__(self, **attrs):
@@ -220,7 +219,6 @@ class Task:
 
 
 class AddWrapper:
-
     """Wraps `x.f(y, *args, **kwargs)` into `y + Wrapper('f', *args, **kwargs) + x`."""
 
     def __init__(self, fname, *args, **kwargs):
@@ -259,7 +257,6 @@ class AddWrapper:
 
 
 class Link(AddWrapper):
-
     """Represents dependency links between tasks."""
 
     def __init__(self, *args, **kwargs):
@@ -277,7 +274,6 @@ class Link(AddWrapper):
 
 
 class Target(AddWrapper):
-
     """Represents adding a task to a build context as a target."""
 
     def __init__(self, *args, **kwargs):
@@ -295,7 +291,6 @@ class Target(AddWrapper):
 
 
 class Context:
-
     """Represent a complete build: tasks and targets."""
 
     def __init__(self, cellar):
