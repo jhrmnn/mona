@@ -44,7 +44,8 @@ class Worker:
                     enqueue(task)
 
         n = 0
-        while queue:
+        n_skipped = 0
+        while queue and n_skipped < len(queue):
             path = queue.pop()
             lock = path/'.lock'
             try:
@@ -59,8 +60,10 @@ class Worker:
             if not all((child/'.caf/seal').is_file() for child in children) and not dry:
                 print('Worker {}: {} has unsealed children.'.format(self.myid, path))
                 queue.insert(0, path)
+                n_skipped += 1
                 (path/'.lock').rmdir()
                 continue
+            n_skipped = 0
             print('Worker {} started working on {}...'.format(self.myid, path))
             if not dry:
                 with cd(path):
