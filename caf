@@ -3,25 +3,26 @@
 
 Usage:
     caf init
-    caf [init] build [-n]
-    caf [[init] build] work [TARGET...] [-d N] [-l N] [-p PROFILE [-j N] | [--id ID] [-n]]
-    caf work [-q URL] [-p PROFILE [-j N] | [--id ID] [-n]]
+    caf [init] build [--dry]
+    caf [[init] build] work [TARGET...] [--depth N] [--limit N]
+                            [--profile PROFILE [-j N] | [--id ID] [--dry]]
+    caf work [--queue URL] [--profile PROFILE [-j N] | [--id ID] [--dry]]
     caf submit URL
     caf status
-    caf list (--profiles | --remotes | --finished | --workers)
+    caf list (--profiles | --remotes | --finished)
     caf search [--contains PATTERN] [--older TIME]
     caf cmd CMD
     caf remote add URL [NAME]
     caf update REMOTE
     caf check REMOTE [TARGET...]
-    caf push REMOTE [TARGET...] [-n]
-    caf fetch REMOTE [TARGET...] [-n]
+    caf push REMOTE [TARGET...] [--dry]
+    caf fetch REMOTE [TARGET...] [--dry]
     caf go REMOTE
     caf REMOTE [--] CMD...
     caf (pack | unpack | strip)
 
 Options:
-    -n, --dry                  Dry run.
+    -n, --dry                  Dry run (do not write to disk).
     --id ID                    ID of worker [default: 1].
     -p, --profile PROFILE      Run worker via ~/.config/caf/worker_PROFILE.
     -q, --queue URL            Take tasks from web queue.
@@ -29,7 +30,7 @@ Options:
     -d, --depth N              Limit depth of descending to children.
     -l, --limit N              Limit number of tasks to N.
     --profiles                 List profiles.
-    --remotes                  List reomtes.
+    --remotes                  List remotes.
     --finished                 List finished tasks.
     --contains PATTERN         Search tasks containing PATTERN.
     --older TIME               Search tasks older than.
@@ -50,8 +51,21 @@ Commands:
     work
         Execute all prepared build tasks.
 
+    submit
+        Submit the list of prepared tasks to a queue server.
+
     status
         Print number of initialized, running and finished tasks.
+
+    list
+        Print various diagnostics.
+
+    search
+        Search within stored tasks.
+
+    cmd
+        Execute any shell command after sourceing ~/.bashrc. This is a simple
+        convenience alias for running commands remotely.
 
     remote
         add
@@ -59,6 +73,9 @@ Commands:
 
     update
         Sync the contents of . to remote excluding ./_caf and ./build.
+
+    check
+        Verify that hashes of the local and remote tasks match.
 
     push
         Push targets to remote and store them in remote Cellar.
@@ -70,8 +87,15 @@ Commands:
         SSH into the remote caf repository.
 
     REMOTE
-        Run './caf CMD' in remote caf repository.
+        Run './caf CMD' in remote caf repository. See `Remotes` below.
 
+    pack, unpack, strip
+        This controls the packing of the caflib directory into the caf script.
+
+Remotes:
+    For all commands except `go`, REMOTE can be a single remote name, a
+    comma-separated list of remotes or "all" which is an alias for all remotes
+    defined in .caf/remotes.yaml.
 """
 from docopt import docopt
 from pathlib import Path

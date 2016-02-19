@@ -37,13 +37,16 @@ def build(ctx):
     pass
 ```
 
-The single argument `ctx` of the `build` function is a so-called build context which gives access to the API of Caf. Tasks are defined by calling the build context with keyword arguments (task attributes), the only mandatory attribute being `command`, which is the shell command that performs the execution of a task. A minimal task, which does nothing, is defined by
+The single argument `ctx` of the `build` function is a so-called build context which gives access to the API of Caf. Tasks are defined by calling the build context with keyword arguments (task attributes). A minimal task, which does nothing, is defined by
 
 ``` python
-ctx(command='')
+ctx()
 ```
 
-Other notable task attributes that might be present are:
+Notable task attributes that might be present are:
+
+* *command*: Shell command that performs the execution of a task. Omitting this attribute is equivalent to `command=''`, but the task is then "executed" already during preparation.
+
 
 - *files*: A list of filenames or 2-tuples of filenames, that are to be copied from project's directory to the task directory. If a tuple `t` is given, file `t[0]` in the project directory is copied to file `t[1]` in the task directory.
 - *templates*: Similar to `files`, but the file is first processed and all instances of `{{ <task attribute> }}` are replaced.
@@ -69,23 +72,16 @@ which declares `task1` as a dependency of `task2` and returns `task2`. Using thi
 ctx(...) + ctx.link(...) + ctx(...) + ctx.link(...) + ...
 ```
 
-A task can have multiple dependencies, defined by simply adding to multiple links. This can be done in two ways,
+A task can have multiple dependencies, defined by simply adding to multiple links,
 
 ``` python
-links = [ctx(...) + ctx.link(...) for ... in ...]
-# now either 
-for link in links:
-	link + task
-# or more simply
-links + task
+[ctx(...) + ctx.link(...) for ... in ...] + ctx(...)
 ```
 
-If multiple parents depend on a single child, this has to be done explicitly with
+If multiple parents depend on a single child, this can be done similarly with
 
 ``` python
-links = [ctx.link(...) + ctx(...) for ... in ...]
-for link in links:
-	task + link
+ctx(...) + [ctx(...) + ctx.link(...) for ... in ...]
 ```
 
 Builds in Caf are simply collections of tasks. Builds are organized in targets. A task is added to a target with
