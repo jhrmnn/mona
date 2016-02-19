@@ -16,6 +16,7 @@ Usage:
     caf fetch REMOTE [TARGET...] [-n]
     caf go REMOTE
     caf REMOTE [--] CMD...
+    caf (pack | unpack | strip)
 
 Options:
     -n, --dry                  Dry run.
@@ -117,7 +118,59 @@ def report(path, *paths, print_running=False):
                 print('>> {}'.format(p))
 
 
+def pack():
+    from base64 import b64encode
+    archive = subprocess.check_output(
+        'find caflib -type f ! -name "*.pyc" | xargs tar -cz', shell=True)
+    with open('caf', 'a') as f:
+        f.write('\n')
+        f.write('# ==>\n')
+        f.write('# {}\n'.format(b64encode(archive).decode()))
+        f.write('# <==\n')
+
+
+def unpack():
+    from base64 import b64decode
+    from hashlib import md5
+    with open('caf') as f:
+        archive = b64decode(f.readlines()[-2][2:])
+        dirname = '.caflib-{}'.format(md5(archive).hexdigest())
+        p = subprocess.Popen('mkdir -p {0} && tar -C {0} -x'.format(dirname),
+                             shell=True,
+                             stdin=subprocess.PIPE)
+        p.communicate(input=archive)
+    return dirname
+
+
 if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'pack':
+            pack()
+            sys.exit()
+        if sys.argv[1] == 'unpack':
+            dirname = unpack()
+            (Path(dirname)/'caflib').rename('caflib')
+            Path(dirname).rmdir()
+            sys.exit()
+        if sys.argv[1] == 'strip':
+            with open('caf') as f:
+                lines = f.readlines()
+            if '# ==>' in lines[-3]:
+                with open('caf', 'w') as f:
+                    for line in lines[:-4]:
+                        f.write(line)
+            else:
+                print('Nothing to strip')
+    if not Path('caflib').is_dir():
+        caflibs = list(Path().glob('.caflib-*'))
+        if not caflibs:
+            caflibname = unpack()
+        else:
+            caflibname = str(caflibs[0])
+            if len(caflibs) > 1:
+                print('Multiple caflibs, will load {}'.format(caflibname))
+        sys.path.insert(0, caflibname)
+
     from caflib.Utils import Configuration, mkdir, get_timestamp, build_cmd
     from caflib.Logging import error, info
 
