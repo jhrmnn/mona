@@ -75,6 +75,8 @@ from pathlib import Path
 import os
 import sys
 import subprocess
+import shutil
+from hashlib import md5
 
 out = Path('build')
 cache = Path('_caf')
@@ -129,17 +131,18 @@ def pack():
         f.write('# <==\n')
 
 
-def unpack():
+def unpack(path):
     from base64 import b64decode
-    from hashlib import md5
     with open('caf') as f:
-        archive = b64decode(f.readlines()[-2][2:])
-        dirname = '.caflib-{}'.format(md5(archive).hexdigest())
-        p = subprocess.Popen('mkdir -p {0} && tar -C {0} -x'.format(dirname),
-                             shell=True,
-                             stdin=subprocess.PIPE)
-        p.communicate(input=archive)
-    return dirname
+        lines = f.readlines()
+    if '# ==>' not in lines[-3]:
+        print('Has no packed caflib, quitting')
+        sys.exit()
+    archive = b64decode(lines[-2][2:])
+    p = subprocess.Popen('mkdir -p {0} && tar -C {0} -x'.format(path),
+                         shell=True,
+                         stdin=subprocess.PIPE)
+    p.communicate(input=archive)
 
 
 if __name__ == '__main__':
@@ -148,9 +151,9 @@ if __name__ == '__main__':
             pack()
             sys.exit()
         if sys.argv[1] == 'unpack':
-            dirname = unpack()
-            (Path(dirname)/'caflib').rename('caflib')
-            Path(dirname).rmdir()
+            if Path('caflib').is_dir():
+                shutil.rmtree('caflib')
+            unpack('.')
             sys.exit()
         if sys.argv[1] == 'strip':
             with open('caf') as f:
@@ -162,14 +165,15 @@ if __name__ == '__main__':
             else:
                 print('Nothing to strip')
     if not Path('caflib').is_dir():
-        caflibs = list(Path().glob('.caflib-*'))
-        if not caflibs:
-            caflibname = unpack()
-        else:
-            caflibname = str(caflibs[0])
-            if len(caflibs) > 1:
-                print('Multiple caflibs, will load {}'.format(caflibname))
-        sys.path.insert(0, caflibname)
+        with open('caf') as f:
+            lines = f.readlines()
+        if '# ==>' not in lines[-3]:
+            print('No caflib and none packaged, quitting')
+            sys.exit()
+        dirname = '.caf-{}'.format(md5(lines[-2].encode()).hexdigest())
+        if not Path(dirname).is_dir():
+            unpack(dirname)
+        sys.path.insert(0, dirname)
 
     from caflib.Utils import Configuration, mkdir, get_timestamp, build_cmd
     from caflib.Logging import error, info

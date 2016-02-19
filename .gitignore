@@ -5,3 +5,4 @@
 /.caf
 *.pyc
 __pycache__
+/.caf-*
