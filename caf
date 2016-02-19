@@ -139,7 +139,7 @@ def unpack(path):
         print('Has no packed caflib, quitting')
         sys.exit()
     archive = b64decode(lines[-2][2:])
-    p = subprocess.Popen('mkdir -p {0} && tar -C {0} -x'.format(path),
+    p = subprocess.Popen('mkdir -p {0} && tar -C {0} -xz'.format(path),
                          shell=True,
                          stdin=subprocess.PIPE)
     p.communicate(input=archive)
