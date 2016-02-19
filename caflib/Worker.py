@@ -87,3 +87,59 @@ class Worker:
                 print('Worker {} reached limit of tasks, aborting.'.format(self.myid))
                 break
         print('Worker {} has no more tasks to do, aborting.'.format(self.myid))
+
+    def work_from_queue(self, cellar, url, dry=False, limit=None):
+        from urllib.request import urlopen
+        from urllib.error import HTTPError
+        from time import sleep
+
+        def sigint_handler(sig, frame):
+            print('Worker {} interrupted, aborting.'.format(self.myid))
+            sys.exit()
+        signal.signal(signal.SIGINT, sigint_handler)
+
+        print('Worker {} alive and ready.'.format(self.myid))
+
+        n = 0
+        while True:
+            try:
+                with urlopen(url) as r:
+                    task = r.read().decode()
+            except HTTPError:
+                break
+            path = cellar/task
+            print(path)
+            lock = path/'.lock'
+            try:
+                lock.mkdir()
+            except OSError:
+                print('Worker {}: {} already locked!'.format(self.myid, path))
+                break
+            children = [path/x for x in json.load((path/'.caf/children').open())]
+            if not all((child/'.caf/seal').is_file() for child in children) and not dry:
+                print('Worker {}: {} has unsealed children, waiting...'.format(self.myid, path))
+                while not all((child/'.caf/seal').is_file() for child in children):
+                    sleep(1)
+            print('Worker {} started working on {}...'.format(self.myid, path))
+            if not dry:
+                with cd(path):
+                    with open('run.out', 'w') as stdout, \
+                            open('run.err', 'w') as stderr:
+                        try:
+                            subprocess.check_call(open('command').read(),
+                                                  shell=True,
+                                                  stdout=stdout,
+                                                  stderr=stderr)
+                            with (path/'.caf/seal').open('w') as f:
+                                print(self.myid, file=f)
+                        except subprocess.CalledProcessError as e:
+                            print(e)
+                            print('error: There was an error when working on {}'
+                                  .format(path))
+            (path/'.lock').rmdir()
+            print('Worker {} finished working on {}.'.format(self.myid, path))
+            n += 1
+            if limit and n >= limit:
+                print('Worker {} reached limit of tasks, aborting.'.format(self.myid))
+                break
+        print('Worker {} has no more tasks to do, aborting.'.format(self.myid))

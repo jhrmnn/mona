@@ -5,6 +5,8 @@ Usage:
     caf init
     caf [init] build [-n]
     caf [[init] build] work [TARGET...] [-d N] [-l N] [-p PROFILE [-j N] | [--id ID] [-n]]
+    caf work [-q URL] [-p PROFILE [-j N] | [--id ID] [-n]]
+    caf submit URL
     caf status
     caf list (--profiles | --remotes | --finished | --workers)
     caf search [--contains PATTERN] [--older TIME]
@@ -22,6 +24,7 @@ Options:
     -n, --dry                  Dry run.
     --id ID                    ID of worker [default: 1].
     -p, --profile PROFILE      Run worker via ~/.config/caf/worker_PROFILE.
+    -q, --queue URL            Take tasks from web queue.
     -j N                       Number of launched workers [default: 1].
     -d, --depth N              Limit depth of descending to children.
     -l, --limit N              Limit number of tasks to N.
@@ -228,7 +231,8 @@ if __name__ == '__main__':
                 cmd = build_cmd('~/.config/caf/worker_' + args['--profile'],
                                 ' '.join(args['TARGET']),
                                 ('-d', args['--depth']),
-                                ('-l', args['--limit']))
+                                ('-l', args['--limit']),
+                                ('-q', args['--queue']))
                 try:
                     subprocess.check_call(cmd, shell=True)
                 except subprocess.CalledProcessError:
@@ -237,10 +241,25 @@ if __name__ == '__main__':
         else:
             from caflib.Worker import Worker
             worker = Worker(args['--id'], (out/latest).resolve())
-            worker.work(args['TARGET'],
-                        dry=args['--dry'],
-                        maxdepth=int(args['--depth']) if args['--depth'] else None,
-                        limit=int(args['--limit']) if args['--limit'] else None)
+            if args['--queue']:
+                worker.work_from_queue(
+                    (cache/cellar).resolve(),
+                    args['--queue'],
+                    dry=args['--dry'],
+                    limit=int(args['--limit']) if args['--limit'] else None)
+            else:
+                worker.work(
+                    args['TARGET'],
+                    dry=args['--dry'],
+                    maxdepth=int(args['--depth']) if args['--depth'] else None,
+                    limit=int(args['--limit']) if args['--limit'] else None)
+    elif args['submit']:
+        from urllib.request import urlopen
+        hashes = ['/'.join(Path(os.readlink(str(p))).parts[-3:])
+                  for p in (cache/brewery/latest).glob('*')
+                  if p.is_symlink()]
+        with urlopen(args['URL'], data='\n'.join(hashes).encode()) as r:
+            print(r.read().decode())
     elif args['list']:
         if args['--profiles']:
             for p in Path(os.environ['HOME']).glob('.config/caf/worker_*'):
