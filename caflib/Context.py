@@ -381,7 +381,7 @@ class Context:
             error('Batch does not exist, maybe `caf build new` first?')
         self.sort_tasks()
         ntskdigit = ceil(log10(len(self.tasks)+1))
-        with ProgressBar(maxval=len(self.tasks)) as progress:
+        with ProgressBar(maxval=len(self.tasks), redirect_stdout=True) as progress:
             for i, task in enumerate(self.tasks):
                 path = batch/'{:0{n}d}'.format(i, n=ntskdigit)
                 if not path.is_dir():
