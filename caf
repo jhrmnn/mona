@@ -75,9 +75,6 @@ import os
 import sys
 import subprocess
 
-from caflib.Utils import Configuration, mkdir, get_timestamp, build_cmd
-from caflib.Logging import error, info
-
 out = Path('build')
 cache = Path('_caf')
 cellar = 'Cellar'
@@ -86,6 +83,7 @@ latest = 'Latest'
 
 
 def load_cscript():
+    from caflib.Logging import error
     import imp
     cscript = imp.new_module('cscript')
     try:
@@ -98,6 +96,7 @@ def load_cscript():
 
 
 def make_new_build():
+    from caflib.Utils import mkdir, get_timestamp
     timestamp = get_timestamp()
     mkdir(cache/brewery/timestamp)
     os.system('ln -fns {} {}'.format(timestamp, cache/brewery/latest))
@@ -119,6 +118,9 @@ def report(path, *paths, print_running=False):
 
 
 if __name__ == '__main__':
+    from caflib.Utils import Configuration, mkdir, get_timestamp, build_cmd
+    from caflib.Logging import error, info
+
     remote_conf = Configuration('.caf/remotes.yaml')
     if len(sys.argv) > 1:
         if (any(r in remote_conf for r in sys.argv[1].split(',')) or
