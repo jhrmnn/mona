@@ -91,7 +91,7 @@ class Worker:
 
     def work_from_queue(self, cellar, url, dry=False, limit=None):
         from urllib.request import urlopen
-        from urllib.error import HTTPError
+        from urllib.error import HTTPError, URLError
         from time import sleep
 
         def sigint_handler(sig, frame):
@@ -100,7 +100,7 @@ class Worker:
         signal.signal(signal.SIGINT, sigint_handler)
 
         conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
-        curl = conf['curl']
+        curl = conf.get('curl')
 
         print('Worker {} alive and ready.'.format(self.myid))
 
@@ -116,10 +116,13 @@ class Worker:
                         raise
             else:
                 try:
-                    with urlopen(url) as r:
+                    with urlopen(url, timeout=30) as r:
                         task = r.read().decode()
                 except HTTPError:
                     break
+                except URLError as e:
+                    print('error: Cannot connect to {}: {}'.format(url, e.reason))
+                    return
             path = cellar/task
             lock = path/'.lock'
             try:
