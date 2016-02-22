@@ -283,7 +283,8 @@ if __name__ == '__main__':
                   for p in (cache/brewery/latest).glob('*')
                   if p.is_symlink()]
         with urlopen(args['URL'], data='\n'.join(hashes).encode()) as r:
-            print(r.read().decode())
+            id = r.read().decode().strip()
+            print('./caf work -q {}/{}'.format(args['URL'].replace('submit', 'get'), id))
     elif args['list']:
         if args['--profiles']:
             for p in Path(os.environ['HOME']).glob('.config/caf/worker_*'):
