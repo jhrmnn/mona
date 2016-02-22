@@ -41,7 +41,7 @@ def parse_xmlarr(xmlarr, axis=None, typef=None):
         axis = len(xmlarr.attrib['size'].split())-1
     if not typef:
         typename = xmlarr.attrib['type']
-        if typename == 'dble':
+        if typename == 'dble' or typename == 'real':
             typef = float
         elif typename == 'int':
             typef = int
