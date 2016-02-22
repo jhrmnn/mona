@@ -317,7 +317,7 @@ if __name__ == '__main__':
             else:
                 report(target, *target.glob('*'), print_running=True)
     elif args['cmd']:
-        subprocess.call(args['CMD'][0])
+        subprocess.call(args['CMD'][0], shell=True)
     elif args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
