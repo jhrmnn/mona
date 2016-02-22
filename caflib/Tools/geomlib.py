@@ -18,7 +18,8 @@ settings = {
 ext_fmt_dict = {
     'xyz': 'xyz',
     'aims': 'aims',
-    'vasp': 'vasp'
+    'vasp': 'vasp',
+    'json': 'json'
 }
 
 bohr = 0.52917721092
