@@ -12,15 +12,20 @@ class Remote:
     def update(self):
         info('Updating {.host}...'.format(self))
         subprocess.check_call(['ssh', self.host, 'mkdir -p {.path}'.format(self)])
-        subprocess.check_call(['rsync',
-                               '-cirl',
-                               '--exclude=.*',
-                               '--exclude=build',
-                               '--exclude=_caf',
-                               '--exclude=*.pyc',
-                               '--exclude=__pycache__',
-                               '.',
-                               '{0.host}:{0.path}'.format(self)])
+        if Path('.cafignore').is_file():
+            ignored = [l.strip() for l in Path('.cafignore').open().readlines()]
+        cmd = ['rsync',
+               '-cirl',
+               '--delete',
+               '--exclude=.*',
+               '--exclude=build',
+               '--exclude=_caf',
+               '--exclude=*.pyc',
+               '--exclude=__pycache__'] +\
+            ['--exclude={}'.format(p) for p in ignored] +\
+            ['.',
+             '{0.host}:{0.path}'.format(self)]
+        subprocess.check_call(cmd)
 
     def command(self, cmd):
         info('Running `./caf {}` on {.host}...'.format(cmd, self))
