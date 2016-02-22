@@ -2,6 +2,7 @@ import subprocess
 from pathlib import Path
 import glob
 from caflib.Logging import info, error, warn
+import os
 
 
 class Remote:
@@ -12,10 +13,14 @@ class Remote:
     def update(self):
         info('Updating {.host}...'.format(self))
         subprocess.check_call(['ssh', self.host, 'mkdir -p {.path}'.format(self)])
-        if Path('.cafignore').is_file():
-            ignored = [l.strip() for l in Path('.cafignore').open().readlines()]
+        ignorefile = Path('.cafignore')
+        if ignorefile.is_file():
+            ignored = [l.strip() for l in ignorefile.open().readlines()]
         else:
             ignored = []
+        ignorefile = Path(os.environ['HOME'] + '/.config/caf/ignore')
+        if ignorefile.is_file():
+            ignored.extend(l.strip() for l in ignorefile.open().readlines())
         cmd = ['rsync',
                '-cirl',
                '--delete',
