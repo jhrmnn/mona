@@ -14,6 +14,8 @@ class Remote:
         subprocess.check_call(['ssh', self.host, 'mkdir -p {.path}'.format(self)])
         if Path('.cafignore').is_file():
             ignored = [l.strip() for l in Path('.cafignore').open().readlines()]
+        else:
+            ignored = []
         cmd = ['rsync',
                '-cirl',
                '--delete',
