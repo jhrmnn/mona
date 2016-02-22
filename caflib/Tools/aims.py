@@ -1,21 +1,34 @@
 from caflib.Tools import geomlib
-from caflib.Context import feature
+from caflib.Context import feature, report
 from caflib.Utils import find_program
-from caflib.Logging import info, error
+from caflib.Logging import info, warn, error
+import subprocess
 
-_reported = []
+_reported = {}
+
+
+@report
+def reporter():
+    for printer, msg in _reported.values():
+        printer(msg)
 
 
 @feature('aims')
 def prepare_aims(task):
     aims = task.consume('aims') or 'aims'
     try:
-        aims_binary = find_program(task.consume('aims') or 'aims')
-    except FileNotFoundError as e:
-        error('{} links to {} which does not exit'.format(aims, e.filename))
+        aims_binary = find_program(aims)
+    except subprocess.CalledProcessError:
+        if aims not in _reported:
+            msg = '{} does not exit'.format(aims)
+            _reported[aims] = (warn, msg)
+        try:
+            aims_binary = find_program('aims')
+        except subprocess.CalledProcessError:
+            warn(msg)
+            error("Don't know where to find species files")
     if aims not in _reported:
-        info('{} links to {}'.format(aims, aims_binary))
-        _reported.append(aims)
+        _reported[aims] = (info, '{} is {}'.format(aims, aims_binary))
     geom = geomlib.readfile('geometry.in', 'aims')
     species = sorted(set((a.number, a.symbol) for a in geom))
     basis = task.consume('basis')
