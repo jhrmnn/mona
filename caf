@@ -345,7 +345,7 @@ if __name__ == '__main__':
         if 'work' in args['CMD'] and 'build' not in args['CMD']:
             for remote in remotes:
                 remote.check(args['TARGET'], cache/cellar, out/latest)
+        if args['CMD'][0] == 'cmd':
+            args['CMD'][1] = repr(args['CMD'][1])
         for remote in remotes:
-            if args['CMD'][0] == 'cmd':
-                args['CMD'][1] = repr(args['CMD'][1])
             remote.command(' '.join(args['CMD']))
