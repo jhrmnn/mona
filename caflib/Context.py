@@ -14,6 +14,7 @@ from caflib.Template import Template
 from caflib.Logging import warn, info, error
 
 _features = {}
+_reports = []
 
 
 def feature(name):
@@ -28,6 +29,18 @@ def feature(name):
         _features[name] = f
         return f
     return decorator
+
+
+def report(f):
+    """Register function as a report in Context.
+
+    Example:
+
+        @report
+        def my_report(...
+    """
+    _reports.append(f)
+    return f
 
 
 def str_to_path(s, nlvls=2, lenlvl=2):
@@ -389,6 +402,8 @@ class Context:
                 task.set_path(path)
                 task.build()
                 progress.update(i)
+        for report in _reports:
+            report()
 
     def make_targets(self, out):
         for target, tasks in self.targets.items():
