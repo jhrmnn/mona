@@ -4,8 +4,9 @@ import glob
 from pathlib import Path
 import signal
 import sys
+import os
 
-from caflib.Utils import cd
+from caflib.Utils import cd, Configuration
 
 
 class Worker:
@@ -98,17 +99,28 @@ class Worker:
             sys.exit()
         signal.signal(signal.SIGINT, sigint_handler)
 
+        conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
+        curl = conf['curl']
+
         print('Worker {} alive and ready.'.format(self.myid))
 
         n = 0
         while True:
-            try:
-                with urlopen(url) as r:
-                    task = r.read().decode()
-            except HTTPError:
-                break
+            if curl:
+                try:
+                    task = subprocess.check_output(curl + ' ' + url, shell=True).decode()
+                except subprocess.CalledProcessError as e:
+                    if e.returncode == 22:
+                        break
+                    else:
+                        raise
+            else:
+                try:
+                    with urlopen(url) as r:
+                        task = r.read().decode()
+                except HTTPError:
+                    break
             path = cellar/task
-            print(path)
             lock = path/'.lock'
             try:
                 lock.mkdir()
