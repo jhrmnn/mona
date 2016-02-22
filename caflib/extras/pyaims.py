@@ -6,6 +6,9 @@ try:
 except ImportError:
     from logparser import Parser
 
+kcal = 627.503
+ev = 27.2107
+
 
 def parse_xml(source):
     root = ET.parse(source).getroot()
@@ -109,6 +112,15 @@ def get_hirsh(parser):
             atom[key] = val
         atoms.append(atom)
     parser.results['Hirshfeld'] = atoms
+
+
+@aims_parser.add('Energy and forces in a compact form')
+def get_total_energies(parser):
+    while parser.readline():
+        if not parser.line:
+            break
+        words = parser.line.split('\t')
+        parser.results['energies'][words[0]] = float(words[1].split()[0])/ev
 
 
 @aims_parser.add('Many-Body Dispersion')
