@@ -33,6 +33,8 @@ def feature(name):
 
 
 def before_files(f):
+    if not hasattr(f, 'feature_attribs'):
+        f.feature_attribs = set()
     f.feature_attribs.add('before_files')
     return f
 
@@ -176,7 +178,7 @@ class Task:
         features = [_features[feat] if isinstance(feat, str) else feat
                     for feat in listify(self.consume('features'))]
         for feat in list(features):
-            if 'before_files' in feat.feature_attribs:
+            if 'before_files' in getattr(feat, 'feature_attribs', []):
                 feat(self)
                 del features[features.index(feat)]
         for filename in listify(self.consume('files')):

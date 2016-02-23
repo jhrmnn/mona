@@ -215,7 +215,7 @@ if __name__ == '__main__':
         remotes = []
     if args['init']:
         conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
-        if conf['cache']:
+        if 'cache' in conf:
             timestamp = get_timestamp()
             cache_path = Path(conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
             mkdir(cache_path)
