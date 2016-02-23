@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+import os
+import glob
+from caflib.Context import feature, before_files
+
+
+@before_files
+@feature('c')
+def feature_c(task):
+    src = task.consume('src')
+    if src:
+        task.attrs['files'] = src
+        task.attrs['command'] = 'gcc -c {}'.format(src)
+        return
+    program = task.consume('program')
+    if program:
+        task.attrs['command'] = 'gcc -o {} *.o'.format(program)
+        return
+
+
+def build(ctx):
+    [ctx(features='c', src=file) +
+     ctx.link(None, os.path.splitext(file)[0] + ".o")
+     for file in glob.glob('*.c')] +\
+        ctx(features='c', program='main') + ctx.target('app')
