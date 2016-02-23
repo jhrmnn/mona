@@ -13,6 +13,7 @@ class Worker:
     def __init__(self, myid, path):
         self.myid = myid
         self.path = path
+        self.cwd = Path(path)
 
     def work(self, targets, dry=False, maxdepth=None, limit=None):
         queue = []
@@ -29,6 +30,8 @@ class Worker:
 
         def sigint_handler(sig, frame):
             print('Worker {} interrupted, aborting.'.format(self.myid))
+            if (self.cwd/'.lock').is_dir():
+                (self.cwd/'.lock').rmdir()
             sys.exit()
         signal.signal(signal.SIGINT, sigint_handler)
 
@@ -49,6 +52,7 @@ class Worker:
         n_skipped = 0
         while queue and n_skipped < len(queue):
             path = queue.pop()
+            self.cwd = path
             lock = path/'.lock'
             try:
                 lock.mkdir()
