@@ -358,6 +358,9 @@ class Target(AddWrapper):
         return super().__add__(x)
 
     def __radd__(self, y):
+        return NotImplemented
+
+    def __rmul__(self, y):
         if not isinstance(y, Task):
             return NotImplemented
         return super().__radd__(y)
