@@ -181,7 +181,7 @@ if __name__ == '__main__':
         sys.path.insert(0, dirname)
 
     from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd
-    from caflib.Logging import error, info, Colored
+    from caflib.Logging import error, info, colstr, Table
 
     remote_conf = Configuration('.caf/remotes.yaml')
     if len(sys.argv) > 1:
@@ -291,7 +291,9 @@ if __name__ == '__main__':
         os.system(cmd)
     elif args['status']:
         def colored(*stat):
-            return '{:red}/{:green}/{:yellow}/{:normal}'.format(*map(Colored, stat))
+            colors = 'red green yellow normal'.split()
+            return [colstr(s, color) for s, color in zip(stat, colors)]
+
         dirs = []
         dirs.append((cache/brewery/latest, (cache/brewery/latest).glob('*')))
         for target in (out/latest).glob('*'):
@@ -302,17 +304,19 @@ if __name__ == '__main__':
             else:
                 dirs.append((target, target.glob('*')))
         print('number of {} tasks:'
-              .format(colored(*'running finished prepared all'.split())))
+              .format('/'.join(colored(*'running finished prepared all'.split()))))
+        table = Table(align=['<', *4*['>']], sep=[' ', *3*['/']])
         for directory, paths in dirs:
             paths = list(paths)
             stats = colored(len([p for p in paths if (p/'.lock').is_dir()]),
                             len([p for p in paths if (p/'.caf/seal').is_file()]),
                             len([p for p in paths if (p/'.caf/lock').is_file()]),
                             len([p for p in paths if (p/'.caf').is_dir()]))
-            print('{}: {}'.format(directory, stats))
+            table.add_row(str(directory) + ':', *stats)
             for p in paths:
                 if (p/'.lock').is_dir():
-                    print('{:blue} {}'.format(Colored('>>'), p))
+                    table.add_row('{} {}'.format(colstr('>>', 'blue'), p), free=True)
+        print(table)
     elif args['cmd']:
         subprocess.call(args['CMD'][0], shell=True)
     elif args['remote']:
