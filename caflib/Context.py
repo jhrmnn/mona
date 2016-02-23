@@ -79,6 +79,7 @@ class Task:
         self.targets = []
         self.links = {}
         self._parent_counter = 0
+        self.noname_link_counter = 0
 
     def __radd__(self, iterable):
         try:
@@ -125,8 +126,12 @@ class Task:
 
     def add_dependency(self, task, link, *links, needed=False):
         self.children.append(task)
-        linkname = slugify(link)
-        self.links[slugify(link)] = Task.Link(task, links, needed)
+        if link:
+            linkname = slugify(link)
+        else:
+            self.noname_link_counter += 1
+            linkname = '.{}'.format(self.noname_link_counter)
+        self.links[linkname] = Task.Link(task, links, needed)
         task.parents.append((self, linkname))
         return self
 
