@@ -27,8 +27,14 @@ def feature(name):
     """
     def decorator(f):
         _features[name] = f
+        f.feature_attribs = set()
         return f
     return decorator
+
+
+def before_files(f):
+    f.feature_attribs.add('before_files')
+    return f
 
 
 def report(f):
@@ -167,6 +173,12 @@ class Task:
         features and save the command. Check that all attributes have been
         consumed.
         """
+        features = [_features[feat] if isinstance(feat, str) else feat
+                    for feat in listify(self.consume('features'))]
+        for feat in list(features):
+            if 'before_files' in feat.feature_attribs:
+                feat(self)
+                del features[features.index(feat)]
         for filename in listify(self.consume('files')):
             if isinstance(filename, tuple):
                 self.store_link_file(filename[0], filename[1])
@@ -190,9 +202,7 @@ class Task:
                         target = symlink
                     os.system('ln -s {}/{} {}'
                               .format(linkname, target, symlink))
-            for feat in listify(self.consume('features')):
-                if isinstance(feat, str):
-                    feat = _features[feat]
+            for feat in features:
                 feat(self)
             command = self.consume('command')
             if command:
