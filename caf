@@ -151,7 +151,7 @@ def unpack(path):
     p.communicate(input=archive)
 
 
-if __name__ == '__main__':
+def packing():
     if len(sys.argv) > 1:
         if sys.argv[1] == 'pack':
             pack()
@@ -180,6 +180,10 @@ if __name__ == '__main__':
         if not Path(dirname).is_dir():
             unpack(dirname)
         sys.path.insert(0, dirname)
+
+
+if __name__ == '__main__':
+    packing()
 
     from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
         get_files
