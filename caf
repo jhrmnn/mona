@@ -316,6 +316,7 @@ if __name__ == '__main__':
             for p in paths:
                 if (p/'.lock').is_dir():
                     table.add_row('{} {}'.format(colstr('>>', 'blue'), p), free=True)
+        table.sort(key=lambda x: int(x[4].orig))
         print(table)
     elif args['cmd']:
         subprocess.call(args['CMD'][0], shell=True)

@@ -17,6 +17,7 @@ class colstr(str):
     def __new__(cls, s, color):
         obj = str.__new__(cls, colstr.colors[color] + str(s) + colstr.colors['normal'])
         obj.len = len(str(s))
+        obj.orig = str(s)
         return obj
 
     def __len__(self):
@@ -51,6 +52,9 @@ class Table:
     def set_format(self, sep=' ', align='>'):
         self.sep = sep
         self.align = align
+
+    def sort(self, key=lambda x: x[0]):
+        self.rows.sort(key=lambda x: key(x[1]), reverse=True)
 
     def __str__(self):
         col_nums = [len(row) for free, row in self.rows if not free]
