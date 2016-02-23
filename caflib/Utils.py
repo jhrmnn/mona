@@ -29,6 +29,13 @@ def get_timestamp():
     return format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
 
 
+def get_files(batch):
+    return sorted([tuple(w.decode() for w in l.split(b'\x00'))
+                   for l in subprocess.check_output(
+                       'find -H {} -type l -print0 -exec readlink {{}} ;'
+                       .format(batch).split()).strip().split(b'\n')])
+
+
 def mkdir(path, parents=False):
     command = ['mkdir', str(path)]
     if parents:

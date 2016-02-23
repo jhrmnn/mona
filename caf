@@ -9,7 +9,7 @@ Usage:
     caf work [--queue URL] [--profile PROFILE [-j N] | [--id ID] [--dry]]
     caf submit URL
     caf status
-    caf list (--profiles | --remotes | --finished)
+    caf list (--profiles | --remotes | --finished | --stored)
     caf search [--contains PATTERN] [--older TIME]
     caf cmd CMD
     caf remote add URL [NAME]
@@ -32,6 +32,7 @@ Options:
     --profiles                 List profiles.
     --remotes                  List remotes.
     --finished                 List finished tasks.
+    --stored                   List stored tasks.
     --contains PATTERN         Search tasks containing PATTERN.
     --older TIME               Search tasks older than.
 
@@ -180,7 +181,8 @@ if __name__ == '__main__':
             unpack(dirname)
         sys.path.insert(0, dirname)
 
-    from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd
+    from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
+        get_files
     from caflib.Logging import error, info, colstr, Table
 
     remote_conf = Configuration('.caf/remotes.yaml')
@@ -278,6 +280,12 @@ if __name__ == '__main__':
             subprocess.call('find -H {} -exec test -f "{{}}/.caf/seal" \; -print'
                             .format(out/latest),
                             shell=True)
+        elif args['--stored']:
+            files = get_files(out/latest)
+            for task, target in files:
+                ptarget = Path(target)
+                if ptarget.parents[2].name == cellar:
+                    print(task, Path('/'.join(ptarget.parts[-4:])))
     elif args['search']:
         cmd = 'find {} -maxdepth 3 -mindepth 3 -type d'.format(cache/cellar)
         if args['--older']:
@@ -332,7 +340,7 @@ if __name__ == '__main__':
             remote.update()
     elif args['check']:
         for remote in remotes:
-            remote.check(args['TARGET'], cache/cellar, out/latest)
+            remote.check(args['TARGET'], out/latest)
     elif args['push']:
         for remote in remotes:
             remote.push(args['TARGET'], cache/cellar, out/latest, args['--dry'])
@@ -352,4 +360,4 @@ if __name__ == '__main__':
         if args['CMD'][0] == 'cmd':
             args['CMD'][1] = repr(args['CMD'][1])
         for remote in remotes:
-            remote.command(' '.join(args['CMD']))
+            print(remote.command(' '.join(args['CMD'])).decode())

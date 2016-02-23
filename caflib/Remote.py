@@ -2,6 +2,7 @@ import subprocess
 from pathlib import Path
 import glob
 from caflib.Logging import info, error, warn
+from caflib.Utils import get_files
 import os
 
 
@@ -34,31 +35,38 @@ class Remote:
              '{0.host}:{0.path}'.format(self)]
         subprocess.check_call(cmd)
 
-    def command(self, cmd):
-        info('Running `./caf {}` on {.host}...'.format(cmd, self))
+    def command(self, cmd, log=True):
+        if log:
+            info('Running `./caf {}` on {.host}...'.format(cmd, self))
         try:
-            subprocess.check_call(['ssh', '-t', '-o', 'LogLevel=QUIET',
-                                   self.host,
-                                   'cd {.path} && exec python3 -u caf {}'.format(self, cmd)])
+            output = subprocess.check_output([
+                'ssh', '-t', '-o', 'LogLevel=QUIET',
+                self.host,
+                'cd {.path} && exec python3 -u caf {}'.format(self, cmd)]).strip()
         except subprocess.CalledProcessError:
             error('Command `{}` on {.host} ended with error'
                   .format(cmd, self))
+        return output
 
-    def check(self, targets, cellar, batch):
+    def check(self, targets, batch):
         info('Checking {}...'.format(self.host))
-        targets = get_targets(targets, batch)
-        paths = set()
-        for target in targets:
-            for task in [target] if target.is_symlink() else target.glob('*'):
-                task_full = task.resolve()
-                if task_full.parts[-4] == 'Cellar':
-                    paths.add('/'.join(task_full.parts[-3:]))
-        try:
-            subprocess.check_call(['ssh', self.host,
-                                   'cd {0.path}/{1} && ls -d {2} &>/dev/null'
-                                   .format(self, cellar, ' '.join(paths))],
-                                  stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError:
+        here = dict(get_files(batch))
+        there = dict(l.split() for l
+                     in self.command('list --stored', log=False)
+                     .decode().split('\n'))
+        missing = []
+        for task, target in here.items():
+            ptask = Path(task)
+            ptarget = Path(target)
+            if targets and ptask.parts[2] not in targets:
+                continue
+            if ptarget.parents[2].name == 'Cellar':
+                token = str(Path('/'.join(ptarget.parts[-4:])))
+                if token != there.get(task):
+                    missing.append((task, token, there.get(task)))
+        if missing:
+            for item in missing:
+                print('{}: {} is not {}'.format(*item))
             error('Local Tasks are not in remote Cellar')
         else:
             info('Local Tasks are in remote Cellar.')
