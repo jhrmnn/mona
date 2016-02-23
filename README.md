@@ -1,6 +1,53 @@
 # `caf` — Calculation framework
 
-Caf is a distributed build system, inspired by [Waf](https://waf.io), [Git](https://git-scm.com) and [Homebrew](http://brew.sh) and written in Python 3. It is based on a data model in which
+Caf is a distributed build system, inspired by [Waf](https://waf.io), [Git](https://git-scm.com) and [Homebrew](http://brew.sh) and written in Python 3.
+
+Caf can be used as a replacement for Make
+
+```python
+def build(ctx):
+    [ctx(features='gcc', src=src) + ctx.link(src) for src in glob('*.c')] \
+        + ctx(features='gcc', program='main') @ ctx.target('app')
+```
+
+But it can easily manage also more complex workflows
+
+```python
+def build(ctx):
+    [ctx(features='calculation', inp=inp) @ ctx.target('calculation', inp)
+     + ctx.link('calc', 'calc.out')
+     + ctx(features='postprocess')
+     + ctx.link('data', 'data.json')
+     for inp in glob('*.inp')] \
+        + ctx(features='analysis') @ ctx.target('analysis')
+```
+
+It provides a comprehensive set of commands that can interact with the build process
+
+```
+Usage:
+    caf init
+    caf [init] build [--dry]
+    caf [[init] build] work [TARGET...] [--depth N] [--limit N]
+                            [--profile PROFILE [-j N] | [--id ID] [--dry]]
+    caf work [--queue URL] [--profile PROFILE [-j N] | [--id ID] [--dry]]
+    caf submit URL
+    caf status
+    caf list (profiles | remotes)
+    caf list tasks [--finished | --stored]
+    caf search [--contains PATTERN] [--older TIME]
+    caf cmd CMD
+    caf remote add URL [NAME]
+    caf update REMOTE [--delete]
+    caf check REMOTE [TARGET...]
+    caf push REMOTE [TARGET...] [--dry]
+    caf fetch REMOTE [TARGET...] [--dry]
+    caf go REMOTE
+    caf REMOTE [--] CMD...
+    caf (pack | unpack | strip)
+```
+
+Caf is based on a data model in which
 
 - each build task lives in its own directory
 - tasks can have other tasks as dependencies and these are recorded as symlinks
@@ -87,7 +134,7 @@ ctx(...) + [ctx(...) + ctx.link(...) for ... in ...]
 Builds in Caf are simply collections of tasks. Builds are organized in targets. A task is added to a target with
 
 ``` python
-task + ctx.target(targetname, linkname)
+task @ ctx.target(targetname, linkname)
 ```
 
 If a target contains a single task, `linkname` can be omitted and the target will be directly a symlink, otherwise the target will be a directory containing symlinks with names given by `linkname`.
