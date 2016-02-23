@@ -125,28 +125,6 @@ def load_cscript():
     return cscript
 
 
-def make_new_build():
-    from caflib.Utils import mkdir, get_timestamp
-    timestamp = get_timestamp()
-    mkdir(cache/brewery/timestamp)
-    os.system('ln -fns {} {}'.format(timestamp, cache/brewery/latest))
-    mkdir(out/timestamp, parents=True)
-    os.system('ln -fns {} {}'.format(timestamp, out/latest))
-
-
-def report(path, *paths, print_running=False):
-    print('{}: number of running/finished/prepared/all tasks: {}/{}/{}/{}'
-          .format(path,
-                  len([p for p in paths if (p/'.lock').is_dir()]),
-                  len([p for p in paths if (p/'.caf/seal').is_file()]),
-                  len([p for p in paths if (p/'.caf/lock').is_file()]),
-                  len([p for p in paths if (p/'.caf').is_dir()])))
-    if print_running:
-        for p in paths:
-            if (p/'.lock').is_dir():
-                print('>> {}'.format(p))
-
-
 def pack():
     from base64 import b64encode
     archive = subprocess.check_output(
@@ -202,8 +180,8 @@ if __name__ == '__main__':
             unpack(dirname)
         sys.path.insert(0, dirname)
 
-    from caflib.Utils import Configuration, mkdir, get_timestamp, build_cmd
-    from caflib.Logging import error, info
+    from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd
+    from caflib.Logging import error, info, Colored
 
     remote_conf = Configuration('.caf/remotes.yaml')
     if len(sys.argv) > 1:
@@ -242,23 +220,28 @@ if __name__ == '__main__':
         mkdir(cache/brewery)
     if args['build']:
         from caflib.Context import Context
+        from caflib.Utils import mkdir, get_timestamp
         cscript = load_cscript()
         ctx = Context(cache/cellar)
         cscript.build(ctx)
         if not args['--dry']:
-            make_new_build()
+            timestamp = get_timestamp()
+            mkdir(cache/brewery/timestamp)
+            os.system('ln -fns {} {}'.format(timestamp, cache/brewery/latest))
+            mkdir(out/timestamp, parents=True)
+            os.system('ln -fns {} {}'.format(timestamp, out/latest))
             ctx.build(cache/brewery/latest)
             ctx.make_targets(out/latest)
     if args['work']:
         if args['--profile']:
             for _ in range(int(args['-j'])):
-                cmd = build_cmd('~/.config/caf/worker_' + args['--profile'],
-                                ' '.join(args['TARGET']),
-                                ('-d', args['--depth']),
-                                ('-l', args['--limit']),
-                                ('-q', args['--queue']))
+                cmd = filter_cmd('~/.config/caf/worker_' + args['--profile'],
+                                 args['TARGET'],
+                                 ('-d', args['--depth']),
+                                 ('-l', args['--limit']),
+                                 ('-q', args['--queue']))
                 try:
-                    subprocess.check_call(cmd, shell=True)
+                    subprocess.check_call(' '.join(cmd), shell=True)
                 except subprocess.CalledProcessError:
                     error('Running ~/.config/caf/worker_{} did not succeed.'
                           .format(args['--profile']))
@@ -292,7 +275,8 @@ if __name__ == '__main__':
         elif args['--remotes']:
             print(remote_conf)
         elif args['--finished']:
-            subprocess.call('find -H build/Latest -exec test -f "{}/.caf/seal" \; -print',
+            subprocess.call('find -H {} -exec test -f "{{}}/.caf/seal" \; -print'
+                            .format(out/latest),
                             shell=True)
     elif args['search']:
         cmd = 'find {} -maxdepth 3 -mindepth 3 -type d'.format(cache/cellar)
@@ -306,16 +290,29 @@ if __name__ == '__main__':
         cmd += ' -print'
         os.system(cmd)
     elif args['status']:
-        import glob
-        report(cache/brewery/latest, *(cache/brewery/latest).glob('*'))
-        for target in glob.glob(str(out/latest) + '/*'):
-            target = Path(target)
-            if not target.is_dir():
+        def colored(*stat):
+            return '{:red}/{:green}/{:yellow}/{:normal}'.format(*map(Colored, stat))
+        dirs = []
+        dirs.append((cache/brewery/latest, (cache/brewery/latest).glob('*')))
+        for target in (out/latest).glob('*'):
+            if not target.is_dir() or str(target).startswith('.'):
                 continue
             if target.is_symlink():
-                report(target, target, print_running=True)
+                dirs.append((target, [target]))
             else:
-                report(target, *target.glob('*'), print_running=True)
+                dirs.append((target, target.glob('*')))
+        print('number of {} tasks:'
+              .format(colored(*'running finished prepared all'.split())))
+        for directory, paths in dirs:
+            paths = list(paths)
+            stats = colored(len([p for p in paths if (p/'.lock').is_dir()]),
+                            len([p for p in paths if (p/'.caf/seal').is_file()]),
+                            len([p for p in paths if (p/'.caf/lock').is_file()]),
+                            len([p for p in paths if (p/'.caf').is_dir()]))
+            print('{}: {}'.format(directory, stats))
+            for p in paths:
+                if (p/'.lock').is_dir():
+                    print('{:blue} {}'.format(Colored('>>'), p))
     elif args['cmd']:
         subprocess.call(args['CMD'][0], shell=True)
     elif args['remote']:

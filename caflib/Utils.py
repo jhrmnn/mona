@@ -44,15 +44,20 @@ def mkdir(path, parents=False):
     return path
 
 
-def build_cmd(*args):
-    cmd = ''
+def is_timestamp(s):
+    return bool(re.match(r'^\d{4}-\d\d-\d\d_\d\d:\d\d:\d\d$', str(s)))
+
+
+def filter_cmd(*args):
+    cmd = []
     for arg in args:
         if isinstance(arg, tuple):
-            option, value = arg
-            if value:
-                cmd += ' {} {}'.format(option, value)
-        else:
-            cmd += ' {}'.format(arg)
+            if arg[1]:
+                cmd.extend(arg)
+        elif isinstance(arg, list):
+            cmd.extend(a for a in arg)
+        elif arg:
+            cmd.append(arg)
     return cmd
 
 

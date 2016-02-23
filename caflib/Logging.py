@@ -1,26 +1,37 @@
 import sys
 
 _colors = {
-    'BOLD': '\x1b[01;1m',
-    'RED': '\x1b[01;31m',
-    'GREEN': '\x1b[32m',
-    'YELLOW': '\x1b[33m',
-    'PINK': '\x1b[35m',
-    'BLUE': '\x1b[01;34m',
-    'CYAN': '\x1b[36m',
-    'GREY': '\x1b[37m',
-    'NORMAL': '\x1b[0m',
+    'bold': '\x1b[01;1m',
+    'red': '\x1b[01;31m',
+    'green': '\x1b[32m',
+    'yellow': '\x1b[33m',
+    'pink': '\x1b[35m',
+    'blue': '\x1b[01;34m',
+    'cyan': '\x1b[36m',
+    'grey': '\x1b[37m',
+    'normal': '\x1b[0m',
 }
 
 
+class Colored:
+    def __init__(self, x):
+        self.x = x
+
+    def __format__(self, color):
+        return _colors[color.lower()] + str(self.x) + _colors['normal']
+
+    def __str__(self):
+        return str(self.x)
+
+
 def warn(s):
-    print(_colors['YELLOW'] + s + _colors['NORMAL'])
+    print(_colors['yellow'] + s + _colors['normal'])
 
 
 def info(s):
-    print(_colors['GREEN'] + s + _colors['NORMAL'])
+    print(_colors['green'] + s + _colors['normal'])
 
 
 def error(s):
-    print(_colors['RED'] + s + _colors['NORMAL'])
+    print(_colors['red'] + s + _colors['normal'])
     sys.exit(1)
