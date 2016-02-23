@@ -365,6 +365,11 @@ class Target(AddWrapper):
             return NotImplemented
         return super().__radd__(y)
 
+    def __rmatmul__(self, y):
+        if not isinstance(y, Task):
+            return NotImplemented
+        return super().__radd__(y)
+
 
 class Context:
     """Represent a complete build: tasks and targets."""
