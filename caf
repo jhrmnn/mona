@@ -182,7 +182,7 @@ if __name__ == '__main__':
 
     from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
         get_files
-    from caflib.Logging import error, info, colstr, Table
+    from caflib.Logging import error, info, colstr, Table, log_caf
 
     remote_conf = Configuration('.caf/remotes.yaml')
     if len(sys.argv) > 1:
@@ -195,6 +195,7 @@ if __name__ == '__main__':
         remote_args = docopt(__doc__, argv=args['CMD'])
         if remote_args['REMOTE']:
             docopt(__doc__, argv=['./caf'])
+    log_caf(sys.argv)
     if args['REMOTE']:
         from caflib.Remote import Remote
         if args['REMOTE'] == 'all':

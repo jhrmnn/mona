@@ -1,6 +1,14 @@
 import sys
 from io import StringIO
 from itertools import chain, dropwhile
+from caflib.Utils import mkdir
+from datetime import datetime
+
+
+def log_caf(argv):
+    mkdir('.caf', parents=True)
+    with open('.caf/log', 'a') as f:
+        f.write('{:%Y-%b-%d %H:%M:%S}: {}\n'.format(datetime.now(), ' '.join(argv)))
 
 
 class colstr(str):
