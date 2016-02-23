@@ -62,7 +62,7 @@ def filter_cmd(*args):
             if arg[1]:
                 cmd.extend(arg)
         elif isinstance(arg, list):
-            cmd.extend(a for a in arg)
+            cmd.extend(a for a in arg if a)
         elif arg:
             cmd.append(arg)
     return cmd

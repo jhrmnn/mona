@@ -2,7 +2,7 @@ import subprocess
 from pathlib import Path
 import glob
 from caflib.Logging import info, error, warn
-from caflib.Utils import get_files
+from caflib.Utils import get_files, filter_cmd
 import os
 
 
@@ -11,7 +11,7 @@ class Remote:
         self.host = host
         self.path = path
 
-    def update(self):
+    def update(self, delete=False):
         info('Updating {.host}...'.format(self))
         subprocess.check_call(['ssh', self.host, 'mkdir -p {.path}'.format(self)])
         ignorefile = Path('.cafignore')
@@ -24,16 +24,16 @@ class Remote:
             ignored.extend(l.strip() for l in ignorefile.open().readlines())
         cmd = ['rsync',
                '-cirl',
-               '--delete',
+               '--delete' if delete else None,
                '--exclude=.*',
                '--exclude=build',
                '--exclude=_caf',
                '--exclude=*.pyc',
-               '--exclude=__pycache__'] +\
-            ['--exclude={}'.format(p) for p in ignored] +\
-            ['.',
-             '{0.host}:{0.path}'.format(self)]
-        subprocess.check_call(cmd)
+               '--exclude=__pycache__',
+               ['--exclude={}'.format(p) for p in ignored],
+               '.',
+               '{0.host}:{0.path}'.format(self)]
+        subprocess.check_call(filter_cmd(*cmd))
 
     def command(self, cmd, log=True):
         if log:
@@ -82,15 +82,16 @@ class Remote:
                     paths.add('/'.join(task_full.parts[-3:]))
                 else:
                     warn('{}: Task has to be in Cellar before fetching'.format(task))
-        p = subprocess.Popen(['rsync',
-                              '-cirlP',
-                              '--exclude=*.pyc',
-                              '--exclude=__pycache__'] +
-                             (['--dry-run'] if dry else []) +
-                             ['--files-from=-',
-                              '{0.host}:{0.path}/{1}'.format(self, cellar),
-                              str(cellar)],
-                             stdin=subprocess.PIPE)
+        cmd = ['rsync',
+               '-cirlP',
+               '--delete',
+               '--exclude=*.pyc',
+               '--exclude=__pycache__',
+               '--dry-run' if dry else None,
+               '--files-from=-',
+               '{0.host}:{0.path}/{1}'.format(self, cellar),
+               str(cellar)]
+        p = subprocess.Popen(filter_cmd(*cmd), stdin=subprocess.PIPE)
         p.communicate('\n'.join(paths).encode())
 
     def push(self, targets, cellar, batch, dry=False):
@@ -104,13 +105,16 @@ class Remote:
                     paths.add('/'.join(task_full.parts[-3:]))
                 else:
                     warn('{}: Task has to be in Cellar for pushing'.format(task))
-        p = subprocess.Popen(['rsync',
-                              '-cirlP'] +
-                             (['--dry-run'] if dry else []) +
-                             ['--files-from=-',
-                              str(cellar),
-                              '{0.host}:{0.path}/{1}'.format(self, cellar)],
-                             stdin=subprocess.PIPE)
+        cmd = ['rsync',
+               '-cirlP',
+               '--delete',
+               '--exclude=*.pyc',
+               '--exclude=__pycache__',
+               '--dry-run' if dry else None,
+               '--files-from=-',
+               str(cellar),
+               '{0.host}:{0.path}/{1}'.format(self, cellar)]
+        p = subprocess.Popen(filter_cmd(*cmd), stdin=subprocess.PIPE)
         p.communicate('\n'.join(paths).encode())
 
     def go(self):
