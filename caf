@@ -367,3 +367,5 @@ if __name__ == '__main__':
             args['CMD'][1] = repr(args['CMD'][1])
         for remote in remotes:
             print(remote.command(' '.join(args['CMD'])).decode())
+            if 'work' in args['CMD'] and 'build' in args['CMD']:
+                remote.check(args['TARGET'], cache/cellar, out/latest)
