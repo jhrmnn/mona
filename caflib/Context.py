@@ -89,6 +89,14 @@ class Task:
         self._parent_counter = 0
         self.noname_link_counter = 0
 
+    def __add__(self, iterable):
+        try:
+            for x in iterable:
+                self + x
+            return iterable
+        except TypeError:
+            return NotImplemented
+
     def __radd__(self, iterable):
         try:
             for x in iterable:
