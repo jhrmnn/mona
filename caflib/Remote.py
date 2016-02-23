@@ -52,7 +52,7 @@ class Remote:
         info('Checking {}...'.format(self.host))
         here = dict(get_files(batch))
         there = dict(l.split() for l
-                     in self.command('list --stored', log=False)
+                     in self.command('list tasks --stored', log=False)
                      .decode().split('\n'))
         missing = []
         for task, target in here.items():

@@ -9,7 +9,8 @@ Usage:
     caf work [--queue URL] [--profile PROFILE [-j N] | [--id ID] [--dry]]
     caf submit URL
     caf status
-    caf list (--profiles | --remotes | --finished | --stored)
+    caf list (profiles | remotes)
+    caf list tasks [--finished | --stored]
     caf search [--contains PATTERN] [--older TIME]
     caf cmd CMD
     caf remote add URL [NAME]
@@ -29,8 +30,6 @@ Options:
     -j N                       Number of launched workers [default: 1].
     -d, --depth N              Limit depth of descending to children.
     -l, --limit N              Limit number of tasks to N.
-    --profiles                 List profiles.
-    --remotes                  List remotes.
     --finished                 List finished tasks.
     --stored                   List stored tasks.
     --contains PATTERN         Search tasks containing PATTERN.
@@ -271,20 +270,26 @@ if __name__ == '__main__':
             id = r.read().decode().strip()
             print('./caf work -q {}/{}'.format(args['URL'].replace('submit', 'get'), id))
     elif args['list']:
-        if args['--profiles']:
+        if args['profiles']:
             for p in Path(os.environ['HOME']).glob('.config/caf/worker_*'):
                 print(p.name)
-        elif args['--remotes']:
+        elif args['remotes']:
             print(remote_conf)
-        elif args['--finished']:
-            subprocess.call('find -H {} -exec test -f "{{}}/.caf/seal" \; -print'
-                            .format(out/latest),
-                            shell=True)
-        elif args['--stored']:
-            files = get_files(out/latest)
-            for task, target in files:
-                ptarget = Path(target)
-                if ptarget.parents[2].name == cellar:
+        elif args['tasks']:
+            if args['--finished']:
+                subprocess.call('find -H {} -exec test -f "{{}}/.caf/seal" \; -print'
+                                .format(out/latest),
+                                shell=True)
+            elif args['--stored']:
+                files = get_files(out/latest)
+                for task, target in files:
+                    ptarget = Path(target)
+                    if ptarget.parents[2].name == cellar:
+                        print(task, Path('/'.join(ptarget.parts[-4:])))
+            else:
+                files = get_files(out/latest)
+                for task, target in files:
+                    ptarget = Path(target)
                     print(task, Path('/'.join(ptarget.parts[-4:])))
     elif args['search']:
         cmd = 'find {} -maxdepth 3 -mindepth 3 -type d'.format(cache/cellar)
