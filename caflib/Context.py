@@ -171,8 +171,12 @@ class Task:
                 try:
                     relink(os.path.relpath(str(path)), filename)
                 except FileExistsError:
-                    error('Something replaced a linked file "{}" with a real file in {}'
-                          .format(filename, self))
+                    if 'RELINK' in os.environ:
+                        Path(filename).unlink()
+                        relink(os.path.relpath(str(path)), filename)
+                    else:
+                        error('Something replaced a linked file "{}" with a real file in {}'
+                              .format(filename, self))
 
     def store_link_file(self, source, target=None):
         if not target:
