@@ -4,7 +4,7 @@
 Usage:
     caf init
     caf [init] build [--dry]
-    caf [[init] build] work [TARGET...] [--depth N] [--limit N]
+    caf [[init] build] work [TARGET... | --brewery] [--depth N] [--limit N]
                             [--profile PROFILE [-j N] | [--id ID] [--dry]]
     caf work [--queue URL] [--profile PROFILE [-j N] | [--id ID] [--dry]]
     caf submit URL
@@ -30,6 +30,7 @@ Options:
     -j N                       Number of launched workers [default: 1].
     -d, --depth N              Limit depth of descending to children.
     -l, --limit N              Limit number of tasks to N.
+    --brewery                  Work on tasks in Brewery.
     --finished                 List finished tasks.
     --delete                   Delete files when syncing.
     --stored                   List stored tasks.
@@ -246,7 +247,8 @@ if __name__ == '__main__':
                        args['TARGET'],
                        ('-d', args['--depth']),
                        ('-l', args['--limit']),
-                       ('-q', args['--queue'])]
+                       ('-q', args['--queue']),
+                       args['--brewery']]
                 try:
                     subprocess.check_call(' '.join(filter_cmd(*cmd)), shell=True)
                 except subprocess.CalledProcessError:
@@ -254,7 +256,12 @@ if __name__ == '__main__':
                           .format(args['--profile']))
         else:
             from caflib.Worker import Worker
-            worker = Worker(args['--id'], (out/latest).resolve())
+            if args['--brewery']:
+                path = (cache/brewery/latest).resolve()
+                args['--depth'] = 1
+            else:
+                path = (out/latest).resolve()
+            worker = Worker(args['--id'], path)
             if args['--queue']:
                 worker.work_from_queue(
                     (cache/cellar).resolve(),
