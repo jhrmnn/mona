@@ -168,7 +168,11 @@ class Task:
             for linkname, link in self.links.items():
                 relink(os.path.relpath(str(link.task.path)), linkname)
             for filename, path in self.files.items():
-                relink(os.path.relpath(str(path)), filename)
+                try:
+                    relink(os.path.relpath(str(path)), filename)
+                except FileExistsError:
+                    error('Something replaced a linked file "{}" with a real file in {}'
+                          .format(filename, self))
 
     def store_link_file(self, source, target=None):
         if not target:
@@ -176,7 +180,7 @@ class Task:
         filehash = get_file_hash(Path(source))
         cellarpath = self.ctx.cellar/str_to_path(filehash)
         if not cellarpath.is_file():
-            info('Stored new file {}'.format(source))
+            info('Stored new file "{}"'.format(source))
             mkdir(cellarpath.parent, parents=True, exist_ok=True)
             shutil.copy(source, str(cellarpath))
             make_nonwritable(cellarpath)
@@ -265,7 +269,7 @@ class Task:
                 with open('command', 'w') as f:
                     f.write(command)
             if self.attrs:
-                raise RuntimeError('task has non-consumed attributs {}'
+                raise RuntimeError('task has non-consumed attributs: {}'
                                    .format(list(self.attrs)))
 
     def get_hashes(self):
@@ -316,7 +320,7 @@ class Task:
                 self.touch()
             for linkname, link in self.links.items():
                 if link.needed and not link.task.is_sealed():
-                    warn('{}: dependency {!r} not sealed'.format(self, linkname))
+                    warn('{}: dependency "{}" not sealed'.format(self, linkname))
                     return
             if not all(child.is_locked() for child in self.children):
                 return
@@ -445,7 +449,7 @@ class Context:
     def add_to_target(self, task, target, link=None):
         linkname = slugify(link) if link else None
         if linkname in self.targets[target]:
-            error('Link {} already in target {}'.format(linkname, target))
+            error('Link "{}" already in target "{}"'.format(linkname, target))
         self.targets[target][linkname] = task
         task.targets.append((target, linkname))
         return task

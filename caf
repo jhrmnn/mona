@@ -220,7 +220,7 @@ if __name__ == '__main__':
         try:
             remotes = [Remote(**remote_conf[r]) for r in remotes]
         except KeyError as e:
-            error('Remote {!r} is not defined'.format(e.args[0]))
+            error('Remote "{}" is not defined'.format(e.args[0]))
     else:
         remotes = []
     with timing('reading cscript'):
