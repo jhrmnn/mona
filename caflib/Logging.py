@@ -1,12 +1,13 @@
 import sys
 from io import StringIO
 from itertools import chain, dropwhile
-from caflib.Utils import mkdir
 from datetime import datetime
+from pathlib import Path
 
 
 def log_caf(argv):
-    mkdir('.caf', parents=True)
+    if not Path('.caf').is_dir():
+        Path('.caf').mkdir()
     with open('.caf/log', 'a') as f:
         f.write('{:%Y-%b-%d %H:%M:%S}: {}\n'.format(datetime.now(), ' '.join(argv)))
 
