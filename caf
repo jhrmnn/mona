@@ -214,6 +214,11 @@ if __name__ == '__main__':
             error('Remote {!r} is not defined'.format(e.args[0]))
     else:
         remotes = []
+    cscript = load_cscript()
+    if hasattr(cscript, 'out'):
+        out = Path(cscript.out)
+    if hasattr(cscript, 'cache'):
+        cache = Path(cscript.cache)
     if args['init']:
         conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
         if 'cache' in conf:
@@ -229,7 +234,6 @@ if __name__ == '__main__':
     if args['build']:
         from caflib.Context import Context
         from caflib.Utils import mkdir, get_timestamp
-        cscript = load_cscript()
         ctx = Context(cache/cellar)
         cscript.build(ctx)
         if not args['--dry']:
