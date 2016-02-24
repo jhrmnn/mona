@@ -186,7 +186,7 @@ def packing():
         sys.path.insert(0, dirname)
 
 
-def finalize(sig=None, frame=None):
+def finalize(sig, frame):
     print_timing()
     sys.exit()
 
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, finalize)
 
     from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
-        get_files, print_timing
+        get_files, print_timing, timing
     from caflib.Logging import error, info, colstr, Table, log_caf
 
     remote_conf = Configuration('.caf/remotes.yaml')
@@ -223,7 +223,8 @@ if __name__ == '__main__':
             error('Remote {!r} is not defined'.format(e.args[0]))
     else:
         remotes = []
-    cscript = load_cscript()
+    with timing('reading cscript'):
+        cscript = load_cscript()
     if hasattr(cscript, 'out'):
         out = Path(cscript.out)
     if hasattr(cscript, 'cache'):
@@ -244,15 +245,18 @@ if __name__ == '__main__':
         from caflib.Context import Context
         from caflib.Utils import mkdir, get_timestamp
         ctx = Context(cache/cellar)
-        cscript.build(ctx)
+        with timing('dependency tree'):
+            cscript.build(ctx)
         if not args['--dry']:
             timestamp = get_timestamp()
             mkdir(cache/brewery/timestamp)
             os.system('ln -fns {} {}'.format(timestamp, cache/brewery/latest))
             mkdir(out/timestamp, parents=True)
             os.system('ln -fns {} {}'.format(timestamp, out/latest))
-            ctx.build(cache/brewery/latest)
-            ctx.make_targets(out/latest)
+            with timing('build'):
+                ctx.build(cache/brewery/latest)
+            with timing('targets'):
+                ctx.make_targets(out/latest)
     if args['work']:
         if args['--profile']:
             for _ in range(int(args['-j'])):
@@ -395,4 +399,4 @@ if __name__ == '__main__':
             print(remote.command(' '.join(args['CMD'])).decode())
             if 'work' in args['CMD'] and 'build' in args['CMD']:
                 remote.check(args['TARGET'], out/latest)
-    finalize()
+    print_timing()

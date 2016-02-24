@@ -9,6 +9,7 @@ from collections import defaultdict
 import time
 import json
 import itertools
+import sys
 
 from caflib.Logging import Table
 
@@ -86,6 +87,7 @@ def find_program(cmd):
 def timing(name):
     if _dotiming:
         label = '>'.join(_timing_stack + [name])
+        _timing[label]
         _timing_stack.append(name)
         tm = time.time()
     try:
@@ -98,7 +100,7 @@ def timing(name):
 
 def print_timing():
     if _dotiming:
-        groups = [sorted(group, key=lambda x: x[1], reverse=True)
+        groups = [sorted(group, key=lambda x: x[0])
                   for _, group
                   in groupby(_timing.items(), lambda x: x[0].split('>')[0])]
         groups.sort(key=lambda x: x[0][1], reverse=True)
@@ -107,7 +109,7 @@ def print_timing():
             for row in group:
                 table.add_row(re.sub(r'\w+>', 4*' ', row[0]),
                               '{:.4f}'.format(row[1]))
-        print(table)
+        print(table, file=sys.stderr)
 
 
 @contextmanager
