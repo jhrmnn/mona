@@ -19,14 +19,22 @@ class Template:
         used = set()
 
         def replacer(m):
-            key = m.group(1)
+            token = m.group(1)
+            if ':' in token:
+                key, fmt = token.split(':', 1)
+            else:
+                key, fmt = token, None
             if key not in mapping:
                 raise RuntimeError('"{}" not defined'.format(key))
             else:
                 used.add(key)
-                return str(mapping[key])
+                try:
+                    return format(mapping[key], fmt) if fmt else str(mapping[key])
+                except ValueError:
+                    error('Unknown format "{}" when processing key "{}" in template "{}"'
+                          .format(fmt, key, self.path))
 
-        replaced = re.sub(r'\{\{\s*(\w+)\s*\}\}',
+        replaced = re.sub(r'\{\{\s+([\w:]+)\s+\}\}',
                           replacer,
                           Template._cache[self.path])
         return replaced, used
