@@ -25,8 +25,7 @@ class Template:
                 used.add(key)
                 return str(mapping[key])
 
-        with open(self.path.name, 'w') as f:
-            f.write(re.sub(r'\{\{\s*(\w+)\s*\}\}',
-                           replacer,
-                           Template._cache[self.path]))
-        return used
+        replaced = re.sub(r'\{\{\s*(\w+)\s*\}\}',
+                          replacer,
+                          Template._cache[self.path])
+        return replaced, used

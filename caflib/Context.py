@@ -14,6 +14,8 @@ from caflib.Utils import mkdir, slugify, cd, listify, timing, relink, \
 from caflib.Template import Template
 from caflib.Logging import warn, info, error
 
+hashf = 'sha1'
+
 _features = {}
 _reports = []
 
@@ -37,6 +39,13 @@ def before_files(f):
     if not hasattr(f, 'feature_attribs'):
         f.feature_attribs = set()
     f.feature_attribs.add('before_files')
+    return f
+
+
+def before_templates(f):
+    if not hasattr(f, 'feature_attribs'):
+        f.feature_attribs = set()
+    f.feature_attribs.add('before_templates')
     return f
 
 
@@ -69,7 +78,7 @@ def str_to_path(s, nlvls=2, lenlvl=2):
     return path
 
 
-def get_file_hash(path, hashf='sha1'):
+def get_file_hash(path):
     """Return hashed contents of a file."""
     h = hashlib.new(hashf)
     with path.open('rb') as f:
@@ -175,6 +184,36 @@ class Task:
             relink(os.path.relpath(str(cellarpath)), target)
         self.files[target] = cellarpath
 
+    def store_link_text(self, text, target, label=None):
+        h = hashlib.new(hashf)
+        h.update(text.encode())
+        texthash = h.hexdigest()
+        cellarpath = self.ctx.cellar/str_to_path(texthash)
+        if not cellarpath.is_file():
+            if label:
+                info('Stored new text labeled "{}"'.format(label))
+            else:
+                info('Stored new text')
+            mkdir(cellarpath.parent, parents=True, exist_ok=True)
+            with cellarpath.open('w') as f:
+                f.write(text)
+            make_nonwritable(cellarpath)
+        with cd(self.path):
+            relink(os.path.relpath(str(cellarpath)), target)
+        self.files[target] = cellarpath
+
+    def process_features(self, features, attrib=None):
+        with timing('features'):
+            for name, feat in list(features.items()):
+                if not attrib or 'before_files' in getattr(feat, 'feature_attribs', []):
+                    with timing(name):
+                        try:
+                            feat(self)
+                        except PermissionError as e:
+                            error('Feature "{}" tried to change stored file "{}"'
+                                  .format(name, e.filename))
+                    del features[name]
+
     def prepare(self):
         """Prepare a task.
 
@@ -186,11 +225,7 @@ class Task:
                         if isinstance(feat, str)
                         else (feat.__name__, feat)
                         for feat in listify(self.consume('features')))
-        with timing('features'):
-            for name, feat in list(features.items()):
-                if 'before_files' in getattr(feat, 'feature_attribs', []):
-                    self.exec_feature(name, feat)
-                    del features[name]
+        self.process_features(features, 'before_files')
         with timing('files'):
             for filename in listify(self.consume('files')):
                 if isinstance(filename, tuple):
@@ -201,12 +236,19 @@ class Task:
                             self.store_link_file(member)
                     else:
                         self.store_link_file(filename)
+        templates = {}
         with timing('templates'):
-            templates = [Template(path) for path in listify(self.consume('templates'))]
+            for filename in listify(self.consume('templates')):
+                if isinstance(filename, tuple):
+                    templates[filename[1]] = Template(filename[0])
+                else:
+                    templates[filename] = Template(filename)
         with cd(self.path):
+            self.process_features(features, 'before_templates')
             with timing('templates'):
-                for template in templates:
-                    used = template.substitute(self.attrs)
+                for target, template in templates.items():
+                    processed, used = template.substitute(self.attrs)
+                    self.store_link_text(processed, target, template.path.name)
                     for attr in used:
                         self.consume(attr)
             with timing('linking'):
@@ -217,9 +259,7 @@ class Task:
                         else:
                             target = symlink
                         relink('{}/{}'.format(linkname, target), symlink)
-            with timing('features'):
-                for name, feat in features.items():
-                    self.exec_feature(name, feat)
+            self.process_features(features)
             command = self.consume('command')
             if command:
                 with open('command', 'w') as f:
@@ -227,14 +267,6 @@ class Task:
             if self.attrs:
                 raise RuntimeError('task has non-consumed attributs {}'
                                    .format(list(self.attrs)))
-
-    def exec_feature(self, name, feat):
-        with timing(name):
-            try:
-                feat(self)
-            except PermissionError as e:
-                error('Feature {} tried to change stored file {}'
-                      .format(name, e.filename))
 
     def get_hashes(self):
         """Get hashes of task's dependencies.

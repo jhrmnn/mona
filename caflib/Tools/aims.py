@@ -3,6 +3,7 @@ from caflib.Context import feature, report
 from caflib.Utils import find_program
 from caflib.Logging import info, warn, error
 import subprocess
+from pathlib import Path
 
 _reported = {}
 
@@ -35,9 +36,12 @@ def prepare_aims(task):
     assert basis
     basis_root = aims_binary.parents[1]/'aimsfiles/species_defaults'/basis
     if not basis == 'none':
-        with open('control.in', 'a') as f:
-            for specie in species:
-                f.write('\n')
-                with (basis_root/'{0[0]:02d}_{0[1]}_default'.format(specie)).open() as f_sp:
-                    f.write(f_sp.read())
+        with open('control.in') as f:
+            chunks = [f.read()]
+        Path('control.in').unlink()
+        del task.files['control.in']
+        for specie in species:
+            with (basis_root/'{0[0]:02d}_{0[1]}_default'.format(specie)).open() as f:
+                chunks.append(f.read())
+        task.store_link_text('\n'.join(chunks), 'control.in', 'control.in')
     task.attrs['command'] = 'AIMS={} run_aims'.format(aims)
