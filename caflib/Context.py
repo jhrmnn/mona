@@ -8,8 +8,9 @@ from glob import glob
 from collections import defaultdict, namedtuple
 from pathlib import Path
 from math import log10, ceil
+import subprocess
 
-from caflib.Utils import mkdir, slugify, cd, listify
+from caflib.Utils import mkdir, slugify, cd, listify, timing
 from caflib.Template import Template
 from caflib.Logging import warn, info, error
 
@@ -156,13 +157,11 @@ class Task:
     def link_deps(self):
         with cd(self.path):
             for linkname, link in self.links.items():
-                os.system('ln -fns {} {}'
-                          .format(os.path.relpath(str(link.task.path)),
-                                  linkname))
+                subprocess.check_call(
+                    ['ln', '-fns', os.path.relpath(str(link.task.path)), linkname])
             for filename, path in self.files.items():
-                os.system('ln -fns {} {}'
-                          .format(os.path.relpath(str(path)),
-                                  filename))
+                subprocess.check_call(
+                    ['ln', '-fns', os.path.relpath(str(path)), filename])
 
     def store_link_file(self, source, target=None):
         if not target:
@@ -174,8 +173,8 @@ class Task:
             mkdir(cellarpath.parent, parents=True)
             shutil.copy(source, str(cellarpath))
         with cd(self.path):
-            os.system('ln -fns {} {}'
-                      .format(os.path.relpath(str(cellarpath)), target))
+            subprocess.check_call(
+                ['ln', '-fns', os.path.relpath(str(cellarpath)), target])
         self.files[target] = cellarpath
 
     def prepare(self):
@@ -187,35 +186,41 @@ class Task:
         """
         features = [_features[feat] if isinstance(feat, str) else feat
                     for feat in listify(self.consume('features'))]
-        for feat in list(features):
-            if 'before_files' in getattr(feat, 'feature_attribs', []):
-                feat(self)
-                del features[features.index(feat)]
-        for filename in listify(self.consume('files')):
-            if isinstance(filename, tuple):
-                self.store_link_file(filename[0], filename[1])
-            else:
-                if '*' in filename or '?' in filename:
-                    for member in glob(filename):
-                        self.store_link_file(member)
+        with timing('before_files'):
+            for feat in list(features):
+                if 'before_files' in getattr(feat, 'feature_attribs', []):
+                    feat(self)
+                    del features[features.index(feat)]
+        with timing('files'):
+            for filename in listify(self.consume('files')):
+                if isinstance(filename, tuple):
+                    self.store_link_file(filename[0], filename[1])
                 else:
-                    self.store_link_file(filename)
-        templates = [Template(path) for path in listify(self.consume('templates'))]
-        with cd(self.path):
-            for template in templates:
-                used = template.substitute(self.attrs)
-                for attr in used:
-                    self.consume(attr)
-            for linkname, link in self.links.items():
-                for symlink in link.links:
-                    if isinstance(symlink, tuple):
-                        target, symlink = symlink
+                    if '*' in filename or '?' in filename:
+                        for member in glob(filename):
+                            self.store_link_file(member)
                     else:
-                        target = symlink
-                    os.system('ln -s {}/{} {}'
-                              .format(linkname, target, symlink))
-            for feat in features:
-                feat(self)
+                        self.store_link_file(filename)
+        with timing('templates'):
+            templates = [Template(path) for path in listify(self.consume('templates'))]
+        with cd(self.path):
+            with timing('templates'):
+                for template in templates:
+                    used = template.substitute(self.attrs)
+                    for attr in used:
+                        self.consume(attr)
+            with timing('linking'):
+                for linkname, link in self.links.items():
+                    for symlink in link.links:
+                        if isinstance(symlink, tuple):
+                            target, symlink = symlink
+                        else:
+                            target = symlink
+                        subprocess.check_call(
+                            ['ln', '-s', '{}/{}'.format(linkname, target), symlink])
+            with timing('features'):
+                for feat in features:
+                    feat(self)
             command = self.consume('command')
             if command:
                 with open('command', 'w') as f:
@@ -263,34 +268,39 @@ class Task:
         hashes. Check if a task has been already stored previously and if not,
         store it and relink children.
         """
-        if self.is_locked():
-            warn('{} already locked'.format(self))
-            return
-        if not self.is_touched():
-            self.touch()
-        for linkname, link in self.links.items():
-            if link.needed and not link.task.is_sealed():
-                warn('{}: dependency {!r} not sealed'.format(self, linkname))
+        with timing('task init'):
+            if self.is_locked():
+                warn('{} already locked'.format(self))
                 return
-        if not all(child.is_locked() for child in self.children):
-            return
-        self.prepare()
-        hashes = self.get_hashes()
+            if not self.is_touched():
+                self.touch()
+            for linkname, link in self.links.items():
+                if link.needed and not link.task.is_sealed():
+                    warn('{}: dependency {!r} not sealed'.format(self, linkname))
+                    return
+            if not all(child.is_locked() for child in self.children):
+                return
+        with timing('prepare'):
+            self.prepare()
+        with timing('hash'):
+            hashes = self.get_hashes()
         self.lock(hashes)
         if 'command' not in hashes:
             with (self.path/'.caf/seal').open('w') as f:
                 print('build', file=f)
         myhash = get_file_hash(self.path/'.caf/lock')
-        cellarpath = self.ctx.cellar/str_to_path(myhash)
-        if cellarpath.is_dir():
-            shutil.rmtree(str(self.path))
-        else:
-            info('Stored new task {}'.format(self))
-            mkdir(cellarpath.parent, parents=True)
-            self.path.rename(cellarpath)
-        self.path.symlink_to(cellarpath)
-        self.path = cellarpath
-        self.link_deps()
+        with timing('storing'):
+            cellarpath = self.ctx.cellar/str_to_path(myhash)
+            if cellarpath.is_dir():
+                shutil.rmtree(str(self.path))
+            else:
+                info('Stored new task {}'.format(self))
+                mkdir(cellarpath.parent, parents=True)
+                self.path.rename(cellarpath)
+            self.path.symlink_to(cellarpath)
+            self.path = cellarpath
+        with timing('linking deps'):
+            self.link_deps()
 
 
 class AddWrapper:
@@ -445,12 +455,14 @@ class Context:
     def make_targets(self, out):
         for target, tasks in self.targets.items():
             if len(tasks) == 1 and None in tasks:
-                os.system('ln -fns {} {}'.format(tasks[None].path, out/target))
+                subprocess.check_call(
+                    ['ln', '-fns', str(tasks[None].path), str(out/target)])
             else:
                 if not (out/target).is_dir():
                     mkdir(out/target)
                 for name, task in tasks.items():
-                    os.system('ln -fns {} {}'.format(task.path, out/target/name))
+                    subprocess.check_call(
+                        ['ln', '-fns', str(task.path), str(out/target/name)])
 
     def load_tool(self, name):
         __import__('caflib.Tools.' + name)
