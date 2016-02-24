@@ -35,24 +35,25 @@ class Remote:
                '{0.host}:{0.path}'.format(self)]
         subprocess.check_call(filter_cmd(cmd))
 
-    def command(self, cmd, log=True):
-        if log:
+    def command(self, cmd, get_output=False):
+        if not get_output:
             info('Running `./caf {}` on {.host}...'.format(cmd, self))
+        caller = subprocess.check_output if get_output else subprocess.check_call
         try:
-            output = subprocess.check_output([
+            output = caller([
                 'ssh', '-t', '-o', 'LogLevel=QUIET',
                 self.host,
-                'cd {.path} && exec python3 -u caf {}'.format(self, cmd)]).strip()
+                'cd {.path} && exec python3 -u caf {}'.format(self, cmd)])
         except subprocess.CalledProcessError:
             error('Command `{}` on {.host} ended with error'
                   .format(cmd, self))
-        return output
+        return output.strip() if get_output else None
 
     def check(self, targets, batch):
         info('Checking {}...'.format(self.host))
         here = dict(get_files(batch))
         there = dict(l.split() for l
-                     in self.command('list tasks --stored', log=False)
+                     in self.command('list tasks --stored', get_output=True)
                      .decode().split('\n'))
         missing = []
         for task, target in here.items():
