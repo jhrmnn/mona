@@ -135,7 +135,9 @@ def cd(path):
 def listify(obj):
     if not obj:
         return []
-    if isinstance(obj, (str, bytes, tuple)):
+    if isinstance(obj, (str, bytes)):
+        return obj.split()
+    elif isinstance(obj, tuple):
         return [obj]
     try:
         return list(obj)
