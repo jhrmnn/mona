@@ -5,8 +5,17 @@ import re
 import os
 from contextlib import contextmanager
 from datetime import datetime
+from collections import defaultdict
+import time
 import json
 import itertools
+
+from caflib.Logging import Table
+
+
+_dotiming = 'TIMING' in os.environ
+_timing = defaultdict(float)
+_timing_stack = []
 
 
 def normalize_str(s):
@@ -71,6 +80,34 @@ def filter_cmd(*args):
 
 def find_program(cmd):
     return Path(subprocess.check_output(['which', cmd]).decode().strip()).resolve()
+
+
+@contextmanager
+def timing(name):
+    if _dotiming:
+        label = '>'.join(_timing_stack + [name])
+        _timing_stack.append(name)
+        tm = time.time()
+    try:
+        yield
+    finally:
+        if _dotiming:
+            _timing[label] += time.time()-tm
+            _timing_stack.pop(-1)
+
+
+def print_timing():
+    if _dotiming:
+        groups = [sorted(group, key=lambda x: x[1], reverse=True)
+                  for _, group
+                  in groupby(_timing.items(), lambda x: x[0].split('>')[0])]
+        groups.sort(key=lambda x: x[0][1], reverse=True)
+        table = Table(align=['<', '<'])
+        for group in groups:
+            for row in group:
+                table.add_row(re.sub(r'\w+>', 4*' ', row[0]),
+                              '{:.4f}'.format(row[1]))
+        print(table)
 
 
 @contextmanager
