@@ -418,8 +418,10 @@ class Context:
                 child._parent_counter += 1
                 if child._parent_counter == len(child.parents):
                     tops.append(child)
-        assert all(task._parent_counter == len(task.parents)
-                   for task in self.tasks)
+        in_cycle = [task for task in self.tasks
+                    if task._parent_counter != len(task.parents)]
+        if in_cycle:
+            error('There are cycles in the dependency tree')
         self.tasks = queue
 
     def build(self, batch):
