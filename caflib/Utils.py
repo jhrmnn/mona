@@ -10,6 +10,7 @@ import time
 import json
 import itertools
 import sys
+import stat
 
 from caflib.Logging import Table
 
@@ -17,6 +18,7 @@ from caflib.Logging import Table
 _dotiming = 'TIMING' in os.environ
 _timing = defaultdict(float)
 _timing_stack = []
+_writable = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
 
 
 def normalize_str(s):
@@ -55,6 +57,11 @@ def mkdir(path, parents=False, exist_ok=False):
     else:
         os.makedirs(str(path), exist_ok=exist_ok)
     return path
+
+
+def make_nonwritable(path):
+    path = str(path)
+    os.chmod(path, stat.S_IMODE(os.lstat(path).st_mode) & ~_writable)
 
 
 def relink(path, linkname=None):

@@ -9,7 +9,8 @@ from collections import defaultdict, namedtuple
 from pathlib import Path
 from math import log10, ceil
 
-from caflib.Utils import mkdir, slugify, cd, listify, timing, relink
+from caflib.Utils import mkdir, slugify, cd, listify, timing, relink, \
+    make_nonwritable
 from caflib.Template import Template
 from caflib.Logging import warn, info, error
 
@@ -169,6 +170,7 @@ class Task:
             info('Stored new file {}'.format(source))
             mkdir(cellarpath.parent, parents=True, exist_ok=True)
             shutil.copy(source, str(cellarpath))
+            make_nonwritable(cellarpath)
         with cd(self.path):
             relink(os.path.relpath(str(cellarpath)), target)
         self.files[target] = cellarpath
@@ -244,12 +246,13 @@ class Task:
                     if filepath.is_symlink():
                         target = os.readlink(str(filepath))
                         if Path(target).is_absolute():
-                            hashes[str(filepath)] = get_file_hash(Path(target))
-                        elif str(filepath) in self.files:
+                            error('Cannot link to absolute paths in tasks')
+                        if str(filepath) in self.files:
                             hashes[str(filepath)] = get_file_hash(Path(target))
                         else:
                             hashes[str(filepath)] = target
                     else:
+                        make_nonwritable(filepath)
                         hashes[str(filepath)] = get_file_hash(filepath)
             for linkname in self.links:
                 hashes[linkname] = get_file_hash(Path(linkname)/'.caf/lock')
