@@ -22,6 +22,7 @@ def slugify(x):
                      for k, v in x.items())
     else:
         s = str(x)
+    s = s.replace('/', '_')
     return s
 
 
