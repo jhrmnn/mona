@@ -336,17 +336,18 @@ if __name__ == '__main__':
         print('number of {} tasks:'
               .format('/'.join(colored(*'running finished prepared all'.split()))))
         table = Table(align=['<', *4*['>']], sep=[' ', *3*['/']])
-        for directory, paths in dirs:
+        for directory, paths in sorted(dirs):
             paths = list(paths)
             stats = colored(len([p for p in paths if (p/'.lock').is_dir()]),
                             len([p for p in paths if (p/'.caf/seal').is_file()]),
                             len([p for p in paths if (p/'.caf/lock').is_file()]),
                             len([p for p in paths if (p/'.caf').is_dir()]))
             table.add_row(str(directory) + ':', *stats)
+            if directory.parts[1] == 'Brewery':
+                continue
             for p in paths:
                 if (p/'.lock').is_dir():
                     table.add_row('{} {}'.format(colstr('>>', 'blue'), p), free=True)
-        table.sort(key=lambda x: int(x[4].orig))
         print(table)
     elif args['cmd']:
         subprocess.call(args['CMD'][0], shell=True)
