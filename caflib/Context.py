@@ -141,6 +141,8 @@ class Task:
     Link = namedtuple('Link', 'task links needed')
 
     def add_dependency(self, task, link, *links, needed=False):
+        if self == task:
+            error('Task cannot depend on itself: {}'.format(self))
         self.children.append(task)
         if link:
             linkname = slugify(link)
