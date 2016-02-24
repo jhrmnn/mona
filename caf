@@ -100,6 +100,7 @@ Remotes:
     defined in .caf/remotes.yaml.
 """
 from docopt import docopt
+from itertools import takewhile
 from pathlib import Path
 import os
 import sys
@@ -132,7 +133,6 @@ def pack():
     archive = subprocess.check_output(
         'find caflib -type f ! -name "*.pyc" | xargs tar -cz', shell=True)
     with open('caf', 'a') as f:
-        f.write('\n')
         f.write('# ==>\n')
         f.write('# {}\n'.format(b64encode(archive).decode()))
         f.write('# <==\n')
@@ -152,9 +152,18 @@ def unpack(path):
     p.communicate(input=archive)
 
 
+def strip():
+    with open('caf') as f:
+        lines = takewhile(lambda l: l != '# ==>\n', f.readlines())
+    with open('caf', 'w') as f:
+        for line in lines:
+            f.write(line)
+
+
 def packing():
     if len(sys.argv) > 1:
         if sys.argv[1] == 'pack':
+            strip()
             pack()
             sys.exit()
         if sys.argv[1] == 'unpack':
@@ -163,14 +172,7 @@ def packing():
             unpack('.')
             sys.exit()
         if sys.argv[1] == 'strip':
-            with open('caf') as f:
-                lines = f.readlines()
-            if '# ==>' in lines[-3]:
-                with open('caf', 'w') as f:
-                    for line in lines[:-4]:
-                        f.write(line)
-            else:
-                print('Nothing to strip')
+            strip()
     if not Path('caflib').is_dir():
         with open('caf') as f:
             lines = f.readlines()
