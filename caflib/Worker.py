@@ -36,7 +36,8 @@ class Worker:
         if targets:
             targets = [self.path/t for t in targets]
         else:
-            targets = [Path(p) for p in glob.glob('{}/*'.format(self.path))]
+            targets = sorted((Path(p) for p in glob.glob('{}/*'.format(self.path))),
+                             reverse=True)
         for target in targets:
             if target.is_symlink():
                 enqueue(target)
