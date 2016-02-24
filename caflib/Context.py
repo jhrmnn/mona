@@ -189,8 +189,7 @@ class Task:
         with timing('features'):
             for name, feat in list(features.items()):
                 if 'before_files' in getattr(feat, 'feature_attribs', []):
-                    with timing(name):
-                        feat(self)
+                    self.exec_feature(name, feat)
                     del features[name]
         with timing('files'):
             for filename in listify(self.consume('files')):
@@ -220,8 +219,7 @@ class Task:
                         relink('{}/{}'.format(linkname, target), symlink)
             with timing('features'):
                 for name, feat in features.items():
-                    with timing(name):
-                        feat(self)
+                    self.exec_feature(name, feat)
             command = self.consume('command')
             if command:
                 with open('command', 'w') as f:
@@ -229,6 +227,14 @@ class Task:
             if self.attrs:
                 raise RuntimeError('task has non-consumed attributs {}'
                                    .format(list(self.attrs)))
+
+    def exec_feature(self, name, feat):
+        with timing(name):
+            try:
+                feat(self)
+            except PermissionError as e:
+                error('Feature {} tried to change stored file {}'
+                      .format(name, e.filename))
 
     def get_hashes(self):
         """Get hashes of task's dependencies.
