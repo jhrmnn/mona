@@ -107,6 +107,7 @@ import sys
 import subprocess
 import shutil
 from hashlib import md5
+import signal
 
 out = Path('build')
 cache = Path('_caf')
@@ -185,11 +186,17 @@ def packing():
         sys.path.insert(0, dirname)
 
 
+def finalize(sig=None, frame=None):
+    print_timing()
+    sys.exit()
+
+
 if __name__ == '__main__':
     packing()
+    signal.signal(signal.SIGINT, finalize)
 
     from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
-        get_files
+        get_files, print_timing
     from caflib.Logging import error, info, colstr, Table, log_caf
 
     remote_conf = Configuration('.caf/remotes.yaml')
@@ -388,3 +395,4 @@ if __name__ == '__main__':
             print(remote.command(' '.join(args['CMD'])).decode())
             if 'work' in args['CMD'] and 'build' in args['CMD']:
                 remote.check(args['TARGET'], out/latest)
+    finalize()
