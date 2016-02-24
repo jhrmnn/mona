@@ -8,9 +8,8 @@ from glob import glob
 from collections import defaultdict, namedtuple
 from pathlib import Path
 from math import log10, ceil
-import subprocess
 
-from caflib.Utils import mkdir, slugify, cd, listify, timing
+from caflib.Utils import mkdir, slugify, cd, listify, timing, relink
 from caflib.Template import Template
 from caflib.Logging import warn, info, error
 
@@ -157,11 +156,9 @@ class Task:
     def link_deps(self):
         with cd(self.path):
             for linkname, link in self.links.items():
-                subprocess.check_call(
-                    ['ln', '-fns', os.path.relpath(str(link.task.path)), linkname])
+                relink(os.path.relpath(str(link.task.path)), linkname)
             for filename, path in self.files.items():
-                subprocess.check_call(
-                    ['ln', '-fns', os.path.relpath(str(path)), filename])
+                relink(os.path.relpath(str(path)), filename)
 
     def store_link_file(self, source, target=None):
         if not target:
@@ -170,11 +167,10 @@ class Task:
         cellarpath = self.ctx.cellar/str_to_path(filehash)
         if not cellarpath.is_file():
             info('Stored new file {}'.format(source))
-            mkdir(cellarpath.parent, parents=True)
+            mkdir(cellarpath.parent, parents=True, exist_ok=True)
             shutil.copy(source, str(cellarpath))
         with cd(self.path):
-            subprocess.check_call(
-                ['ln', '-fns', os.path.relpath(str(cellarpath)), target])
+            relink(os.path.relpath(str(cellarpath)), target)
         self.files[target] = cellarpath
 
     def prepare(self):
@@ -184,13 +180,16 @@ class Task:
         features and save the command. Check that all attributes have been
         consumed.
         """
-        features = [_features[feat] if isinstance(feat, str) else feat
-                    for feat in listify(self.consume('features'))]
-        with timing('before_files'):
-            for feat in list(features):
+        features = dict((feat, _features[feat])
+                        if isinstance(feat, str)
+                        else (feat.__name__, feat)
+                        for feat in listify(self.consume('features')))
+        with timing('features'):
+            for name, feat in list(features.items()):
                 if 'before_files' in getattr(feat, 'feature_attribs', []):
-                    feat(self)
-                    del features[features.index(feat)]
+                    with timing(name):
+                        feat(self)
+                    del features[name]
         with timing('files'):
             for filename in listify(self.consume('files')):
                 if isinstance(filename, tuple):
@@ -216,11 +215,11 @@ class Task:
                             target, symlink = symlink
                         else:
                             target = symlink
-                        subprocess.check_call(
-                            ['ln', '-s', '{}/{}'.format(linkname, target), symlink])
+                        relink('{}/{}'.format(linkname, target), symlink)
             with timing('features'):
-                for feat in features:
-                    feat(self)
+                for name, feat in features.items():
+                    with timing(name):
+                        feat(self)
             command = self.consume('command')
             if command:
                 with open('command', 'w') as f:
@@ -295,7 +294,7 @@ class Task:
                 shutil.rmtree(str(self.path))
             else:
                 info('Stored new task {}'.format(self))
-                mkdir(cellarpath.parent, parents=True)
+                mkdir(cellarpath.parent, parents=True, exist_ok=True)
                 self.path.rename(cellarpath)
             self.path.symlink_to(cellarpath)
             self.path = cellarpath
@@ -455,14 +454,12 @@ class Context:
     def make_targets(self, out):
         for target, tasks in self.targets.items():
             if len(tasks) == 1 and None in tasks:
-                subprocess.check_call(
-                    ['ln', '-fns', str(tasks[None].path), str(out/target)])
+                relink(tasks[None].path, out/target)
             else:
                 if not (out/target).is_dir():
                     mkdir(out/target)
                 for name, task in tasks.items():
-                    subprocess.check_call(
-                        ['ln', '-fns', str(task.path), str(out/target/name)])
+                    relink(task.path, out/target/name)
 
     def load_tool(self, name):
         __import__('caflib.Tools.' + name)

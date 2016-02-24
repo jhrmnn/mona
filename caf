@@ -196,7 +196,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, finalize)
 
     from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
-        get_files, print_timing, timing
+        get_files, print_timing, timing, relink
     from caflib.Logging import error, info, colstr, Table, log_caf
 
     remote_conf = Configuration('.caf/remotes.yaml')
@@ -235,7 +235,7 @@ if __name__ == '__main__':
             timestamp = get_timestamp()
             cache_path = Path(conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
             mkdir(cache_path)
-            os.system('ln -fns {} {}'.format(cache_path, cache))
+            relink(cache_path, cache)
         else:
             info('Global cache not found in ~/.config/caf/conf.yaml, using a local one.')
             mkdir(cache)
@@ -250,9 +250,9 @@ if __name__ == '__main__':
         if not args['--dry']:
             timestamp = get_timestamp()
             mkdir(cache/brewery/timestamp)
-            os.system('ln -fns {} {}'.format(timestamp, cache/brewery/latest))
+            relink(timestamp, cache/brewery/latest)
             mkdir(out/timestamp, parents=True)
-            os.system('ln -fns {} {}'.format(timestamp, out/latest))
+            relink(timestamp, out/latest)
             with timing('build'):
                 ctx.build(cache/brewery/latest)
             with timing('targets'):
@@ -260,14 +260,15 @@ if __name__ == '__main__':
     if args['work']:
         if args['--profile']:
             for _ in range(int(args['-j'])):
-                cmd = ['~/.config/caf/worker_' + args['--profile'],
+                cmd = ['{}/.config/caf/worker_{}'
+                       .format(os.environ['HOME'], args['--profile']),
                        args['TARGET'],
                        ('-d', args['--depth']),
                        ('-l', args['--limit']),
                        ('-q', args['--queue']),
                        args['--brewery']]
                 try:
-                    subprocess.check_call(' '.join(filter_cmd(*cmd)), shell=True)
+                    subprocess.check_call(filter_cmd(cmd))
                 except subprocess.CalledProcessError:
                     error('Running ~/.config/caf/worker_{} did not succeed.'
                           .format(args['--profile']))
@@ -307,9 +308,8 @@ if __name__ == '__main__':
             print(remote_conf)
         elif args['tasks']:
             if args['--finished']:
-                subprocess.call('find -H {} -exec test -f "{{}}/.caf/seal" \; -print'
-                                .format(out/latest),
-                                shell=True)
+                subprocess.call(['find', '-H', str(out/latest), '-exec',
+                                 'test', '-f', '{}/.caf/seal', ';', '-print'])
             elif args['--stored']:
                 files = get_files(out/latest)
                 for task, target in files:
@@ -322,16 +322,18 @@ if __name__ == '__main__':
                     ptarget = Path(target)
                     print(task, Path('/'.join(ptarget.parts[-4:])))
     elif args['search']:
-        cmd = 'find {} -maxdepth 3 -mindepth 3 -type d'.format(cache/cellar)
+        cmd = ['find', str(cache/cellar), '-maxdepth', '3',
+               '-mindepth', '3', '-type', 'd']
         if args['--older']:
             lim = args['--older']
             if lim[0] not in ['-', '+']:
                 lim = '+' + lim
-            cmd += ' -ctime {}'.format(lim)
+            cmd.extend(['-ctime', lim])
         if args['--contains']:
-            cmd += ' -exec test -f "{{}}/{}" \;'.format(args['--contains'])
-        cmd += ' -print'
-        os.system(cmd)
+            cmd.extend(['-exec', 'test', '-f',
+                        '{{}}/{}'.format(args['--contains']), ';'])
+        cmd.append('-print')
+        subprocess.call(cmd)
     elif args['status']:
         def colored(*stat):
             colors = 'red green yellow normal'.split()

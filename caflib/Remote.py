@@ -33,7 +33,7 @@ class Remote:
                ['--exclude={}'.format(p) for p in ignored],
                '.',
                '{0.host}:{0.path}'.format(self)]
-        subprocess.check_call(filter_cmd(*cmd))
+        subprocess.check_call(filter_cmd(cmd))
 
     def command(self, cmd, log=True):
         if log:
@@ -91,7 +91,7 @@ class Remote:
                '--files-from=-',
                '{0.host}:{0.path}/{1}'.format(self, cellar),
                str(cellar)]
-        p = subprocess.Popen(filter_cmd(*cmd), stdin=subprocess.PIPE)
+        p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
         p.communicate('\n'.join(paths).encode())
 
     def push(self, targets, cellar, batch, dry=False):
@@ -114,7 +114,7 @@ class Remote:
                '--files-from=-',
                str(cellar),
                '{0.host}:{0.path}/{1}'.format(self, cellar)]
-        p = subprocess.Popen(filter_cmd(*cmd), stdin=subprocess.PIPE)
+        p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
         p.communicate('\n'.join(paths).encode())
 
     def go(self):

@@ -43,30 +43,32 @@ def get_timestamp():
 def get_files(batch):
     return sorted([tuple(w.decode() for w in l.split(b'\x00'))
                    for l in subprocess.check_output(
-                       'find -H {} -type l -print0 -exec readlink {{}} ;'
-                       .format(batch).split()).strip().split(b'\n')])
+                       ['find', '-H', str(batch), '-type', 'l', '-print0',
+                        '-exec', 'readlink', '{}', ';']).strip().split(b'\n')])
 
 
-def mkdir(path, parents=False):
-    command = ['mkdir', str(path)]
-    if parents:
-        command.insert(1, '-p')
-    p = subprocess.Popen(command, stderr=subprocess.PIPE)
-    _, stderr = p.communicate()
-    if p.returncode:
-        stderr = stderr.decode()
-        m = re.match(r'mkdir: (.*): No such file or directory\n', stderr)
-        if m:
-            raise FileNotFoundError(m.group().strip())
-        raise OSError(stderr)
+def mkdir(path, parents=False, exist_ok=False):
+    path = Path(path)
+    if not parents or len(path.parts) == 1:
+        if not (exist_ok and path.is_dir()):
+            path.mkdir()
+    else:
+        os.makedirs(str(path), exist_ok=exist_ok)
     return path
+
+
+def relink(path, linkname=None):
+    link = Path(linkname) if linkname else Path(Path(path).name)
+    if link.is_symlink():
+        link.unlink()
+    link.symlink_to(path)
 
 
 def is_timestamp(s):
     return bool(re.match(r'^\d{4}-\d\d-\d\d_\d\d:\d\d:\d\d$', str(s)))
 
 
-def filter_cmd(*args):
+def filter_cmd(args):
     cmd = []
     for arg in args:
         if isinstance(arg, tuple):
