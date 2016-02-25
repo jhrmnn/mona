@@ -9,6 +9,7 @@ Usage:
     caf submit URL [TARGET...]
     caf work [--queue URL] [--profile PROFILE [-j N] | [--id ID] [--dry]]
     caf status
+    caf reset [TARGET...]
     caf list (profiles | remotes)
     caf list tasks [--finished | --stored]
     caf search [--contains PATTERN] [--older TIME]
@@ -59,6 +60,9 @@ Commands:
 
     status
         Print number of initialized, running and finished tasks.
+
+    reset
+        Remove working lock on tasks.
 
     list
         Print various diagnostics.
@@ -306,6 +310,16 @@ if __name__ == '__main__':
         with urlopen(args['URL'], data='\n'.join(hashes).encode()) as r:
             id = r.read().decode().strip()
             print('./caf work -q {}/{}'.format(args['URL'].replace('submit', 'get'), id))
+    elif args['reset']:
+        if args['TARGET']:
+            paths = map(Path, subprocess.check_output([
+                'find', '-H', str(out/latest), '-type', 'l'])
+                .decode().split())
+        else:
+            paths = [p for p in (cache/brewery/latest).glob('*') if p.is_symlink()]
+        for p in paths:
+            if (p/'.lock').is_dir():
+                (p/'.lock').rmdir()
     elif args['list']:
         if args['profiles']:
             for p in Path(os.environ['HOME']).glob('.config/caf/worker_*'):
