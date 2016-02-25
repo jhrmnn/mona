@@ -317,8 +317,7 @@ if __name__ == '__main__':
                          if p.is_symlink()]
         hashes = ['/'.join(p.parts[-3:]) for p in paths]
         with urlopen(args['URL'], data='\n'.join(hashes).encode()) as r:
-            id = r.read().decode().strip()
-            print('./caf work -q {}/{}'.format(args['URL'].replace('submit', 'get'), id))
+            print('./caf work --queue {}'.format(r.read().decode()))
     elif args['reset']:
         if args['TARGET']:
             paths = map(Path, subprocess.check_output([
