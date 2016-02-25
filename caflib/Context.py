@@ -205,7 +205,7 @@ class Task:
         if not cellarpath.is_file():
             info('Stored new file "{}"'.format(source))
             mkdir(cellarpath.parent, parents=True, exist_ok=True)
-            shutil.copy(source, str(cellarpath))
+            shutil.copy(str(source), str(cellarpath))
             make_nonwritable(cellarpath)
         with cd(self.path):
             relink(os.path.relpath(str(cellarpath)), target)
