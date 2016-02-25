@@ -6,8 +6,8 @@ Usage:
     caf [init] build [--dry]
     caf [[init] build] work [TARGET... | --brewery] [--depth N] [--limit N]
                             [--profile PROFILE [-j N] | [--id ID] [--dry]]
+    caf submit URL [TARGET...]
     caf work [--queue URL] [--profile PROFILE [-j N] | [--id ID] [--dry]]
-    caf submit URL
     caf status
     caf list (profiles | remotes)
     caf list tasks [--finished | --stored]
@@ -296,9 +296,13 @@ if __name__ == '__main__':
                     limit=int(args['--limit']) if args['--limit'] else None)
     elif args['submit']:
         from urllib.request import urlopen
-        hashes = ['/'.join(Path(os.readlink(str(p))).parts[-3:])
-                  for p in (cache/brewery/latest).glob('*')
-                  if p.is_symlink()]
+        if args['TARGET']:
+            paths = map(Path, subprocess.check_output([
+                'find', '-H', str(out/latest), '-type', 'l'])
+                .decode().split())
+        else:
+            paths = [p for p in (cache/brewery/latest).glob('*') if p.is_symlink()]
+        hashes = ['/'.join(Path(os.readlink(str(p))).parts[-3:]) for p in paths]
         with urlopen(args['URL'], data='\n'.join(hashes).encode()) as r:
             id = r.read().decode().strip()
             print('./caf work -q {}/{}'.format(args['URL'].replace('submit', 'get'), id))
