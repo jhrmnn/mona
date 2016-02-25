@@ -207,7 +207,7 @@ if __name__ == '__main__':
 
     from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
         get_files, print_timing, timing, relink, cd
-    from caflib.Logging import error, info, colstr, Table, log_caf
+    from caflib.Logging import error, info, colstr, Table, log_caf, warn
     from caflib.Context import get_stored
 
     remote_conf = Configuration('.caf/remotes.yaml')
@@ -269,6 +269,8 @@ if __name__ == '__main__':
                 ctx.build(cache/brewery/latest)
             with timing('targets'):
                 ctx.make_targets(out/latest)
+            if hasattr(cscript, 'json'):
+                warn('Make sure json is not printing dictionaries')
     if args['work']:
         if args['--profile']:
             for _ in range(int(args['-j'])):
