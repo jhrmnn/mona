@@ -304,10 +304,7 @@ class Task:
                 hashes[linkname] = get_file_hash(Path(linkname)/'.caf/lock')
         return hashes
 
-    def set_path(self, path):
-        self.path = Path(path).resolve()
-
-    def build(self):
+    def build(self, path):
         """Prepare, lock and store the task.
 
         Check if not already locked. Touch (link in children, save chilren to
@@ -317,6 +314,9 @@ class Task:
         store it and relink children.
         """
         with timing('task init'):
+            if not path.is_dir():
+                mkdir(path)
+            self.path = Path(path).resolve()
             if self.is_locked():
                 warn('{} already locked'.format(self))
                 return
@@ -494,11 +494,7 @@ class Context:
         ntskdigit = ceil(log10(len(self.tasks)+1))
         with ProgressBar(maxval=len(self.tasks), redirect_stdout=True) as progress:
             for i, task in enumerate(self.tasks):
-                path = batch/'{:0{n}d}'.format(i, n=ntskdigit)
-                if not path.is_dir():
-                    mkdir(path)
-                task.set_path(path)
-                task.build()
+                task.build(batch/'{:0{n}d}'.format(i, n=ntskdigit))
                 progress.update(i)
         for report in _reports:
             report()
