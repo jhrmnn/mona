@@ -9,7 +9,7 @@ Usage:
     caf submit URL [TARGET...]
     caf submit URL TASK... --task
     caf work [--queue URL] [--profile PROFILE [-j N] | [--id ID] [--dry]]
-    caf status
+    caf status [TARGET...]
     caf reset [TARGET...]
     caf list (profiles | remotes)
     caf list tasks [--finished | --stored]
@@ -372,8 +372,11 @@ if __name__ == '__main__':
             return [colstr(s, color) for s, color in zip(stat, colors)]
 
         dirs = []
-        dirs.append((cache/brewery/latest, (cache/brewery/latest).glob('*')))
-        for target in (out/latest).glob('*'):
+        if not args['TARGET']:
+            dirs.append((cache/brewery/latest, (cache/brewery/latest).glob('*')))
+        targets = [out/latest/t for t in args['TARGET']] \
+            if args['TARGET'] else (out/latest).glob('*')
+        for target in targets:
             if not target.is_dir() or str(target).startswith('.'):
                 continue
             if target.is_symlink():
