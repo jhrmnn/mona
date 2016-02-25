@@ -364,7 +364,7 @@ if __name__ == '__main__':
                 stats.append(((p/'.lock').is_dir(), (p/'.caf/seal').is_file(),
                               (p/'.caf/lock').is_file(), (p/'.caf').is_dir()))
                 if (p/'.lock').is_dir():
-                    locked.append(path)
+                    locked.append(p)
             stats = colored([len(list(filter(lambda x: x, stat))) for stat in zip(*stats)])
             table.add_row(str(directory) + ':', *stats)
             if directory.parts[1] != 'Brewery':
