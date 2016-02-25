@@ -208,6 +208,7 @@ if __name__ == '__main__':
     from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
         get_files, print_timing, timing, relink, cd
     from caflib.Logging import error, info, colstr, Table, log_caf
+    from caflib.Context import get_stored
 
     remote_conf = Configuration('.caf/remotes.yaml')
     if len(sys.argv) > 1:
@@ -306,20 +307,17 @@ if __name__ == '__main__':
     elif args['submit']:
         from urllib.request import urlopen
         if args['--task']:
-            paths = [Path(os.readlink(p)) for p in args['TASK']]
+            hashes = [get_stored(task, rel=True) for task in args['TASK']]
         else:
             if args['TARGET']:
-                paths = [Path(os.readlink(p)) for p in subprocess.check_output([
-                    'find', '-H', str(out/latest), '-type', 'l'])
-                    .decode().split()]
+                hashes = [get_stored(path, rel=True)
+                          for path in subprocess.check_output([
+                              'find', '-H', str(out/latest), '-type', 'l'])
+                          .decode().split()]
             else:
-                paths = [Path(os.readlink(str(p)))
-                         for p in (cache/brewery/latest).glob('*')
-                         if p.is_symlink()]
-        for path in paths:
-            if path.parts[-4] != 'Cellar':
-                error('{}: Task has to be in Cellar before submitting'.format(path))
-        hashes = ['/'.join(p.parts[-3:]) for p in paths]
+                hashes = [get_stored(path, rel=True)
+                          for path in (cache/brewery/latest).glob('*')
+                          if path.is_symlink()]
         with urlopen(args['URL'], data='\n'.join(hashes).encode()) as r:
             print('./caf work --queue {}'.format(r.read().decode()))
     elif args['reset']:

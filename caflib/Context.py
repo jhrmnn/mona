@@ -20,6 +20,22 @@ _features = {}
 _reports = []
 
 
+def get_stored(path, sha=False, rel=False, require=True):
+    full_path = Path(path).resolve()
+    if len(full_path.parts) > 3 and full_path.parts[-4] == 'Cellar':
+        if sha:
+            return ''.join(full_path.parts[-3:])
+        elif rel:
+            return '/'.join(full_path.parts[-3:])
+        else:
+            return full_path
+    else:
+        if require:
+            error('Path {} must be stored in cellar'.format(path))
+        else:
+            return None
+
+
 def feature(name):
     """Register function as a feature in Context.
 
