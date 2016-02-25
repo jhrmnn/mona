@@ -97,8 +97,11 @@ def str_to_path(s, nlvls=2, lenlvl=2):
 def get_file_hash(path):
     """Return hashed contents of a file."""
     h = hashlib.new(hashf)
-    with path.open('rb') as f:
-        h.update(f.read())
+    try:
+        with path.open('rb') as f:
+            h.update(f.read())
+    except FileNotFoundError:
+        error('File "{}" does not exist'.format(path))
     return h.hexdigest()
 
 
