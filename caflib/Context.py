@@ -332,7 +332,8 @@ class Task:
             self.prepare()
         with timing('hash'):
             hashes = self.get_hashes()
-        self.lock(hashes)
+        with timing('lock'):
+            self.lock(hashes)
         if 'command' not in hashes:
             with (self.path/'.caf/seal').open('w') as f:
                 print('build', file=f)
@@ -490,7 +491,8 @@ class Context:
             batch = batch.resolve()
         except FileNotFoundError:
             error('Batch does not exist, maybe `caf build new` first?')
-        self.sort_tasks()
+        with timing('task sorting'):
+            self.sort_tasks()
         ntskdigit = ceil(log10(len(self.tasks)+1))
         with ProgressBar(maxval=len(self.tasks), redirect_stdout=True) as progress:
             for i, task in enumerate(self.tasks):
