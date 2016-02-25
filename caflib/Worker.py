@@ -107,13 +107,20 @@ class Worker:
         conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
         curl = conf.get('curl')
 
+        def report_done(url):
+            if curl:
+                subprocess.check_call(curl + ' ' + url, shell=True)
+            else:
+                with urlopen(url, timeout=30):
+                    pass
+
         print('Worker {} alive and ready.'.format(self.myid))
 
         n = 0
         while True:
             if curl:
                 try:
-                    task = subprocess.check_output(curl + ' ' + url, shell=True).decode()
+                    response = subprocess.check_output(curl + ' ' + url, shell=True).decode()
                 except subprocess.CalledProcessError as e:
                     if e.returncode == 22:
                         break
@@ -122,19 +129,14 @@ class Worker:
             else:
                 try:
                     with urlopen(url, timeout=30) as r:
-                        task = r.read().decode()
+                        response = r.read().decode()
                 except HTTPError:
                     break
                 except URLError as e:
                     print('error: Cannot connect to {}: {}'.format(url, e.reason))
                     return
+            task, url_done = response.split()
             path = cellar/task
-            lock = path/'.lock'
-            try:
-                lock.mkdir()
-            except OSError:
-                print('Worker {}: {} already locked!'.format(self.myid, path))
-                break
             children = [path/x for x in json.load((path/'.caf/children').open())]
             if not all((child/'.caf/seal').is_file() for child in children) and not dry:
                 print('Worker {}: {} has unsealed children, waiting...'.format(self.myid, path))
@@ -156,8 +158,8 @@ class Worker:
                             print(e)
                             print('error: There was an error when working on {}'
                                   .format(path))
-            (path/'.lock').rmdir()
             print('Worker {} finished working on {}.'.format(self.myid, path))
+            report_done(url_done)
             n += 1
             if limit and n >= limit:
                 print('Worker {} reached limit of tasks, aborting.'.format(self.myid))
