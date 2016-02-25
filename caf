@@ -211,7 +211,7 @@ if __name__ == '__main__':
     from caflib.Context import get_stored
 
     remote_conf = Configuration('.caf/remotes.yaml')
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 2:
         if (any(r in remote_conf for r in sys.argv[1].split(',')) or
                 sys.argv[1] == 'all'):
             i = next(i+2 for i, arg in enumerate(sys.argv[2:]) if arg[0] != '-')
