@@ -316,6 +316,9 @@ if __name__ == '__main__':
                 paths = [Path(os.readlink(str(p)))
                          for p in (cache/brewery/latest).glob('*')
                          if p.is_symlink()]
+        for path in paths:
+            if path.parts[-4] != 'Cellar':
+                error('{}: Task has to be in Cellar before submitting'.format(path))
         hashes = ['/'.join(p.parts[-3:]) for p in paths]
         with urlopen(args['URL'], data='\n'.join(hashes).encode()) as r:
             print('./caf work --queue {}'.format(r.read().decode()))
