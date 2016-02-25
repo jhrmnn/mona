@@ -110,7 +110,7 @@ Remotes:
     defined in .caf/remotes.yaml.
 """
 from docopt import docopt
-from itertools import takewhile
+from itertools import takewhile, chain
 from pathlib import Path
 import os
 import sys
@@ -398,11 +398,12 @@ if __name__ == '__main__':
     elif args['cmd']:
         if args['--task']:
             if args['TARGET']:
-                paths = map(Path, subprocess.check_output([
-                    'find', '-H', str(out/latest), '-type', 'l'])
-                    .decode().split())
+                paths = chain.from_iterable((
+                    [out/latest/target] if (out/latest/target).is_symlink()
+                    else (out/latest/target).glob('*')
+                    for target in args['TARGET']))
             else:
-                paths = [p for p in (cache/brewery/latest).glob('*') if p.is_symlink()]
+                paths = (p for p in (cache/brewery/latest).glob('*') if p.is_symlink())
             for path in paths:
                 if args['--print']:
                     info('Running `{}` in {}'.format(args['CMD'][0], path))
