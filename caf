@@ -19,7 +19,7 @@ Usage:
     caf push REMOTE [TARGET...] [--dry]
     caf fetch REMOTE [TARGET...] [--dry]
     caf go REMOTE
-    caf REMOTE [--] CMD...
+    caf REMOTE [--no-check] [--] CMD...
     caf (pack | unpack | strip)
 
 Options:
@@ -36,6 +36,7 @@ Options:
     --stored                   List stored tasks.
     --contains PATTERN         Search tasks containing PATTERN.
     --older TIME               Search tasks older than.
+    -0, --no-check             Do note check remote Cellar.
 
 Commands:
     init
@@ -393,13 +394,15 @@ if __name__ == '__main__':
         if args['CMD'][0] in ['init', 'build', 'work']:
             for remote in remotes:
                 remote.update()
-        if 'work' in args['CMD'] and 'build' not in args['CMD']:
+        if not args['--no-check'] and 'work' in args['CMD'] \
+                and 'build' not in args['CMD']:
             for remote in remotes:
                 remote.check(args['TARGET'], out/latest)
         if args['CMD'][0] == 'cmd':
             args['CMD'][1] = repr(args['CMD'][1])
         for remote in remotes:
             remote.command(' '.join(args['CMD']))
-            if 'work' in args['CMD'] and 'build' in args['CMD']:
+            if not args['--no-check'] and 'work' in args['CMD'] \
+                    and 'build' in args['CMD']:
                 remote.check(args['TARGET'], out/latest)
     print_timing()
