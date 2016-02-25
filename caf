@@ -7,6 +7,7 @@ Usage:
     caf [[init] build] work [TARGET... | --brewery] [--depth N] [--limit N]
                             [--profile PROFILE [-j N] | [--id ID] [--dry]]
     caf submit URL [TARGET...]
+    caf submit URL TASK... --task
     caf work [--queue URL] [--profile PROFILE [-j N] | [--id ID] [--dry]]
     caf status
     caf reset [TARGET...]
@@ -32,7 +33,7 @@ Options:
     -j N                       Number of launched workers [default: 1].
     -d, --depth N              Limit depth of descending to children.
     -l, --limit N              Limit number of tasks to N.
-    -t, --task                 Execute command in task directories.
+    -t, --task                 Change command's context to tasks.
     --print                    Print path to task before running a command.
     --brewery                  Work on tasks in Brewery.
     --finished                 List finished tasks.
@@ -303,13 +304,18 @@ if __name__ == '__main__':
                     limit=int(args['--limit']) if args['--limit'] else None)
     elif args['submit']:
         from urllib.request import urlopen
-        if args['TARGET']:
-            paths = map(Path, subprocess.check_output([
-                'find', '-H', str(out/latest), '-type', 'l'])
-                .decode().split())
+        if args['--task']:
+            paths = [Path(os.readlink(p)) for p in args['TASK']]
         else:
-            paths = [p for p in (cache/brewery/latest).glob('*') if p.is_symlink()]
-        hashes = ['/'.join(Path(os.readlink(str(p))).parts[-3:]) for p in paths]
+            if args['TARGET']:
+                paths = [Path(os.readlink(p)) for p in subprocess.check_output([
+                    'find', '-H', str(out/latest), '-type', 'l'])
+                    .decode().split()]
+            else:
+                paths = [Path(os.readlink(str(p)))
+                         for p in (cache/brewery/latest).glob('*')
+                         if p.is_symlink()]
+        hashes = ['/'.join(p.parts[-3:]) for p in paths]
         with urlopen(args['URL'], data='\n'.join(hashes).encode()) as r:
             id = r.read().decode().strip()
             print('./caf work -q {}/{}'.format(args['URL'].replace('submit', 'get'), id))
