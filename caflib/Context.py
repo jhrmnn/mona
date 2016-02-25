@@ -273,8 +273,8 @@ class Task:
                 with open('command', 'w') as f:
                     f.write(command)
             if self.attrs:
-                raise RuntimeError('task has non-consumed attributs: {}'
-                                   .format(list(self.attrs)))
+                error('Task {} has non-consumed attributs: {}'
+                      .format(self, list(self.attrs)))
 
     def get_hashes(self):
         """Get hashes of task's dependencies.
@@ -452,8 +452,11 @@ class Context:
 
     def add_to_target(self, task, target, link=None):
         linkname = slugify(link) if link else None
-        if linkname in self.targets[target]:
-            error('Link "{}" already in target "{}"'.format(linkname, target))
+        try:
+            if linkname in self.targets[target]:
+                error('Link "{}" already in target "{}"'.format(linkname, target))
+        except TypeError:
+            error('Target must be a string, not {}'.format(type(target).__name__))
         self.targets[target][linkname] = task
         task.targets.append((target, linkname))
         return task
