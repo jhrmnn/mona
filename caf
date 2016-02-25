@@ -14,6 +14,7 @@ Usage:
     caf list tasks [--finished | --stored]
     caf search [--contains PATTERN] [--older TIME]
     caf cmd CMD
+    caf cmd CMD [TARGET...] --task [--print]
     caf remote add URL [NAME]
     caf update REMOTE [--delete]
     caf check REMOTE [TARGET...]
@@ -31,6 +32,8 @@ Options:
     -j N                       Number of launched workers [default: 1].
     -d, --depth N              Limit depth of descending to children.
     -l, --limit N              Limit number of tasks to N.
+    -t, --task                 Execute command in task directories.
+    --print                    Print path to task before running a command.
     --brewery                  Work on tasks in Brewery.
     --finished                 List finished tasks.
     --delete                   Delete files when syncing.
@@ -201,7 +204,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, finalize)
 
     from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
-        get_files, print_timing, timing, relink
+        get_files, print_timing, timing, relink, cd
     from caflib.Logging import error, info, colstr, Table, log_caf
 
     remote_conf = Configuration('.caf/remotes.yaml')
@@ -386,7 +389,20 @@ if __name__ == '__main__':
                     table.add_row('{} {}'.format(colstr('>>', 'blue'), path), free=True)
         print(table)
     elif args['cmd']:
-        subprocess.call(args['CMD'][0], shell=True)
+        if args['--task']:
+            if args['TARGET']:
+                paths = map(Path, subprocess.check_output([
+                    'find', '-H', str(out/latest), '-type', 'l'])
+                    .decode().split())
+            else:
+                paths = [p for p in (cache/brewery/latest).glob('*') if p.is_symlink()]
+            for path in paths:
+                if args['--print']:
+                    info('Running `{}` in {}'.format(args['CMD'][0], path))
+                with cd(path):
+                    subprocess.call(args['CMD'][0], shell=True)
+        else:
+            subprocess.call(args['CMD'][0], shell=True)
     elif args['remote']:
         if args['add']:
             conf = Configuration('.caf/remotes.yaml')
