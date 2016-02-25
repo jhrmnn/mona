@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 import glob
-from caflib.Logging import info, error, warn
+from caflib.Logging import info, error
 from caflib.Utils import get_files, filter_cmd
 import os
 
@@ -72,17 +72,26 @@ class Remote:
         else:
             info('Local Tasks are in remote Cellar.')
 
-    def fetch(self, targets, cellar, batch, dry=False):
+    def fetch(self, cellar, batch=None, targets=None, tasks=None, dry=False):
         info('Fetching from {}...'.format(self.host))
-        targets = get_targets(targets, batch)
-        paths = set()
-        for target in targets:
-            for task in [target] if target.is_symlink() else target.glob('*'):
-                task_full = task.resolve()
-                if task_full.parts[-4] == 'Cellar':
-                    paths.add('/'.join(task_full.parts[-3:]))
+        if batch:
+            targets = get_targets(targets, batch)
+            paths = set()
+            for target in targets:
+                for task in [target] if target.is_symlink() else target.glob('*'):
+                    task_full = task.resolve()
+                    if task_full.parts[-4] == 'Cellar':
+                        paths.add('/'.join(task_full.parts[-3:]))
+                    else:
+                        error('{}: Task has to be in Cellar before fetching'.format(task))
+        elif tasks:
+            paths = []
+            for task in tasks:
+                path = Path(task).resolve()
+                if path.parts[-4] == 'Cellar':
+                    paths.append('/'.join(path.parts[-3:]))
                 else:
-                    warn('{}: Task has to be in Cellar before fetching'.format(task))
+                    error('{}: Task has to be in Cellar before fetching'.format(task))
         cmd = ['rsync',
                '-cirlP',
                '--delete',
@@ -105,7 +114,7 @@ class Remote:
                 if task_full.parts[-4] == 'Cellar':
                     paths.add('/'.join(task_full.parts[-3:]))
                 else:
-                    warn('{}: Task has to be in Cellar for pushing'.format(task))
+                    error('{}: Task has to be in Cellar for pushing'.format(task))
         cmd = ['rsync',
                '-cirlP',
                '--delete',

@@ -21,6 +21,7 @@ Usage:
     caf check REMOTE [TARGET...]
     caf push REMOTE [TARGET...] [--dry]
     caf fetch REMOTE [TARGET...] [--dry]
+    caf fetch REMOTE [TASK...] --task [--dry]
     caf go REMOTE
     caf REMOTE [--no-check] [--] CMD...
     caf (pack | unpack | strip)
@@ -426,7 +427,11 @@ if __name__ == '__main__':
             remote.push(args['TARGET'], cache/cellar, out/latest, args['--dry'])
     elif args['fetch']:
         for remote in remotes:
-            remote.fetch(args['TARGET'], cache/cellar, out/latest, args['--dry'])
+            if args['--task']:
+                remote.fetch(cache/cellar, tasks=args['TASK'], dry=args['--dry'])
+            else:
+                remote.fetch(cache/cellar, batch=out/latest,
+                             targets=args['TARGET'], dry=args['--dry'])
     elif args['go']:
         for remote in remotes:
             remote.go()
