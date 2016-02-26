@@ -281,10 +281,13 @@ class Task:
                         relink('{}/{}'.format(linkname, target), symlink)
             self.process_features(features)
             commands = []
-            env = self.consume('_env') or {}
+            env = defaultdict(list)
+            for var, val in (self.consume('_env') or {}).items():
+                env[var].append(val)
             for hook_path, (hook_src, hook_cmd, hook_env) in hooks.items():
                 commands.append(hook_cmd)
-                env.update(hook_env)
+                for var, vals in hook_env.items():
+                    env[var].extend(vals)
                 self.store_link_text(hook_src, hook_path, label=True)
             command = self.consume('command')
             if command:
@@ -294,8 +297,9 @@ class Task:
                     f.write('\n'.join(commands))
             if env:
                 with open('.caf/env', 'w') as f:
-                    for var, val in env.items():
-                        f.write('{}={}'.format(var, val))
+                    for var, vals in env.items():
+                        f.write('export {}={}\n'
+                                .format(var, ':'.join(map(str, vals))))
             if self.attrs:
                 error('Task {} has non-consumed attributs: {}'
                       .format(self, list(self.attrs)))
@@ -365,6 +369,9 @@ class Task:
         with timing('storing'):
             cellarpath = self.ctx.cellar/str_to_path(myhash)
             if cellarpath.is_dir():
+                env_file = Path(self.path/'.caf/env')
+                if env_file.is_file():
+                    env_file.rename(cellarpath/'.caf/env')
                 shutil.rmtree(str(self.path))
             else:
                 info('Stored new task {}'.format(self))
