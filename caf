@@ -189,6 +189,7 @@ def packing():
             sys.exit()
         if sys.argv[1] == 'strip':
             strip()
+            sys.exit()
     if not Path('caflib').is_dir():
         with open('caf') as f:
             lines = f.readlines()
