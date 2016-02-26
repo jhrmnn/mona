@@ -1,6 +1,6 @@
 from caflib.Tools import geomlib
-from caflib.Context import feature, report
-from caflib.Utils import find_program
+from caflib.Context import feature
+from caflib.Utils import find_program, report
 from caflib.Logging import info, warn, error
 import subprocess
 from pathlib import Path

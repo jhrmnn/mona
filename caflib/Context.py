@@ -10,7 +10,7 @@ from pathlib import Path
 from math import log10, ceil
 
 from caflib.Utils import mkdir, slugify, cd, listify, timing, relink, \
-    make_nonwritable
+    make_nonwritable, _reports
 from caflib.Template import Template
 from caflib.Hook import process_hook
 from caflib.Logging import warn, info, error
@@ -18,7 +18,6 @@ from caflib.Logging import warn, info, error
 hashf = 'sha1'
 
 _features = {}
-_reports = []
 
 
 def get_stored(path, sha=False, rel=False, require=True):
@@ -63,18 +62,6 @@ def before_templates(f):
     if not hasattr(f, 'feature_attribs'):
         f.feature_attribs = set()
     f.feature_attribs.add('before_templates')
-    return f
-
-
-def report(f):
-    """Register function as a report in Context.
-
-    Example:
-
-        @report
-        def my_report(...
-    """
-    _reports.append(f)
     return f
 
 

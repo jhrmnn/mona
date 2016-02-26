@@ -19,6 +19,19 @@ _dotiming = 'TIMING' in os.environ
 _timing = defaultdict(float)
 _timing_stack = []
 _writable = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+_reports = []
+
+
+def report(f):
+    """Register function as a report in Context.
+
+    Example:
+
+        @report
+        def my_report(...
+    """
+    _reports.append(f)
+    return f
 
 
 def normalize_str(s):
