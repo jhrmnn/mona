@@ -276,7 +276,7 @@ if __name__ == '__main__':
             with timing('targets'):
                 ctx.make_targets(out/latest)
             if hasattr(cscript, 'json'):
-                warn('Make sure json is not printing dictionaries')
+                warn('Make sure json is not printing dictionaries in features')
     if args['work']:
         if args['--profile']:
             for _ in range(int(args['-j'])):
