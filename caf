@@ -118,6 +118,8 @@ import subprocess
 import shutil
 from hashlib import md5
 import signal
+import tarfile
+import io
 
 out = Path('build')
 cache = Path('_caf')
@@ -141,8 +143,12 @@ def load_cscript():
 
 def pack():
     from base64 import b64encode
-    archive = subprocess.check_output(
-        'find caflib -type f ! -name "*.pyc" | xargs tar -cz', shell=True)
+    with io.BytesIO() as f:
+        tar = tarfile.open(mode='w|gz', fileobj=f)
+        for filename in sorted(Path('caflib').glob('**/*.py')):
+            tar.add(str(filename))
+        tar.close()
+        archive = f.getvalue()
     with open('caf', 'a') as f:
         f.write('# ==>\n')
         f.write('# {}\n'.format(b64encode(archive).decode()))
@@ -157,10 +163,9 @@ def unpack(path):
         print('Has no packed caflib, quitting')
         sys.exit()
     archive = b64decode(lines[-2][2:])
-    p = subprocess.Popen('mkdir -p {0} && tar -C {0} -xz'.format(path),
-                         shell=True,
-                         stdin=subprocess.PIPE)
-    p.communicate(input=archive)
+    with io.BytesIO(archive) as f:
+        tar = tarfile.open(mode='r|gz', fileobj=f)
+        tar.extractall(path)
 
 
 def strip():
