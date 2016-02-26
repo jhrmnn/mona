@@ -73,10 +73,13 @@ class Worker:
             print('Worker {} started working on {}...'.format(self.myid, path))
             if not dry:
                 with cd(path):
+                    command = open('command').read()
+                    if Path('.caf/env').is_file():
+                        command = 'source .caf/env\n' + command
                     with open('run.out', 'w') as stdout, \
                             open('run.err', 'w') as stderr:
                         try:
-                            subprocess.check_call(open('command').read(),
+                            subprocess.check_call(command,
                                                   shell=True,
                                                   stdout=stdout,
                                                   stderr=stderr)
@@ -145,10 +148,13 @@ class Worker:
             print('Worker {} started working on {}...'.format(self.myid, path))
             if not dry:
                 with cd(path):
+                    command = open('command').read()
+                    if Path('.caf/env').is_file():
+                        command = 'source .caf/env\n' + command
                     with open('run.out', 'w') as stdout, \
                             open('run.err', 'w') as stderr:
                         try:
-                            subprocess.check_call(open('command').read(),
+                            subprocess.check_call(command,
                                                   shell=True,
                                                   stdout=stdout,
                                                   stderr=stderr)

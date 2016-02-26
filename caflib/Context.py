@@ -12,6 +12,7 @@ from math import log10, ceil
 from caflib.Utils import mkdir, slugify, cd, listify, timing, relink, \
     make_nonwritable
 from caflib.Template import Template
+from caflib.Hook import process_hook
 from caflib.Logging import warn, info, error
 
 hashf = 'sha1'
@@ -265,8 +266,11 @@ class Task:
                             self.store_link_file(member)
                     else:
                         self.store_link_file(filename)
-        templates = {}
+        with timing('hooks'):
+            hooks = {filename: process_hook(filename)
+                     for filename in listify(self.consume('hooks'))}
         with timing('templates'):
+            templates = {}
             for filename in listify(self.consume('templates')):
                 if isinstance(filename, tuple):
                     templates[filename[1]] = Template(filename[0])
@@ -289,10 +293,22 @@ class Task:
                             target = symlink
                         relink('{}/{}'.format(linkname, target), symlink)
             self.process_features(features)
+            commands = []
+            env = self.consume('_env') or {}
+            for hook_path, (hook_src, hook_cmd, hook_env) in hooks.items():
+                commands.append(hook_cmd)
+                env.update(hook_env)
+                self.store_link_text(hook_src, hook_path, label=True)
             command = self.consume('command')
             if command:
+                commands.append(command)
+            if commands:
                 with open('command', 'w') as f:
-                    f.write(command)
+                    f.write('\n'.join(commands))
+            if env:
+                with open('.caf/env', 'w') as f:
+                    for var, val in env.items():
+                        f.write('{}={}'.format(var, val))
             if self.attrs:
                 error('Task {} has non-consumed attributs: {}'
                       .format(self, list(self.attrs)))
