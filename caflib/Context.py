@@ -217,7 +217,9 @@ class Task:
         texthash = h.hexdigest()
         cellarpath = self.ctx.cellar/str_to_path(texthash)
         if not cellarpath.is_file():
-            if label:
+            if label is True:
+                info('Stored new file "{}"'.format(target))
+            elif label:
                 info('Stored new text labeled "{}"'.format(label))
             else:
                 info('Stored new text')
