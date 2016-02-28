@@ -30,7 +30,7 @@ def check_caflib(path, src, env):
         error('There was an error while reading hook "{}"'.format(path))
     imports = [inspect.getmodule(obj)
                for _, obj in inspect.getmembers(module)]
-    imports = [Path(i.__file__) for i in imports if i]
+    imports = set(Path(i.__file__) for i in imports if i)
     imports = [i for i in imports if 'caflib' in i.parts]
     files = []
     for i in imports:
@@ -40,6 +40,7 @@ def check_caflib(path, src, env):
             _reported.append((
                 warn, 'Hook "{}" is loading whole caflib'.format(path)))
             files.extend(i.parent.glob('**/*.py'))
+    files = sorted(set(files))
     if files:
         env['PYTHONPATH'].append(caflib_path)
         for file in files:
