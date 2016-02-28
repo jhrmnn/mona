@@ -58,9 +58,10 @@ class Table:
     def add_row(self, *row, free=False):
         self.rows.append((free, row))
 
-    def set_format(self, sep=' ', align='>'):
+    def set_format(self, sep=' ', align='>', indent=''):
         self.sep = sep
         self.align = align
+        self.indent = indent
 
     def sort(self, key=lambda x: x[0]):
         self.rows.sort(key=lambda x: key(x[1]), reverse=True)
@@ -85,5 +86,6 @@ class Table:
                          .format(str(cell), align=align, width=width)
                          for cell, align, width
                          in zip(row, aligns, col_widths))
-                f.write('{}'.format(''.join(chain.from_iterable(zip(cells, seps)))))
+                f.write('{}{}'.format(self.indent,
+                                      ''.join(chain.from_iterable(zip(cells, seps)))))
         return f.getvalue()[:-1]
