@@ -4,11 +4,15 @@ from collections import OrderedDict
 from caflib.Logging import Table
 
 
-class Executor:
-    def __init__(self, func, mapping=None, doc=None):
-        self.func = func
-        self.mapping = mapping or func.__annotations__
+class Command:
+    def __init__(self, func, name=None, mapping=None, doc=None):
+        self.name = name or func.__name__
+        self._func = func
+        self._mapping = mapping or func.__annotations__
         self._doc = doc or func.__doc__
+
+    def __repr__(self):
+        return '<Command "{}">'.format(self.name)
 
     def __str__(self):
         s = dedent(self._doc).rstrip()
@@ -25,32 +29,33 @@ class Executor:
         else:
             raise ValueError('Invalid format specifier')
 
-    def parse(self, argv):
-        return docopt(str(self), argv=argv[1:])
+    def parse(self, argv, *clis):
+        command = ' '.join(cli.name for cli in clis) + ' ' + self.name
+        doc = str(self).replace('<command>', command)
+        return docopt(doc, argv=argv[1:])
 
-    def __call__(self, argv, ctx=None):
-        args = self.parse(argv)
+    def __call__(self, argv, *clis):
+        args = self.parse(argv, *clis)
         kwargs = {}
-        for key, name in self.mapping.items():
+        for key, name in self._mapping.items():
             if isinstance(name, tuple):
                 name, func = name
                 if args[name] is not None:
                     if isinstance(func, str):
-                        if ctx:
-                            kwargs[key] = getattr(ctx, func)(args[name])
+                        for ctx in clis:
+                            if hasattr(ctx, func):
+                                kwargs[key] = getattr(ctx, func)(args[name])
+                                break
                         else:
-                            raise RuntimeError('Executor "{}" has no context for "{}"'
-                                               .format(self.func.__name__, func))
+                            raise RuntimeError('{!r} has no context for "{}"'
+                                               .format(self, func))
                     else:
                         kwargs[key] = func(args[name])
                 else:
                     kwargs[key] = None
             else:
                 kwargs[key] = args[name]
-        if ctx:
-            return self.func(ctx, **kwargs)
-        else:
-            return self.func(**kwargs)
+        return self._func(*clis, **kwargs)
 
 
 class CLIExit(SystemExit):
@@ -67,48 +72,66 @@ class CLIMeta(type):
         return cls
 
 
+def bind_function(obj, func, name=None, triggers=None):
+    command = Command(func, name=name)
+    obj.commands[(command.name.strip('_'),)] = command
+    for trigger in triggers or []:
+        obj.commands[tuple(trigger.split())] = command
+    return command
+
+
 class CLI(metaclass=CLIMeta):
 
-    def __init__(self, name):
+    def __init__(self, name, header=None):
         self.name = name
+        self.header = header
         self.commands = self.__class__.commands.copy()
 
+    def __repr__(self):
+        return '<CLI "{}">'.format(self.name)
+
     def __str__(self):
-        return '{self:usage}\n\n{self:commands}'.format(self=self)
+        parts = []
+        for part in ['header', 'usage', 'options', 'commands']:
+            try:
+                parts.append(format(self, part))
+            except ValueError:
+                pass
+        return '\n\n'.join(parts)
 
     def __format__(self, fmt):
         if not fmt:
             return str(self)
+        elif fmt == 'header':
+            if self.header:
+                return self.header
+            else:
+                raise ValueError('Invalid format specifier')
         elif fmt == 'usage':
             usage = """\
             Usage:
-                {} COMMAND [ARGS...]
-            """.format(self.name).rstrip()
+                <command> COMMAND [ARGS...]
+            """.rstrip()
             return dedent(usage)
         elif fmt == 'commands':
             table = Table(align='<', indent='    ', sep='    ')
-            for trigger, func in self.commands.items():
-                if len(trigger) == 1:
-                    table.add_row(trigger[0], format(func, 'header'))
+            for (trigger, *other), command in self.commands.items():
+                if not other:
+                    table.add_row(trigger, format(command, 'header'))
             return 'Commands:\n{}'.format(table)
-        elif fmt == 'help':
-            parts = []
-            for part in ['header', 'usage', 'options', 'commands']:
-                try:
-                    parts.append(format(self, part))
-                except ValueError:
-                    pass
-            return '\n\n'.join(parts)
+        elif fmt == 'short':
+            return '{self:usage}\n\n{self:commands}'.format(self=self)
         else:
             raise ValueError('Invalid format specifier')
 
-    def find_command(self, argv):
-        nargv = len(argv)-1
+    def find_command(self, argv, *clis):
+        offset = len(clis)+1
+        nargv = len(argv)-offset
         maxlen = min(max(map(len, self.commands.keys())), nargv)
         trigger = None
         for tlen in range(maxlen, 0, -1):
             for trigger in self.commands:
-                if trigger == tuple(argv[1:1+tlen]):
+                if trigger == tuple(argv[offset:offset+tlen]):
                     break
             else:
                 trigger = None
@@ -116,45 +139,52 @@ class CLI(metaclass=CLIMeta):
                 break
         return trigger
 
-    def parse(self, argv):
-        trigger = self.find_command(argv)
+    def parse(self, argv, *clis):
+        trigger = self.find_command(argv, *clis)
         if not trigger:
-            self.exit()
-        return self.commands[trigger].parse(argv)
+            self.exit(clis)
+        clis += (self,)
+        return self.commands[trigger].parse(argv, *clis)
 
-    def __call__(self, argv):
-        trigger = self.find_command(argv)
+    def __call__(self, argv, *clis):
+        trigger = self.find_command(argv, *clis)
         if not trigger:
-            self.exit()
-        return self.commands[trigger](argv, ctx=self)
+            self.exit(clis)
+        clis += (self,)
+        return self.commands[trigger](argv, *clis)
 
-    def exit(self):
-        raise CLIExit(str(self))
+    def exit(self, clis):
+        clinames = ' '.join(cli.name for cli in clis + (self,))
+        raise CLIExit(format(self, 'short').replace('<command>', clinames))
+
+    def add_command(self, **kwargs):
+        def decorator(func):
+            return bind_function(self, func, **kwargs)
+        return decorator
 
     @classmethod
-    def command(cls, triggers=None):
+    def command(cls, **kwargs):
         def decorator(func):
-            executor = Executor(func)
-            cls.commands[(func.__name__.strip('_'),)] = executor
-            for trigger in triggers or []:
-                cls.commands[tuple(trigger.split())] = executor
-            return executor
+            return bind_function(cls, func, **kwargs)
         return decorator
 
 
 @CLI.command()
-def help(cli, command: 'COMMAND'):
+def help(*clis, command: 'COMMAND'):
     """
     Print help for individual commands.
 
     Usage:
-        {program} help [COMMAND]
+        <command> [COMMAND]
     """
+    cli = clis[-1]
+    clinames = ' '.join(cli.name for cli in clis)
     if command:
         trigger = (command,)
         if trigger in cli.commands:
-            print(cli.commands[trigger])
+            command = cli.commands[trigger]
+            print(str(command).replace('<command>', clinames + ' ' + command.name))
         else:
             cli.exit()
     else:
-        print(format(cli, 'help'))
+        print(str(cli).replace('<command>', clinames))

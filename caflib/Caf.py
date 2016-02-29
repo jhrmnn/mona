@@ -58,40 +58,42 @@ class Caf(CLI):
             self.out = Path(self.cscript.out)
         if hasattr(self.cscript, 'cache'):
             self.cache = Path(self.cscript.cache)
-        self.commands[('help',)]._doc = self.commands[('help',)]._doc \
-            .format(program='caf')
 
     def __call__(self, argv):
         log_caf(argv)
+        cliexit = None
         try:
             super().__call__(argv)
             print_timing()
             return
-        except CLIExit:
-            pass
+        except CLIExit as e:
+            cliexit = e
         usage = '\n'.join(l for l in str(self).splitlines() if 'caf COMMAND' not in l)
         try:
             args = docopt(usage, argv=argv[1:], options_first=True, help=False)
+            rargv = [argv[0], args['COMMAND']] + args['ARGS']
+            self.parse(rargv)
+            remotes = self.proc_remote(args['REMOTE'])
         except DocoptExit:
-            self.exit()
-        rargv = [argv[0], args['COMMAND']] + args['ARGS']
-        self.parse(rargv)
-        remotes = self.proc_remote(args['REMOTE'])
-        if args['COMMAND'] in ['init', 'build', 'work']:
-            for remote in remotes:
-                remote.update()
-        if 'work' in rargv and not args['--no-check']:
-            targets = self.commands[('work',)].parse(rargv)['TARGET']
-            if 'build' not in rargv:
+            args = None
+        if args:
+            if args['COMMAND'] in ['init', 'build', 'work']:
                 for remote in remotes:
+                    remote.update()
+            if 'work' in rargv and not args['--no-check']:
+                targets = self.commands[('work',)].parse(rargv)['TARGET']
+                if 'build' not in rargv:
+                    for remote in remotes:
+                        remote.check(targets, self.out/latest)
+            else:
+                targets = None
+            for remote in remotes:
+                remote.command(' '.join(arg if ' ' not in arg else repr(arg)
+                                        for arg in rargv[1:]))
+                if targets and 'build' in rargv:
                     remote.check(targets, self.out/latest)
         else:
-            targets = None
-        for remote in remotes:
-            remote.command(' '.join(arg if ' ' not in arg else repr(arg)
-                                    for arg in rargv[1:]))
-            if targets and 'build' in rargv:
-                remote.check(targets, self.out/latest)
+            raise cliexit
 
     def __format__(self, fmt):
         if fmt == 'header':
@@ -288,41 +290,59 @@ def reset(caf, targets: 'TARGET'):
             (p/'.lock').rmdir()
 
 
-@Caf.command()
-def list_(caf, do_profiles: 'profiles', do_remotes: 'remotes',
-          do_tasks: 'tasks', do_finished: '--finished',
-          do_stored: '--stored'):
+caf_list = CLI('list', header='List various entities.')
+Caf.commands[('list',)] = caf_list
+
+
+@caf_list.add_command(name='profiles')
+def list_profiles(caf, _):
     """
-    Print various diagnostics.
+    List profiles.
 
     Usage:
-        caf list (profiles | remotes)
+        caf list profiles
+    """
+    for p in Path(os.environ['HOME']).glob('.config/caf/worker_*'):
+        print(p.name)
+
+
+@caf_list.add_command(name='remotes')
+def list_remotes(caf, _):
+    """
+    List remotes.
+
+    Usage:
+        caf list remotes
+    """
+    print(caf.remotes)
+
+
+@caf_list.add_command(name='tasks')
+def list_tasks(caf, _, do_finished: '--finished', do_stored: '--stored'):
+    """
+    List tasks.
+
+    Usage:
         caf list tasks [--finished | --stored]
 
     Options:
         --finished                 List finished tasks.
         --stored                   List stored tasks.
     """
-    if do_profiles:
-        for p in Path(os.environ['HOME']).glob('.config/caf/worker_*'):
-            print(p.name)
-    elif do_remotes:
-        print(caf.remotes)
-    elif do_tasks:
-        if do_finished:
-            subprocess.call(['find', '-H', str(caf.out/latest), '-exec',
-                             'test', '-f', '{}/.caf/seal', ';', '-print'])
-        elif do_stored:
-            files = get_files(caf.out/latest)
-            for task, target in files:
-                ptarget = Path(target)
-                if ptarget.parents[2].name == cellar:
-                    print(task, Path('/'.join(ptarget.parts[-4:])))
-        else:
-            files = get_files(caf.out/latest)
-            for task, target in files:
-                ptarget = Path(target)
+    if do_finished:
+        subprocess.call(['find', '-H', str(caf.out/latest), '-exec',
+                         'test', '-f', '{}/.caf/seal', ';', '-print'])
+    elif do_stored:
+        files = get_files(caf.out/latest)
+        for task, target in files:
+            ptarget = Path(target)
+            if ptarget.parents[2].name == cellar:
                 print(task, Path('/'.join(ptarget.parts[-4:])))
+    else:
+        files = get_files(caf.out/latest)
+        for task, target in files:
+            ptarget = Path(target)
+            print(task, Path('/'.join(ptarget.parts[-4:])))
 
 
 @Caf.command()
