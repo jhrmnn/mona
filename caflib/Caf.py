@@ -171,7 +171,7 @@ def build(caf, dry: '--dry', do_init: 'init'):
     tasks) are created in ./build/Latest.
     """
     if do_init:
-        init('caf init'.split(), ctx=caf)
+        init('caf init'.split(), caf)
     ctx = Context(caf.cellar)
     with timing('dependency tree'):
         caf.cscript.build(ctx)
@@ -214,9 +214,9 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
         --brewery                  Work on tasks in Brewery.
     """
     if do_init:
-        build('caf init build'.split(), ctx=caf)
+        build('caf init build'.split(), caf)
     elif do_build:
-        build('caf build'.split(), ctx=caf)
+        build('caf build'.split(), caf)
     if profile:
         for _ in range(n):
             cmd = ['{}/.config/caf/worker_{}'
@@ -564,7 +564,7 @@ def pack(caf):
     Usage:
         caf pack
     """
-    strip('caf strip'.split(), ctx=caf)
+    strip('caf strip'.split(), caf)
     with io.BytesIO() as f:
         tar = tarfile.open(mode='w|gz', fileobj=f)
         for filename in sorted(Path('caflib').glob('**/*.py')):
