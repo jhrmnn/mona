@@ -447,22 +447,22 @@ def cmd(caf, do_tasks: '--task', do_print: '--print', targets: 'TARGET',
         subprocess.call(cmd, shell=True)
 
 
-@Caf.command()
-def remote_(caf, do_add: 'add', url: 'URL', name: 'NAME'):
+caf_remote = CLI('remote', header='Manage remotes.')
+Caf.commands[('remote',)] = caf_remote
+
+
+@caf_remote.add_command(name='add')
+def remote_add(caf, _, url: 'URL', name: 'NAME'):
     """
-    Manage remotes.
+    Add a remote.
 
     Usage:
         caf remote add URL [NAME]
-
-    add
-        Define a new remote and save it in ./.caf/remotes.yaml.
     """
-    if do_add:
-        host, path = url.split(':')
-        name = name or host
-        caf.remotes[name] = {'host': host, 'path': path}
-        caf.remotes.save()
+    host, path = url.split(':')
+    name = name or host
+    caf.remotes[name] = {'host': host, 'path': path}
+    caf.remotes.save()
 
 
 @Caf.command()
