@@ -90,7 +90,8 @@ class Caf(CLI):
             for remote in remotes:
                 remote.command(' '.join(arg if ' ' not in arg else repr(arg)
                                         for arg in rargv[1:]))
-                if targets and 'build' in rargv:
+                if 'work' in rargv and not args['--no-check'] \
+                        and 'build' in rargv:
                     remote.check(targets, self.out/latest)
         else:
             raise cliexit
@@ -238,7 +239,7 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
             worker.work_from_queue((caf.cellar).resolve(), queue,
                                    dry=dry, limit=limit)
         else:
-            worker.work(targets, dry=dry, maxdepth=depth, limit=depth)
+            worker.work(targets, dry=dry, maxdepth=depth, limit=limit)
 
 
 @Caf.command()
