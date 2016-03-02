@@ -34,6 +34,7 @@ class Worker:
                 (self.cwd/'.lock').rmdir()
             sys.exit()
         signal.signal(signal.SIGINT, sigint_handler)
+        signal.signal(signal.SIGTERM, sigint_handler)
 
         print('Worker {} alive and ready.'.format(self.myid))
         if targets:
