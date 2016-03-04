@@ -155,7 +155,7 @@ def get_energy(parser):
         key, val = parser.line.split('\t')[:2]
         if key in ['Total energy',
                    'MBD@rsSCS energy',
-                   'van der Waals energy corr.']:
+                   'vdW energy correction']:
             parser.results['energies'][key] = float(val.split()[0])
 
 
