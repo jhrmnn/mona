@@ -131,7 +131,7 @@ class Remote:
 
     def go(self):
         subprocess.call(['ssh', '-t', self.host,
-                         'cd {.path} && $SHELL'.format(self)])
+                         'cd {.path} && exec $SHELL'.format(self)])
 
 
 def get_targets(targets, batch):
