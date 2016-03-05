@@ -53,6 +53,7 @@ class Caf(CLI):
                 error('There was an error while reading cscript.')
         self.out = Path(getattr(self.cscript, 'out', 'build'))
         self.cache = Path(getattr(self.cscript, 'cache', '_caf'))
+        self.top = Path(getattr(self.cscript, 'top', '.'))
         self.cellar = self.cache/cellar
         self.brewery = self.cache/brewery
 
@@ -170,7 +171,7 @@ def build(caf, dry: '--dry', do_init: 'init'):
     """
     if do_init:
         init('caf init'.split(), caf)
-    ctx = Context(caf.cellar)
+    ctx = Context(caf.cellar, caf.top)
     with timing('dependency tree'):
         caf.cscript.build(ctx)
     if not dry:

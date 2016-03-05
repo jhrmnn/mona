@@ -7,9 +7,10 @@ import os
 
 
 class Remote:
-    def __init__(self, host, path):
+    def __init__(self, host, path, top):
         self.host = host
         self.path = path
+        self.top = top
 
     def update(self, delete=False):
         info('Updating {.host}...'.format(self))
@@ -31,7 +32,7 @@ class Remote:
                '--exclude=*.pyc',
                '--exclude=__pycache__',
                ['--exclude={}'.format(p) for p in ignored],
-               '.',
+               ['caf', 'cscript', str(self.top)],
                '{0.host}:{0.path}'.format(self)]
         subprocess.check_call(filter_cmd(cmd))
 

@@ -243,26 +243,28 @@ class Task:
                         else (feat.__name__, feat)
                         for feat in listify(self.consume('features')))
         self.process_features(features, 'before_files')
-        with timing('files'):
-            for filename in listify(self.consume('files')):
-                if isinstance(filename, tuple):
-                    self.store_link_file(filename[0], filename[1])
-                else:
-                    if '*' in filename or '?' in filename:
-                        for member in glob(filename):
-                            self.store_link_file(member)
+        with cd(self.ctx.top):
+            with timing('files'):
+                for filename in listify(self.consume('files')):
+                    if isinstance(filename, tuple):
+                        self.store_link_file(filename[0], filename[1])
                     else:
-                        self.store_link_file(filename)
-        with timing('hooks'):
-            hooks = {filename: process_hook(filename)
-                     for filename in listify(self.consume('hooks'))}
-        with timing('templates'):
-            templates = {}
-            for filename in listify(self.consume('templates')):
-                if isinstance(filename, tuple):
-                    templates[filename[1]] = Template(filename[0])
-                else:
-                    templates[filename] = Template(filename)
+                        if '*' in filename or '?' in filename:
+                            for member in glob(filename):
+                                self.store_link_file(member)
+                        else:
+                            self.store_link_file(filename)
+            with timing('hooks'):
+                    hooks = {filename: process_hook(filename)
+                             for filename in listify(self.consume('hooks'))}
+            with timing('templates'):
+                templates = {}
+                for filename in listify(self.consume('templates')):
+                    if isinstance(filename, tuple):
+                        source, target = filename
+                    else:
+                        source = target = filename
+                    templates[target] = Template(source)
         with cd(self.path):
             self.process_features(features, 'before_templates')
             with timing('templates'):
@@ -466,11 +468,12 @@ class Target(AddWrapper):
 class Context:
     """Represent a complete build: tasks and targets."""
 
-    def __init__(self, cellar):
+    def __init__(self, cellar, top):
         try:
             self.cellar = cellar.resolve()
         except FileNotFoundError:
             error('Cellar does not exist, maybe `caf init` first?')
+        self.top = top
         self.tasks = []
         self.targets = defaultdict(dict)
 
