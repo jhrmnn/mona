@@ -5,7 +5,7 @@ import hashlib
 import shutil
 import json
 from glob import glob
-from collections import defaultdict, namedtuple
+from collections import defaultdict, namedtuple, OrderedDict
 from pathlib import Path
 from math import log10, ceil
 
@@ -238,10 +238,10 @@ class Task:
         features and save the command. Check that all attributes have been
         consumed.
         """
-        features = dict((feat, _features[feat])
-                        if isinstance(feat, str)
-                        else (feat.__name__, feat)
-                        for feat in listify(self.consume('features')))
+        features = OrderedDict((feat, _features[feat])
+                               if isinstance(feat, str)
+                               else (feat.__name__, feat)
+                               for feat in listify(self.consume('features')))
         self.process_features(features, 'before_files')
         with cd(self.ctx.top):
             with timing('files'):
