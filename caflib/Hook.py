@@ -5,6 +5,7 @@ import inspect
 from itertools import dropwhile
 from hashlib import md5
 from collections import defaultdict
+import imp
 
 
 caflib_path = Path(__file__).resolve().parents[1]
@@ -22,8 +23,9 @@ def reporter():
 
 def check_caflib(path, src, env):
     try:
-        module = __import__(path.stem)
         info('Loading hook "{}"'.format(path))
+        module = imp.new_module(path.stem)
+        exec(compile(path.open().read(), path.name, 'exec'), module.__dict__)
     except:
         import traceback
         traceback.print_exc()
@@ -44,12 +46,11 @@ def check_caflib(path, src, env):
     if files:
         env['PYTHONPATH'].append(caflib_path)
         for file in files:
-            with file.open() as f:
+            relpath = '/'.join(dropwhile(lambda x: x != 'caflib', file.parts))
+            with (Path(caflib_path)/relpath).open() as f:
                 h = md5(f.read().encode()).hexdigest()
             src = '{}\n# md5 {}: {}' \
-                .format(src,
-                        '/'.join(dropwhile(lambda x: x != 'caflib', file.parts)),
-                        h)
+                .format(src, relpath, h)
     return src
 
 
