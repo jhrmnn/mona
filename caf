@@ -2,6 +2,7 @@
 import sys
 from pathlib import Path
 import signal
+import os
 
 
 def unpack(caf, path: ('--path', Path)):
@@ -12,33 +13,39 @@ def unpack(caf, path: ('--path', Path)):
         caf unpack [--path PATH]
 
     Options:
-        --path PATH        Path to which unpack caflib [default: .]
+        --path PATH        Path to which symlink caflib [default: .]
     """
-    from hashlib import md5
-    import shutil
     from base64 import b64decode
     import tarfile
     import io
     with open(__file__) as f:
-        lines = f.readlines()
-    if '# ==>' not in lines[-3]:
-        raise RuntimeError('No packed caflib')
-    if not path:
-        path = Path('.caf-{}'.format(md5(lines[-2].encode()).hexdigest()))
-    caflibpath = path/'caflib'
-    if caflibpath.is_dir():
-        shutil.rmtree(str(caflibpath))
-    archive = b64decode(lines[-2][2:])
-    with io.BytesIO(archive) as f:
-        tar = tarfile.open(mode='r|gz', fileobj=f)
-        tar.extractall(str(path))
-    return path
+        for line in f:
+            if line == '# ==>\n':
+                break
+        else:
+            raise RuntimeError('No packed caflib')
+        version = next(f)[:-1].split(maxsplit=2)[-1]
+        caflibpath = Path('.caf-{}'.format(version))
+        if not caflibpath.is_dir():
+            archive = b64decode(next(f)[:-1].split(maxsplit=2)[-1])
+            with io.BytesIO(archive) as ftar:
+                tar = tarfile.open(mode='r|gz', fileobj=ftar)
+                tar.extractall(str(caflibpath))
+    link = path/'caflib'
+    target = caflibpath/'caflib'
+    if link.is_symlink():
+        link.unlink()
+    if not link.parent.is_dir():
+        link.parent.mkdir()
+    link.symlink_to(os.path.relpath(str(target), str(link.parent)))
 
 
 if __name__ == '__main__':
-    if not Path('caflib').is_dir():
-        libpath = unpack(None, None)
-        sys.path.insert(0, str(libpath))
+    if Path('caflib').is_dir():
+        pass
+    else:
+        unpack(None, Path('.caf'))
+        sys.path.insert(0, '.caf')
     from caflib.Caf import Caf
     Caf.command()(unpack)
     caf = Caf()

@@ -10,6 +10,7 @@ from itertools import takewhile
 import imp
 from textwrap import dedent
 from docopt import docopt, DocoptExit
+import hashlib
 
 from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
     get_files, timing, relink, cd, print_timing
@@ -566,13 +567,18 @@ def pack(caf):
         caf pack
     """
     strip('caf strip'.split(), caf)
-    with io.BytesIO() as f:
-        tar = tarfile.open(mode='w|gz', fileobj=f)
-        for filename in sorted(Path('caflib').glob('**/*.py')):
-            tar.add(str(filename))
-        tar.close()
-        archive = f.getvalue()
+    h = hashlib.new('md5')
+    with io.BytesIO() as ftar:
+        archive = tarfile.open(mode='w|gz', fileobj=ftar)
+        for path in sorted(Path('caflib').glob('**/*.py')):
+            archive.add(str(path))
+            with path.open('rb') as f:
+                h.update(f.read())
+        archive.close()
+        archive = ftar.getvalue()
+    version = h.hexdigest()
     with open('caf', 'a') as f:
         f.write('# ==>\n')
-        f.write('# {}\n'.format(b64encode(archive).decode()))
+        f.write('# version: {}\n'.format(version))
+        f.write('# archive: {}\n'.format(b64encode(archive).decode()))
         f.write('# <==\n')
