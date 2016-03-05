@@ -7,7 +7,6 @@ from contextlib import contextmanager
 from datetime import datetime
 from collections import defaultdict
 import time
-import json
 import itertools
 import sys
 import stat
@@ -158,14 +157,6 @@ def listify(obj):
         return list(obj)
     except TypeError:
         return [obj]
-
-
-class ArrayEncoder(json.JSONEncoder):
-    def default(self, obj):
-        try:
-            return obj.tolist()
-        except AttributeError:
-            return super().default(obj)
 
 
 def groupby(lst, key):
