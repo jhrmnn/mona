@@ -43,10 +43,6 @@ def load_module(pathname):
 class Caf(CLI):
     def __init__(self):
         super().__init__('caf')
-        self.out = Path('build')
-        self.cache = Path('_caf')
-        self.cellar = self.cache/cellar
-        self.brewery = self.cache/brewery
         self.conf = Configuration('{}/.config/caf/conf.yaml'
                                   .format(os.environ['HOME']))
         self.remotes = Configuration('.caf/remotes.yaml')
@@ -55,10 +51,10 @@ class Caf(CLI):
                 self.cscript = load_module('cscript')
             except RuntimeError:
                 error('There was an error while reading cscript.')
-        if hasattr(self.cscript, 'out'):
-            self.out = Path(self.cscript.out)
-        if hasattr(self.cscript, 'cache'):
-            self.cache = Path(self.cscript.cache)
+        self.out = Path(getattr(self.cscript, 'out', 'build'))
+        self.cache = Path(getattr(self.cscript, 'cache', '_caf'))
+        self.cellar = self.cache/cellar
+        self.brewery = self.cache/brewery
 
     def __call__(self, argv):
         log_caf(argv)
