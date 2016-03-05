@@ -81,6 +81,8 @@ def relink(path, linkname=None):
     link = Path(linkname) if linkname else Path(Path(path).name)
     if link.is_symlink():
         link.unlink()
+    if not link.parent.is_dir():
+        mkdir(link.parent, parents=True)
     link.symlink_to(path)
 
 
