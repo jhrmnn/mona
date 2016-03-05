@@ -45,7 +45,7 @@ class Caf(CLI):
         super().__init__('caf')
         self.conf = Configuration('{}/.config/caf/conf.yaml'
                                   .format(os.environ['HOME']))
-        self.remotes = Configuration('.caf/remotes.yaml')
+        self.conf.update(Configuration('.caf/conf.yaml'))
         with timing('reading cscript'):
             try:
                 self.cscript = load_module('cscript')
@@ -56,6 +56,8 @@ class Caf(CLI):
         self.top = Path(getattr(self.cscript, 'top', '.'))
         self.cellar = self.cache/cellar
         self.brewery = self.cache/brewery
+        self.remotes = {name: Remote(r['host'], r['path'], self.top)
+                        for name, r in self.conf.get('remotes', {}).items()}
 
     def __call__(self, argv):
         log_caf(argv)
@@ -119,13 +121,12 @@ class Caf(CLI):
 
     def proc_remote(self, remotes):
         if remotes == 'all':
-            remotes = self.remotes.keys()
+            remotes = self.remotes.values()
         else:
-            remotes = remotes.split(',')
-        try:
-            remotes = [Remote(**self.remotes[r]) for r in remotes]
-        except KeyError as e:
-            error('Remote "{}" is not defined'.format(e.args[0]))
+            try:
+                remotes = [self.remotes[r] for r in remotes.split(',')]
+            except KeyError as e:
+                error('Remote "{}" is not defined'.format(e.args[0]))
         return remotes
 
 

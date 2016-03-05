@@ -194,6 +194,18 @@ class Configuration:
     def get(self, key, default=None):
         return self._dict.get(key, default)
 
+    def items(self):
+        return self._dict.items()
+
+    def update(self, other):
+        for okey, oitem in other.items():
+            if okey not in self:
+                self[okey] = oitem
+            elif isinstance(self[okey], list):
+                self[okey].extend(oitem)
+            elif isinstance(self[okey], dict):
+                self[okey].update(oitem)
+
     def keys(self):
         return self._dict.keys()
 
