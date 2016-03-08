@@ -33,11 +33,15 @@ def unpack(caf, path: ('--path', Path)):
                 tar.extractall(str(caflibpath))
     link = path/'caflib'
     target = caflibpath/'caflib'
+    linktarget = os.path.relpath(str(target), str(link.parent))
     if link.is_symlink():
-        link.unlink()
+        if os.readlink(str(link)) == linktarget:
+            return
+        else:
+            link.unlink()
     if not link.parent.is_dir():
         link.parent.mkdir()
-    link.symlink_to(os.path.relpath(str(target), str(link.parent)))
+    link.symlink_to(linktarget)
 
 
 if __name__ == '__main__':
