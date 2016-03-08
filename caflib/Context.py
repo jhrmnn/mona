@@ -1,5 +1,3 @@
-from progressbar import ProgressBar
-
 import os
 import hashlib
 import shutil
@@ -13,7 +11,13 @@ from caflib.Utils import mkdir, slugify, cd, listify, timing, relink, \
     make_nonwritable, _reports
 from caflib.Template import Template
 from caflib.Hook import process_hook
-from caflib.Logging import warn, info, error
+from caflib.Logging import warn, info, error, dep_error
+
+try:
+    from progressbar import ProgressBar
+except ImportError:
+    dep_error('progressbar2')
+
 
 hashf = 'sha1'
 

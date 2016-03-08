@@ -1,7 +1,12 @@
-from docopt import docopt
 from textwrap import dedent
 from collections import OrderedDict
-from caflib.Logging import Table
+
+from caflib.Logging import dep_error, Table
+
+try:
+    from docopt import docopt
+except ImportError:
+    dep_error('docopt')
 
 
 class Command:

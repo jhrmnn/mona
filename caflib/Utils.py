@@ -1,6 +1,5 @@
 import subprocess
 from pathlib import Path
-import yaml
 import re
 import os
 from contextlib import contextmanager
@@ -11,7 +10,12 @@ import itertools
 import sys
 import stat
 
-from caflib.Logging import Table
+from caflib.Logging import Table, dep_error
+
+try:
+    import yaml
+except ImportError:
+    dep_error('yaml')
 
 
 _dotiming = 'TIMING' in os.environ

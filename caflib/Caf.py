@@ -9,17 +9,21 @@ from base64 import b64encode
 from itertools import takewhile
 import imp
 from textwrap import dedent
-from docopt import docopt, DocoptExit
 import hashlib
 
 from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
     get_files, timing, relink, cd, print_timing
-from caflib.Logging import error, info, colstr, Table, warn, log_caf
+from caflib.Logging import error, info, colstr, Table, warn, log_caf, dep_error
 from caflib.Context import get_stored
 from caflib.CLI import CLI, CLIExit
 from caflib.Context import Context
 from caflib.Worker import Worker
 from caflib.Remote import Remote
+
+try:
+    from docopt import docopt, DocoptExit
+except ImportError:
+    dep_error('docopt')
 
 
 latest = 'Latest'
