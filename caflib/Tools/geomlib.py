@@ -159,6 +159,16 @@ class Molecule:
         self.dump(fp, fmt)
         return fp.getvalue()
 
+    def __getattr__(self, attr):
+        if attr == 'xyz':
+            return np.array([a.xyz for a in self])
+        elif attr == 'xyz_bohr':
+            return np.array([a.xyz for a in self])/bohr
+        elif attr == 'species':
+            return [a.symbol for a in self]
+        else:
+            raise AttributeError
+
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
