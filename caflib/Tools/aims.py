@@ -44,4 +44,5 @@ def prepare_aims(task):
             with (basis_root/'{0[0]:02d}_{0[1]}_default'.format(specie)).open() as f:
                 chunks.append(f.read())
         task.store_link_text('\n'.join(chunks), 'control.in', label=True)
-    task.attrs['command'] = 'AIMS={} run_aims'.format(aims)
+    if 'command' not in task.attrs:
+        task.attrs['command'] = 'AIMS={} run_aims'.format(aims)
