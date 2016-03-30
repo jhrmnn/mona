@@ -30,7 +30,10 @@ def prepare_aims(task):
             error("Don't know where to find species files")
     if aims not in _reported:
         _reported[aims] = (info, '{} is {}'.format(aims, aims_binary))
-    geom = geomlib.readfile('geometry.in', 'aims')
+    geom = geomlib.readfile('geometry.in'
+                            if Path('geometry.in').exists()
+                            else task.consume('geomfile'),
+                            'aims')
     species = sorted(set((a.number, a.symbol) for a in geom))
     basis = task.consume('basis')
     assert basis
