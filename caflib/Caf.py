@@ -152,7 +152,8 @@ def init(caf):
         mkdir(cache_path)
         relink(cache_path, caf.cache)
     else:
-        mkdir(caf.cache)
+        cache_path = caf.cache
+        mkdir(cache_path)
     info('Initializing an empty repository at {}.'.format(cache_path))
     mkdir(caf.cellar)
     mkdir(caf.brewery)
