@@ -55,7 +55,7 @@ class Caf(CLI):
                 self.cscript = load_module('cscript')
             except RuntimeError:
                 error('There was an error while reading cscript.')
-        self.out = Path(getattr(self.cscript, 'out', '_build'))
+        self.out = Path(getattr(self.cscript, 'out', 'build'))
         self.cache = Path(getattr(self.cscript, 'cache', '_caf'))
         self.top = Path(getattr(self.cscript, 'top', '.'))
         self.cellar = self.cache/cellar
