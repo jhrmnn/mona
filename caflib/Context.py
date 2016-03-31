@@ -161,7 +161,11 @@ class Task:
 
     Link = namedtuple('Link', 'task links needed')
 
-    def add_dependency(self, task, link, *links, needed=False):
+    def add_dependency(self, task, *links, needed=False):
+        if not links:
+            link = None
+        else:
+            link, links = links[0], links[1:]
         if self == task:
             error('Task cannot depend on itself: {}'.format(self))
         self.children.append(task)
