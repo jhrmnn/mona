@@ -203,6 +203,9 @@ class Molecule:
         path = Path(path)
         if not fmt:
             fmt = ext_fmt_dict.get(path.suffix[1:])
+        if not fmt:
+            if path.name.endswith('geometry.in'):
+                fmt = 'aims'
         with open(str(path), 'w') as f:
             self.dump(f, fmt)
 
@@ -500,6 +503,9 @@ def readfile(path, fmt=None):
     path = Path(path)
     if not fmt:
         fmt = ext_fmt_dict.get(path.suffix[1:])
+    if not fmt:
+        if path.name.endswith('geometry.in'):
+            fmt = 'aims'
     with path.open() as f:
         return load(f, fmt)
 
