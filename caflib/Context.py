@@ -110,18 +110,23 @@ class Task:
         self._parent_counter = 0
         self.noname_link_counter = 0
 
-    def __add__(self, iterable):
+    def __add__(self, obj):
+        if isinstance(obj, Task):
+            return self + Link() + obj
         try:
-            for x in iterable:
+            for x in obj:
                 self + x
-            return iterable
+            return obj
         except TypeError:
             return NotImplemented
 
-    def __radd__(self, iterable):
+    def __radd__(self, obj):
         try:
-            for x in iterable:
-                x + self
+            for x in obj:
+                if isinstance(x, Link):
+                    x + self
+                else:
+                    return NotImplemented
             return self
         except TypeError:
             return NotImplemented
