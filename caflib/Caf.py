@@ -50,6 +50,8 @@ class Caf(CLI):
         self.conf = Configuration('.caf/conf.yaml')
         self.conf.set_global(Configuration('{}/.config/caf/conf.yaml'
                                            .format(os.environ['HOME'])))
+        if not Path('cscript').is_file():
+            error('There is no cscript')
         with timing('reading cscript'):
             try:
                 self.cscript = load_module('cscript')
