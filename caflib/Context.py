@@ -178,7 +178,7 @@ class Task:
             linkname = slugify(link)
         else:
             self.noname_link_counter += 1
-            linkname = '.{}'.format(self.noname_link_counter)
+            linkname = '_{}'.format(self.noname_link_counter)
         self.links[linkname] = Task.Link(task, links, needed)
         task.parents.append((self, linkname))
         return self
