@@ -47,9 +47,9 @@ def load_module(pathname):
 class Caf(CLI):
     def __init__(self):
         super().__init__('caf')
-        self.conf = Configuration('{}/.config/caf/conf.yaml'
-                                  .format(os.environ['HOME']))
-        self.conf.update(Configuration('.caf/conf.yaml'))
+        self.conf = Configuration('.caf/conf.yaml')
+        self.conf.set_global(Configuration('{}/.config/caf/conf.yaml'
+                                           .format(os.environ['HOME'])))
         with timing('reading cscript'):
             try:
                 self.cscript = load_module('cscript')
@@ -319,7 +319,7 @@ def list_remotes(caf, _):
     Usage:
         caf list remotes
     """
-    print(caf.remotes)
+    print(caf.conf.get('remotes'))
 
 
 @caf_list.add_command(name='tasks')
@@ -466,8 +466,10 @@ def remote_add(caf, _, url: 'URL', name: 'NAME'):
     """
     host, path = url.split(':')
     name = name or host
-    caf.remotes[name] = {'host': host, 'path': path}
-    caf.remotes.save()
+    if 'remotes' not in caf.conf:
+        caf.conf['remotes'] = {}
+    caf.conf['remotes'][name] = {'host': host, 'path': path}
+    caf.conf.save()
 
 
 @Caf.command()

@@ -175,21 +175,38 @@ class Configuration:
         self.path = Path(path)
         self._dict = {}
         self.load()
+        self._global = {}
 
     def __str__(self):
         return '\n'.join('{}\n\t{}'.format(name, val) for name, val in self._dict.items())
 
     def __getitem__(self, key):
-        return self._dict[key]
+        local = self._dict.get(key)
+        if local is None or isinstance(local, dict):
+            globl = self._global.get(key)
+            if globl is not None:
+                if local is None:
+                    local = globl
+                else:
+                    globl = dict(globl)
+                    globl.update(local)
+                    local = globl
+        if local is not None:
+            return local
+        else:
+            raise KeyError(key)
 
     def __setitem__(self, key, val):
         self._dict[key] = val
 
     def __contains__(self, x):
-        return x in self._dict
+        return x in self._dict or x in self._global
 
     def get(self, key, default=None):
-        return self._dict.get(key, default)
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
     def items(self):
         return self._dict.items()
@@ -202,6 +219,9 @@ class Configuration:
                 self[okey].extend(oitem)
             elif isinstance(self[okey], dict):
                 self[okey].update(oitem)
+
+    def set_global(self, conf):
+        self._global = conf
 
     def keys(self):
         return self._dict.keys()
