@@ -153,6 +153,8 @@ def init(caf):
         relink(cache_path, caf.cache)
     else:
         cache_path = caf.cache
+        if cache_path.exists():
+            error('{} exists, cannot overwrite'.format(cache_path))
         mkdir(cache_path)
     info('Initializing an empty repository at {}.'.format(cache_path))
     mkdir(caf.cellar)
@@ -175,6 +177,8 @@ def build(caf, dry: '--dry', do_init: 'init'):
     ./_caf/Cellar based on their SHA1 hash. Targets (collections of symlinks to
     tasks) are created in ./build/Latest.
     """
+    if not hasattr(caf.cscript, 'build'):
+        error('cscript has to contain function build(ctx)')
     if do_init:
         init('caf init'.split(), caf)
     ctx = Context(caf.cellar, caf.top)

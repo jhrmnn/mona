@@ -25,7 +25,7 @@ class Template:
             else:
                 key, fmt = token, None
             if key not in mapping:
-                raise RuntimeError('"{}" not defined'.format(key))
+                error('"{}" not defined'.format(key))
             else:
                 used.add(key)
                 try:

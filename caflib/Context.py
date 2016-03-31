@@ -242,10 +242,13 @@ class Task:
         features and save the command. Check that all attributes have been
         consumed.
         """
-        features = OrderedDict((feat, _features[feat])
-                               if isinstance(feat, str)
-                               else (feat.__name__, feat)
-                               for feat in listify(self.consume('features')))
+        try:
+            features = OrderedDict((feat, _features[feat])
+                                   if isinstance(feat, str)
+                                   else (feat.__name__, feat)
+                                   for feat in listify(self.consume('features')))
+        except KeyError as e:
+            error('Feature {} is not registered'.format(e.args[0]))
         self.process_features(features, 'before_files')
         with cd(self.ctx.top):
             with timing('files'):
