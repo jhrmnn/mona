@@ -171,10 +171,11 @@ def groupby(lst, key):
 
 
 class Configuration:
-    def __init__(self, path):
-        self.path = Path(path)
+    def __init__(self, path=None):
+        self.path = Path(path) if path else None
         self._dict = {}
-        self.load()
+        if self.path:
+            self.load()
         self._global = {}
 
     def __str__(self):

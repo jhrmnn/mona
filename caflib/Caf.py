@@ -325,7 +325,9 @@ def list_remotes(caf, _):
     Usage:
         caf list remotes
     """
-    print(caf.conf.get('remotes'))
+    remote_conf = Configuration()
+    remote_conf.update(caf.conf.get('remotes', {}))
+    print(remote_conf)
 
 
 @caf_list.add_command(name='tasks')
