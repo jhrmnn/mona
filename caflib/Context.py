@@ -235,7 +235,7 @@ class Task:
     def process_features(self, features, attrib=None):
         with timing('features'):
             for name, feat in list(features.items()):
-                if not attrib or 'before_files' in getattr(feat, 'feature_attribs', []):
+                if not attrib or attrib in getattr(feat, 'feature_attribs', []):
                     with timing(name):
                         try:
                             feat(self)
