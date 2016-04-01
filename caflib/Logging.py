@@ -1,6 +1,6 @@
 import sys
 from io import StringIO
-from itertools import chain, dropwhile
+from itertools import chain
 from datetime import datetime
 from pathlib import Path
 
@@ -57,6 +57,18 @@ class TableException(Exception):
     pass
 
 
+def alignize(s, align, width):
+    l = len(s)
+    if l < width:
+        if align == '<':
+            s = s + (width-l)*' '
+        elif align == '>':
+            s = (width-l)*' ' + s
+        elif align == '|':
+            s = (-(l-width)//2)*' ' + s + ((width-l)//2)*' '
+    return s
+
+
 class Table:
     def __init__(self, **kwargs):
         self.rows = []
@@ -77,8 +89,8 @@ class Table:
         col_nums = [len(row) for free, row in self.rows if not free]
         if len(set(col_nums)) != 1:
             raise TableException('Unequal column lengths: {}'.format(col_nums))
-        col_nums = len(next(dropwhile(lambda r: r[0], self.rows))[1])
-        cell_widths = [[len(str(cell)) for cell in row]
+        col_nums = col_nums[0]
+        cell_widths = [[len(cell) for cell in row]
                        for free, row in self.rows if not free]
         col_widths = [max(col) for col in zip(*cell_widths)]
         seps = (col_nums-1)*[self.sep] if not isinstance(self.sep, list) else self.sep
@@ -89,8 +101,7 @@ class Table:
             if free:
                 f.write('{}\n'.format(row[0]))
             else:
-                cells = ('{:{align}{width}}'
-                         .format(str(cell), align=align, width=width)
+                cells = (alignize(cell, align, width)
                          for cell, align, width
                          in zip(row, aligns, col_widths))
                 f.write('{}{}'.format(self.indent,

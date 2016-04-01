@@ -396,7 +396,8 @@ def status(caf, targets: 'TARGET'):
     """
     def colored(stat):
         colors = 'blue green red yellow normal'.split()
-        return [colstr(s, color) for s, color in zip(stat, colors)]
+        return [colstr(s, color) if s else colstr(s, 'normal')
+                for s, color in zip(stat, colors)]
 
     dirs = []
     if not targets:
@@ -412,17 +413,17 @@ def status(caf, targets: 'TARGET'):
             dirs.append((target, target.glob('*')))
     print('number of {} tasks:'
           .format('/'.join(colored('running finished error prepared all'.split()))))
-    table = Table(align=['<', *4*['>']], sep=[' ', *3*['/']])
+    table = Table(align=['<', *5*['>']], sep=[' ', *4*['/']])
     for directory, paths in sorted(dirs):
         stats = []
         locked = []
         for p in paths:
             stats.append(((p/'.lock').is_dir(), (p/'.caf/seal').is_file(),
-                          (p/'.caf/error').is_dir(), (p/'.caf/lock').is_file(),
+                          (p/'.caf/error').is_file(), (p/'.caf/lock').is_file(),
                           (p/'.caf').is_dir()))
             if (p/'.lock').is_dir():
                 locked.append(p)
-        stats = colored([len(list(filter(lambda x: x, stat))) for stat in zip(*stats)])
+        stats = colored([stat.count(True) for stat in zip(*stats)])
         table.add_row(str(directory) + ':', *stats)
         if directory.parts[1] != 'Brewery':
             for path in locked:
