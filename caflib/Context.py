@@ -344,7 +344,8 @@ class Task:
                         if Path(target).is_absolute():
                             error('Cannot link to absolute paths in tasks')
                         if str(filepath) in self.files:
-                            hashes[str(filepath)] = get_file_hash(Path(target))
+                            with cd(filepath.parent):
+                                hashes[str(filepath)] = get_file_hash(Path(target))
                         else:
                             hashes[str(filepath)] = target
                     else:

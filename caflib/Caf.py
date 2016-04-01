@@ -189,9 +189,9 @@ def build(caf, dry: '--dry', do_init: 'init'):
     if not dry:
         timestamp = get_timestamp()
         mkdir(caf.brewery/timestamp)
-        relink(timestamp, caf.brewery/latest)
+        relink(timestamp, caf.brewery/latest, relative=False)
         mkdir(caf.out/timestamp, parents=True)
-        relink(timestamp, caf.out/latest)
+        relink(timestamp, caf.out/latest, relative=False)
         with timing('build'):
             ctx.build(caf.brewery/latest)
         with timing('targets'):

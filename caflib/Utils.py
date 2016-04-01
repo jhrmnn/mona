@@ -88,13 +88,16 @@ def make_nonwritable(path):
     os.chmod(path, stat.S_IMODE(os.lstat(path).st_mode) & ~_writable)
 
 
-def relink(path, linkname=None):
+def relink(path, linkname=None, relative=True):
     link = Path(linkname) if linkname else Path(Path(path).name)
     if link.is_symlink():
         link.unlink()
     if not link.parent.is_dir():
         mkdir(link.parent, parents=True)
-    link.symlink_to(path)
+    if relative:
+        link.symlink_to(os.path.relpath(str(path), str(link.parent)))
+    else:
+        link.symlink_to(path)
 
 
 def is_timestamp(s):
