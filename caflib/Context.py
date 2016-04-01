@@ -301,7 +301,7 @@ class Task:
             commands = []
             env = defaultdict(list)
             for var, val in (self.consume('_env') or {}).items():
-                env[var].append(val)
+                env[var].append(str(val))
             for hook_path, (hook_src, hook_cmd, hook_env) in hooks.items():
                 commands.append(hook_cmd)
                 for var, vals in hook_env.items():
