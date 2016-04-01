@@ -12,7 +12,7 @@ from textwrap import dedent
 import hashlib
 
 from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
-    get_files, timing, relink, cd, print_timing
+    timing, relink, cd, print_timing, get_all_tasks_in_dir
 from caflib.Logging import error, info, colstr, Table, warn, log_caf, dep_error
 from caflib.Context import get_stored
 from caflib.CLI import CLI, CLIExit
@@ -333,31 +333,35 @@ def list_remotes(caf, _):
 
 
 @caf_list.add_command(name='tasks')
-def list_tasks(caf, _, do_finished: '--finished', do_stored: '--stored'):
+def list_tasks(caf, _, do_finished: '--finished', do_stored: '--stored',
+               do_error: '--error', do_unfinished: '--unfinished'):
     """
     List tasks.
 
     Usage:
-        caf list tasks [--finished | --stored]
+        caf list tasks [--finished | --stored | --error | --unfinished]
 
     Options:
         --finished                 List finished tasks.
+        --unfinished               List unfinished tasks.
         --stored                   List stored tasks.
+        --error                    List tasks in error.
     """
-    if do_finished:
-        subprocess.call(['find', '-H', str(caf.out/latest), '-exec',
-                         'test', '-f', '{}/.caf/seal', ';', '-print'])
+    if do_finished or do_unfinished:
+        for buildpath, _ in get_all_tasks_in_dir(caf.out/latest):
+            if (buildpath/'.caf/seal').is_file() == do_finished:
+                print(buildpath)
     elif do_stored:
-        files = get_files(caf.out/latest)
-        for task, target in files:
-            ptarget = Path(target)
-            if ptarget.parents[2].name == cellar:
-                print(task, Path('/'.join(ptarget.parts[-4:])))
+        for buildpath, cellarpath in get_all_tasks_in_dir(caf.out/latest):
+            if cellarpath.parents[2].name == cellar:
+                print(buildpath, '/'.join(cellarpath.parts[-4:]))
+    elif do_error:
+        for buildpath, _ in get_all_tasks_in_dir(caf.out/latest):
+            if (buildpath/'.caf/error').is_file():
+                print(buildpath)
     else:
-        files = get_files(caf.out/latest)
-        for task, target in files:
-            ptarget = Path(target)
-            print(task, Path('/'.join(ptarget.parts[-4:])))
+        for buildpath, _ in get_all_tasks_in_dir(caf.out/latest):
+            print(buildpath)
 
 
 @Caf.command()
