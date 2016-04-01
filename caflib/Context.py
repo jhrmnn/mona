@@ -268,7 +268,8 @@ class Task:
                     if isinstance(filename, tuple):
                         self.store_link_file(filename[0], filename[1])
                     else:
-                        if '*' in filename or '?' in filename:
+                        if isinstance(filename, str) \
+                                and ('*' in filename or '?' in filename):
                             for member in glob(filename):
                                 self.store_link_file(member)
                         else:
