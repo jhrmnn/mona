@@ -49,4 +49,8 @@ def prepare_aims(task):
                 chunks.append(f.read())
         task.store_link_text('\n'.join(chunks), 'control.in', label=True)
     if 'command' not in task.attrs:
-        task.attrs['command'] = 'AIMS={} run_aims'.format(aims)
+        command = 'AIMS={} run_aims'.format(aims)
+        check_output = task.consume('check')
+        if check_output or check_output is None:
+            command += ' && grep "Have a nice day" run.out >/dev/null'
+        task.attrs['command'] = command
