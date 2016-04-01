@@ -201,6 +201,9 @@ class Task:
     def store_link_file(self, source, target=None):
         if not target:
             target = source
+        if Path(source).is_dir():
+            (self.path/target).mkdir()
+            return
         filehash = get_file_hash(Path(source))
         cellarpath = self.ctx.cellar/str_to_path(filehash)
         if not cellarpath.is_file():
