@@ -2,7 +2,6 @@ from caflib.Tools import geomlib
 from caflib.Context import feature
 from caflib.Utils import find_program, report
 from caflib.Logging import info, warn, error
-import subprocess
 from pathlib import Path
 
 _reported = {}
@@ -17,17 +16,15 @@ def reporter():
 @feature('aims')
 def prepare_aims(task):
     aims = task.consume('aims') or 'aims'
-    try:
-        aims_binary = find_program(aims)
-    except subprocess.CalledProcessError:
+    aims_binary = find_program(aims)
+    if not aims_binary:
         if aims not in _reported:
             msg = '{} does not exit'.format(aims)
             _reported[aims] = (warn, msg)
-        try:
-            aims_binary = find_program('aims')
-        except subprocess.CalledProcessError:
-            warn(msg)
-            error("Don't know where to find species files")
+        aims_binary = find_program('aims')
+    if not aims_binary:
+        warn(msg)
+        error("Don't know where to find species files")
     if aims not in _reported:
         _reported[aims] = (info, '{} is {}'.format(aims, aims_binary))
     geomfile = task.consume('geomfile') or 'geometry.in'

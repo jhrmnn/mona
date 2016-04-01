@@ -107,7 +107,12 @@ def filter_cmd(args):
 
 
 def find_program(cmd):
-    return Path(subprocess.check_output(['which', cmd]).decode().strip()).resolve()
+    try:
+        program = subprocess.check_output(['which', cmd]).decode().strip()
+    except subprocess.CalledProcessError:
+        return None
+    else:
+        return Path(program).resolve()
 
 
 @contextmanager
