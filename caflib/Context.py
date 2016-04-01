@@ -213,7 +213,7 @@ class Task:
             make_nonwritable(cellarpath)
         with cd(self.path):
             relink(os.path.relpath(str(cellarpath)), target)
-        self.files[target] = cellarpath
+        self.files[str(target)] = cellarpath
 
     def store_link_text(self, text, target, label=None):
         h = hashlib.new(hashf)
