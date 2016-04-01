@@ -90,6 +90,7 @@ class Worker:
                             print(e)
                             print('error: There was an error when working on {}'
                                   .format(path))
+                            subprocess.call(['touch', '.caf/error'])
             (path/'.lock').rmdir()
             print('Worker {} finished working on {}.'.format(self.myid, path))
             n += 1

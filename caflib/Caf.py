@@ -285,7 +285,7 @@ def submit(caf, do_tasks: '--task', tasks: 'TASK', targets: 'TARGET',
 @Caf.command()
 def reset(caf, targets: 'TARGET'):
     """
-    Remove working lock on tasks.
+    Remove working lock and error on tasks.
 
     Usage:
         caf reset [TARGET...]
@@ -299,6 +299,8 @@ def reset(caf, targets: 'TARGET'):
     for p in paths:
         if (p/'.lock').is_dir():
             (p/'.lock').rmdir()
+        if (p/'.caf/error').is_file():
+            (p/'.caf/error').unlink()
 
 
 caf_list = CLI('list', header='List various entities.')
@@ -393,7 +395,7 @@ def status(caf, targets: 'TARGET'):
         caf status [TARGET...]
     """
     def colored(stat):
-        colors = 'red green yellow normal'.split()
+        colors = 'blue green red yellow normal'.split()
         return [colstr(s, color) for s, color in zip(stat, colors)]
 
     dirs = []
@@ -409,14 +411,15 @@ def status(caf, targets: 'TARGET'):
         else:
             dirs.append((target, target.glob('*')))
     print('number of {} tasks:'
-          .format('/'.join(colored('running finished prepared all'.split()))))
+          .format('/'.join(colored('running finished error prepared all'.split()))))
     table = Table(align=['<', *4*['>']], sep=[' ', *3*['/']])
     for directory, paths in sorted(dirs):
         stats = []
         locked = []
         for p in paths:
             stats.append(((p/'.lock').is_dir(), (p/'.caf/seal').is_file(),
-                          (p/'.caf/lock').is_file(), (p/'.caf').is_dir()))
+                          (p/'.caf/error').is_dir(), (p/'.caf/lock').is_file(),
+                          (p/'.caf').is_dir()))
             if (p/'.lock').is_dir():
                 locked.append(p)
         stats = colored([len(list(filter(lambda x: x, stat))) for stat in zip(*stats)])
