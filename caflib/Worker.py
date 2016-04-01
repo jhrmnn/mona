@@ -74,7 +74,7 @@ class Worker:
             print('Worker {} started working on {}...'.format(self.myid, path))
             if not dry:
                 with cd(path):
-                    command = open('command').read()
+                    command = open('command').read() if Path('command').is_file() else ''
                     if Path('.caf/env').is_file():
                         command = 'source .caf/env\n' + command
                     with open('run.out', 'w') as stdout, \

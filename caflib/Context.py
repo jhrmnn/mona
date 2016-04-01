@@ -384,9 +384,6 @@ class Task:
             hashes = self.get_hashes()
         with timing('lock'):
             self.lock(hashes)
-        if 'command' not in hashes:
-            with (self.path/'.caf/seal').open('w') as f:
-                print('build', file=f)
         myhash = get_file_hash(self.path/'.caf/lock')
         with timing('storing'):
             cellarpath = self.ctx.cellar/str_to_path(myhash)
