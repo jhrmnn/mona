@@ -42,7 +42,7 @@ def normalize_str(s):
 
 
 def slugify(x):
-    if isinstance(x, tuple):
+    if isinstance(x, (tuple, list)):
         s = '_'.join(normalize_str(str(x)) for x in x)
     elif isinstance(x, dict):
         s = '_'.join('{}={}'.format(normalize_str(str(k)),
