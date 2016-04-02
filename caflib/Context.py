@@ -199,6 +199,14 @@ class Task:
                               .format(filename, self))
 
     def store_link_file(self, source, target=None):
+        try:
+            text = source.getvalue()
+        except AttributeError:
+            pass
+        else:
+            assert target
+            self.store_link_text(text, target)
+            return
         if not target:
             target = source
         if Path(source).is_dir():
@@ -290,7 +298,7 @@ class Task:
             with timing('templates'):
                 for target, template in templates.items():
                     processed, used = template.substitute(self.attrs)
-                    self.store_link_text(processed, target, template.path.name)
+                    self.store_link_text(processed, target, template.name)
                     for attr in used:
                         self.consume(attr)
             with timing('linking'):
