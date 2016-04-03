@@ -365,15 +365,17 @@ def list_tasks(caf, _, do_finished: '--finished', do_stored: '--stored',
 
 
 @Caf.command()
-def search(caf, older: '--older', contains: '--contains'):
+def search(caf, older: '--older', contains: '--contains',
+           contains_not: '--contains-not'):
     """
     Search within stored tasks.
 
     Usage:
-        caf search [--contains PATTERN] [--older TIME]
+        caf search [--contains PATTERN] [--contains-not PATTERN] [--older TIME]
 
     Options:
         --contains PATTERN         Search tasks containing PATTERN.
+        --contains-not PATTERN     Search tasks not containing PATTERN.
         --older TIME               Search tasks older than.
     """
     cmd = ['find', str(caf.cellar), '-maxdepth', '3',
@@ -384,8 +386,9 @@ def search(caf, older: '--older', contains: '--contains'):
             lim = '+' + lim
         cmd.extend(['-ctime', lim])
     if contains:
-        cmd.extend(['-exec', 'test', '-f',
-                    '{{}}/{}'.format(contains), ';'])
+        cmd.extend(['-exec', 'test', '-e', '{{}}/{}'.format(contains), ';'])
+    if contains_not:
+        cmd.extend(['!', '-exec', 'test', '-e', '{{}}/{}'.format(contains_not), ';'])
     cmd.append('-print')
     subprocess.call(cmd)
 
