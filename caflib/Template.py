@@ -35,14 +35,14 @@ class Template:
             else:
                 key, fmt = token, None
             if key not in mapping:
-                error('"{}" not defined'.format(key))
+                error('"{}" not defined when processing template {}'.format(key, self.name))
             else:
                 used.add(key)
                 try:
                     return format(mapping[key], fmt) if fmt else str(mapping[key])
                 except ValueError:
                     error('Unknown format "{}" when processing key "{}" in template "{}"'
-                          .format(fmt, key, self.key))
+                          .format(fmt, key, self.name))
 
         replaced = re.sub(r'\{\{\s+([\w:]+)\s+\}\}',
                           replacer,
