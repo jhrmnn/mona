@@ -566,12 +566,12 @@ class Context:
     def make_targets(self, out):
         for target, tasks in self.targets.items():
             if len(tasks) == 1 and None in tasks:
-                relink(tasks[None].path, out/target)
+                relink(tasks[None].path, out/target, relative=False)
             else:
                 if not (out/target).is_dir():
                     mkdir(out/target)
                 for name, task in tasks.items():
-                    relink(task.path, out/target/name)
+                    relink(task.path, out/target/name, relative=False)
 
     def load_tool(self, name):
         __import__('caflib.Tools.' + name)
