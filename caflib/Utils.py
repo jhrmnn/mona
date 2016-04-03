@@ -108,8 +108,12 @@ def filter_cmd(args):
     cmd = []
     for arg in args:
         if isinstance(arg, tuple):
-            if arg[1]:
-                cmd.extend(arg)
+            if arg[1] is not None:
+                if isinstance(arg[1], bool):
+                    if arg[1]:
+                        cmd.append(arg[0])
+                else:
+                    cmd.extend(arg)
         elif isinstance(arg, list):
             cmd.extend(a for a in arg if a)
         elif arg:
