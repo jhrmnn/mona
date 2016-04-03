@@ -136,6 +136,8 @@ class Worker:
 
         def sigint_handler(sig, frame):
             print('Worker {} interrupted, aborting.'.format(self.myid))
+            if (self.cwd/'.lock').is_dir():
+                (self.cwd/'.lock').rmdir()
             if pushover:
                 call_pushover(pushover['token'],
                               pushover['user'],
@@ -182,13 +184,15 @@ class Worker:
                     print('error: Cannot connect to {}: {}'.format(url, e.reason))
                     return
             task, url_done = response.split()
-            path = cellar/task
+            self.cwd = path = cellar/task
             children = [path/x for x in json.load((path/'.caf/children').open())]
             if not all((child/'.caf/seal').is_file() for child in children) and not dry:
                 print('Worker {}: {} has unsealed children, waiting...'.format(self.myid, path))
                 while not all((child/'.caf/seal').is_file() for child in children):
                     sleep(1)
             print('Worker {} started working on {}...'.format(self.myid, path))
+            lock = path/'.lock'
+            lock.mkdir()
             if not dry:
                 with cd(path):
                     command = open('command').read()
@@ -207,6 +211,7 @@ class Worker:
                             print(e)
                             print('error: There was an error when working on {}'
                                   .format(path))
+            (path/'.lock').rmdir()
             print('Worker {} finished working on {}.'.format(self.myid, path))
             report_done(url_done)
             n += 1
