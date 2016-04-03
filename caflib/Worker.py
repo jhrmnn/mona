@@ -9,6 +9,30 @@ import os
 from caflib.Utils import cd, Configuration
 
 
+curl_pushover = '\
+-F "token={token:}" -F "user={user:}" -F "title=Worker" -F "message={message:}" \
+https://api.pushover.net/1/messages.json >/dev/null'
+
+
+def call_pushover(token, user, msg, curl=None):
+    if curl:
+        subprocess.check_call(
+            curl % curl_pushover.format(token=token, user=user, message=msg),
+            shell=True)
+    else:
+        import http.client
+        import urllib
+        conn = http.client.HTTPSConnection('api.pushover.net:443')
+        conn.request('POST',
+                     '/1/messages.json',
+                     urllib.parse.urlencode({
+                         'token': token,
+                         'user': user,
+                         'message': msg}),
+                     {'Content-type': 'application/x-www-form-urlencoded'})
+        conn.getresponse()
+
+
 class Worker:
     def __init__(self, myid, path):
         self.myid = myid
@@ -99,33 +123,50 @@ class Worker:
                 break
         print('Worker {} has no more tasks to do, aborting.'.format(self.myid))
 
-    def work_from_queue(self, cellar, url, dry=False, limit=None):
+    def work_from_queue(self, cellar, url, dry=False, limit=None,
+                        info_start=False):
         from urllib.request import urlopen
         from urllib.error import HTTPError, URLError
         from time import sleep
-
-        def sigint_handler(sig, frame):
-            print('Worker {} interrupted, aborting.'.format(self.myid))
-            sys.exit()
-        signal.signal(signal.SIGINT, sigint_handler)
+        import socket
 
         conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
         curl = conf.get('curl')
+        pushover = conf.get('pushover')
+
+        def sigint_handler(sig, frame):
+            print('Worker {} interrupted, aborting.'.format(self.myid))
+            if pushover:
+                call_pushover(pushover['token'],
+                              pushover['user'],
+                              'Worker #{} on {} was interrupted'
+                              .format(self.myid, socket.gethostname()),
+                              curl)
+            sys.exit()
+        signal.signal(signal.SIGINT, sigint_handler)
+        signal.signal(signal.SIGTERM, sigint_handler)
 
         def report_done(url):
             if curl:
-                subprocess.check_call(curl + ' ' + url, shell=True)
+                subprocess.check_call(curl % url, shell=True)
             else:
                 with urlopen(url, timeout=30):
                     pass
 
         print('Worker {} alive and ready.'.format(self.myid))
+        if info_start:
+            if pushover:
+                call_pushover(pushover['token'],
+                              pushover['user'],
+                              'Worker #{} on {} started'
+                              .format(self.myid, socket.gethostname()),
+                              curl)
 
         n = 0
         while True:
             if curl:
                 try:
-                    response = subprocess.check_output(curl + ' ' + url, shell=True).decode()
+                    response = subprocess.check_output(curl % url, shell=True).decode()
                 except subprocess.CalledProcessError as e:
                     if e.returncode == 22:
                         break

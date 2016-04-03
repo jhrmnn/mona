@@ -203,15 +203,16 @@ def build(caf, dry: '--dry', do_init: 'init'):
 @Caf.command(triggers=['build work', 'init build work'])
 def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
          depth: ('--depth', int), limit: ('--limit', int), queue: '--queue',
-         brewery: '--brewery', myid: '--id', dry: '--dry', do_init: 'init',
-         do_build: 'build'):
+         brewery: '--brewery', myid: '--id', dry: '--dry',
+         info_start: '--info-start', do_init: 'init', do_build: 'build'):
     """
     Execute all prepared build tasks.
 
     Usage:
         caf [[init] build] work [TARGET... | --brewery] [--depth N] [--limit N]
                                 [--profile PROFILE [-j N] | [--id ID] [--dry]]
-        caf work [--queue URL] [--profile PROFILE [-j N] | [--id ID] [--dry]]
+        caf [[init] build] work [--queue URL] [--info-start]
+                                [--profile PROFILE [-j N] | [--id ID] [--dry]]
 
     Options:
         -n, --dry                  Dry run (do not write to disk).
@@ -223,6 +224,7 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
         -l, --limit N              Limit number of tasks to N.
         -t, --task                 Change command's context to tasks.
         --brewery                  Work on tasks in Brewery.
+        --info-start               Push notification when worker starts.
     """
     if do_init:
         build('caf init build'.split(), caf)
@@ -232,7 +234,8 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
         for _ in range(n):
             cmd = ['{}/.config/caf/worker_{}'
                    .format(os.environ['HOME'], profile),
-                   targets, ('-d', depth), ('-l', limit), ('-q', queue), brewery]
+                   targets, ('-d', depth), ('-l', limit), ('-q', queue),
+                   ('--brewery', brewery), ('--info-start', info_start)]
             try:
                 subprocess.check_call(filter_cmd(cmd))
             except subprocess.CalledProcessError:
@@ -247,7 +250,7 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
         worker = Worker(myid, path)
         if queue:
             worker.work_from_queue((caf.cellar).resolve(), queue,
-                                   dry=dry, limit=limit)
+                                   dry=dry, limit=limit, info_start=info_start)
         else:
             worker.work(targets, dry=dry, maxdepth=depth, limit=limit)
 
