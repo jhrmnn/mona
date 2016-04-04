@@ -50,11 +50,15 @@ class Caf(CLI):
         self.conf = Configuration('.caf/conf.yaml')
         self.conf.set_global(Configuration('{}/.config/caf/conf.yaml'
                                            .format(os.environ['HOME'])))
-        if not Path('cscript').is_file():
+        if Path('cscript').is_file():
+            cscriptname = 'cscript'
+        elif Path('cscript.py').is_file():
+            cscriptname = 'cscript.py'
+        else:
             error('There is no cscript')
         with timing('reading cscript'):
             try:
-                self.cscript = load_module('cscript')
+                self.cscript = load_module(cscriptname)
             except RuntimeError:
                 error('There was an error while reading cscript.')
         self.out = Path(getattr(self.cscript, 'out', 'build'))

@@ -23,6 +23,10 @@ class Remote:
         ignorefile = Path(os.environ['HOME'] + '/.config/caf/ignore')
         if ignorefile.is_file():
             ignored.extend(l.strip() for l in ignorefile.open().readlines())
+        if Path('cscript').is_file():
+            cscriptname = 'cscript'
+        else:
+            cscriptname = 'cscript.py'
         cmd = ['rsync',
                '-cirl',
                '--delete' if delete else None,
@@ -32,7 +36,7 @@ class Remote:
                '--exclude=*.pyc',
                '--exclude=__pycache__',
                ['--exclude={}'.format(p) for p in ignored],
-               ['caf', 'cscript', str(self.top)],
+               ['caf', cscriptname, str(self.top)],
                '{0.host}:{0.path}'.format(self)]
         subprocess.check_call(filter_cmd(cmd))
 
