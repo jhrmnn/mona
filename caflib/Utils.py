@@ -42,16 +42,16 @@ def normalize_str(s):
 
 
 def slugify(x):
-    if isinstance(x, (tuple, list)):
-        s = '_'.join(normalize_str(str(x)) for x in x)
-    elif isinstance(x, dict):
-        s = '_'.join('{}={}'.format(normalize_str(str(k)),
-                                    normalize_str(str(v)))
-                     for k, v in x.items())
+    if isinstance(x, tuple):
+        return '{}={}'.format(normalize_str(str(x[0])),
+                              slugify(x[1]))
+    elif isinstance(x, str):
+        return normalize_str(x)
     else:
-        s = str(x)
-    s = s.replace('/', '_')
-    return s
+        try:
+            return ':'.join(slugify(x) for x in x)
+        except TypeError:
+            return str(x)
 
 
 def get_timestamp():

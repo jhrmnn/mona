@@ -512,9 +512,7 @@ class Context:
     __call__ = add_task
 
     def add_to_target(self, task, target, *link):
-        if len(link) == 1 and isinstance(link[0], tuple):
-            link = link[0]
-        linkname = slugify(link) if link else None
+        linkname = '_'.join(slugify(x) for x in link) if link else None
         try:
             if linkname in self.targets[target]:
                 error('Link "{}" already in target "{}"'.format(linkname, target))
