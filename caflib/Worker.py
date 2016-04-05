@@ -112,7 +112,8 @@ class Worker(metaclass=ABCMeta):
                 self.print_debug('Task {} is in error, continue.'.format(path))
             elif not all((p/'.caf/seal').is_file() for p in get_children(path)) \
                     and not self.dry:
-                self.print_debug('Task {} has unsealed children, continue.'.format(path))
+                self.print_debug('Task {} has unsealed children, put back and continue.'
+                                 .format(path))
                 self.put_back(path)
                 skipped.add(path)
             else:
@@ -121,8 +122,8 @@ class Worker(metaclass=ABCMeta):
                 except OSError:
                     self.print_debug('Task {} is locked, continue.'.format(path))
                 else:
-                    break
-        else:
+                    break  # we have acquired lock
+        else:  # there is no task left
             path = None
             lockpath = None
         try:
