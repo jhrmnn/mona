@@ -41,17 +41,28 @@ def normalize_str(s):
     return re.sub(r'[^0-9a-zA-Z.-]', '-', s)
 
 
-def slugify(x):
+def slugify(x, top=True):
+    if isinstance(x, str):
+        return normalize_str(x)
+    if isinstance(x, bytes):
+        return normalize_str(x.encode())
+    if top:
+        try:
+            return '_'.join(_slugify(x) for x in x)
+        except TypeError:
+            pass
     if isinstance(x, tuple):
         return '{}={}'.format(normalize_str(str(x[0])),
-                              slugify(x[1]))
-    elif isinstance(x, str):
-        return normalize_str(x)
+                              _slugify(x[1]))
     else:
         try:
-            return ':'.join(slugify(x) for x in x)
+            return ':'.join(_slugify(x) for x in x)
         except TypeError:
-            return str(x)
+            return normalize_str(str(x))
+
+
+def _slugify(x):
+    return slugify(x, top=False)
 
 
 def get_timestamp():

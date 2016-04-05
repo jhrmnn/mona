@@ -512,7 +512,7 @@ class Context:
     __call__ = add_task
 
     def add_to_target(self, task, target, *link):
-        linkname = '_'.join(slugify(x) for x in link) if link else None
+        linkname = slugify(list(link)) if link else None
         try:
             if linkname in self.targets[target]:
                 error('Link "{}" already in target "{}"'.format(linkname, target))
