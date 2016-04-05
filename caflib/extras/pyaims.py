@@ -11,7 +11,7 @@ ev = 27.2107
 
 
 def parse_xml(source):
-    root = ET.parse(source).getroot()
+    root = ET.parse(str(source)).getroot()
     return parse_xmlelem(root)
 
 
