@@ -138,6 +138,7 @@ class Worker(metaclass=ABCMeta):
                 self.print_info('No more tasks in queue, quitting.')
                 return
             elif path in skipped:
+                self.put_back(path)
                 self.print_info('All tasks have been skipped, quitting.')
                 return
             else:
