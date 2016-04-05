@@ -103,26 +103,25 @@ class Worker(metaclass=ABCMeta):
     def get_locked_task(self):
         skipped = set()
         for path in self.tasks(skipped):
-            self.cwd = path
             self.print_debug('Trying task {}...'.format(path))
+            self.cwd = path
             lockpath = path/'.lock'
-            try:
-                lockpath.mkdir()
-            except OSError:
-                self.print_debug('Task {} is locked, continue.'.format(path))
+            if (path/'.caf/seal').is_file():
+                self.print_debug('Task {} is sealed, continue.'.format(path))
+            elif (path/'.caf/error').is_file():
+                self.print_debug('Task {} is in error, continue.'.format(path))
+            elif not all((p/'.caf/seal').is_file() for p in get_children(path)) \
+                    and not self.dry:
+                self.print_debug('Task {} has unsealed children, continue.'.format(path))
+                self.put_back(path)
+                skipped.add(path)
             else:
-                if (path/'.caf/seal').is_file():
-                    self.print_debug('Task {} is sealed, continue.'.format(path))
-                elif (path/'.caf/error').is_file():
-                    self.print_debug('Task {} is in error, continue.'.format(path))
-                elif not all((p/'.caf/seal').is_file() for p in get_children(path)) \
-                        and not self.dry:
-                    self.print_debug('Task {} has unsealed children, continue.'.format(path))
-                    self.put_back(path)
-                    skipped.add(path)
+                try:
+                    lockpath.mkdir()
+                except OSError:
+                    self.print_debug('Task {} is locked, continue.'.format(path))
                 else:
                     break
-                lockpath.rmdir()
         else:
             path = None
             lockpath = None
