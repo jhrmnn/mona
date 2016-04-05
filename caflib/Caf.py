@@ -17,7 +17,7 @@ from caflib.Logging import error, info, colstr, Table, warn, log_caf, dep_error
 from caflib.Context import get_stored
 from caflib.CLI import CLI, CLIExit
 from caflib.Context import Context
-from caflib.Worker import Worker
+from caflib.Worker import QueueWorker, LocalWorker
 from caflib.Remote import Remote
 
 try:
@@ -208,14 +208,15 @@ def build(caf, dry: '--dry', do_init: 'init'):
 def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
          depth: ('--depth', int), limit: ('--limit', int), queue: '--queue',
          brewery: '--brewery', myid: '--id', dry: '--dry',
-         info_start: '--info-start', do_init: 'init', do_build: 'build'):
+         info_start: '--info-start', do_init: 'init', do_build: 'build',
+         verbose: '--verbose'):
     """
     Execute all prepared build tasks.
 
     Usage:
-        caf [[init] build] work [TARGET... | --brewery] [--depth N] [--limit N]
+        caf [[init] build] work [-v] [TARGET... | --brewery] [--depth N] [--limit N]
                                 [--profile PROFILE [-j N] | [--id ID] [--dry]]
-        caf [[init] build] work [--queue URL] [--info-start]
+        caf [[init] build] work [-v] [--queue URL] [--info-start] [--limit N]
                                 [--profile PROFILE [-j N] | [--id ID] [--dry]]
 
     Options:
@@ -229,6 +230,7 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
         -t, --task                 Change command's context to tasks.
         --brewery                  Work on tasks in Brewery.
         --info-start               Push notification when worker starts.
+        -v, --verbose              Be more verbose.
     """
     if do_init:
         build('caf init build'.split(), caf)
@@ -246,17 +248,19 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
                 error('Running ~/.config/caf/worker_{} did not succeed.'
                       .format(profile))
     else:
-        if brewery:
-            path = (caf.brewery/latest).resolve()
-            depth = 1
-        else:
-            path = (caf.out/latest).resolve()
-        worker = Worker(myid, path)
         if queue:
-            worker.work_from_queue((caf.cellar).resolve(), queue,
-                                   dry=dry, limit=limit, info_start=info_start)
+            worker = QueueWorker(myid, (caf.cellar).resolve(), queue,
+                                 dry=dry, limit=limit, info_start=info_start,
+                                 debug=verbose)
         else:
-            worker.work(targets, dry=dry, maxdepth=depth, limit=limit)
+            if brewery:
+                path = (caf.brewery/latest).resolve()
+                depth = 1
+            else:
+                path = (caf.out/latest).resolve()
+            worker = LocalWorker(myid, path, targets, dry=dry, maxdepth=depth,
+                                 limit=limit, debug=verbose)
+        worker.work()
 
 
 @Caf.command()
