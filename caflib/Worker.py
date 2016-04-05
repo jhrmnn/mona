@@ -29,8 +29,6 @@ class Worker(metaclass=ABCMeta):
 
     def sigint_handler(self, sig, frame):
         self.print_info('Interrupted, quitting.')
-        if (self.cwd/'.lock').is_dir():
-            (self.cwd/'.lock').rmdir()
         sys.exit()
 
     def print_info(self, msg):
@@ -126,10 +124,13 @@ class Worker(metaclass=ABCMeta):
                     break
                 lockpath.rmdir()
         else:
-            yield
-            return
-        yield path
-        lockpath.rmdir()
+            path = None
+            lockpath = None
+        try:
+            yield path
+        finally:
+            if lockpath:
+                lockpath.rmdir()
 
     def tasks(self, skipped):
         while True:
@@ -223,14 +224,16 @@ class QueueWorker(Worker):
 
     def sigxcpu_handler(self, sig, frame):
         self.print_info('Will be soon interrupted.')
+        self.put_back(self.cwd)
         self.call_pushover('Worker #{} on {} will be soon interrupted'
                            .format(self.myid, socket.gethostname()))
         self.has_warned = True
 
     def sigint_handler(self, sig, frame):
+        self.print_info('Interrupted, quitting.')
         if not self.has_warned:
             self.sigxcpu_handler(sig, frame)
-        super().sigint_handler(sig, frame)
+        sys.exit()
 
     def call_url(self, url):
         if self.curl:
