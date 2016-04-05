@@ -88,6 +88,9 @@ class Worker(metaclass=ABCMeta):
                                           shell=True,
                                           stdout=stdout,
                                           stderr=stderr)
+                    if 'CAFWAIT' in os.environ:
+                        from time import sleep
+                        sleep(int(os.environ['CAFWAIT']))
                 except subprocess.CalledProcessError as e:
                     print(e)
                     self.print_info(
