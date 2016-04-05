@@ -156,7 +156,7 @@ def init(caf):
         timestamp = get_timestamp()
         cache_path = Path(caf.conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
         mkdir(cache_path)
-        relink(cache_path, caf.cache)
+        relink(cache_path, caf.cache, relative=False)
     else:
         cache_path = caf.cache
         if cache_path.exists():
