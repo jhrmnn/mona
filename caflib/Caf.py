@@ -86,7 +86,7 @@ class Caf(CLI):
             rargs = self.parse(rargv)  # remote parsed arguments
         except DocoptExit:  # remote CLI failed as well, reraise CLIExit
             raise cliexit
-        if rargs['work'] and rargs['--queue']:  # substitute URL
+        if 'work' in rargs and rargs['--queue']:  # substitute URL
             url = self.get_queue_url(rargs['--queue'], 'get')
             if url:
                 rargv = [arg if arg != rargs['--queue'] else url for arg in rargv]
@@ -94,9 +94,9 @@ class Caf(CLI):
         if args['COMMAND'] in ['init', 'build', 'work']:
             for remote in remotes:
                 remote.update()
-        if rargs['work'] and not args['--no-check']:
+        if 'work' in rargs and not args['--no-check']:
             targets = rargs['TARGET']
-            if not rargs['build']:
+            if 'build' not in rargs:
                 for remote in remotes:
                     remote.check(targets, self.out/latest)
         else:
@@ -104,7 +104,7 @@ class Caf(CLI):
         for remote in remotes:
             remote.command(' '.join(arg if ' ' not in arg else repr(arg)
                                     for arg in rargv[1:]))
-            if rargs['work'] and rargs['build'] and not args['--no-check']:
+            if 'work' in rargs and 'build' in rargs and not args['--no-check']:
                 remote.check(targets, self.out/latest)
 
     def __format__(self, fmt):
