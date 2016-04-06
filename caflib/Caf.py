@@ -86,6 +86,10 @@ class Caf(CLI):
             rargs = self.parse(rargv)  # remote parsed arguments
         except DocoptExit:  # remote CLI failed as well, reraise CLIExit
             raise cliexit
+        if rargs['work'] and rargs['--queue']:  # substitute URL
+            url = self.get_queue_url(rargs['--queue'], 'get')
+            if url:
+                rargv = [arg if arg != rargs['--queue'] else url for arg in rargv]
         remotes = self.proc_remote(args['REMOTE'])  # get Remote objects
         if args['COMMAND'] in ['init', 'build', 'work']:
             for remote in remotes:
@@ -121,6 +125,17 @@ class Caf(CLI):
             return dedent(s)
         else:
             return super().__format__(fmt)
+
+    def get_queue_url(self, queue, action):
+        if 'queue' in self.conf:
+            if action == 'submit':
+                if queue in self.conf['queue']:
+                    return '{0[host]}/submit/{0[user]}'.format(self.conf['queue'][queue])
+            elif action == 'get':
+                host, queue = queue.split(':', 1)
+                if host in self.conf['queue']:
+                    return '{0[host]}/get/{0[user]}/{1}' \
+                        .format(self.conf['queue'][host], queue)
 
     def finalize(self, sig, frame):
         print_timing()
@@ -246,7 +261,8 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
                       .format(profile))
     else:
         if queue:
-            worker = QueueWorker(myid, (caf.cellar).resolve(), queue,
+            url = caf.get_queue_url(queue, 'get') or queue
+            worker = QueueWorker(myid, (caf.cellar).resolve(), url,
                                  dry=dry, limit=limit, info_start=info_start,
                                  debug=verbose)
         else:
@@ -262,7 +278,7 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
 
 @Caf.command()
 def submit(caf, do_tasks: '--task', tasks: 'TASK', targets: 'TARGET',
-           url: 'URL'):
+           queue: 'URL'):
     """
     Submit the list of prepared tasks to a queue server.
 
@@ -274,6 +290,7 @@ def submit(caf, do_tasks: '--task', tasks: 'TASK', targets: 'TARGET',
         -t, --task                 Change command's context to tasks.
     """
     from urllib.request import urlopen
+    url = caf.get_queue_url(queue, 'submit') or queue
     if do_tasks:
         hashes = [get_stored(task, rel=True) for task in tasks]
     else:
