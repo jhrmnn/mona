@@ -71,40 +71,37 @@ class Caf(CLI):
 
     def __call__(self, argv):
         log_caf(argv)
-        cliexit = None
         try:
-            super().__call__(argv)
-            print_timing()
-            return
-        except CLIExit as e:
+            super().__call__(argv)  # try CLI as if local
+        except CLIExit as e:  # store exception to reraise below if remote fails as well
             cliexit = e
+        else:
+            print_timing()
+            return  # finished
+        # the local CLI above did not succeed
         usage = '\n'.join(l for l in str(self).splitlines() if 'caf COMMAND' not in l)
-        try:
-            args = docopt(usage, argv=argv[1:], options_first=True, help=False)
-            rargv = [argv[0], args['COMMAND']] + args['ARGS']
-            self.parse(rargv)
-            remotes = self.proc_remote(args['REMOTE'])
-        except DocoptExit:
-            args = None
-        if args:
-            if args['COMMAND'] in ['init', 'build', 'work']:
-                for remote in remotes:
-                    remote.update()
-            if 'work' in rargv and not args['--no-check']:
-                targets = self.commands[('work',)].parse(rargv)['TARGET']
-                if 'build' not in rargv:
-                    for remote in remotes:
-                        remote.check(targets, self.out/latest)
-            else:
-                targets = None
+        args = docopt(usage, argv=argv[1:], options_first=True, help=False)  # parse local
+        rargv = [argv[0], args['COMMAND']] + args['ARGS']  # remote argv
+        try:  # try CLI as if remote
+            rargs = self.parse(rargv)  # remote parsed arguments
+        except DocoptExit:  # remote CLI failed as well, reraise CLIExit
+            raise cliexit
+        remotes = self.proc_remote(args['REMOTE'])  # get Remote objects
+        if args['COMMAND'] in ['init', 'build', 'work']:
             for remote in remotes:
-                remote.command(' '.join(arg if ' ' not in arg else repr(arg)
-                                        for arg in rargv[1:]))
-                if 'work' in rargv and not args['--no-check'] \
-                        and 'build' in rargv:
+                remote.update()
+        if rargs['work'] and not args['--no-check']:
+            targets = rargs['TARGET']
+            if not rargs['build']:
+                for remote in remotes:
                     remote.check(targets, self.out/latest)
         else:
-            raise cliexit
+            targets = None
+        for remote in remotes:
+            remote.command(' '.join(arg if ' ' not in arg else repr(arg)
+                                    for arg in rargv[1:]))
+            if rargs['work'] and rargs['build'] and not args['--no-check']:
+                remote.check(targets, self.out/latest)
 
     def __format__(self, fmt):
         if fmt == 'header':
