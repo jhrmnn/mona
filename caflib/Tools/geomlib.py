@@ -92,6 +92,10 @@ class Atom:
             raise ValueError('Unknown format')
         return s
 
+    @property
+    def mass(self):
+        return self.prop['mass']
+
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
@@ -179,6 +183,9 @@ class Molecule:
 
     def __add__(self, y):
         return concat([self, y])
+
+    def __len__(self):
+        return len(self.atoms)
 
     def copy(self):
         return Molecule([atom.copy() for atom in self])
