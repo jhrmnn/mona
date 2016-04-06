@@ -37,6 +37,7 @@ class Remote:
                '--exclude=__pycache__',
                ['--exclude={}'.format(p) for p in ignored],
                ['caf', cscriptname, str(self.top)],
+               'caflib' if Path('caflib').exists() else None,
                '{0.host}:{0.path}'.format(self)]
         subprocess.check_call(filter_cmd(cmd))
 
