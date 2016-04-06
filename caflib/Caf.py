@@ -295,17 +295,19 @@ def submit(caf, do_tasks: '--task', tasks: 'TASK', targets: 'TARGET',
         hashes = [get_stored(task, rel=True) for task in tasks]
     else:
         if targets:
-            hashes = [get_stored(path, rel=True)
+            hashes = [(path, get_stored(path, rel=True))
                       for path in subprocess.check_output([
-                          'find', '-H', str(caf.out/latest), '-type', 'l',
-                          '-exec', 'test', '-f', '{}/.caf/seal', ';', '-print'
+                          'find', '-H', *[str(caf.out/latest/t) for t in targets],
+                          '-type', 'l', '!', '-exec', 'test', '-f',
+                          '{}/.caf/seal', ';', '-print'
                       ])
                       .decode().split()]
         else:
-            hashes = [get_stored(path, rel=True)
+            hashes = [(path, get_stored(path, rel=True))
                       for path in (caf.brewery/latest).glob('*')
                       if path.is_symlink() and not (path/'.caf/seal').is_file()]
-    with urlopen(url, data='\n'.join(hashes).encode()) as r:
+    with urlopen(url, data='\n'.join('{} {}'.format(label, h)
+                                     for label, h in hashes).encode()) as r:
         print('./caf work --queue {}'.format(r.read().decode()))
 
 
