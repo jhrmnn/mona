@@ -76,14 +76,6 @@ def get_files(batch):
                         '-exec', 'readlink', '{}', ';']).strip().split(b'\n')])
 
 
-def get_all_tasks_in_dir(batch):
-    return sorted([tuple(Path(w.decode()) for w in l.split(b'\x00'))
-                   for l in subprocess.check_output(
-                       ['find', '-L', str(batch), '-type', 'd', '-exec',
-                        'test', '-d', '{}/.caf', ';', '-print0', '-exec',
-                        'readlink', '{}', ';']).strip().split(b'\n')])
-
-
 def mkdir(path, parents=False, exist_ok=False):
     path = Path(path)
     if not parents or len(path.parts) == 1:

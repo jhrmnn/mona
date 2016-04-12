@@ -1,8 +1,9 @@
 import subprocess
 from pathlib import Path
-import glob
 from caflib.Logging import info, error
-from caflib.Utils import get_files, filter_cmd
+from caflib.Utils import filter_cmd
+from caflib.Listing import find_tasks
+from caflib.Context import get_stored
 import os
 
 
@@ -55,22 +56,20 @@ class Remote:
                   .format(cmd, self))
         return output.strip() if get_output else None
 
-    def check(self, targets, batch):
+    def check(self, root):
         info('Checking {}...'.format(self.host))
-        here = dict(get_files(batch))
+        here = {}
+        for path in find_tasks(root):
+            cellarpath = get_stored(path, require=None)
+            if cellarpath:
+                here[str(path)] = str(cellarpath)
         there = dict(l.split() for l
-                     in self.command('list tasks --stored', get_output=True)
+                     in self.command('list tasks --stored --both', get_output=True)
                      .decode().split('\n'))
         missing = []
         for task, target in here.items():
-            ptask = Path(task)
-            ptarget = Path(target)
-            if targets and ptask.parts[2] not in targets:
-                continue
-            if ptarget.parents[2].name == 'Cellar':
-                token = str(Path('/'.join(ptarget.parts[-4:])))
-                if token != there.get(task):
-                    missing.append((task, token, there.get(task)))
+            if target != there.get(task):
+                missing.append((task, target, there.get(task)))
         if missing:
             for item in missing:
                 print('{}: {} is not {}'.format(*item))
@@ -78,26 +77,17 @@ class Remote:
         else:
             info('Local Tasks are in remote Cellar.')
 
-    def fetch(self, cellar, batch=None, targets=None, tasks=None, dry=False):
+    def fetch(self, targets, cache, root, dry=False):
         info('Fetching from {}...'.format(self.host))
-        if batch:
-            targets = get_targets(targets, batch)
-            paths = set()
-            for target in targets:
-                for task in [target] if target.is_symlink() else target.glob('*'):
-                    task_full = task.resolve()
-                    if task_full.parts[-4] == 'Cellar':
-                        paths.add('/'.join(task_full.parts[-3:]))
-                    else:
-                        error('{}: Task has to be in Cellar before fetching'.format(task))
-        elif tasks:
-            paths = []
-            for task in tasks:
-                path = Path(task).resolve()
-                if path.parts[-4] == 'Cellar':
-                    paths.append('/'.join(path.parts[-3:]))
-                else:
-                    error('{}: Task has to be in Cellar before fetching'.format(task))
+        there = self.command('list tasks --finished --cellar', get_output=True) \
+            .decode().split('\r\n')
+        roots = [p for p in root.glob('*')
+                 if not targets or p.name in targets]
+        paths = set()
+        for task in find_tasks(*roots, stored=True):
+            cellarpath = get_stored(task)
+            if cellarpath in there:
+                paths.add(cellarpath)
         cmd = ['rsync',
                '-cirlP',
                '--delete',
@@ -106,22 +96,18 @@ class Remote:
                '--exclude=__pycache__',
                '--dry-run' if dry else None,
                '--files-from=-',
-               '{0.host}:{0.path}/{1}'.format(self, cellar),
-               str(cellar)]
+               '{0.host}:{0.path}/{1}'.format(self, cache),
+               str(cache)]
         p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
         p.communicate('\n'.join(paths).encode())
 
-    def push(self, targets, cellar, batch, dry=False):
+    def push(self, targets, cache, root, dry=False):
         info('Pushing to {}...'.format(self.host))
-        targets = get_targets(targets, batch)
+        roots = [p for p in root.glob('*')
+                 if not targets or p.name in targets]
         paths = set()
-        for target in targets:
-            for task in [target] if target.is_symlink() else target.glob('*'):
-                task_full = task.resolve()
-                if task_full.parts[-4] == 'Cellar':
-                    paths.add('/'.join(task_full.parts[-3:]))
-                else:
-                    error('{}: Task has to be in Cellar for pushing'.format(task))
+        for task in find_tasks(*roots, stored=True):
+            paths.add(get_stored(task))
         cmd = ['rsync',
                '-cirlP',
                '--delete',
@@ -130,18 +116,11 @@ class Remote:
                '--exclude=__pycache__',
                '--dry-run' if dry else None,
                '--files-from=-',
-               str(cellar),
-               '{0.host}:{0.path}/{1}'.format(self, cellar)]
+               str(cache),
+               '{0.host}:{0.path}/{1}'.format(self, cache)]
         p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
         p.communicate('\n'.join(paths).encode())
 
     def go(self):
         subprocess.call(['ssh', '-t', self.host,
                          'cd {.path} && exec $SHELL'.format(self)])
-
-
-def get_targets(targets, batch):
-    if targets:
-        return [batch/t for t in targets]
-    else:
-        return [Path(p) for p in glob.glob('{}/*'.format(batch))]

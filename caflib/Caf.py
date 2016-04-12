@@ -1,8 +1,6 @@
-from itertools import chain
 from pathlib import Path
 import os
 import sys
-import subprocess
 import io
 import tarfile
 from base64 import b64encode
@@ -12,13 +10,14 @@ from textwrap import dedent
 import hashlib
 
 from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
-    timing, relink, cd, print_timing, get_all_tasks_in_dir
+    timing, relink, print_timing
 from caflib.Logging import error, info, colstr, Table, warn, log_caf, dep_error
 from caflib.Context import get_stored
 from caflib.CLI import CLI, CLIExit
 from caflib.Context import Context
 from caflib.Worker import QueueWorker, LocalWorker
 from caflib.Remote import Remote
+from caflib.Listing import find_tasks
 
 try:
     from docopt import docopt, DocoptExit
@@ -50,10 +49,9 @@ class Caf(CLI):
         self.conf = Configuration('.caf/conf.yaml')
         self.conf.set_global(Configuration('{}/.config/caf/conf.yaml'
                                            .format(os.environ['HOME'])))
-        if Path('cscript').is_file():
-            cscriptname = 'cscript'
-        elif Path('cscript.py').is_file():
-            cscriptname = 'cscript.py'
+        for cscriptname in ['cscript', 'cscript.py']:
+            if Path(cscriptname).is_file():
+                break
         else:
             error('There is no cscript')
         with timing('reading cscript'):
@@ -99,17 +97,14 @@ class Caf(CLI):
             for remote in remotes:
                 remote.update()
         if 'work' in rargs and not args['--no-check']:
-            targets = rargs['TARGET']
             if 'build' not in rargs:
                 for remote in remotes:
-                    remote.check(targets, self.out/latest)
-        else:
-            targets = None
+                    remote.check(self.out/latest)
         for remote in remotes:
             remote.command(' '.join(arg if ' ' not in arg else repr(arg)
                                     for arg in rargv[1:]))
             if 'work' in rargs and 'build' in rargs and not args['--no-check']:
-                remote.check(targets, self.out/latest)
+                remote.check(self.out/latest)
 
     def __format__(self, fmt):
         if fmt == 'header':
@@ -202,7 +197,7 @@ def build(caf, dry: '--dry', do_init: 'init'):
     if not hasattr(caf.cscript, 'build'):
         error('cscript has to contain function build(ctx)')
     if do_init:
-        init('caf init'.split(), caf)
+        init(['caf', 'init'], caf)
     ctx = Context(caf.cellar, caf.top)
     with timing('dependency tree'):
         caf.cscript.build(ctx)
@@ -222,18 +217,16 @@ def build(caf, dry: '--dry', do_init: 'init'):
 
 @Caf.command(triggers=['build work', 'init build work'])
 def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
-         depth: ('--depth', int), limit: ('--limit', int), queue: '--queue',
-         brewery: '--brewery', myid: '--id', dry: '--dry',
-         info_start: '--info-start', do_init: 'init', do_build: 'build',
-         verbose: '--verbose'):
+         limit: ('--limit', int), queue: '--queue', myid: '--id',
+         dry: '--dry', do_init: 'init', do_build: 'build', verbose: '--verbose',
+         maxdepth: ('--maxdepth', int)):
     """
     Execute all prepared build tasks.
 
     Usage:
-        caf [[init] build] work [-v] [TARGET... | --brewery] [--depth N] [--limit N]
+        caf [[init] build] work [-v] [--limit N]
                                 [--profile PROFILE [-j N] | [--id ID] [--dry]]
-        caf [[init] build] work [-v] [--queue URL] [--info-start] [--limit N]
-                                [--profile PROFILE [-j N] | [--id ID] [--dry]]
+                                [--queue URL | [TARGET...] [--maxdepth N]]
 
     Options:
         -n, --dry                  Dry run (do not write to disk).
@@ -241,23 +234,20 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
         -p, --profile PROFILE      Run worker via ~/.config/caf/worker_PROFILE.
         -q, --queue URL            Take tasks from web queue.
         -j N                       Number of launched workers [default: 1].
-        -d, --depth N              Limit depth of descending to children.
         -l, --limit N              Limit number of tasks to N.
-        -t, --task                 Change command's context to tasks.
-        --brewery                  Work on tasks in Brewery.
-        --info-start               Push notification when worker starts.
         -v, --verbose              Be more verbose.
+        --maxdepth N               Maximal depth.
     """
+    import subprocess
     if do_init:
-        build('caf init build'.split(), caf)
+        build(['caf', 'init', 'build'], caf)
     elif do_build:
-        build('caf build'.split(), caf)
+        build(['caf', 'build'], caf)
     if profile:
         for _ in range(n):
-            cmd = ['{}/.config/caf/worker_{}'
-                   .format(os.environ['HOME'], profile),
-                   targets, ('-d', depth), ('-l', limit), ('-q', queue),
-                   ('--brewery', brewery), ('--info-start', info_start)]
+            cmd = ['{}/.config/caf/worker_{}'.format(os.environ['HOME'], profile),
+                   '-v' if verbose else None, ('--limit', limit),
+                   ('--queue', queue), targets, ('--maxdepth', maxdepth)]
             try:
                 subprocess.check_call(filter_cmd(cmd))
             except subprocess.CalledProcessError:
@@ -266,52 +256,32 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
     else:
         if queue:
             url = caf.get_queue_url(queue, 'get') or queue
-            worker = QueueWorker(myid, (caf.cellar).resolve(), url,
-                                 dry=dry, limit=limit, info_start=info_start,
-                                 debug=verbose)
+            worker = QueueWorker(myid, caf.cellar.resolve(), url,
+                                 dry=dry, limit=limit, debug=verbose)
         else:
-            if brewery:
-                path = (caf.brewery/latest).resolve()
-                depth = 1
-            else:
-                path = (caf.out/latest).resolve()
-            worker = LocalWorker(myid, path, targets, dry=dry, maxdepth=depth,
-                                 limit=limit, debug=verbose)
+            roots = [caf.out/latest/t for t in targets] \
+                if targets else (caf.out/latest).glob('*')
+            worker = LocalWorker(myid, caf.cache.resolve(),
+                                 list(find_tasks(*roots, stored=True, maxdepth=maxdepth)),
+                                 dry=dry, limit=limit, debug=verbose)
         worker.work()
 
 
 @Caf.command()
-def submit(caf, do_tasks: '--task', tasks: 'TASK', targets: 'TARGET',
-           queue: 'URL'):
+def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int)):
     """
     Submit the list of prepared tasks to a queue server.
 
     Usage:
-        caf submit URL [TARGET...]
-        caf submit URL TASK... --task
-
-    Options:
-        -t, --task                 Change command's context to tasks.
+        caf submit URL [TARGET...] [--maxdepth]
     """
     from urllib.request import urlopen
     url = caf.get_queue_url(queue, 'submit') or queue
-    if do_tasks:
-        hashes = [get_stored(task, rel=True) for task in tasks]
-    else:
-        if targets:
-            hashes = [(path, get_stored(path, rel=True))
-                      for path in subprocess.check_output([
-                          'find', '-H', *[str(caf.out/latest/t) for t in targets],
-                          '-type', 'l', '!', '-exec', 'test', '-f',
-                          '{}/.caf/seal', ';', '-print'
-                      ])
-                      .decode().split()]
-        else:
-            hashes = [(path, get_stored(path, rel=True))
-                      for path in (caf.brewery/latest).glob('*')
-                      if path.is_symlink() and not (path/'.caf/seal').is_file()]
-    with urlopen(url, data='\n'.join('{} {}'.format(label, h)
-                                     for label, h in hashes).encode()) as r:
+    roots = [caf.out/latest/t for t in targets] if targets else (caf.out/latest).glob('*')
+    tasks = [(path, get_stored(path)) for path in
+             find_tasks(*roots, stored=True, maxdepth=1)]
+    data = '\n'.join('{} {}'.format(label, h) for label, h in tasks).encode()
+    with urlopen(url, data=data) as r:
         print('./caf work --queue {}'.format(r.read().decode()))
 
 
@@ -323,17 +293,12 @@ def reset(caf, targets: 'TARGET'):
     Usage:
         caf reset [TARGET...]
     """
-    if targets:
-        paths = map(Path, subprocess.check_output([
-            'find', '-H', str(caf.out/latest), '-type', 'l'])
-            .decode().split())
-    else:
-        paths = [p for p in (caf.brewery/latest).glob('*') if p.is_symlink()]
-    for p in paths:
-        if (p/'.lock').is_dir():
-            (p/'.lock').rmdir()
-        if (p/'.caf/error').is_file():
-            (p/'.caf/error').unlink()
+    roots = [caf.out/latest/t for t in targets] if targets else (caf.out/latest).glob('*')
+    for path in find_tasks(*roots):
+        if (path/'.lock').is_dir():
+            (path/'.lock').rmdir()
+        if (path/'.caf/error').is_file():
+            (path/'.caf/error').unlink()
 
 
 caf_list = CLI('list', header='List various entities.')
@@ -367,37 +332,48 @@ def list_remotes(caf, _):
 
 @caf_list.add_command(name='tasks')
 def list_tasks(caf, _, do_finished: '--finished', do_stored: '--stored',
-               do_error: '--error', do_unfinished: '--unfinished'):
+               do_error: '--error', do_unfinished: '--unfinished',
+               in_cellar: '--cellar', both_paths: '--both',
+               maxdepth: ('--maxdepth', int), targets: 'TARGET'):
     """
     List tasks.
 
     Usage:
-        caf list tasks [--finished | --stored | --error | --unfinished]
+        caf list tasks [TARGET...] [--finished | --stored | --error | --unfinished]
+                       [--cellar | --both] [--maxdepth N]
 
     Options:
         --finished                 List finished tasks.
         --unfinished               List unfinished tasks.
         --stored                   List stored tasks.
         --error                    List tasks in error.
+        --cellar                   Print path in cellar.
+        --both                     Print path in build and cellar.
+        --maxdepth N               Specify maximum depth.
     """
-    if do_finished or do_unfinished:
-        for buildpath, _ in get_all_tasks_in_dir(caf.out/latest):
-            if (buildpath/'.caf/seal').is_file() == do_finished:
-                print(buildpath)
+    roots = [caf.out/latest/t for t in targets] if targets else (caf.out/latest).glob('*')
+    if do_finished:
+        paths = find_tasks(*roots, sealed=True, maxdepth=maxdepth)
+    elif do_unfinished:
+        paths = find_tasks(*roots, unsealed=True, maxdepth=maxdepth)
     elif do_stored:
-        for buildpath, cellarpath in get_all_tasks_in_dir(caf.out/latest):
-            if cellarpath.parents[2].name == cellar:
-                print(buildpath, '/'.join(cellarpath.parts[-4:]))
+        paths = find_tasks(*roots, stored=True, maxdepth=maxdepth)
     elif do_error:
-        for buildpath, _ in get_all_tasks_in_dir(caf.out/latest):
-            if (buildpath/'.caf/error').is_file():
-                print(buildpath)
+        paths = find_tasks(*roots, error=True, maxdepth=maxdepth)
     else:
-        for buildpath, _ in get_all_tasks_in_dir(caf.out/latest):
-            print(buildpath)
+        paths = find_tasks(*roots, maxdepth=maxdepth)
+    if in_cellar:
+        for path in paths:
+            print(get_stored(path, require=False))
+    elif both_paths:
+        for path in paths:
+            print(path, get_stored(path, require=False))
+    else:
+        for path in paths:
+            print(path)
 
 
-@Caf.command()
+# @Caf.command()
 def search(caf, older: '--older', contains: '--contains',
            contains_not: '--contains-not'):
     """
@@ -411,6 +387,7 @@ def search(caf, older: '--older', contains: '--contains',
         --contains-not PATTERN     Search tasks not containing PATTERN.
         --older TIME               Search tasks older than.
     """
+    import subprocess
     cmd = ['find', str(caf.cellar), '-maxdepth', '3',
            '-mindepth', '3', '-type', 'd']
     if older:
@@ -472,36 +449,17 @@ def status(caf, targets: 'TARGET'):
 
 
 @Caf.command()
-def cmd(caf, do_tasks: '--task', do_print: '--print', targets: 'TARGET',
-        cmd: 'CMD'):
+def cmd(caf, cmd: 'CMD'):
     """
     Execute any shell command.
 
     Usage:
         caf cmd CMD
-        caf cmd CMD [TARGET...] --task [--print]
-
-    Options:
-        -t, --task                 Change command's context to tasks.
-        --print                    Print path to task before running a command.
 
     This is a simple convenience alias for running commands remotely.
     """
-    if do_tasks:
-        if targets:
-            paths = chain.from_iterable((
-                [caf.out/latest/target] if (caf.out/latest/target).is_symlink()
-                else (caf.out/latest/target).glob('*')
-                for target in targets))
-        else:
-            paths = (p for p in (caf.brewery/latest).glob('*') if p.is_symlink())
-        for path in paths:
-            if do_print:
-                info('Running `{}` in {}'.format(cmd, path))
-            with cd(path):
-                subprocess.call(cmd, shell=True)
-    else:
-        subprocess.call(cmd, shell=True)
+    import subprocess
+    subprocess.call(cmd, shell=True)
 
 
 caf_remote = CLI('remote', header='Manage remotes.')
@@ -540,15 +498,15 @@ def update(caf, delete: '--delete', remotes: ('REMOTE', 'proc_remote')):
 
 
 @Caf.command()
-def check(caf, targets: 'TARGET', remotes: ('REMOTE', 'proc_remote')):
+def check(caf, remotes: ('REMOTE', 'proc_remote')):
     """
     Verify that hashes of the local and remote tasks match.
 
     Usage:
-        caf check REMOTE [TARGET...]
+        caf check REMOTE
     """
     for remote in remotes:
-        remote.check(targets, caf.out/latest)
+        remote.check(caf.out/latest)
 
 
 @Caf.command()
@@ -563,29 +521,22 @@ def push(caf, targets: 'TARGET', dry: '--dry', remotes: ('REMOTE', 'proc_remote'
         -n, --dry                  Dry run (do not write to disk).
     """
     for remote in remotes:
-        remote.push(targets, caf.cellar, caf.out/latest, dry)
+        remote.push(targets, caf.cache, caf.out/latest, dry=dry)
 
 
 @Caf.command()
-def fetch(caf, do_tasks: '--task', dry: '--dry', tasks: 'TASK',
-          targets: 'TARGET', remotes: ('REMOTE', 'proc_remote')):
+def fetch(caf, dry: '--dry', targets: 'TARGET', remotes: ('REMOTE', 'proc_remote')):
     """
     Fetch targets from remote and store them in local Cellar.
 
     Usage:
-        caf fetch REMOTE [TASK...] --task [--dry]
         caf fetch REMOTE [TARGET...] [--dry]
 
     Options:
         -n, --dry                  Dry run (do not write to disk).
-        -t, --task                 Change command's context to tasks.
     """
     for remote in remotes:
-        if do_tasks:
-            remote.fetch(caf.cellar, tasks=tasks, dry=dry)
-        else:
-            remote.fetch(caf.cellar, batch=caf.out/latest,
-                         targets=targets, dry=dry)
+        remote.fetch(targets, caf.cache, caf.out/latest, dry=dry)
 
 
 @Caf.command()
@@ -623,7 +574,7 @@ def pack(caf):
     Usage:
         caf pack
     """
-    strip('caf strip'.split(), caf)
+    strip(caf)
     h = hashlib.new('md5')
     with io.BytesIO() as ftar:
         archive = tarfile.open(mode='w|gz', fileobj=ftar)

@@ -24,20 +24,16 @@ hashf = 'sha1'
 _features = {}
 
 
-def get_stored(path, sha=False, rel=False, require=True):
+class NotStored(Exception):
+    pass
+
+
+def get_stored(path, require=True):
     full_path = Path(path).resolve()
     if len(full_path.parts) > 3 and full_path.parts[-4] == 'Cellar':
-        if sha:
-            return ''.join(full_path.parts[-3:])
-        elif rel:
-            return '/'.join(full_path.parts[-3:])
-        else:
-            return full_path
-    else:
-        if require:
-            error('Path {} must be stored in cellar'.format(path))
-        else:
-            return None
+        return os.path.sep.join(full_path.parts[-4:])
+    elif require:
+        raise NotStored(path)
 
 
 def feature(name):

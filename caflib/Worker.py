@@ -1,6 +1,5 @@
 import json
 import subprocess
-import glob
 from pathlib import Path
 import signal
 import sys
@@ -50,6 +49,10 @@ class Worker(metaclass=ABCMeta):
     def task_done(self, path):
         pass
 
+    @abstractmethod
+    def task_error(self, path):
+        pass
+
     def work(self):
         n_done = 0
         for path in self.locked_tasks():
@@ -57,7 +60,6 @@ class Worker(metaclass=ABCMeta):
             if not self.dry:
                 self.run_command(path)
             self.print_info('Finished working on {}.'.format(path))
-            self.task_done(path)
             n_done += 1
             if self.limit and n_done >= self.limit:
                 self.print_info('Reached limit of tasks, quitting.')
@@ -86,18 +88,20 @@ class Worker(metaclass=ABCMeta):
                                           shell=True,
                                           stdout=stdout,
                                           stderr=stderr)
-                    if 'CAFWAIT' in os.environ:
-                        from time import sleep
-                        sleep(int(os.environ['CAFWAIT']))
                 except subprocess.CalledProcessError as e:
                     print(e)
                     self.print_info(
                         'error: There was an error when working on {}'.format(path))
                     with Path('.caf/error').open('w') as f:
                         f.write(self.myid + '\n')
+                    self.task_error(path)
                 else:
+                    if 'CAFWAIT' in os.environ:
+                        from time import sleep
+                        sleep(int(os.environ['CAFWAIT']))
                     with Path('.caf/seal').open('w') as f:
                         f.write(self.myid + '\n')
+                    self.task_done(path)
 
     @contextmanager
     def get_locked_task(self):
@@ -152,54 +156,24 @@ def get_children(path):
 
 
 class LocalWorker(Worker):
-    def __init__(self, myid, root, targets, dry=False, limit=None,
-                 maxdepth=None, debug=False):
+    def __init__(self, myid, root, queue, dry=False, limit=None, debug=False):
         super().__init__(myid, root, dry, limit, debug)
-        if targets:
-            targetpaths = [self.root/t for t in targets]
-        else:
-            targetpaths = sorted(
-                (Path(p) for p in glob.glob(str(self.root) + '/*')),
-                reverse=True)
-        self.queue = TaskQueue()
-        for targetpath in targetpaths:
-            if targetpath.is_symlink():
-                self.queue.append(targetpath)
-            else:
-                for taskpath in targetpath.glob('*'):
-                    self.queue.append(taskpath)
+        self.queue = queue
 
     def get_task(self):
-        return self.queue.pop()
+        try:
+            return self.queue.pop(0)
+        except IndexError:
+            pass
 
     def put_back(self, path):
-        self.queue.prepend(path)
+        self.queue.append(path)
 
     def task_done(self, path):
         pass
 
-
-class TaskQueue:
-    def __init__(self, maxdepth=None):
-        self.paths = []
-        self.maxdepth = maxdepth
-
-    def append(self, path, depth=1):
-        if (path/'.caf/seal').is_file():
-            return
-        if (path/'.caf/lock').is_file():
-            self.paths.append(path)
-        childpaths = get_children(path)
-        if not self.maxdepth or depth < self.maxdepth:
-            for childpath in childpaths:
-                self.append(childpath, depth+1)
-
-    def pop(self):
-        if self.paths:
-            return self.paths.pop()
-
-    def prepend(self, path):
-        self.paths.insert(0, path)
+    def task_error(self, path):
+        pass
 
 
 curl_pushover = '\
@@ -208,19 +182,16 @@ https://api.pushover.net/1/messages.json >/dev/null'
 
 
 class QueueWorker(Worker):
-    def __init__(self, myid, root, url, dry=False, limit=None,
-                 info_start=False, debug=False):
+    def __init__(self, myid, root, url, dry=False, limit=None, debug=False):
         super().__init__(myid, root, dry, limit, debug)
         conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
         self.curl = conf.get('curl')
         self.pushover = conf.get('pushover')
         self.url = url
         self.url_done = {}
+        self.url_error = {}
         self.url_putback = {}
         self.has_warned = False
-        if info_start:
-            self.call_pushover('Worker #{} on {} started'
-                               .format(self.myid, socket.gethostname()))
         signal.signal(signal.SIGXCPU, self.sigxcpu_handler)
 
     def sigxcpu_handler(self, sig, frame):
@@ -283,6 +254,7 @@ class QueueWorker(Worker):
         task, url_done, url_putback = response.split()
         taskpath = self.root/task
         self.url_done[taskpath] = url_done
+        self.url_error[taskpath] = None
         self.url_putback[taskpath] = url_putback
         return taskpath
 
@@ -291,3 +263,6 @@ class QueueWorker(Worker):
 
     def task_done(self, path):
         self.call_url(self.url_done.pop(path))
+
+    def task_error(self, path):
+        pass
