@@ -79,8 +79,12 @@ class Caf(CLI):
             print_timing()
             return  # finished
         # the local CLI above did not succeed
+        # make a usage without local CLI
         usage = '\n'.join(l for l in str(self).splitlines() if 'caf COMMAND' not in l)
-        args = docopt(usage, argv=argv[1:], options_first=True, help=False)  # parse local
+        try:  # remote CLI failed as well, reraise CLIExit
+            args = docopt(usage, argv=argv[1:], options_first=True, help=False)  # parse local
+        except DocoptExit:
+            raise cliexit
         rargv = [argv[0], args['COMMAND']] + args['ARGS']  # remote argv
         try:  # try CLI as if remote
             rargs = self.parse(rargv)  # remote parsed arguments
