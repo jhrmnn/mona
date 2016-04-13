@@ -18,6 +18,10 @@ def unpack(caf, path: ('--path', Path)):
     from base64 import b64decode
     import tarfile
     import io
+    from tempfile import gettempdir
+    tmpdir = Path(gettempdir())/'caflib'
+    if not tmpdir.is_dir():
+        tmpdir.mkdir()
     with open(__file__) as f:
         for line in f:
             if line == '# ==>\n':
@@ -25,7 +29,7 @@ def unpack(caf, path: ('--path', Path)):
         else:
             raise RuntimeError('No packed caflib')
         version = next(f)[:-1].split(maxsplit=2)[-1]
-        caflibpath = Path('.caf-{}'.format(version))
+        caflibpath = tmpdir/version
         if not caflibpath.is_dir():
             archive = b64decode(next(f)[:-1].split(maxsplit=2)[-1])
             with io.BytesIO(archive) as ftar:
@@ -33,7 +37,7 @@ def unpack(caf, path: ('--path', Path)):
                 tar.extractall(str(caflibpath))
     link = path/'caflib'
     target = caflibpath/'caflib'
-    linktarget = os.path.relpath(str(target), str(link.parent))
+    linktarget = str(target)
     if link.is_symlink():
         if os.readlink(str(link)) == linktarget:
             return
