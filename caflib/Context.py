@@ -401,7 +401,7 @@ class Task:
                 info('Stored new task {}'.format(self))
                 mkdir(cellarpath.parent, parents=True, exist_ok=True)
                 self.path.rename(cellarpath)
-            self.path.symlink_to(cellarpath)
+            relink(cellarpath, self.path)
             self.path = cellarpath
         with timing('linking deps'):
             self.link_deps()
