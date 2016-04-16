@@ -128,11 +128,11 @@ class Caf(CLI):
         if 'queue' in self.conf:
             if action == 'submit':
                 if queue in self.conf['queue']:
-                    return '{0[host]}/submit/{0[user]}'.format(self.conf['queue'][queue])
+                    return '{0[host]}/token/{0[token]}/submit'.format(self.conf['queue'][queue])
             elif action == 'get':
                 host, queue = queue.split(':', 1)
                 if host in self.conf['queue']:
-                    return '{0[host]}/get/{0[user]}/{1}' \
+                    return '{0[host]}/token/{0[token]}/queue/{1}/get' \
                         .format(self.conf['queue'][host], queue)
 
     def finalize(self, sig, frame):
@@ -291,6 +291,8 @@ def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int)):
         cellarid = get_stored(path)
         if cellarid not in tasks:
             tasks[cellarid] = path
+    if not tasks:
+        error('No tasks to submit')
     data = '\n'.join('{} {}'.format(label, h)
                      for h, label in reversed(tasks.items())).encode()
     with urlopen(url, data=data) as r:

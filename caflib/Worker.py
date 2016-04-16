@@ -190,8 +190,7 @@ class QueueWorker(Worker):
         self.curl = conf.get('curl')
         self.pushover = conf.get('pushover')
         self.url = url
-        self.url_done = {}
-        self.url_error = {}
+        self.url_state = {}
         self.url_putback = {}
         self.has_warned = False
         signal.signal(signal.SIGXCPU, self.sigxcpu_handler)
@@ -253,10 +252,9 @@ class QueueWorker(Worker):
                 self.print_info('error: Cannot connect to {}: {}'
                                 .format(self.url, e.reason))
                 return
-        task, url_done, url_putback = response.split()
+        task, url_state, url_putback = response.split()
         taskpath = self.root/task
-        self.url_done[taskpath] = url_done
-        self.url_error[taskpath] = None
+        self.url_state[taskpath] = url_state
         self.url_putback[taskpath] = url_putback
         return taskpath
 
@@ -264,7 +262,7 @@ class QueueWorker(Worker):
         self.call_url(self.url_putback.pop(path))
 
     def task_done(self, path):
-        self.call_url(self.url_done.pop(path))
+        self.call_url(self.url_state.pop(path).replace('_state_', 'Done'))
 
     def task_error(self, path):
-        self.call_url(self.url_done.pop(path))
+        self.call_url(self.url_state.pop(path).replace('_state_', 'Error'))
