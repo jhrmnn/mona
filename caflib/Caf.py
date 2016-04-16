@@ -8,6 +8,7 @@ from itertools import takewhile
 import imp
 from textwrap import dedent
 import hashlib
+from collections import OrderedDict
 
 from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
     timing, relink, print_timing
@@ -259,8 +260,13 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
         else:
             roots = [caf.out/latest/t for t in targets] \
                 if targets else (caf.out/latest).glob('*')
-            worker = LocalWorker(myid, caf.cache.resolve(),
-                                 list(find_tasks(*roots, stored=True, maxdepth=maxdepth)),
+            tasks = OrderedDict()
+            for path in find_tasks(*roots, unsealed=True, maxdepth=maxdepth):
+                cellarid = get_stored(path)
+                if cellarid not in tasks:
+                    tasks[cellarid] = path
+            worker = LocalWorker(myid, caf.cache,
+                                 list(reversed(tasks.values())),
                                  dry=dry, limit=limit, debug=verbose)
         worker.work()
 
@@ -271,14 +277,22 @@ def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int)):
     Submit the list of prepared tasks to a queue server.
 
     Usage:
-        caf submit URL [TARGET...] [--maxdepth]
+        caf submit URL [TARGET...] [--maxdepth N]
+
+    Options:
+        --maxdepth N             Maximum depth.
     """
     from urllib.request import urlopen
     url = caf.get_queue_url(queue, 'submit') or queue
-    roots = [caf.out/latest/t for t in targets] if targets else (caf.out/latest).glob('*')
-    tasks = [(path, get_stored(path)) for path in
-             find_tasks(*roots, stored=True, maxdepth=1)]
-    data = '\n'.join('{} {}'.format(label, h) for label, h in tasks).encode()
+    roots = [caf.out/latest/t for t in targets] \
+        if targets else (caf.out/latest).glob('*')
+    tasks = OrderedDict()
+    for path in find_tasks(*roots, unsealed=True, maxdepth=maxdepth):
+        cellarid = get_stored(path)
+        if cellarid not in tasks:
+            tasks[cellarid] = path
+    data = '\n'.join('{} {}'.format(label, h)
+                     for h, label in reversed(tasks.items())).encode()
     with urlopen(url, data=data) as r:
         print('./caf work --queue {}'.format(r.read().decode()))
 
