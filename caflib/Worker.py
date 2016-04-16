@@ -112,8 +112,10 @@ class Worker(metaclass=ABCMeta):
             lockpath = path/'.lock'
             if (path/'.caf/seal').is_file():
                 self.print_debug('Task {} is sealed, continue.'.format(path))
+                self.task_done(path)
             elif (path/'.caf/error').is_file():
                 self.print_debug('Task {} is in error, continue.'.format(path))
+                self.task_error(path)
             elif not all((p/'.caf/seal').is_file() for p in get_children(path)) \
                     and not self.dry:
                 self.print_debug('Task {} has unsealed children, put back and continue.'
@@ -265,4 +267,4 @@ class QueueWorker(Worker):
         self.call_url(self.url_done.pop(path))
 
     def task_error(self, path):
-        pass
+        self.call_url(self.url_done.pop(path))
