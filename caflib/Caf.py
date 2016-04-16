@@ -586,7 +586,7 @@ def pack(caf):
     Usage:
         caf pack
     """
-    strip(caf)
+    strip(['caf', 'strip'], caf)
     h = hashlib.new('md5')
     with io.BytesIO() as ftar:
         archive = tarfile.open(mode='w|gz', fileobj=ftar)

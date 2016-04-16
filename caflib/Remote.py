@@ -65,7 +65,7 @@ class Remote:
                 here[str(path)] = str(cellarpath)
         there = dict(l.split() for l
                      in self.command('list tasks --stored --both', get_output=True)
-                     .decode().split('\n'))
+                     .decode().strip().split('\n'))
         missing = []
         for task, target in here.items():
             if target != there.get(task):

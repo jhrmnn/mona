@@ -288,8 +288,10 @@ class Task:
                 for filename in listify(self.consume('templates')):
                     if isinstance(filename, tuple):
                         source, target = filename
-                    else:
+                    elif isinstance(filename, str):
                         source = target = filename
+                    else:
+                        error("Don't know how to store {!r}".format(filename))
                     templates[target] = Template(source)
         with cd(self.path):
             self.process_features(features, 'before_templates')
