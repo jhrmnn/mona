@@ -84,7 +84,7 @@ class Remote:
         roots = [p for p in root.glob('*')
                  if not targets or p.name in targets]
         paths = set()
-        for task in find_tasks(*roots, stored=True):
+        for task in find_tasks(*roots, stored=True, follow=False):
             cellarpath = get_stored(task)
             if cellarpath in there:
                 paths.add(cellarpath)
@@ -106,7 +106,7 @@ class Remote:
         roots = [p for p in root.glob('*')
                  if not targets or p.name in targets]
         paths = set()
-        for task in find_tasks(*roots, stored=True):
+        for task in find_tasks(*roots, stored=True, follow=False):
             paths.add(get_stored(task))
         cmd = ['rsync',
                '-cirlP',

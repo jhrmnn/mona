@@ -59,7 +59,7 @@ def find(*roots, follow=False, filterfile=None, filterdir=None, filterpath=None,
 
 
 def find_tasks(*roots, sealed=False, stored=False, error=False, unsealed=False,
-               maxdepth=None):
+               maxdepth=None, follow=True):
     if sealed:
         def filterpath(p):
             return (p/'.caf/seal').is_file()
@@ -77,6 +77,6 @@ def find_tasks(*roots, sealed=False, stored=False, error=False, unsealed=False,
             return (p/'.caf').is_dir()
     return find(*roots,
                 filterpath=filterpath,
-                follow=True,
+                follow=follow,
                 onlydir=True,
                 maxdepth=maxdepth)
