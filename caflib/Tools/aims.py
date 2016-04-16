@@ -3,7 +3,8 @@ from caflib.Context import feature
 from caflib.Utils import find_program, report, cd
 from caflib.Logging import info, warn, error
 from pathlib import Path
-import subprocess
+import os
+import shutil
 
 _reported = {}
 
@@ -18,8 +19,11 @@ def reporter():
 def prepare_aims(task):
     aims = task.consume('aims_delink')
     if aims:
-        aims = subprocess.check_output(['which', aims]).decode().strip()
-        aims = subprocess.check_output(['readlink', aims]).decode().strip()
+        aims = shutil.which(aims)
+        if Path(aims).is_symlink():
+            aims = os.readlink(aims)
+        else:
+            aims = Path(aims).name
     else:
         aims = task.consume('aims')
     aims_command = 'AIMS={} run_aims'.format(aims)
