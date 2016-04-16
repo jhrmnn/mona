@@ -20,6 +20,8 @@ except ImportError:
 
 
 hashf = 'sha1'
+cellar = 'Cellar'
+brewery = 'Brewery'
 
 _features = {}
 
@@ -30,7 +32,7 @@ class NotStored(Exception):
 
 def get_stored(path, require=True):
     full_path = Path(path).resolve()
-    if len(full_path.parts) > 3 and full_path.parts[-4] == 'Cellar':
+    if len(full_path.parts) > 3 and full_path.parts[-4] == cellar:
         return os.path.sep.join(full_path.parts[-4:])
     elif require:
         raise NotStored(path)

@@ -12,7 +12,7 @@ import hashlib
 from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
     timing, relink, print_timing
 from caflib.Logging import error, info, colstr, Table, warn, log_caf, dep_error
-from caflib.Context import get_stored
+from caflib.Context import get_stored, cellar, brewery
 from caflib.CLI import CLI, CLIExit
 from caflib.Context import Context
 from caflib.Worker import QueueWorker, LocalWorker
@@ -26,8 +26,6 @@ except ImportError:
 
 
 latest = 'Latest'
-cellar = 'Cellar'
-brewery = 'Brewery'
 
 
 def load_module(pathname):
@@ -198,7 +196,7 @@ def build(caf, dry: '--dry', do_init: 'init'):
         error('cscript has to contain function build(ctx)')
     if do_init:
         init(['caf', 'init'], caf)
-    ctx = Context(caf.cellar, caf.top)
+    ctx = Context(caf.cache/cellar, caf.top)
     with timing('dependency tree'):
         caf.cscript.build(ctx)
     if not dry:
@@ -256,7 +254,7 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
     else:
         if queue:
             url = caf.get_queue_url(queue, 'get') or queue
-            worker = QueueWorker(myid, caf.cellar.resolve(), url,
+            worker = QueueWorker(myid, caf.cache, url,
                                  dry=dry, limit=limit, debug=verbose)
         else:
             roots = [caf.out/latest/t for t in targets] \
