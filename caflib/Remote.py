@@ -50,7 +50,7 @@ class Remote:
             output = caller([
                 'ssh', '-t', '-o', 'LogLevel=QUIET',
                 self.host,
-                'cd {.path} && exec python3 -u caf {}'.format(self, cmd)])
+                'sh -c "cd {.path} && exec python3.5 -u caf {}"'.format(self, cmd)])
         except subprocess.CalledProcessError:
             error('Command `{}` on {.host} ended with error'
                   .format(cmd, self))
