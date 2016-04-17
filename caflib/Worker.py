@@ -42,7 +42,7 @@ class Worker(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def put_back(self, path):
+    def put_back(self, label, path):
         pass
 
     @abstractmethod
@@ -55,11 +55,11 @@ class Worker(metaclass=ABCMeta):
 
     def work(self):
         n_done = 0
-        for path in self.locked_tasks():
-            self.print_info('Started working on {}...'.format(path))
+        for label, path in self.locked_tasks():
+            self.print_info('Started working on {} ({})...'.format(label, path))
             if not self.dry:
                 self.run_command(path)
-            self.print_info('Finished working on {}.'.format(path))
+            self.print_info('Finished working on {}.'.format(label))
             n_done += 1
             if self.limit and n_done >= self.limit:
                 self.print_info('Reached limit of tasks, quitting.')
@@ -67,10 +67,10 @@ class Worker(metaclass=ABCMeta):
 
     def locked_tasks(self):
         while True:
-            with self.get_locked_task() as path:
+            with self.get_locked_task() as (label, path):
                 if not path:
                     return
-                yield path
+                yield label, path
 
     def run_command(self, path):
         with cd(path):
@@ -106,7 +106,7 @@ class Worker(metaclass=ABCMeta):
     @contextmanager
     def get_locked_task(self):
         skipped = set()
-        for path in self.tasks(skipped):
+        for label, path in self.tasks(skipped):
             self.print_debug('Trying task {}...'.format(path))
             self.cwd = path
             lockpath = path/'.lock'
@@ -120,7 +120,7 @@ class Worker(metaclass=ABCMeta):
                     and not self.dry:
                 self.print_debug('Task {} has unsealed children, put back and continue.'
                                  .format(path))
-                self.put_back(path)
+                self.put_back(label, path)
                 skipped.add(path)
             else:
                 try:
@@ -130,26 +130,27 @@ class Worker(metaclass=ABCMeta):
                 else:
                     break  # we have acquired lock
         else:  # there is no task left
+            label = None
             path = None
             lockpath = None
         try:
-            yield path
+            yield label, path
         finally:
             if lockpath:
                 lockpath.rmdir()
 
     def tasks(self, skipped):
         while True:
-            path = self.get_task()
+            label, path = self.get_task()
             if path is None:
                 self.print_info('No more tasks in queue, quitting.')
                 return
             elif path in skipped:
-                self.put_back(path)
+                self.put_back(label, path)
                 self.print_info('All tasks have been skipped, quitting.')
                 return
             else:
-                yield path
+                yield label, path
 
 
 def get_children(path):
@@ -164,12 +165,13 @@ class LocalWorker(Worker):
 
     def get_task(self):
         try:
-            return self.queue.pop(0)
+            path, label = self.queue.pop(0)
+            return label, path
         except IndexError:
-            pass
+            return None, None
 
-    def put_back(self, path):
-        self.queue.append(path)
+    def put_back(self, label, path):
+        self.queue.append((path, label))
 
     def task_done(self, path):
         pass
@@ -197,7 +199,7 @@ class QueueWorker(Worker):
 
     def sigxcpu_handler(self, sig, frame):
         self.print_info('Will be soon interrupted.')
-        self.put_back(self.cwd)
+        self.put_back(None, self.cwd)
         self.call_pushover('Worker #{} on {} will be soon interrupted'
                            .format(self.myid, socket.gethostname()))
         self.has_warned = True
@@ -239,7 +241,7 @@ class QueueWorker(Worker):
                     self.curl % self.url, shell=True).decode()
             except subprocess.CalledProcessError as e:
                 if e.returncode == 22:
-                    return
+                    return None, None
                 else:
                     raise
         else:
@@ -247,18 +249,18 @@ class QueueWorker(Worker):
                 with urlopen(self.url, timeout=30) as r:
                     response = r.read().decode()
             except HTTPError:
-                return
+                return None, None
             except URLError as e:
                 self.print_info('error: Cannot connect to {}: {}'
                                 .format(self.url, e.reason))
-                return
-        task, url_state, url_putback = response.split()
+                return None, None
+        task, label, url_state, url_putback = response.split()
         taskpath = self.root/task
         self.url_state[taskpath] = url_state
         self.url_putback[taskpath] = url_putback
-        return taskpath
+        return label, taskpath
 
-    def put_back(self, path):
+    def put_back(self, label, path):
         self.call_url(self.url_putback.pop(path))
 
     def task_done(self, path):

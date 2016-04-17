@@ -266,7 +266,7 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
                 if cellarid not in tasks:
                     tasks[cellarid] = path
             worker = LocalWorker(myid, caf.cache,
-                                 list(reversed(tasks.values())),
+                                 list(reversed(tasks.items())),
                                  dry=dry, limit=limit, debug=verbose)
         worker.work()
 
