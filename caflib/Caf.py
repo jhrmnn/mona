@@ -87,22 +87,27 @@ class Caf(CLI):
             rargs = self.parse(rargv)  # remote parsed arguments
         except DocoptExit:  # remote CLI failed as well, reraise CLIExit
             raise cliexit
-        if 'work' in rargs and rargs['--queue']:  # substitute URL
-            url = self.get_queue_url(rargs['--queue'], 'get')
-            if url:
-                rargv = [arg if arg != rargs['--queue'] else url for arg in rargv]
+        if 'work' in rargs:
+            if rargs['--queue']:  # substitute URL
+                url = self.get_queue_url(rargs['--queue'], 'get')
+                if url:
+                    rargv = [arg if arg != rargs['--queue'] else url for arg in rargv]
+            elif rargs['--last']:
+                with open('.caf/LAST_QUEUE') as f:
+                    queue_url = f.read().strip()
+                last_index = rargv.index('--last')
+                rargv = rargv[:last_index] + ['--queue', queue_url] + rargv[last_index+1:]
         remotes = self.proc_remote(args['REMOTE'])  # get Remote objects
         if args['COMMAND'] in ['init', 'build', 'work']:
             for remote in remotes:
                 remote.update()
-        if 'work' in rargs and not args['--no-check']:
-            if 'build' not in rargs:
-                for remote in remotes:
-                    remote.check(self.out/latest)
+        if 'work' in rargs and rargs['build'] and not args['--no-check']:
+            for remote in remotes:
+                remote.check(self.out/latest)
         for remote in remotes:
             remote.command(' '.join(arg if ' ' not in arg else repr(arg)
                                     for arg in rargv[1:]))
-            if 'work' in rargs and 'build' in rargs and not args['--no-check']:
+            if 'work' in rargs and rargs['build'] and not args['--no-check']:
                 remote.check(self.out/latest)
 
     def __format__(self, fmt):
@@ -218,20 +223,21 @@ def build(caf, dry: '--dry', do_init: 'init'):
 def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
          limit: ('--limit', int), queue: '--queue', myid: '--id',
          dry: '--dry', do_init: 'init', do_build: 'build', verbose: '--verbose',
-         maxdepth: ('--maxdepth', int)):
+         last_queue: '--last', maxdepth: ('--maxdepth', int)):
     """
     Execute all prepared build tasks.
 
     Usage:
         caf [[init] build] work [-v] [--limit N]
                                 [--profile PROFILE [-j N] | [--id ID] [--dry]]
-                                [--queue URL | [TARGET...] [--maxdepth N]]
+                                [--last | --queue URL | [TARGET...] [--maxdepth N]]
 
     Options:
         -n, --dry                  Dry run (do not write to disk).
         --id ID                    ID of worker [default: 1].
         -p, --profile PROFILE      Run worker via ~/.config/caf/worker_PROFILE.
         -q, --queue URL            Take tasks from web queue.
+        --last                     As above, but use the last submitted queue.
         -j N                       Number of launched workers [default: 1].
         -l, --limit N              Limit number of tasks to N.
         -v, --verbose              Be more verbose.
@@ -253,7 +259,10 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
                 error('Running ~/.config/caf/worker_{} did not succeed.'
                       .format(profile))
     else:
-        if queue:
+        if queue or last_queue:
+            if last_queue:
+                with open('.caf/LAST_QUEUE') as f:
+                    queue = f.read().strip()
             url = caf.get_queue_url(queue, 'get') or queue
             worker = QueueWorker(myid, caf.cache, url,
                                  dry=dry, limit=limit, debug=verbose)
@@ -271,18 +280,21 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
         worker.work()
 
 
-@Caf.command()
-def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int)):
+@Caf.command(triggers=['build submit'])
+def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int),
+           do_build: 'build'):
     """
     Submit the list of prepared tasks to a queue server.
 
     Usage:
-        caf submit URL [TARGET...] [--maxdepth N]
+        caf [build] submit URL [TARGET...] [--maxdepth N]
 
     Options:
         --maxdepth N             Maximum depth.
     """
     from urllib.request import urlopen
+    if do_build:
+        build(['caf', 'build'], caf)
     url = caf.get_queue_url(queue, 'submit') or queue
     roots = [caf.out/latest/t for t in targets] \
         if targets else (caf.out/latest).glob('*')
@@ -296,7 +308,10 @@ def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int)):
     data = '\n'.join('{} {}'.format(label, h)
                      for h, label in reversed(tasks.items())).encode()
     with urlopen(url, data=data) as r:
-        print('./caf work --queue {}'.format(r.read().decode()))
+        queue_url = r.read().decode()
+        print('./caf work --queue {}'.format(queue_url))
+    with open('.caf/LAST_QUEUE', 'w') as f:
+        f.write(queue_url)
 
 
 @Caf.command()
