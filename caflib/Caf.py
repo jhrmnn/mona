@@ -101,7 +101,7 @@ class Caf(CLI):
         if args['COMMAND'] in ['init', 'build', 'work']:
             for remote in remotes:
                 remote.update()
-        if 'work' in rargs and rargs['build'] and not args['--no-check']:
+        if 'work' in rargs and not rargs['build'] and not args['--no-check']:
             for remote in remotes:
                 remote.check(self.out/latest)
         for remote in remotes:
