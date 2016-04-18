@@ -42,23 +42,23 @@ class Worker(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def put_back(self, label, path):
+    def put_back(self, label, taskid):
         pass
 
     @abstractmethod
-    def task_done(self, path):
+    def task_done(self, taskid):
         pass
 
     @abstractmethod
-    def task_error(self, path):
+    def task_error(self, taskid):
         pass
 
     def work(self):
         n_done = 0
-        for label, path in self.locked_tasks():
-            self.print_info('Started working on {} ({})...'.format(label, path))
+        for label, taskid in self.locked_tasks():
+            self.print_info('Started working on {} ({})...'.format(label, taskid))
             if not self.dry:
-                self.run_command(path)
+                self.run_command(taskid)
             self.print_info('Finished working on {}.'.format(label))
             n_done += 1
             if self.limit and n_done >= self.limit:
@@ -67,13 +67,13 @@ class Worker(metaclass=ABCMeta):
 
     def locked_tasks(self):
         while True:
-            with self.get_locked_task() as (label, path):
-                if not path:
+            with self.get_locked_task() as (label, taskid):
+                if not taskid:
                     return
-                yield label, path
+                yield label, taskid
 
-    def run_command(self, path):
-        with cd(path):
+    def run_command(self, taskid):
+        with cd(self.root/taskid):
             if Path('command').is_file():
                 with open('command') as f:
                     command = f.read()
@@ -91,66 +91,67 @@ class Worker(metaclass=ABCMeta):
                 except subprocess.CalledProcessError as e:
                     print(e)
                     self.print_info(
-                        'error: There was an error when working on {}'.format(path))
+                        'error: There was an error when working on {}'.format(taskid))
                     with Path('.caf/error').open('w') as f:
                         f.write(self.myid + '\n')
-                    self.task_error(path)
+                    self.task_error(taskid)
                 else:
                     if 'CAFWAIT' in os.environ:
                         from time import sleep
                         sleep(int(os.environ['CAFWAIT']))
                     with Path('.caf/seal').open('w') as f:
                         f.write(self.myid + '\n')
-                    self.task_done(path)
+                    self.task_done(taskid)
 
     @contextmanager
     def get_locked_task(self):
         skipped = set()
-        for label, path in self.tasks(skipped):
-            self.print_debug('Trying task {}...'.format(path))
-            self.cwd = path
-            lockpath = path/'.lock'
-            if (path/'.caf/seal').is_file():
-                self.print_debug('Task {} is sealed, continue.'.format(path))
-                self.task_done(path)
-            elif (path/'.caf/error').is_file():
-                self.print_debug('Task {} is in error, continue.'.format(path))
-                self.task_error(path)
-            elif not all((p/'.caf/seal').is_file() for p in get_children(path)) \
+        for label, taskid in self.tasks(skipped):
+            self.print_debug('Trying task {}...'.format(taskid))
+            taskpath = self.root/taskid
+            self.cwd = taskpath
+            lockpath = taskpath/'.lock'
+            if (taskpath/'.caf/seal').is_file():
+                self.print_debug('Task {} is sealed, continue.'.format(taskid))
+                self.task_done(taskid)
+            elif (taskpath/'.caf/error').is_file():
+                self.print_debug('Task {} is in error, continue.'.format(taskid))
+                self.task_error(taskid)
+            elif not all((p/'.caf/seal').is_file() for p in get_children(taskpath)) \
                     and not self.dry:
                 self.print_debug('Task {} has unsealed children, put back and continue.'
-                                 .format(path))
-                self.put_back(label, path)
-                skipped.add(path)
+                                 .format(taskid))
+                self.put_back(label, taskid)
+                skipped.add(taskid)
             else:
                 try:
                     lockpath.mkdir()
                 except OSError:
-                    self.print_debug('Task {} is locked, continue.'.format(path))
+                    self.print_debug('Task {} is locked, continue.'.format(taskid))
                 else:
                     break  # we have acquired lock
         else:  # there is no task left
             label = None
-            path = None
+            taskid = None
             lockpath = None
         try:
-            yield label, path
+            yield label, taskid
         finally:
             if lockpath:
                 lockpath.rmdir()
 
     def tasks(self, skipped):
         while True:
-            label, path = self.get_task()
-            if path is None:
+            label, taskid = self.get_task()
+            if taskid is None:
                 self.print_info('No more tasks in queue, quitting.')
                 return
-            elif path in skipped:
-                self.put_back(label, path)
+            elif taskid in skipped:
+                self.put_back(label, taskid)
                 self.print_info('All tasks have been skipped, quitting.')
                 return
             else:
-                yield label, path
+                yield label, taskid
 
 
 def get_children(path):
@@ -255,10 +256,9 @@ class QueueWorker(Worker):
                                 .format(self.url, e.reason))
                 return None, None
         task, label, url_state, url_putback = response.split()
-        taskpath = self.root/task
-        self.url_state[taskpath] = url_state
-        self.url_putback[taskpath] = url_putback
-        return label, taskpath
+        self.url_state[task] = url_state
+        self.url_putback[task] = url_putback
+        return label, task
 
     def put_back(self, label, path):
         self.call_url(self.url_putback.pop(path))

@@ -273,7 +273,7 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
             for path in find_tasks(*roots, unsealed=True, maxdepth=maxdepth):
                 cellarid = get_stored(path)
                 if cellarid not in tasks:
-                    tasks[cellarid] = path
+                    tasks[cellarid] = str(path)
             worker = LocalWorker(myid, caf.cache,
                                  list(reversed(tasks.items())),
                                  dry=dry, limit=limit, debug=verbose)
