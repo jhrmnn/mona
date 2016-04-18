@@ -13,7 +13,7 @@ def unpack(caf, path: ('--path', Path)):
         caf unpack [--path PATH]
 
     Options:
-        --path PATH        Path to which symlink caflib [default: .]
+        --path PATH        Path to which symlink caflib [default: .caf]
     """
     from base64 import b64decode
     import tarfile
@@ -35,25 +35,27 @@ def unpack(caf, path: ('--path', Path)):
             with io.BytesIO(archive) as ftar:
                 tar = tarfile.open(mode='r|gz', fileobj=ftar)
                 tar.extractall(str(caflibpath))
-    link = path/'caflib'
-    target = caflibpath/'caflib'
-    linktarget = str(target)
-    if link.is_symlink():
-        if os.readlink(str(link)) == linktarget:
-            return
-        else:
-            link.unlink()
-    if not link.parent.is_dir():
-        link.parent.mkdir()
-    link.symlink_to(linktarget)
+    if path:
+        link = path/'caflib'
+        target = caflibpath/'caflib'
+        linktarget = str(target)
+        if link.is_symlink():
+            if os.readlink(str(link)) == linktarget:
+                return
+            else:
+                link.unlink()
+        if not link.parent.is_dir():
+            link.parent.mkdir()
+        link.symlink_to(linktarget)
+    return str(caflibpath)
 
 
 if __name__ == '__main__':
     if Path('caflib').is_dir():
         pass
     else:
-        unpack(None, Path('.caf'))
-        sys.path.insert(0, '.caf')
+        caflibpath = unpack(None, None)
+        sys.path.insert(0, caflibpath)
     from caflib.Caf import Caf
     Caf.command()(unpack)
     caf = Caf()
