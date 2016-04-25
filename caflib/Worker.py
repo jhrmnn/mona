@@ -25,6 +25,7 @@ class Worker(metaclass=ABCMeta):
         signal.signal(signal.SIGINT, self.sigint_handler)
         signal.signal(signal.SIGTERM, self.sigint_handler)
         self.print_info('Alive and ready.')
+        self.verify_lock = True
 
     def sigint_handler(self, sig, frame):
         self.print_info('Interrupted, quitting.')
@@ -114,7 +115,7 @@ class Worker(metaclass=ABCMeta):
             if (taskpath/'.caf/seal').is_file():
                 self.print_debug('Task {} is sealed, continue.'.format(taskid))
                 self.task_done(taskid)
-            elif (taskpath/'.caf/error').is_file():
+            elif (taskpath/'.caf/error').is_file() and self.verify_lock:
                 self.print_debug('Task {} is in error, continue.'.format(taskid))
                 self.task_error(taskid)
             elif not all((p/'.caf/seal').is_file() for p in get_children(taskpath)) \
@@ -127,6 +128,8 @@ class Worker(metaclass=ABCMeta):
                 try:
                     lockpath.mkdir()
                 except OSError:
+                    if not self.verify_lock:
+                        break
                     self.print_debug('Task {} is locked, continue.'.format(taskid))
                 else:
                     break  # we have acquired lock
@@ -192,10 +195,11 @@ class QueueWorker(Worker):
         conf = Configuration(os.environ['HOME'] + '/.config/caf/conf.yaml')
         self.curl = conf.get('curl')
         self.pushover = conf.get('pushover')
-        self.url = url
+        self.url = url + '?caller=' + socket.gethostname()
         self.url_state = {}
         self.url_putback = {}
         self.has_warned = False
+        self.verify_lock = False
         signal.signal(signal.SIGXCPU, self.sigxcpu_handler)
 
     def sigxcpu_handler(self, sig, frame):
@@ -264,7 +268,7 @@ class QueueWorker(Worker):
         self.call_url(self.url_putback.pop(path))
 
     def task_done(self, path):
-        self.call_url(self.url_state.pop(path).replace('_state_', 'Done'))
+        self.call_url(self.url_state.pop(path) + '?state=Done')
 
     def task_error(self, path):
-        self.call_url(self.url_state.pop(path).replace('_state_', 'Error'))
+        self.call_url(self.url_state.pop(path) + '?state=Error')
