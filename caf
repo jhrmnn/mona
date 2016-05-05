@@ -52,11 +52,17 @@ def unpack(caf, path: ('--path', Path)):
 
 if __name__ == '__main__':
     if Path('caflib').is_dir():
-        pass
+        from caflib.Caf import Caf
     else:
         caflibpath = unpack(None, None)
         sys.path.insert(0, caflibpath)
-    from caflib.Caf import Caf
+        try:
+            from caflib.Caf import Caf
+        except ImportError:
+            import shutil
+            shutil.rmtree(str(caflibpath))
+            unpack(None, None)
+            from caflib.Caf import Caf
     Caf.command()(unpack)
     caf = Caf()
     signal.signal(signal.SIGINT, caf.finalize)
