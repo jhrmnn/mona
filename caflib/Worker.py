@@ -102,6 +102,8 @@ class Worker(metaclass=ABCMeta):
                         sleep(int(os.environ['CAFWAIT']))
                     with Path('.caf/seal').open('w') as f:
                         f.write(self.myid + '\n')
+                    if Path('.caf/error').is_file():
+                        Path('.caf/error').unlink()
                     self.task_done(taskid)
 
     @contextmanager
