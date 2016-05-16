@@ -19,7 +19,7 @@ def unpack(caf, path: ('--path', Path)):
     import tarfile
     import io
     from tempfile import gettempdir
-    tmpdir = Path(gettempdir())/'caflib'
+    tmpdir = Path(gettempdir())/'caf'
     if not tmpdir.is_dir():
         tmpdir.mkdir()
     with open(__file__) as f:
