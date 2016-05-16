@@ -5,20 +5,22 @@ import signal
 import os
 
 
-def unpack(caf, path: ('--path', Path)):
+def unpack(caf, path: ('--path', Path), force: '--force'):
     """
     Unpack caflib from the caf executable.
 
     Usage:
-        caf unpack [--path PATH]
+        caf unpack [-f] [--path PATH]
 
     Options:
         --path PATH        Path to which symlink caflib [default: .caf]
+        -f, --force        Do not use cache.
     """
     from base64 import b64decode
     import tarfile
     import io
     from tempfile import gettempdir
+    import shutil
     tmpdir = Path(gettempdir())/'caf'
     if not tmpdir.is_dir():
         tmpdir.mkdir()
@@ -30,6 +32,8 @@ def unpack(caf, path: ('--path', Path)):
             raise RuntimeError('No packed caflib')
         version = next(f)[:-1].split(maxsplit=2)[-1]
         caflibpath = tmpdir/version
+        if caflibpath.is_dir() and force:
+            shutil.rmtree(str(caflibpath))
         if not caflibpath.is_dir():
             archive = b64decode(next(f)[:-1].split(maxsplit=2)[-1])
             with io.BytesIO(archive) as ftar:
@@ -54,14 +58,12 @@ if __name__ == '__main__':
     if Path('caflib').is_dir():
         from caflib.Caf import Caf
     else:
-        caflibpath = unpack(None, None)
+        caflibpath = unpack(None, path=None, force=False)
         sys.path.insert(0, caflibpath)
         try:
             from caflib.Caf import Caf
         except ImportError:
-            import shutil
-            shutil.rmtree(str(caflibpath))
-            unpack(None, None)
+            unpack(None, path=None, force=True)
             from caflib.Caf import Caf
     Caf.command()(unpack)
     caf = Caf()
