@@ -143,9 +143,10 @@ class Atom:
 
 
 class Molecule:
-    def __init__(self, atoms=None):
+    def __init__(self, atoms=None, metadata=None):
         self.atoms = atoms if atoms else []
         self.flags = Dictlike(self._getflag, self._setflag)
+        self.metadata = metadata or {}
 
     def __repr__(self):
         counter = defaultdict(int)
@@ -434,12 +435,12 @@ class Crystal(Molecule):
 def load(fp, fmt):
     if fmt == 'xyz':
         n = int(fp.readline())
-        fp.readline()
+        comment = fp.readline().rstrip()
         atoms = []
         for _ in range(n):
             l = fp.readline().split()
             atoms.append(Atom(l[0], [float(x) for x in l[1:4]]))
-        return Molecule(atoms)
+        return Molecule(atoms, metadata={'comment': comment or None})
     elif fmt == 'aims':
         atoms = []
         lattice = []
