@@ -30,6 +30,7 @@ class Remote:
             cscriptname = 'cscript.py'
         cmd = ['rsync',
                '-cirl',
+               '--copy-unsafe-links',
                '--delete' if delete else None,
                '--exclude=.*',
                '--exclude=build',
