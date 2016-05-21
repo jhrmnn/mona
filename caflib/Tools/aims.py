@@ -32,7 +32,7 @@ def prepare_aims(task):
         if aims not in _reported:
             msg = '{} does not exit'.format(aims)
             _reported[aims] = (warn, msg)
-        aims_binary = find_program('aims')
+        aims_binary = find_program('aims.master')
     if not aims_binary:
         warn(msg)
         error("Don't know where to find species files")
