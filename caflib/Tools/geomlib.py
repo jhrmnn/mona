@@ -164,6 +164,10 @@ class Molecule:
         self.dump(fp, fmt)
         return fp.getvalue()
 
+    def __contains__(self, item):
+        if isinstance(item, str):
+            return any(item == a.symbol for a in self)
+
     def __getattr__(self, attr):
         if attr == 'xyz':
             return np.array([a.xyz for a in self])
@@ -187,6 +191,9 @@ class Molecule:
 
     def __len__(self):
         return len(self.atoms)
+
+    def __getitem__(self, idx):
+        return self.atoms[idx]
 
     def copy(self):
         return Molecule([atom.copy() for atom in self])
