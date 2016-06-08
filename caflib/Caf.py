@@ -619,3 +619,14 @@ def pack(caf):
         f.write('# version: {}\n'.format(version))
         f.write('# archive: {}\n'.format(b64encode(archive).decode()))
         f.write('# <==\n')
+
+
+@Caf.command()
+def upgrade(caf):
+    """
+    Update itself from https://pub.janhermann.cz/.
+
+    Usage:
+        caf upgrade
+    """
+    os.system('curl https://pub.janhermann.cz/static/caf >caf && chmod +x caf')
