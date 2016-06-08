@@ -108,7 +108,7 @@ class Atom:
 
     def dist(self, other):
         try:
-            return np.sqrt(sum((self.xyz-other)**2))
+            return min(self.dist(atom.xyz) for atom in other)
         except:
             pass
         try:
@@ -116,7 +116,7 @@ class Atom:
         except:
             pass
         try:
-            return min(self.dist(atom.xyz) for atom in other)
+            return np.linalg.norm(self.xyz-np.array(other))
         except:
             pass
         raise TypeError("Don't know how to treat {!r} object"
