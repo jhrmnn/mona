@@ -569,6 +569,24 @@ def fetch(caf, dry: '--dry', targets: 'TARGET', remotes: ('REMOTE', 'proc_remote
 
 
 @Caf.command()
+def template(caf):
+    """
+    Write a template cscript.
+
+    Usage:
+        caf template
+    """
+    with open('cscript', 'w') as f:
+        f.write(dedent("""\
+            #!/usr/bin/env python3
+
+
+            def build(ctx):
+                pass
+        """))
+
+
+@Caf.command()
 def go(caf, remotes: ('REMOTE', 'proc_remote')):
     """
     SSH into the remote caf repository.
