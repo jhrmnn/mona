@@ -52,10 +52,10 @@ class Caf(CLI):
             if Path(cscriptname).is_file():
                 break
         else:
-            error('There is no cscript')
+            cscriptname = None
         with timing('reading cscript'):
             try:
-                self.cscript = load_module(cscriptname)
+                self.cscript = load_module(cscriptname) if cscriptname else object()
             except RuntimeError:
                 error('There was an error while reading cscript.')
         self.out = Path(getattr(self.cscript, 'out', 'build'))
