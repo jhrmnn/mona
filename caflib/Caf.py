@@ -29,16 +29,20 @@ except ImportError:
 latest = 'Latest'
 
 
-def load_module(pathname):
+def load_module(pathname, unpack):
     path = Path(pathname)
     modulename = path.stem
     module = imp.new_module(modulename)
-    try:
-        exec(compile(path.open().read(), path.name, 'exec'), module.__dict__)
-    except:
-        import traceback
-        traceback.print_exc()
-        raise RuntimeError('Could not load "{}"'.format(pathname))
+    for i in range(2):
+        try:
+            exec(compile(path.open().read(), path.name, 'exec'), module.__dict__)
+        except Exception as e:
+            if isinstance(e, ImportError) and i == 0:
+                unpack(None, path=None, force=True)
+                continue
+            import traceback
+            traceback.print_exc()
+            raise RuntimeError('Could not load "{}"'.format(pathname))
     return module
 
 
@@ -55,7 +59,8 @@ class Caf(CLI):
             cscriptname = None
         with timing('reading cscript'):
             try:
-                self.cscript = load_module(cscriptname) if cscriptname else object()
+                self.cscript = load_module(cscriptname, self.commands[('unpack',)]._func) \
+                    if cscriptname else object()
             except RuntimeError:
                 error('There was an error while reading cscript.')
         self.out = Path(getattr(self.cscript, 'out', 'build'))
