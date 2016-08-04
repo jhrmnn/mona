@@ -163,6 +163,14 @@ class Molecule:
         for atom in self.atoms:
             yield atom
 
+    def hash(self):
+        if len(self) == 1:
+            return self[0].number
+        return hash(tuple(np.round(
+            sorted(np.linalg.eigvals(self.inertia)[0]),
+            settings['eq_precision']
+        )))
+
     def __format__(self, fmt):
         fp = StringIO()
         self.dump(fp, fmt)
