@@ -446,7 +446,7 @@ def status(caf, targets: 'TARGET'):
         caf status [TARGET...]
     """
     def colored(stat):
-        colors = 'blue green red yellow normal'.split()
+        colors = 'blue green cyan red yellow normal'.split()
         return [colstr(s, color) if s else colstr(s, 'normal')
                 for s, color in zip(stat, colors)]
 
@@ -463,13 +463,14 @@ def status(caf, targets: 'TARGET'):
         else:
             dirs.append((target, target.glob('*')))
     print('number of {} tasks:'
-          .format('/'.join(colored('running finished error prepared all'.split()))))
-    table = Table(align=['<', *5*['>']], sep=[' ', *4*['/']])
+          .format('/'.join(colored('running finished marked error prepared all'.split()))))
+    table = Table(align=['<', *6*['>']], sep=[' ', *5*['/']])
     for directory, paths in sorted(dirs):
         stats = []
         locked = []
         for p in paths:
             stats.append(((p/'.lock').is_dir(), (p/'.caf/seal').is_file(),
+                          (p/'.caf/mark').is_file(),
                           (p/'.caf/error').is_file(), (p/'.caf/lock').is_file(),
                           (p/'.caf').is_dir()))
             if (p/'.lock').is_dir():
