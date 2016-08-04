@@ -253,6 +253,14 @@ class Molecule:
         return sum(atom.prop['mass']*atom.xyz for atom in self)/self.mass
 
     @property
+    def coords(self):
+        return [a.xyz.tolist() for a in self]
+
+    @property
+    def species(self):
+        return [a.symbol for a in self]
+
+    @property
     def moments(self):
         cms = self.cms
         mass = self.mass
@@ -264,6 +272,17 @@ class Molecule:
         return [max(a.xyz[i] for a in self) -
                 min(a.xyz[i] for a in self)
                 for i in range(3)]
+
+    @property
+    def inertia(self):
+        return [sum(atom.prop['mass']*(
+            np.linalg.norm(atom.xyz)**2*np.eye(3) -
+            atom.xyz[:, None]*atom.xyz[None, :]
+        ) for atom in self.copy().shifted(-self.cms))]
+
+    @property
+    def inertia_moments(self):
+        return sorted(np.linalg.eigvals(self.inertia)[0])
 
     def shifted(self, delta):
         m = self.copy()
