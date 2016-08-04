@@ -275,19 +275,20 @@ class Molecule:
         return Molecule([atom.copy() for i, atom in enumerate(self)
                          if i+1 in idxs])
 
-    def rotated(self, axis, phi, center=None):
-        phi = phi*np.pi/180
-        rotmat = np.array(
-            [1, 0, 0,
-             0, cos(phi), -sin(phi),
-             0, sin(phi), cos(phi)]
-        ).reshape(3, 3)
-        try:
-            shift = {'x': 0, 'y': 1, 'z': 2}[axis]
-        except KeyError:
-            shift = axis
-        for i in [0, 1]:
-            rotmat = np.roll(rotmat, shift, i)
+    def rotated(self, axis=None, phi=None, center=None, rotmat=None):
+        if rotmat is None:
+            phi = phi*np.pi/180
+            rotmat = np.array(
+                [1, 0, 0,
+                 0, cos(phi), -sin(phi),
+                 0, sin(phi), cos(phi)]
+            ).reshape(3, 3)
+            try:
+                shift = {'x': 0, 'y': 1, 'z': 2}[axis]
+            except KeyError:
+                shift = axis
+            for i in [0, 1]:
+                rotmat = np.roll(rotmat, shift, i)
         center = np.array(center) if center else self.cms
         m = self.copy()
         for atom in m:
