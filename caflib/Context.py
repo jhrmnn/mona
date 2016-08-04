@@ -512,10 +512,10 @@ class Context:
 
     __call__ = add_task
 
-    def add_to_target(self, task, target, *link):
+    def add_to_target(self, task, target, *link, check=True):
         linkname = slugify(list(link)) if link else None
         try:
-            if linkname in self.targets[target]:
+            if check and linkname in self.targets[target]:
                 error('Link "{}" already in target "{}"'.format(linkname, target))
         except TypeError:
             error('Target must be a string, not {}'.format(type(target).__name__))
