@@ -156,6 +156,9 @@ class Molecule:
         return ''.join('{}{}'.format(s, n if n > 1 else '')
                        for s, n in sorted(counter.items()))
 
+    def get_kgrid(self, density=None):
+        return None
+
     def __iter__(self):
         for atom in self.atoms:
             yield atom
@@ -397,6 +400,11 @@ class Crystal(Molecule):
                 atom.flags['cell'] = shift
                 atoms.append(atom)
         return Crystal(np.array(ns)[:, None]*self.lattice, atoms)
+
+    def get_kgrid(self, density=0.06):
+        rec_lattice = 2*np.pi*np.linalg.inv(self.lattice.T)
+        rec_lens = np.sqrt((rec_lattice**2).sum(1))
+        return np.ceil(rec_lens/(density*bohr))
 
     def complete_molecules(self):
         def key(x):
