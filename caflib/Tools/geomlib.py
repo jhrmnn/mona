@@ -12,7 +12,7 @@ import json
 settings = {
     'precision': 8,
     'width': 15,
-    'real_eq': 1e-10
+    'eq_precision': 10
 }
 
 ext_fmt_dict = {
@@ -34,9 +34,10 @@ def vector2str(v):
 
 
 def cmp3d(x, y):
+    thre = 10**-settings['eq_precision']
     for i in range(3):
         diff = x[i]-y[i]
-        if abs(diff) > settings['real_eq']:
+        if abs(diff) > thre:
             return int(np.sign(diff))
     return 0
 
