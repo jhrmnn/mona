@@ -47,7 +47,7 @@ def load_module(pathname, unpack):
 
 
 class Caf(CLI):
-    def __init__(self):
+    def __init__(self, libpath):
         super().__init__('caf')
         self.conf = Configuration('.caf/conf.yaml')
         self.conf.set_global(Configuration('{}/.config/caf/conf.yaml'
@@ -70,6 +70,7 @@ class Caf(CLI):
         self.brewery = self.cache/brewery
         self.remotes = {name: Remote(r['host'], r['path'], self.top)
                         for name, r in self.conf.get('remotes', {}).items()}
+        self.libpath = libpath
 
     def __call__(self, argv):
         log_caf(argv)
@@ -207,7 +208,7 @@ def build(caf, dry: '--dry', do_init: 'init'):
         error('cscript has to contain function build(ctx)')
     if do_init:
         init(['caf', 'init'], caf)
-    ctx = Context(caf.cache/cellar, caf.top)
+    ctx = Context(caf.cache/cellar, caf.top, caf.libpath)
     with timing('dependency tree'):
         caf.cscript.build(ctx)
     if not dry:

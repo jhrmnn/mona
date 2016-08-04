@@ -57,6 +57,7 @@ def unpack(caf, path: ('--path', Path), force: '--force'):
 if __name__ == '__main__':
     if Path('caflib').is_dir():
         from caflib.Caf import Caf
+        caflibpath = os.getcwd()
     else:
         caflibpath = unpack(None, path=None, force=False)
         sys.path.insert(0, caflibpath)
@@ -66,6 +67,6 @@ if __name__ == '__main__':
             unpack(None, path=None, force=True)
             from caflib.Caf import Caf
     Caf.command()(unpack)
-    caf = Caf()
+    caf = Caf(caflibpath)
     signal.signal(signal.SIGINT, caf.finalize)
     caf(sys.argv)

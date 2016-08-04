@@ -494,7 +494,7 @@ class Target(AddWrapper):
 class Context:
     """Represent a complete build: tasks and targets."""
 
-    def __init__(self, cellar, top):
+    def __init__(self, cellar, top, libpath):
         try:
             self.cellar = cellar.resolve()
         except FileNotFoundError:
@@ -502,6 +502,7 @@ class Context:
         self.top = top
         self.tasks = []
         self.targets = defaultdict(dict)
+        self.libpath = libpath
 
     def add_task(self, **kwargs):
         task = Task(**kwargs)
