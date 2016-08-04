@@ -205,7 +205,14 @@ class Molecule:
         return len(self.atoms)
 
     def __getitem__(self, idx):
-        return self.atoms[idx]
+        try:
+            return self.atoms[idx]
+        except TypeError:
+            pass
+        return self.metadata[idx]
+
+    def __setitem__(self, key, value):
+        self.metadata[key] = value
 
     def copy(self):
         return Molecule([atom.copy() for atom in self])
@@ -215,7 +222,8 @@ class Molecule:
     def dump(self, fp, fmt):
         if fmt == 'xyz':
             fp.write('{}\n'.format(len(self.atoms)))
-            fp.write('Formula: {!r}\n'.format(self))
+            json.dump({'formula': repr(self), **self.metadata}, fp)
+            fp.write('\n')
             for atom in self:
                 fp.write('{:xyz}\n'.format(atom))
         elif fmt == 'aims':
@@ -460,11 +468,15 @@ def load(fp, fmt):
     if fmt == 'xyz':
         n = int(fp.readline())
         comment = fp.readline().rstrip()
+        try:
+            metadata = json.loads(comment)
+        except json.decoder.JSONDecodeError:
+            metadata = {'comment': comment}
         atoms = []
         for _ in range(n):
             l = fp.readline().split()
             atoms.append(Atom(l[0], [float(x) for x in l[1:4]]))
-        return Molecule(atoms, metadata={'comment': comment or None})
+        return Molecule(atoms, metadata=metadata)
     elif fmt == 'aims':
         atoms = []
         lattice = []
