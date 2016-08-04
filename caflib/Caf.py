@@ -559,18 +559,21 @@ def push(caf, targets: 'TARGET', dry: '--dry', remotes: ('REMOTE', 'proc_remote'
 
 
 @Caf.command()
-def fetch(caf, dry: '--dry', targets: 'TARGET', remotes: ('REMOTE', 'proc_remote')):
+def fetch(caf, dry: '--dry', targets: 'TARGET', remotes: ('REMOTE', 'proc_remote'),
+          get_all: '--all', follow: '--follow'):
     """
     Fetch targets from remote and store them in local Cellar.
 
     Usage:
-        caf fetch REMOTE [TARGET...] [--dry]
+        caf fetch REMOTE [TARGET...] [--dry] [--all] [--follow]
 
     Options:
-        -n, --dry                  Dry run (do not write to disk).
+        -n, --dry         Dry run (do not write to disk).
+        --all             Do not check which tasks are finished.
+        --follow          Follow dependencies.
     """
     for remote in remotes:
-        remote.fetch(targets, caf.cache, caf.out/latest, dry=dry)
+        remote.fetch(targets, caf.cache, caf.out/latest, dry=dry, get_all=get_all, follow=follow)
 
 
 @Caf.command()
