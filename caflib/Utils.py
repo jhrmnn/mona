@@ -114,13 +114,13 @@ def filter_cmd(args):
             if arg[1] is not None:
                 if isinstance(arg[1], bool):
                     if arg[1]:
-                        cmd.append(arg[0])
+                        cmd.append(str(arg[0]))
                 else:
-                    cmd.extend(arg)
+                    cmd.extend(map(str, arg))
         elif isinstance(arg, list):
-            cmd.extend(a for a in arg if a)
+            cmd.extend(str(a) for a in arg if a)
         elif arg:
-            cmd.append(arg)
+            cmd.append(str(arg))
     return cmd
 
 
