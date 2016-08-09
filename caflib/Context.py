@@ -172,7 +172,7 @@ class Task:
         if self == task:
             error('Task cannot depend on itself: {}'.format(self))
         self.children.append(task)
-        if link:
+        if link is not None:
             linkname = slugify(link) if escape else link
         else:
             self.noname_link_counter += 1
