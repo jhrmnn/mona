@@ -38,7 +38,7 @@ def report(f):
 
 
 def normalize_str(s):
-    return re.sub(r'[^0-9a-zA-Z.-]', '-', s)
+    return re.sub(r'[^0-9a-zA-Z.()=+#]', '-', s)
 
 
 def slugify(x, top=True):
