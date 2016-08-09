@@ -145,6 +145,11 @@ class Caf(CLI):
                 if host in self.conf['queue']:
                     return '{0[host]}/token/{0[token]}/queue/{1}/get' \
                         .format(self.conf['queue'][host], queue)
+            elif action == 'append':
+                host, queue = queue.split(':', 1)
+                if host in self.conf['queue']:
+                    return '{0[host]}/token/{0[token]}/queue/{1}/append' \
+                        .format(self.conf['queue'][host], queue)
 
     def finalize(self, sig, frame):
         print_timing()
@@ -302,6 +307,37 @@ def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int),
     if do_build:
         build(['caf', 'build'], caf)
     url = caf.get_queue_url(queue, 'submit') or queue
+    roots = [caf.out/latest/t for t in targets] \
+        if targets else (caf.out/latest).glob('*')
+    tasks = OrderedDict()
+    for path in find_tasks(*roots, unsealed=True, maxdepth=maxdepth):
+        cellarid = get_stored(path)
+        if cellarid not in tasks:
+            tasks[cellarid] = path
+    if not tasks:
+        error('No tasks to submit')
+    data = '\n'.join('{} {}'.format(label, h)
+                     for h, label in reversed(tasks.items())).encode()
+    with urlopen(url, data=data) as r:
+        queue_url = r.read().decode()
+        print('./caf work --queue {}'.format(queue_url))
+    with open('.caf/LAST_QUEUE', 'w') as f:
+        f.write(queue_url)
+
+
+@Caf.command()
+def append(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int)):
+    """
+    Append the list of prepared tasks to a given queue.
+
+    Usage:
+        caf append URL [TARGET...] [--maxdepth N]
+
+    Options:
+        --maxdepth N             Maximum depth.
+    """
+    from urllib.request import urlopen
+    url = caf.get_queue_url(queue, 'append') or queue
     roots = [caf.out/latest/t for t in targets] \
         if targets else (caf.out/latest).glob('*')
     tasks = OrderedDict()
