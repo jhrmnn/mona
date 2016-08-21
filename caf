@@ -21,7 +21,7 @@ def unpack(caf, path: ('--path', Path), cache: '--cache'):
     import io
     from tempfile import gettempdir
     import shutil
-    tmpdir = Path(gettempdir())/'caf'
+    tmpdir = Path(gettempdir())/('caf_' + os.environ['USER'])
     if not tmpdir.is_dir():
         tmpdir.mkdir()
     with open(__file__) as f:
