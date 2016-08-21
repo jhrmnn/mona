@@ -64,7 +64,7 @@ if __name__ == '__main__':
         try:
             from caflib.Caf import Caf
         except ImportError:
-            unpack(None, path=None)
+            unpack(None, path=None, cache=False)
             from caflib.Caf import Caf
     Caf.command()(unpack)
     caf = Caf(caflibpath)
