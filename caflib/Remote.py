@@ -82,7 +82,11 @@ class Remote:
         info('Fetching from {}...'.format(self.host))
         if not get_all:
             there = self.command(
-                'list tasks --finished --cellar', get_output=True
+                'list tasks {} --finished --cellar {}'.format(
+                    ' '.join(targets) if targets else '',
+                    '--maxdepth 1' if not follow else ''
+                ),
+                get_output=True
             ).decode().split('\r\n')
         roots = [p for p in root.glob('*')
                  if not targets or p.name in targets]
