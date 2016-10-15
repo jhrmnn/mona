@@ -9,6 +9,7 @@ import imp
 from textwrap import dedent
 import hashlib
 from collections import OrderedDict
+import subprocess as sp
 
 from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
     timing, relink, print_timing
@@ -191,6 +192,11 @@ def init(caf):
     info('Initializing an empty repository at {}.'.format(cache_path))
     mkdir(caf.cellar)
     mkdir(caf.brewery)
+    sp.call(['git', 'init'])
+    with open('.gitignore', 'w') as f:
+        f.write('.caf\n')
+    sp.call(['git', 'add', 'caf', 'cscript.py', '.gitignore'])
+    sp.call(['git', 'commit', '-m', 'initial commit'])
 
 
 @Caf.command(triggers=['init build'])
