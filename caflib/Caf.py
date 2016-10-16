@@ -66,7 +66,7 @@ class Caf(CLI):
             except RuntimeError:
                 error('There was an error while reading cscript.')
         self.out = Path(getattr(self.cscript, 'out', 'build'))
-        self.cache = Path(getattr(self.cscript, 'cache', '_caf'))
+        self.cache = Path(getattr(self.cscript, 'cache', '.caf/db'))
         self.top = Path(getattr(self.cscript, 'top', '.'))
         self.cellar = self.cache/cellar
         self.brewery = self.cache/brewery
@@ -176,9 +176,9 @@ def init(caf):
     Usage:
         caf init
 
-    By default create directory in ./_caf. If 'cache' is defined in
+    By default create directory in .caf/db. If 'cache' is defined in
     ~/.config/caf/conf.yaml, the repository is created there and symlinked to
-    ./_caf, otherwise it is created locally.
+    .caf/db, otherwise it is created locally.
     """
     if 'cache' in caf.conf:
         timestamp = get_timestamp()
@@ -194,7 +194,7 @@ def init(caf):
     mkdir(caf.cellar)
     mkdir(caf.brewery)
     with open('.gitignore', 'w') as f:
-        f.write('\n'.join(['.caf', '_caf']))
+        f.write('\n'.join(['.caf']))
     with open(os.devnull, 'w') as null:
         sp.call(['git', 'init'], stdout=null)
         sp.call(['git', 'add', 'caf', 'cscript.py', '.gitignore'], stdout=null)
@@ -212,9 +212,9 @@ def build(caf, dry: '--dry', do_init: 'init'):
     Options:
         -n, --dry                  Dry run (do not write to disk).
 
-    Tasks are created in ./_caf/Brewery/Latest and if their preparation does
+    Tasks are created in .caf/db/Brewery/Latest and if their preparation does
     not depened on unfinished tasks, they are prepared and stored in
-    ./_caf/Cellar based on their SHA1 hash. Targets (collections of symlinks to
+    .caf/db/Cellar based on their SHA1 hash. Targets (collections of symlinks to
     tasks) are created in ./build.
     """
     if not hasattr(caf.cscript, 'build'):
@@ -569,7 +569,7 @@ def remote_add(caf, _, url: 'URL', name: 'NAME'):
 @Caf.command()
 def update(caf, delete: '--delete', remotes: ('REMOTE', 'proc_remote')):
     """
-    Sync the contents of . to remote excluding ./_caf and ./build.
+    Sync the contents of . to remote excluding .caf/db and ./build.
 
     Usage:
         caf update REMOTE [--delete]
