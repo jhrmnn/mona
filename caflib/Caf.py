@@ -10,6 +10,7 @@ from textwrap import dedent
 import hashlib
 from collections import OrderedDict
 import subprocess as sp
+import shutil
 
 from caflib.Utils import Configuration, mkdir, get_timestamp, filter_cmd, \
     timing, relink, print_timing
@@ -110,12 +111,12 @@ class Caf(CLI):
                 remote.update()
         if 'work' in rargs and not rargs['build'] and not args['--no-check']:
             for remote in remotes:
-                remote.check(self.out/latest)
+                remote.check(self.out)
         for remote in remotes:
             remote.command(' '.join(arg if ' ' not in arg else repr(arg)
                                     for arg in rargv[1:]))
             if 'work' in rargs and rargs['build'] and not args['--no-check']:
-                remote.check(self.out/latest)
+                remote.check(self.out)
 
     def __format__(self, fmt):
         if fmt == 'header':
@@ -194,7 +195,7 @@ def init(caf):
     mkdir(caf.brewery)
     sp.call(['git', 'init'])
     with open('.gitignore', 'w') as f:
-        f.write('.caf\n')
+        f.write('\n'.join(['.caf', '_caf']))
     sp.call(['git', 'add', 'caf', 'cscript.py', '.gitignore'])
     sp.call(['git', 'commit', '-m', 'initial commit'])
 
@@ -213,7 +214,7 @@ def build(caf, dry: '--dry', do_init: 'init'):
     Tasks are created in ./_caf/Brewery/Latest and if their preparation does
     not depened on unfinished tasks, they are prepared and stored in
     ./_caf/Cellar based on their SHA1 hash. Targets (collections of symlinks to
-    tasks) are created in ./build/Latest.
+    tasks) are created in ./build.
     """
     if not hasattr(caf.cscript, 'build'):
         error('cscript has to contain function build(ctx)')
@@ -226,14 +227,17 @@ def build(caf, dry: '--dry', do_init: 'init'):
         timestamp = get_timestamp()
         mkdir(caf.brewery/timestamp)
         relink(timestamp, caf.brewery/latest, relative=False)
-        mkdir(caf.out/timestamp, parents=True)
-        relink(timestamp, caf.out/latest, relative=False)
         with timing('build'):
             ctx.build(caf.brewery/latest)
+        if caf.out.is_dir():
+            shutil.rmtree(str(caf.out))
+        mkdir(caf.out)
         with timing('targets'):
-            ctx.make_targets(caf.out/latest)
+            ctx.make_targets(caf.out)
         if hasattr(caf.cscript, 'json'):
             warn('Make sure json is not printing dictionaries in features')
+    sp.call(['git', 'add', '--all', 'build'])
+    sp.call(['git', 'commit', '-a', '-m', '#build'])
 
 
 @Caf.command(triggers=['build work', 'init build work'])
@@ -284,8 +288,8 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
             worker = QueueWorker(myid, caf.cache, url,
                                  dry=dry, limit=limit, debug=verbose)
         else:
-            roots = [caf.out/latest/t for t in targets] \
-                if targets else (caf.out/latest).glob('*')
+            roots = [caf.out/t for t in targets] \
+                if targets else (caf.out).glob('*')
             tasks = OrderedDict()
             for path in find_tasks(*roots, unsealed=True, maxdepth=maxdepth):
                 cellarid = get_stored(path)
@@ -313,8 +317,8 @@ def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int),
     if do_build:
         build(['caf', 'build'], caf)
     url = caf.get_queue_url(queue, 'submit') or queue
-    roots = [caf.out/latest/t for t in targets] \
-        if targets else (caf.out/latest).glob('*')
+    roots = [caf.out/t for t in targets] \
+        if targets else (caf.out).glob('*')
     tasks = OrderedDict()
     for path in find_tasks(*roots, unsealed=True, maxdepth=maxdepth):
         cellarid = get_stored(path)
@@ -344,8 +348,8 @@ def append(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int)):
     """
     from urllib.request import urlopen
     url = caf.get_queue_url(queue, 'append') or queue
-    roots = [caf.out/latest/t for t in targets] \
-        if targets else (caf.out/latest).glob('*')
+    roots = [caf.out/t for t in targets] \
+        if targets else (caf.out).glob('*')
     tasks = OrderedDict()
     for path in find_tasks(*roots, unsealed=True, maxdepth=maxdepth):
         cellarid = get_stored(path)
@@ -370,7 +374,7 @@ def reset(caf, targets: 'TARGET'):
     Usage:
         caf reset [TARGET...]
     """
-    roots = [caf.out/latest/t for t in targets] if targets else (caf.out/latest).glob('*')
+    roots = [caf.out/t for t in targets] if targets else (caf.out).glob('*')
     for path in find_tasks(*roots):
         if (path/'.lock').is_dir():
             (path/'.lock').rmdir()
@@ -428,7 +432,7 @@ def list_tasks(caf, _, do_finished: '--finished', do_stored: '--stored',
         --both                     Print path in build and cellar.
         --maxdepth N               Specify maximum depth.
     """
-    roots = [caf.out/latest/t for t in targets] if targets else (caf.out/latest).glob('*')
+    roots = [caf.out/t for t in targets] if targets else (caf.out).glob('*')
     if do_finished:
         paths = find_tasks(*roots, sealed=True, maxdepth=maxdepth)
     elif do_unfinished:
@@ -496,8 +500,8 @@ def status(caf, targets: 'TARGET'):
     dirs = []
     if not targets:
         dirs.append((caf.brewery/latest, (caf.brewery/latest).glob('*')))
-    targets = [caf.out/latest/t for t in targets] \
-        if targets else (caf.out/latest).glob('*')
+    targets = [caf.out/t for t in targets] \
+        if targets else (caf.out).glob('*')
     for target in targets:
         if not target.is_dir() or str(target).startswith('.'):
             continue
@@ -584,7 +588,7 @@ def check(caf, remotes: ('REMOTE', 'proc_remote')):
         caf check REMOTE
     """
     for remote in remotes:
-        remote.check(caf.out/latest)
+        remote.check(caf.out)
 
 
 @Caf.command()
@@ -599,7 +603,7 @@ def push(caf, targets: 'TARGET', dry: '--dry', remotes: ('REMOTE', 'proc_remote'
         -n, --dry                  Dry run (do not write to disk).
     """
     for remote in remotes:
-        remote.push(targets, caf.cache, caf.out/latest, dry=dry)
+        remote.push(targets, caf.cache, caf.out, dry=dry)
 
 
 @Caf.command()
@@ -617,7 +621,7 @@ def fetch(caf, dry: '--dry', targets: 'TARGET', remotes: ('REMOTE', 'proc_remote
         --follow          Follow dependencies.
     """
     for remote in remotes:
-        remote.fetch(targets, caf.cache, caf.out/latest, dry=dry, get_all=get_all, follow=follow)
+        remote.fetch(targets, caf.cache, caf.out, dry=dry, get_all=get_all, follow=follow)
 
 
 @Caf.command()
