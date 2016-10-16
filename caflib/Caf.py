@@ -193,11 +193,12 @@ def init(caf):
     info('Initializing an empty repository at {}.'.format(cache_path))
     mkdir(caf.cellar)
     mkdir(caf.brewery)
-    sp.call(['git', 'init'])
     with open('.gitignore', 'w') as f:
         f.write('\n'.join(['.caf', '_caf']))
-    sp.call(['git', 'add', 'caf', 'cscript.py', '.gitignore'])
-    sp.call(['git', 'commit', '-m', 'initial commit'])
+    with open(os.devnull, 'w') as null:
+        sp.call(['git', 'init'], stdout=null)
+        sp.call(['git', 'add', 'caf', 'cscript.py', '.gitignore'], stdout=null)
+        sp.call(['git', 'commit', '-m', 'initial commit'], stdout=null)
 
 
 @Caf.command(triggers=['init build'])
@@ -236,8 +237,9 @@ def build(caf, dry: '--dry', do_init: 'init'):
             ctx.make_targets(caf.out)
         if hasattr(caf.cscript, 'json'):
             warn('Make sure json is not printing dictionaries in features')
-    sp.call(['git', 'add', '--all', 'build'])
-    sp.call(['git', 'commit', '-a', '-m', '#build'])
+    with open(os.devnull, 'w') as null:
+        sp.call(['git', 'add', '--all', 'build'], stdout=null)
+        sp.call(['git', 'commit', '-a', '-m', '#build'], stdout=null)
 
 
 @Caf.command(triggers=['build work', 'init build work'])
