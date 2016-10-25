@@ -562,15 +562,15 @@ class Context:
         for report in _reports:
             report()
 
-    def make_targets(self, out):
+    def make_targets(self, out, cache):
         for target, tasks in self.targets.items():
             if len(tasks) == 1 and None in tasks:
-                relink(tasks[None].path, out/target, relative=False)
+                relink(Path('../.caf/db')/'/'.join(tasks[None].path.parts[-4:]), out/target, relative=False)
             else:
                 if not (out/target).is_dir():
                     mkdir(out/target)
                 for name, task in tasks.items():
-                    relink(task.path, out/target/name, relative=False)
+                    relink(Path('../../.caf/db')/'/'.join(task.path.parts[-4:]), out/target/name, relative=False)
 
     def load_tool(self, name):
         __import__('caflib.Tools.' + name)

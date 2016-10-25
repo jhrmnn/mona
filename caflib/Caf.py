@@ -234,7 +234,7 @@ def build(caf, dry: '--dry', do_init: 'init'):
             shutil.rmtree(str(caf.out))
         mkdir(caf.out)
         with timing('targets'):
-            ctx.make_targets(caf.out)
+            ctx.make_targets(caf.out, caf.cache)
         if hasattr(caf.cscript, 'json'):
             warn('Make sure json is not printing dictionaries in features')
     with open(os.devnull, 'w') as null:
