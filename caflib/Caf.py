@@ -40,7 +40,7 @@ def load_module(pathname, unpack):
             exec(compile(path.open().read(), path.name, 'exec'), module.__dict__)
         except Exception as e:
             if isinstance(e, ImportError) and i == 0:
-                unpack(None, path=None, force=True)
+                unpack(None, path=None)
                 continue
             import traceback
             traceback.print_exc()
