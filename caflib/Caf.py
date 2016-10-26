@@ -566,6 +566,17 @@ def remote_add(caf, _, url: 'URL', name: 'NAME'):
     caf.conf.save()
 
 
+@caf_remote.add_command(name='path')
+def remote_path(caf, _, name: 'NAME'):
+    """
+    Print a remote path in the form HOST:PATH.
+
+    Usage:
+        caf remote path NAME
+    """
+    print('{0[host]}:{0[path]}'.format(caf.conf['remotes'][name]))
+
+
 @Caf.command()
 def update(caf, delete: '--delete', remotes: ('REMOTE', 'proc_remote')):
     """
