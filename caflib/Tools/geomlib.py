@@ -499,6 +499,7 @@ def load(fp, fmt):
         return Molecule(atoms, metadata=metadata)
     elif fmt == 'aims':
         atoms = []
+        atoms_frac = []
         lattice = []
         while True:
             l = fp.readline()
@@ -511,10 +512,15 @@ def load(fp, fmt):
             what = l[0]
             if what == 'atom':
                 atoms.append(Atom(l[4], [float(x) for x in l[1:4]]))
+            elif what == 'atom_frac':
+                atoms_frac.append((l[4], [float(x) for x in l[1:4]]))
             elif what == 'lattice_vector':
                 lattice.append([float(x) for x in l[1:4]])
         if lattice:
             assert len(lattice) == 3
+            lattice = np.array(lattice)
+            for sp, coord in atoms_frac:
+                atoms.append(Atom(sp, lattice.dot(coord)))
             return Crystal(lattice, atoms)
         else:
             return Molecule(atoms)
