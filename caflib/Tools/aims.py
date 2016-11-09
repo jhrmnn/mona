@@ -3,10 +3,28 @@ from caflib.Context import feature
 from caflib.Utils import find_program, report, cd
 from caflib.Logging import info, warn, error
 from pathlib import Path
+import numpy as np
 import os
 import shutil
 
 _reported = {}
+_tags = [
+    'xc', 'many_body_dispersion', 'k_grid', 'python_hook', 'sc_accuracy_eev',
+    'sc_accuracy_rho', 'sc_accuracy_etot', 'sc_iter_limit'
+]
+
+
+def p2f(value):
+    if isinstance(value, bool):
+        return '.{}.'.format(str(value).lower())
+    elif isinstance(value, (np.ndarray, list)):
+        return ' '.join(p2f(x) for x in value)
+    elif isinstance(value, dict):
+        return ' '.join(
+            '{}={}'.format(p2f(k), p2f(v)) for k, v in sorted(value.items())
+        )
+    else:
+        return str(value)
 
 
 @report
@@ -59,11 +77,17 @@ def prepare_aims(task):
             species = sorted(set((a.number, a.symbol) for a in geom))
             if not Path('control.in').exists():
                 error('No control file found')
+            with open('control.in') as f:
+                chunks = [f.read()]
+            Path('control.in').unlink()
+            del task.files['control.in']
+            for attr in list(task.attrs):
+                if attr in _tags:
+                    value = task.consume(attr)
+                    if value is None:
+                        continue
+                    chunks.append('{}  {}'.format(attr, p2f(value)))
             if not basis == 'none':
-                with open('control.in') as f:
-                    chunks = [f.read()]
-                Path('control.in').unlink()
-                del task.files['control.in']
                 for specie in species:
                     with (basis_root/'{0[0]:02d}_{0[1]}_default'.format(specie)).open() as f:
                         chunks.append(f.read())
