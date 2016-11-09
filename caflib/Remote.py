@@ -1,10 +1,8 @@
 import subprocess
-from pathlib import Path
 from caflib.Logging import info, error
 from caflib.Utils import filter_cmd
 from caflib.Listing import find_tasks
 from caflib.Context import get_stored
-import os
 
 
 class Remote:
@@ -16,32 +14,20 @@ class Remote:
     def update(self, delete=False):
         info('Updating {.host}...'.format(self))
         subprocess.check_call(['ssh', self.host, 'mkdir -p {.path}'.format(self)])
-        ignorefile = Path('.cafignore')
-        if ignorefile.is_file():
-            ignored = [l.strip() for l in ignorefile.open().readlines()]
-        else:
-            ignored = []
-        ignorefile = Path(os.environ['HOME'] + '/.config/caf/ignore')
-        if ignorefile.is_file():
-            ignored.extend(l.strip() for l in ignorefile.open().readlines())
-        if Path('cscript').is_file():
-            cscriptname = 'cscript'
-        else:
-            cscriptname = 'cscript.py'
-        cmd = ['rsync',
-               '-cirl',
-               '--copy-unsafe-links',
-               '--delete' if delete else None,
-               '--exclude=.*',
-               '--exclude=build',
-               '--exclude=_caf',
-               '--exclude=*.pyc',
-               '--exclude=__pycache__',
-               ['--exclude={}'.format(p) for p in ignored],
-               ['caf', cscriptname, str(self.top)],
-               'caflib' if Path('caflib').exists() else None,
-               '{0.host}:{0.path}'.format(self)]
-        subprocess.check_call(filter_cmd(cmd))
+        paths = subprocess.check_output(['git', 'ls-files']).decode().split()
+        paths = [p for p in paths if not p.startswith('build/')]
+        cmd = [
+            'rsync',
+            '-cirl',
+            '--delete' if delete else None,
+            '--exclude=*.pyc',
+            '--exclude=__pycache__',
+            '--files-from=-',
+            '.',
+            '{0.host}:{0.path}'.format(self)
+        ]
+        p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
+        p.communicate('\n'.join(paths).encode())
 
     def command(self, cmd, get_output=False):
         if not get_output:
