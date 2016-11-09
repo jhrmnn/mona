@@ -95,7 +95,7 @@ class Caf(CLI):
             rargs = self.parse(rargv)  # remote parsed arguments
         except DocoptExit:  # remote CLI failed as well, reraise CLIExit
             raise cliexit
-        if 'work' in rargs:
+        if 'make' in rargs:
             if rargs['--queue']:  # substitute URL
                 url = self.get_queue_url(rargs['--queue'], 'get')
                 if url:
@@ -106,17 +106,17 @@ class Caf(CLI):
                 last_index = rargv.index('--last')
                 rargv = rargv[:last_index] + ['--queue', queue_url] + rargv[last_index+1:]
         remotes = self.proc_remote(args['REMOTE'])  # get Remote objects
-        if args['COMMAND'] in ['conf', 'work']:
+        if args['COMMAND'] in ['conf', 'make']:
             for remote in remotes:
                 remote.update()
         has_no_check = args['--no-check'] or self.conf.get('no_check')
-        if 'work' in rargs and not rargs['conf'] and not has_no_check:
+        if 'make' in rargs and not rargs['conf'] and not has_no_check:
             for remote in remotes:
                 remote.check(self.out)
         for remote in remotes:
             remote.command(' '.join(arg if ' ' not in arg else repr(arg)
                                     for arg in rargv[1:]))
-            if 'work' in rargs and rargs['conf'] and not has_no_check:
+            if 'make' in rargs and rargs['conf'] and not has_no_check:
                 remote.check(self.out)
 
     def __format__(self, fmt):
@@ -232,8 +232,8 @@ def conf(caf, dry: '--dry'):
         sp.call(['git', 'commit', '-a', '-m', '#configuration'], stdout=null)
 
 
-@Caf.command(triggers=['conf work', 'conf work'])
-def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
+@Caf.command(triggers=['conf make'])
+def make(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
          limit: ('--limit', int), queue: '--queue', myid: '--id',
          dry: '--dry', do_conf: 'conf', verbose: '--verbose',
          last_queue: '--last', maxdepth: ('--maxdepth', int)):
@@ -241,7 +241,7 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
     Execute all prepared build tasks.
 
     Usage:
-        caf [conf] work [-v] [--limit N]
+        caf [conf] make [-v] [--limit N]
                                 [--profile PROFILE [-j N] | [--id ID] [--dry]]
                                 [--last | --queue URL | [TARGET...] [--maxdepth N]]
 
@@ -320,7 +320,7 @@ def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int),
                      for h, label in reversed(tasks.items())).encode()
     with urlopen(url, data=data) as r:
         queue_url = r.read().decode()
-        print('./caf work --queue {}'.format(queue_url))
+        print('./caf make --queue {}'.format(queue_url))
     with open('.caf/LAST_QUEUE', 'w') as f:
         f.write(queue_url)
 
@@ -351,7 +351,7 @@ def append(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int)):
                      for h, label in reversed(tasks.items())).encode()
     with urlopen(url, data=data) as r:
         queue_url = r.read().decode()
-        print('./caf work --queue {}'.format(queue_url))
+        print('./caf make --queue {}'.format(queue_url))
     with open('.caf/LAST_QUEUE', 'w') as f:
         f.write(queue_url)
 
