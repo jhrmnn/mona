@@ -106,7 +106,7 @@ class Caf(CLI):
                 last_index = rargv.index('--last')
                 rargv = rargv[:last_index] + ['--queue', queue_url] + rargv[last_index+1:]
         remotes = self.proc_remote(args['REMOTE'])  # get Remote objects
-        if args['COMMAND'] in ['init', 'conf', 'work']:
+        if args['COMMAND'] in ['conf', 'work']:
             for remote in remotes:
                 remote.update()
         has_no_check = args['--no-check'] or self.conf.get('no_check')
@@ -169,18 +169,7 @@ class Caf(CLI):
         return remotes
 
 
-@Caf.command()
 def init(caf):
-    """
-    Initialize the Caf repository.
-
-    Usage:
-        caf init
-
-    By default create directory in .caf/db. If 'cache' is defined in
-    ~/.config/caf/conf.yaml, the repository is created there and symlinked to
-    .caf/db, otherwise it is created locally.
-    """
     if 'cache' in caf.conf:
         timestamp = get_timestamp()
         cache_path = Path(caf.conf['cache'])/'{}_{}'.format(Path().resolve().name, timestamp)
@@ -202,13 +191,13 @@ def init(caf):
         sp.call(['git', 'commit', '-m', 'initial commit'], stdout=null)
 
 
-@Caf.command(triggers=['init conf'])
-def conf(caf, dry: '--dry', do_init: 'init'):
+@Caf.command()
+def conf(caf, dry: '--dry'):
     """
     Prepare tasks and targets defined in cscript.
 
     Usage:
-        caf [init] conf [--dry]
+        caf conf [--dry]
 
     Options:
         -n, --dry                  Dry run (do not write to disk).
@@ -220,8 +209,8 @@ def conf(caf, dry: '--dry', do_init: 'init'):
     """
     if not hasattr(caf.cscript, 'configure'):
         error('cscript has to contain function configure(ctx)')
-    if do_init:
-        init(['caf', 'init'], caf)
+    if not Path('.caf/db').exists():
+        init(caf)
     ctx = Context(caf.cache/cellar, caf.top, caf.libpath)
     with timing('dependency tree'):
         caf.cscript.configure(ctx)
@@ -243,16 +232,16 @@ def conf(caf, dry: '--dry', do_init: 'init'):
         sp.call(['git', 'commit', '-a', '-m', '#configuration'], stdout=null)
 
 
-@Caf.command(triggers=['conf work', 'init conf work'])
+@Caf.command(triggers=['conf work', 'conf work'])
 def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
          limit: ('--limit', int), queue: '--queue', myid: '--id',
-         dry: '--dry', do_init: 'init', do_conf: 'conf', verbose: '--verbose',
+         dry: '--dry', do_conf: 'conf', verbose: '--verbose',
          last_queue: '--last', maxdepth: ('--maxdepth', int)):
     """
     Execute all prepared build tasks.
 
     Usage:
-        caf [[init] conf] work [-v] [--limit N]
+        caf [conf] work [-v] [--limit N]
                                 [--profile PROFILE [-j N] | [--id ID] [--dry]]
                                 [--last | --queue URL | [TARGET...] [--maxdepth N]]
 
@@ -268,9 +257,7 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
         --maxdepth N               Maximal depth.
     """
     import subprocess
-    if do_init:
-        configure(['caf', 'init', 'conf'], caf)
-    elif do_conf:
+    if do_conf:
         configure(['caf', 'conf'], caf)
     if profile:
         for _ in range(n):
