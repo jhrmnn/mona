@@ -106,17 +106,17 @@ class Caf(CLI):
                 last_index = rargv.index('--last')
                 rargv = rargv[:last_index] + ['--queue', queue_url] + rargv[last_index+1:]
         remotes = self.proc_remote(args['REMOTE'])  # get Remote objects
-        if args['COMMAND'] in ['init', 'build', 'work']:
+        if args['COMMAND'] in ['init', 'conf', 'work']:
             for remote in remotes:
                 remote.update()
         has_no_check = args['--no-check'] or self.conf.get('no_check')
-        if 'work' in rargs and not rargs['build'] and not has_no_check:
+        if 'work' in rargs and not rargs['conf'] and not has_no_check:
             for remote in remotes:
                 remote.check(self.out)
         for remote in remotes:
             remote.command(' '.join(arg if ' ' not in arg else repr(arg)
                                     for arg in rargv[1:]))
-            if 'work' in rargs and rargs['build'] and not has_no_check:
+            if 'work' in rargs and rargs['conf'] and not has_no_check:
                 remote.check(self.out)
 
     def __format__(self, fmt):
@@ -202,13 +202,13 @@ def init(caf):
         sp.call(['git', 'commit', '-m', 'initial commit'], stdout=null)
 
 
-@Caf.command(triggers=['init build'])
-def build(caf, dry: '--dry', do_init: 'init'):
+@Caf.command(triggers=['init conf'])
+def conf(caf, dry: '--dry', do_init: 'init'):
     """
     Prepare tasks and targets defined in cscript.
 
     Usage:
-        caf [init] build [--dry]
+        caf [init] conf [--dry]
 
     Options:
         -n, --dry                  Dry run (do not write to disk).
@@ -218,19 +218,19 @@ def build(caf, dry: '--dry', do_init: 'init'):
     .caf/db/Cellar based on their SHA1 hash. Targets (collections of symlinks to
     tasks) are created in ./build.
     """
-    if not hasattr(caf.cscript, 'build'):
-        error('cscript has to contain function build(ctx)')
+    if not hasattr(caf.cscript, 'configure'):
+        error('cscript has to contain function configure(ctx)')
     if do_init:
         init(['caf', 'init'], caf)
     ctx = Context(caf.cache/cellar, caf.top, caf.libpath)
     with timing('dependency tree'):
-        caf.cscript.build(ctx)
+        caf.cscript.configure(ctx)
     if not dry:
         timestamp = get_timestamp()
         mkdir(caf.brewery/timestamp)
         relink(timestamp, caf.brewery/latest, relative=False)
-        with timing('build'):
-            ctx.build(caf.brewery/latest)
+        with timing('configure'):
+            ctx.configure(caf.brewery/latest)
         if caf.out.is_dir():
             shutil.rmtree(str(caf.out))
         mkdir(caf.out)
@@ -240,19 +240,19 @@ def build(caf, dry: '--dry', do_init: 'init'):
             warn('Make sure json is not printing dictionaries in features')
     with open(os.devnull, 'w') as null:
         sp.call(['git', 'add', '--all', 'build'], stdout=null)
-        sp.call(['git', 'commit', '-a', '-m', '#build'], stdout=null)
+        sp.call(['git', 'commit', '-a', '-m', '#configuration'], stdout=null)
 
 
-@Caf.command(triggers=['build work', 'init build work'])
+@Caf.command(triggers=['conf work', 'init conf work'])
 def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
          limit: ('--limit', int), queue: '--queue', myid: '--id',
-         dry: '--dry', do_init: 'init', do_build: 'build', verbose: '--verbose',
+         dry: '--dry', do_init: 'init', do_conf: 'conf', verbose: '--verbose',
          last_queue: '--last', maxdepth: ('--maxdepth', int)):
     """
     Execute all prepared build tasks.
 
     Usage:
-        caf [[init] build] work [-v] [--limit N]
+        caf [[init] conf] work [-v] [--limit N]
                                 [--profile PROFILE [-j N] | [--id ID] [--dry]]
                                 [--last | --queue URL | [TARGET...] [--maxdepth N]]
 
@@ -269,9 +269,9 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
     """
     import subprocess
     if do_init:
-        build(['caf', 'init', 'build'], caf)
-    elif do_build:
-        build(['caf', 'build'], caf)
+        configure(['caf', 'init', 'conf'], caf)
+    elif do_conf:
+        configure(['caf', 'conf'], caf)
     if profile:
         for _ in range(n):
             cmd = ['{}/.config/caf/worker_{}'.format(os.environ['HOME'], profile),
@@ -304,21 +304,21 @@ def work(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
         worker.work()
 
 
-@Caf.command(triggers=['build submit'])
+@Caf.command(triggers=['conf submit'])
 def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int),
-           do_build: 'build'):
+           do_conf: 'conf'):
     """
     Submit the list of prepared tasks to a queue server.
 
     Usage:
-        caf [build] submit URL [TARGET...] [--maxdepth N]
+        caf [conf] submit URL [TARGET...] [--maxdepth N]
 
     Options:
         --maxdepth N             Maximum depth.
     """
     from urllib.request import urlopen
-    if do_build:
-        build(['caf', 'build'], caf)
+    if do_conf:
+        configure(['caf', 'conf'], caf)
     url = caf.get_queue_url(queue, 'submit') or queue
     roots = [caf.out/t for t in targets] \
         if targets else (caf.out).glob('*')
@@ -651,7 +651,7 @@ def template(caf):
             #!/usr/bin/env python3
 
 
-            def build(ctx):
+            def configure(ctx):
                 pass
         """))
 

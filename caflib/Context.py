@@ -467,7 +467,7 @@ class Link(AddWrapper):
 
 
 class Target(AddWrapper):
-    """Represents adding a task to a build context as a target."""
+    """Represents adding a task to a configuration context as a target."""
 
     def __init__(self, *args, **kwargs):
         return super().__init__('add_to_target', *args, **kwargs)
@@ -547,11 +547,8 @@ class Context:
             error('There are cycles in the dependency tree')
         self.tasks = queue
 
-    def build(self, batch):
-        try:
-            batch = batch.resolve()
-        except FileNotFoundError:
-            error('Batch does not exist, maybe `caf build new` first?')
+    def configure(self, batch):
+        batch = batch.resolve()
         with timing('task sorting'):
             self.sort_tasks()
         ntskdigit = ceil(log10(len(self.tasks)+1))
