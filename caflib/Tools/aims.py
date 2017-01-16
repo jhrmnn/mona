@@ -73,7 +73,7 @@ def prepare_aims(task):
             if Path(geomfile).exists():
                 geom = geomlib.readfile(geomfile, 'aims')
             else:
-                error('No geometry file found')
+                error('No geometry file found: {}, {}'.format(task, task.path))
             species = sorted(set((a.number, a.symbol) for a in geom))
             if not Path('control.in').exists():
                 error('No control file found')
