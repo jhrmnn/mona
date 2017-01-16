@@ -10,7 +10,7 @@ import shutil
 _reported = {}
 _tags = [
     'xc', 'many_body_dispersion', 'k_grid', 'python_hook', 'sc_accuracy_eev',
-    'sc_accuracy_rho', 'sc_accuracy_etot', 'sc_iter_limit'
+    'sc_accuracy_rho', 'sc_accuracy_etot', 'sc_iter_limit', 'total_energy_method'
 ]
 
 
@@ -79,18 +79,22 @@ def prepare_aims(task):
                 error('No control file found')
             with open('control.in') as f:
                 chunks = [f.read()]
-            Path('control.in').unlink()
-            del task.files['control.in']
-            for attr in list(task.attrs):
+            for attr in sorted(list(task.attrs)):
                 if attr in _tags:
                     value = task.consume(attr)
                     if value is None:
                         continue
-                    chunks.append('{}  {}'.format(attr, p2f(value)))
+                    if value == '':
+                        chunks.append('{}'.format(attr))
+                    else:
+                        chunks.append('{}  {}'.format(attr, p2f(value)))
             if not basis == 'none':
                 for specie in species:
                     with (basis_root/'{0[0]:02d}_{0[1]}_default'.format(specie)).open() as f:
                         chunks.append(f.read())
+            if len(chunks) > 1:
+                Path('control.in').unlink()
+                del task.files['control.in']
                 task.store_link_text('\n\n'.join(chunks), 'control.in', label=True)
             if subdir == '.':
                 command.append(aims_command)
