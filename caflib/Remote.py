@@ -117,3 +117,34 @@ class Remote:
     def go(self):
         subprocess.call(['ssh', '-t', self.host,
                          'cd {.path} && exec $SHELL'.format(self)])
+
+
+class Local:
+    def __init__(self):
+        self.host = 'local'
+
+    def update(self, delete=False):
+        pass
+
+    def command(self, cmd, get_output=False):
+        if not get_output:
+            info('Running `./caf {}` on {.host}...'.format(cmd, self))
+        caller = subprocess.check_output if get_output else subprocess.check_call
+        try:
+            output = caller('sh -c "python3 -u caf {}"'.format(cmd), shell=True)
+        except subprocess.CalledProcessError:
+            error('Command `{}` on {.host} ended with error'
+                  .format(cmd, self))
+        return output.strip() if get_output else None
+
+    def check(self, root):
+        pass
+
+    def fetch(self, targets, cache, root, dry=False, get_all=False, follow=False):
+        pass
+
+    def push(self, targets, cache, root, dry=False):
+        pass
+
+    def go(self):
+        pass

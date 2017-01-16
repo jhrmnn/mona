@@ -19,7 +19,7 @@ from caflib.Context import get_stored, cellar, brewery
 from caflib.CLI import CLI, CLIExit
 from caflib.Context import Context
 from caflib.Worker import QueueWorker, LocalWorker
-from caflib.Remote import Remote
+from caflib.Remote import Remote, Local
 from caflib.Listing import find_tasks
 
 try:
@@ -72,6 +72,7 @@ class Caf(CLI):
         self.brewery = self.cache/brewery
         self.remotes = {name: Remote(r['host'], r['path'], self.top)
                         for name, r in self.conf.get('remotes', {}).items()}
+        self.remotes['local'] = Local()
         self.libpath = libpath
 
     def __call__(self, argv):
