@@ -258,7 +258,7 @@ def make(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
     """
     import subprocess
     if do_conf:
-        configure(['caf', 'conf'], caf)
+        conf(['caf', 'conf'], caf)
     if profile:
         for _ in range(n):
             cmd = ['{}/.config/caf/worker_{}'.format(os.environ['HOME'], profile),
