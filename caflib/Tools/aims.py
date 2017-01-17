@@ -18,7 +18,7 @@ _tags = [
 def p2f(value):
     if isinstance(value, bool):
         return '.{}.'.format(str(value).lower())
-    elif isinstance(value, (np.ndarray, list)):
+    elif isinstance(value, (np.ndarray, tuple)):
         return ' '.join(p2f(x) for x in value)
     elif isinstance(value, dict):
         return ' '.join(
@@ -87,6 +87,10 @@ def prepare_aims(task):
                         continue
                     if value == '':
                         chunks.append('{}'.format(attr))
+                    elif isinstance(value, list):
+                        chunks.append('\n'.join(
+                            '{}  {}'.format(attr, p2f(v)) for v in value
+                        ))
                     else:
                         chunks.append('{}  {}'.format(attr, p2f(value)))
             if not basis == 'none':
