@@ -85,7 +85,7 @@ def prepare_aims(task):
                     value = task.consume(attr)
                     if value is None:
                         continue
-                    if value == '':
+                    if isinstance(value, str) and value == '':
                         chunks.append('{}'.format(attr))
                     elif isinstance(value, list):
                         chunks.append('\n'.join(
