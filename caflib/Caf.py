@@ -306,7 +306,7 @@ def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int),
     """
     from urllib.request import urlopen
     if do_conf:
-        configure(['caf', 'conf'], caf)
+        conf(['caf', 'conf'], caf)
     url = caf.get_queue_url(queue, 'submit') or queue
     roots = [caf.out/t for t in targets] \
         if targets else (caf.out).glob('*')
