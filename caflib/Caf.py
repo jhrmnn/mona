@@ -501,14 +501,14 @@ def status(caf, targets: 'TARGET'):
         else:
             dirs.append((target, target.glob('*')))
     print('number of {} tasks:'
-          .format('/'.join(colored('running finished marked error prepared all'.split()))))
+          .format('/'.join(colored('running finished remote error prepared all'.split()))))
     table = Table(align=['<', *6*['>']], sep=[' ', *5*['/']])
     for directory, paths in sorted(dirs):
         stats = []
         locked = []
         for p in paths:
             stats.append(((p/'.lock').is_dir(), (p/'.caf/seal').is_file(),
-                          (p/'.caf/mark').is_file(),
+                          (p/'.caf/remote_seal').is_file(),
                           (p/'.caf/error').is_file(), (p/'.caf/lock').is_file(),
                           (p/'.caf').is_dir()))
             if (p/'.lock').is_dir():
@@ -610,20 +610,21 @@ def push(caf, targets: 'TARGET', dry: '--dry', remotes: ('REMOTE', 'proc_remote'
 
 @Caf.command()
 def fetch(caf, dry: '--dry', targets: 'TARGET', remotes: ('REMOTE', 'proc_remote'),
-          get_all: '--all', follow: '--follow'):
+          get_all: '--all', follow: '--follow', only_mark: '--mark'):
     """
     Fetch targets from remote and store them in local Cellar.
 
     Usage:
-        caf fetch REMOTE [TARGET...] [--dry] [--all] [--follow]
+        caf fetch REMOTE [TARGET...] [--dry] [--all] [--follow] [--mark]
 
     Options:
         -n, --dry         Dry run (do not write to disk).
         --all             Do not check which tasks are finished.
         --follow          Follow dependencies.
+        --mark            Do not really fetch, only mark with remote seals.
     """
     for remote in remotes:
-        remote.fetch(targets, caf.cache, caf.out, dry=dry, get_all=get_all, follow=follow)
+        remote.fetch(targets, caf.cache, caf.out, dry=dry, get_all=get_all, follow=follow, only_mark=only_mark)
 
 
 @Caf.command()

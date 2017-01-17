@@ -64,7 +64,7 @@ class Remote:
         else:
             info('Local Tasks are in remote Cellar.')
 
-    def fetch(self, targets, cache, root, dry=False, get_all=False, follow=False):
+    def fetch(self, targets, cache, root, dry=False, get_all=False, follow=False, only_mark=False):
         info('Fetching from {}...'.format(self.host))
         if not get_all:
             there = self.command(
@@ -80,7 +80,13 @@ class Remote:
         for task in find_tasks(*roots, stored=True, follow=follow):
             cellarpath = get_stored(task)
             if get_all or cellarpath in there:
-                paths.add(cellarpath)
+                if only_mark:
+                    with (cache/cellarpath/'.caf/remote_seal').open('w') as f:
+                        f.write('{0.host}:{0.path}'.format(self))
+                else:
+                    paths.add(cellarpath)
+        if only_mark:
+            return
         cmd = ['rsync',
                '-cirlP',
                '--delete',

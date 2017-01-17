@@ -62,11 +62,11 @@ def find_tasks(*roots, sealed=False, stored=False, error=False, unsealed=False,
                maxdepth=None, follow=True):
     if sealed:
         def filterpath(p):
-            return (p/'.caf/seal').is_file() or (p/'.caf/mark').is_file()
+            return (p/'.caf/seal').is_file() or (p/'.caf/remote_seal').is_file()
     elif unsealed:
         def filterpath(p):
             return (p/'.caf/lock').is_file() and not (p/'.caf/seal').is_file() \
-                and not (p/'.caf/mark').is_file()
+                and not (p/'.caf/remote_seal').is_file()
     elif stored:
         def filterpath(p):
             return (p/'.caf/lock').is_file()
