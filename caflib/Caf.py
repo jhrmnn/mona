@@ -184,6 +184,8 @@ def init(caf):
     info('Initializing an empty repository at {}.'.format(cache_path))
     mkdir(caf.cellar)
     mkdir(caf.brewery)
+    if Path('NO_GIT').is_file():
+        return
     with open('.gitignore', 'w') as f:
         f.write('\n'.join(['.caf']))
     with open(os.devnull, 'w') as null:
@@ -228,6 +230,8 @@ def conf(caf, dry: '--dry'):
             ctx.make_targets(caf.out, caf.cache)
         if hasattr(caf.cscript, 'json'):
             warn('Make sure json is not printing dictionaries in features')
+    if Path('NO_GIT').is_file():
+        return
     with open(os.devnull, 'w') as null:
         sp.call(['git', 'add', '--all', 'build'], stdout=null)
         sp.call(['git', 'commit', '-a', '-m', '#configuration'], stdout=null)
