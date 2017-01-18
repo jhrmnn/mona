@@ -6,6 +6,7 @@ from glob import glob
 from collections import defaultdict, namedtuple, OrderedDict
 from pathlib import Path
 from math import log10, ceil
+from enum import Enum
 
 from caflib.Utils import mkdir, slugify, cd, listify, timing, relink, \
     make_nonwritable, _reports
@@ -96,6 +97,326 @@ def get_file_hash(path):
 
 
 class Task:
+    """Represents a single build task."""
+
+    def __init__(self, **attrs):
+        self.attrs = attrs
+        self.files = {}
+        self.children = []
+        self.parents = []
+        self.targets = []
+        self.links = {}
+        self._parent_counter = 0
+        self.noname_link_counter = 0
+
+    def __add__(self, obj):
+        if isinstance(obj, Task):
+            return self + Link() + obj
+        try:
+            for x in obj:
+                self + x
+            return obj
+        except TypeError:
+            return NotImplemented
+
+    def __radd__(self, obj):
+        try:
+            for x in obj:
+                if isinstance(x, Link):
+                    x + self
+                else:
+                    return NotImplemented
+            return self
+        except TypeError:
+            return NotImplemented
+
+    def __repr__(self):
+        try:
+            up = self.parents[-1] if self.parents else self.targets[-1]
+        except IndexError:
+            up = ('?', None)
+        if up[1]:
+            return '{0[1]}<-{0[0]!s}'.format(up)
+        else:
+            return '{0[0]!s}'.format(up)
+
+    def consume(self, attr):
+        """Return and clear a Task attribute."""
+        return self.attrs.pop(attr, None)
+
+    def is_touched(self):
+        return (self.path/'.caf/children').is_file()
+
+    def is_locked(self):
+        return (self.path/'.caf/lock').is_file()
+
+    def is_sealed(self):
+        return (self.path/'.caf/seal').is_file()
+
+    def touch(self):
+        mkdir(self.path/'.caf')
+        with (self.path/'.caf/children').open('w') as f:
+            json.dump(list(self.links), f, sort_keys=True)
+        self.link_deps()
+
+    def lock(self, hashes):
+        with (self.path/'.caf/lock').open('w') as f:
+            json.dump(hashes, f, sort_keys=True)
+
+    Link = namedtuple('Link', 'task links needed')
+
+    def add_dependency(self, task, *links, needed=False, escape=True):
+        if not links:
+            link = None
+        else:
+            link, links = links[0], links[1:]
+        if self == task:
+            error('Task cannot depend on itself: {}'.format(self))
+        self.children.append(task)
+        if link is not None:
+            linkname = slugify(link) if escape else link
+        else:
+            self.noname_link_counter += 1
+            linkname = '_{}'.format(self.noname_link_counter)
+        self.links[linkname] = Task.Link(task, links, needed)
+        task.parents.append((self, linkname))
+        return self
+
+    def link_deps(self):
+        with cd(self.path):
+            for linkname, link in self.links.items():
+                relink(os.path.relpath(str(link.task.path)), linkname)
+            for filename, path in self.files.items():
+                try:
+                    relink(os.path.relpath(str(path)), filename)
+                except FileExistsError:
+                    if 'RELINK' in os.environ:
+                        Path(filename).unlink()
+                        relink(os.path.relpath(str(path)), filename)
+                    else:
+                        error('Something replaced a linked file "{}" with a real file in {}'
+                              .format(filename, self))
+
+    def store_link_file(self, source, target=None):
+        try:
+            text = source.getvalue()
+        except AttributeError:
+            pass
+        else:
+            assert target
+            self.store_link_text(text, target)
+            return
+        if not target:
+            target = source
+        if Path(source).is_dir():
+            (self.path/target).mkdir()
+            return
+        filehash = get_file_hash(Path(source))
+        cellarpath = self.ctx.cellar/str_to_path(filehash)
+        if not cellarpath.is_file():
+            info('Stored new file "{}"'.format(source))
+            mkdir(cellarpath.parent, parents=True, exist_ok=True)
+            shutil.copy(str(source), str(cellarpath))
+            make_nonwritable(cellarpath)
+        with cd(self.path):
+            relink(os.path.relpath(str(cellarpath)), target)
+        self.files[str(target)] = cellarpath
+
+    def store_link_text(self, text, target, label=None):
+        h = hashlib.new(hashf)
+        h.update(text.encode())
+        texthash = h.hexdigest()
+        cellarpath = self.ctx.cellar/str_to_path(texthash)
+        if not cellarpath.is_file():
+            if label is True:
+                info('Stored new file "{}"'.format(target))
+            elif label:
+                info('Stored new text labeled "{}"'.format(label))
+            else:
+                info('Stored new text')
+            mkdir(cellarpath.parent, parents=True, exist_ok=True)
+            with cellarpath.open('w') as f:
+                f.write(text)
+            make_nonwritable(cellarpath)
+        with cd(self.path):
+            relink(os.path.relpath(str(cellarpath)), target)
+        self.files[target] = cellarpath
+
+    def process_features(self, features, attrib=None):
+        with timing('features'):
+            for name, feat in list(features.items()):
+                if not attrib or attrib in getattr(feat, 'feature_attribs', []):
+                    with timing(name):
+                        try:
+                            feat(self)
+                        except PermissionError as e:
+                            error('Feature "{}" tried to change stored file "{}"'
+                                  .format(name, e.filename))
+                    del features[name]
+
+    def prepare(self):
+        """Prepare a task.
+
+        Pull in files and templates, link in files from children, execute
+        features and save the command. Check that all attributes have been
+        consumed.
+        """
+        try:
+            features = OrderedDict((feat, _features[feat])
+                                   if isinstance(feat, str)
+                                   else (feat.__name__, feat)
+                                   for feat in listify(self.consume('features')))
+        except KeyError as e:
+            error('Feature {} is not registered'.format(e.args[0]))
+        self.process_features(features, 'before_files')
+        with cd(self.ctx.top):
+            with timing('files'):
+                for filename in listify(self.consume('files')):
+                    if isinstance(filename, tuple):
+                        self.store_link_file(filename[0], filename[1])
+                    else:
+                        if isinstance(filename, str) \
+                                and ('*' in filename or '?' in filename):
+                            for member in glob(filename):
+                                self.store_link_file(member)
+                        else:
+                            self.store_link_file(filename)
+            with timing('hooks'):
+                    hooks = {filename: process_hook(filename)
+                             for filename in listify(self.consume('hooks'))}
+            with timing('templates'):
+                templates = {}
+                for filename in listify(self.consume('templates')):
+                    if isinstance(filename, tuple):
+                        source, target = filename
+                    elif isinstance(filename, str):
+                        source = target = filename
+                    else:
+                        error("Don't know how to store {!r}".format(filename))
+                    templates[target] = Template(source)
+        with cd(self.path):
+            self.process_features(features, 'before_templates')
+            with timing('templates'):
+                for target, template in templates.items():
+                    processed, used = template.substitute(self.attrs)
+                    self.store_link_text(processed, target, template.name)
+                    for attr in used:
+                        self.consume(attr)
+            with timing('linking'):
+                for linkname, link in self.links.items():
+                    for symlink in link.links:
+                        if isinstance(symlink, tuple):
+                            target, symlink = symlink
+                        else:
+                            target = symlink
+                        relink('{}/{}'.format(linkname, target), symlink)
+            self.process_features(features)
+            commands = []
+            env = defaultdict(list)
+            for var, val in (self.consume('_env') or {}).items():
+                env[var].append(str(val))
+            for hook_path, (hook_src, hook_cmd, hook_env) in hooks.items():
+                commands.append(hook_cmd)
+                for var, vals in hook_env.items():
+                    env[var].extend(vals)
+                self.store_link_text(hook_src, hook_path, label=True)
+            command = self.consume('command')
+            if command:
+                commands.append(command)
+            if commands:
+                with open('command', 'w') as f:
+                    f.write('\n'.join(commands))
+            if env:
+                with open('.caf/env', 'w') as f:
+                    for var, vals in env.items():
+                        f.write('export {}={}\n'
+                                .format(var, ':'.join(map(str, vals))))
+            if self.attrs:
+                error('Task {} has non-consumed attributs: {}'
+                      .format(self, list(self.attrs)))
+
+    def get_hashes(self):
+        """Get hashes of task's dependencies.
+
+        Dependencies consist of all files and on locks of children.
+        """
+        with cd(self.path):
+            hashes = {}
+            for dirpath, dirnames, filenames in os.walk('.'):
+                if dirpath == '.':
+                    dirnames[:] = [name for name in dirnames
+                                   if name not in ['.caf'] + list(self.links)]
+                for name in filenames:
+                    filepath = Path(dirpath)/name
+                    if filepath.is_symlink():
+                        target = os.readlink(str(filepath))
+                        if Path(target).is_absolute():
+                            error('Cannot link to absolute paths in tasks')
+                        if str(filepath) in self.files:
+                            with cd(filepath.parent):
+                                hashes[str(filepath)] = get_file_hash(Path(target))
+                        else:
+                            hashes[str(filepath)] = target
+                    else:
+                        make_nonwritable(filepath)
+                        hashes[str(filepath)] = get_file_hash(filepath)
+            for linkname in self.links:
+                hashes[linkname] = get_file_hash(Path(linkname)/'.caf/lock')
+        return hashes
+
+    def build(self, path):
+        """Prepare, lock and store the task.
+
+        Check if not already locked. Touch (link in children, save chilren to
+        .caf/children). Check if needed children are already sealed. Check if
+        children are already locked. Prepare task. Get hashes.  Lock task with
+        hashes. Check if a task has been already stored previously and if not,
+        store it and relink children.
+        """
+        with timing('task init'):
+            if not path.is_dir():
+                mkdir(path)
+            self.path = Path(path).resolve()
+            if self.is_locked():
+                warn('{} already locked'.format(self))
+                return
+            if not self.is_touched():
+                self.touch()
+            for linkname, link in self.links.items():
+                if link.needed and not link.task.is_sealed():
+                    warn('{}: dependency "{}" not sealed'.format(self, linkname))
+                    return
+            if not all(child.is_locked() for child in self.children):
+                return
+        with timing('prepare'):
+            self.prepare()
+        with timing('hash'):
+            hashes = self.get_hashes()
+        with timing('lock'):
+            self.lock(hashes)
+        myhash = get_file_hash(self.path/'.caf/lock')
+        with timing('storing'):
+            cellarpath = self.ctx.cellar/str_to_path(myhash)
+            if cellarpath.is_dir():
+                env_file = Path(self.path/'.caf/env')
+                if env_file.is_file():
+                    env_file.rename(cellarpath/'.caf/env')
+                shutil.rmtree(str(self.path))
+            else:
+                info('Stored new task {}'.format(self))
+                mkdir(cellarpath.parent, parents=True, exist_ok=True)
+                self.path.rename(cellarpath)
+            relink(cellarpath, self.path)
+            self.path = cellarpath
+        with timing('linking deps'):
+            self.link_deps()
+
+
+TaskState = Enum('TaskState', 'HASHED PREPARED SEALED')
+TaskStruct = namedtuple('TaskStruct', 'state inputs command children hash outputs')
+
+
+class Task2:
     """Represents a single build task."""
 
     def __init__(self, **attrs):
