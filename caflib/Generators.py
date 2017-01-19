@@ -44,7 +44,7 @@ class TargetGen:
     def __rmul__(self, task):
         if not isinstance(task, TaskGen):
             return NotImplemented
-        self.node.add_task(task.node, *self.args, **self.kwargs)
+        self.node.set_task(task.node, *self.args, **self.kwargs)
         return task
 
     __rmatmul__ = __rmul__

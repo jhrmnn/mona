@@ -49,22 +49,23 @@ def symlink_children(symlinks):
 
 
 class TargetNode:
-    def __init__(self, name):
-        self.name = name
-        self.children = {}
+    def __init__(self):
+        self.path = Path()
+
+    @property
+    def children(self):
+        return {self.path.name: self.task}
 
     def __repr__(self):
-        return f"<TargetNode '{self}'>"
+        return f"<TargetNode '{self.path}'>"
 
     def __str__(self):
-        return self.name
+        return self.path.parent
 
-    def add_task(self, task, name=''):
-        if name != '':
-            name = slugify(name)
-        if name in self.children:
-            error(f'"{name}" already in target "{self.name}"')
-        self.children[name] = task
+    def set_task(self, task, *paths):
+        for path in paths:
+            self.path /= slugify(path)
+        self.task = task
         task.parents.append(self)
 
 
@@ -209,7 +210,7 @@ class Context:
     def __init__(self, top):
         self.top = Path(top)
         self.tasks = []
-        self.targets = {}
+        self.targets = []
         self.files = {}
 
     def add_task(self, **attrs):
@@ -224,12 +225,10 @@ class Context:
     def link(self, *args, **kwargs):
         return Linker(*args, **kwargs)
 
-    def target(self, name, *args, **kwargs):
-        target = self.targets.get(name)
-        if not target:
-            target = TargetNode(name)
-            self.targets[name] = target
-        return TargetGen(target, *args, **kwargs)
+    def target(self, *args, **kwargs):
+        targetnode = TargetNode()
+        self.targets.append(targetnode)
+        return TargetGen(targetnode, *args, **kwargs)
 
     def get_sources(self, path):
         if '?' in path or '*' in path:
@@ -276,10 +275,8 @@ class Context:
                 }
             ) for node in self.tasks],
             'targets': {
-                target.name: {
-                    taskname: self.tasks.index(task)
-                    for taskname, task in target.children.items()
-                } for target in self.targets.values()
+                str(target.path): self.tasks.index(target.task)
+                for target in self.targets
             }
         }
 
