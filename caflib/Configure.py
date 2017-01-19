@@ -15,10 +15,10 @@ class UnconsumedAttributes(Exception):
 
 
 class Feature:
-    def __init__(self, name, f):
+    def __init__(self, name, f, attribs=None):
         self.name = name
         self.f = f
-        self.attribs = set()
+        self.attribs = attribs or set()
 
     def __call__(self, task):
         self.f(task)
@@ -42,6 +42,12 @@ def before_templates(feat):
     return feat
 
 
+def symlink_children(symlinks):
+    def feat(task):
+        task.symlinks.update(symlinks)
+    return Feature('symlink_children', feat, 'before_files')
+
+
 class TargetNode:
     def __init__(self, name):
         self.name = name
@@ -53,8 +59,8 @@ class TargetNode:
     def __str__(self):
         return self.name
 
-    def add_task(self, task, name=None):
-        if name is not None:
+    def add_task(self, task, name=''):
+        if name != '':
             name = slugify(name)
         if name in self.children:
             error(f'"{name}" already in target "{self.name}"')
@@ -66,6 +72,7 @@ class TaskNode:
     def __init__(self, task):
         self.task = task
         self.children = {}
+        self.symlinks = {}
         self.parents = []
         self.blocking = []
 
@@ -105,7 +112,7 @@ class TaskNode:
                     source, target = spec
                 else:
                     source = target = spec
-                self.task.symlink(Path(name)/source, target)
+                self.symlinks[target] = f'{name}/{source}'
         task.parents.append(self)
 
 
@@ -144,13 +151,13 @@ class Task:
     def symlink(self, source, target):
         self.symlinks[str(target)] = str(source)
 
-    def process(self, ctx):
+    def process(self, ctx, features=None):
         try:
             features = [
                 _features[feat] if isinstance(feat, str)
                 else Feature(feat.__name__, feat)
                 for feat in listify(self.consume('features'))
-            ]
+            ] + (features or [])
         except KeyError as e:
             error(f'Feature {e.args[0]} is not registered')
         self.process_features(features, 'before_files')
@@ -206,6 +213,7 @@ class Context:
         self.files = {}
 
     def add_task(self, **attrs):
+        attrs.setdefault('features', [])
         task = Task(attrs)
         tasknode = TaskNode(task)
         self.tasks.append(tasknode)
@@ -243,7 +251,10 @@ class Context:
         with timing('task processing'):
             for node in self.tasks:
                 if not node.blocking:
-                    node.task.process(self)
+                    node.task.process(
+                        self,
+                        features=[symlink_children(node.symlinks)]
+                    )
 
     def get_configuration(self):
         return {
@@ -251,14 +262,16 @@ class Context:
                 {
                     'command': node.task.command,
                     'inputs': node.task.inputs,
+                    'symlinks': node.task.symlinks,
                     'children': {
                         name: self.tasks.index(child)
                         for name, child in node.children.items()
                     }
-                } if not node.task.attrs else {
-                    'attributes': {
-                        name: repr(attrs)
-                        for name, attrs in node.task.attrs.items()
+                } if node.task.command is not None else {
+                    'symlinks': node.symlinks,
+                    'children': {
+                        name: self.tasks.index(child)
+                        for name, child in node.children.items()
                     }
                 }
             ) for node in self.tasks],
@@ -266,9 +279,7 @@ class Context:
                 target.name: {
                     taskname: self.tasks.index(task)
                     for taskname, task in target.children.items()
-                } if list(target.children.keys()) != [None]
-                else self.tasks.index(target.children[None])
-                for target in self.targets.values()
+                } for target in self.targets.values()
             }
         }
 
