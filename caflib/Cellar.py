@@ -4,16 +4,28 @@ import sqlite3
 from datetime import datetime
 
 
+blobs = 'blobs.db'
+meta = 'meta.db'
+
+
 class Cellar:
 
     def __init__(self, path):
         self.path = Path(path)
-        self.conn = sqlite3.connect(str(self.path))
-        self.cur = self.conn.cursor()
+        self.blobs = sqlite3.connect(str(self.path/blobs))
+        self.cblobs = self.blobs.cursor()
+        self.cblobs.execute(
+            'create table if not exists blobs ('
+            'hash primary key, json text'
+            ')'
+        )
+        self.blobs.commit()
+        self.meta = sqlite3.connect(str(self.path/meta))
+        self.cmeta = self.meta.cursor()
         self.execute(
             'create table if not exists tasks ('
-            'hash text primary key, json text, created text, finished integer'
-            ')'
+            'hash text primary key, created text, state integer'
+            ') without rowid'
         )
         self.execute(
             'create table if not exists builds ('
@@ -27,13 +39,6 @@ class Cellar:
             'foreign key(buildid) references builds(id)'
             ')'
         )
-        self.commit()
-
-    def commit(self):
-        self.conn.commit()
-
-    def execute(self, *args):
-        self.cur.execute(*args)
 
     def store(self, hashid, task):
         now = datetime.today().isoformat(timespec='seconds')
