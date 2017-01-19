@@ -207,8 +207,9 @@ class Task:
 class Context:
     """Represent a build configuration: tasks and targets."""
 
-    def __init__(self, top):
+    def __init__(self, top, cellar):
         self.top = Path(top)
+        self.cellar = cellar
         self.tasks = []
         self.targets = []
         self.files = {}
