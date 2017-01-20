@@ -34,16 +34,24 @@ class colstr(str):
 
 
 def warn(s):
-    print(colstr(s, 'yellow'))
+    print(
+        colstr(s, 'yellow'),
+        file=sys.stdout if sys.stdout.isatty() else sys.stderr
+    )
 
 
 def info(s):
-    print(colstr(s, 'green'))
+    print(
+        colstr(s, 'green'),
+        file=sys.stdout if sys.stdout.isatty() else sys.stderr
+    )
 
 
 def error(s):
-    print(colstr(s, 'red'))
-    sys.exit(1)
+    print(
+        colstr(s, 'red'),
+        file=sys.stdout if sys.stdout.isatty() else sys.stderr
+    )
 
 
 def dep_error(dep):
