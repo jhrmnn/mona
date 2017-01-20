@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 from caflib.Configure import Context
-import json
+from caflib.Cellar import Cellar
 
 
 import cscript
-ctx = Context('.')
+cellar = Cellar('.caf')
+ctx = Context('.', cellar)
 cscript.configure(ctx)
+ctx.sort_tasks()
 ctx.process()
 conf = ctx.get_configuration()
-print(json.dumps(conf, indent=4, sort_keys=True))
+# import json
+# print(json.dumps(conf, indent=4, sort_keys=True))

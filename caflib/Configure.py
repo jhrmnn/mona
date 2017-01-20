@@ -247,6 +247,31 @@ class Context:
             for path in paths
         }
 
+    def sort_tasks(self):
+        idxs = {task: i for i, task in enumerate(self.tasks)}
+        nodes = list(range(len(self.tasks)))
+        queue = []
+        children = [
+            [idxs[child] for child in task.children.values()]
+            for task in self.tasks
+        ]
+        nparents = [
+            len(list(p for p in task.parents if isinstance(p, TaskNode)))
+            for task in self.tasks
+        ]
+        roots = [node for node in nodes if nparents[node] == 0]
+        parent_cnt = len(nodes)*[0]
+        while roots:
+            node = roots.pop()
+            queue.insert(0, node)
+            for child in children[node]:
+                parent_cnt[child] += 1
+                if parent_cnt[child] == nparents[child]:
+                    roots.append(child)
+        if parent_cnt != nparents:
+            error('There are cycles in the dependency tree')
+        self.tasks = [self.tasks[i] for i in queue]
+
     def process(self):
         with timing('task processing'):
             for node in self.tasks:
@@ -257,6 +282,7 @@ class Context:
                     )
 
     def get_configuration(self):
+        idxs = {task: i for i, task in enumerate(self.tasks)}
         return {
             'tasks': [(
                 {
@@ -264,7 +290,7 @@ class Context:
                     'inputs': node.task.inputs,
                     'symlinks': node.task.symlinks,
                     'children': {
-                        name: self.tasks.index(child)
+                        name: idxs[child]
                         for name, child in node.children.items()
                     }
                 } if node.task.command is not None else {

@@ -20,7 +20,6 @@ def make_nonwritable(path):
 
 
 class Cellar:
-
     def __init__(self, path):
         self.path = Path(path)
         self.objects = self.path/'objects'
