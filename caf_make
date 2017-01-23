@@ -2,22 +2,17 @@
 import subprocess as sp
 
 
-from caflib.Cellar import Cellar
+from caflib.Scheduler import Scheduler
 from caflib.Utils import cd
 
 
-cellar = Cellar('.caf')
-while True:
-    path, command = cellar.get_task()
-    if path is None:
-        break
-    with cd(path):
+scheduler = Scheduler('.caf')
+for task in scheduler.tasks():
+    with cd(task.path):
         with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
             try:
-                sp.check_call(command, shell=True, stdout=stdout, stderr=stderr)
-            except sp.CalledProcessError as e:
-                print(e)
-                print(f'error: There was an error when working on {path}')
-                cellar.got_error()
+                sp.check_call(task.command, shell=True, stdout=stdout, stderr=stderr)
+            except sp.CalledProcessError as exc:
+                task.error(exc)
             else:
-                cellar.got_ok()
+                task.done()

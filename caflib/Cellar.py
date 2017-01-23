@@ -3,7 +3,12 @@ import os
 import stat
 import json
 import sqlite3
+import hashlib
 from datetime import datetime
+
+
+def get_hash(text):
+    return hashlib.sha1(text.encode()).hexdigest()
 
 
 def make_nonwritable(path):
@@ -19,8 +24,7 @@ class Cellar:
         self.path = Path(path)
         self.objects = self.path/'objects'
         self.objectdb = set()
-        self.conn = sqlite3.connect(str(self.path/'index.db'))
-        self.cur = self.conn.cursor()
+        self.db = sqlite3.connect(str(self.path/'index.db'))
         self.execute(
             'create table if not exists tasks ('
             'hash text primary key, task text, created text, state integer'
@@ -40,21 +44,21 @@ class Cellar:
         )
 
     def execute(self, *args):
-        self.cur.execute(*args)
+        return self.db.execute(*args)
 
     def executemany(self, *args):
-        self.cur.executemany(*args)
+        return self.db.executemany(*args)
 
     def commit(self):
-        self.conn.commit()
+        self.db.commit()
 
     def get_state(self, hashid):
         res = self.execute(
             'select state from tasks where hash = ?', (hashid,)
-        )
+        ).fetchone()
         if not res:
             return -1
-        return res.fetchone()[0]
+        return res[0]
 
     def store_text(self, hashid, text):
         if hashid in self.objectdb:
@@ -65,36 +69,65 @@ class Cellar:
         else:
             self.objectdb.add(hashid)
         path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open('w') as f:
-            f.write(text)
+        path.write_text(text)
         make_nonwritable(path)
+
+    def seal_task(self, hashid, outputs):
+        task = self.get_task(hashid)
+        task['outputs'] = {}
+        for name, text in outputs.items():
+            texthash = get_hash(text)
+            self.store_text(texthash, text)
+            task['outputs'][name] = texthash
+        self.execute(
+            'update tasks set task = ?, state = 1 where hash = ?',
+            (json.dumps(task), hashid)
+        )
+        self.commit()
 
     def store_build(self, tasks, targets, inputs):
         now = datetime.today().isoformat(timespec='seconds')
         self.executemany('insert or ignore into tasks values (?,?,?,?)', (
             (hashid, json.dumps(task), now, 0) for hashid, task in tasks.items()
         ))
-        self.execute('insert into builds values (?,?)', (None, now))
-        buildid = self.cur.lastrowid
+        cur = self.execute('insert into builds values (?,?)', (None, now))
+        buildid = cur.lastrowid
         self.executemany('insert into targets values (?,?,?)', (
             (hashid, buildid, path) for path, hashid in targets.items()
-        ))
-        self.execute('drop table if exists queue')
-        self.execute(
-            'create table queue('
-            'taskhash text, state integer, '
-            'foreign key(taskhash) references tasks(hash)'
-            ')'
-        )
-        self.executemany('insert into queue values (?,?)', (
-            (hashid, 0) for hashid in tasks.keys()
         ))
         for hashid, text in inputs.items():
             self.store_text(hashid, text)
         self.commit()
+        self.execute('drop table if exists current_tasks')
+        self.execute('create temporary table current_tasks(taskhash text)')
+        self.executemany('insert into current_tasks values (?)', (
+            (key,) for key in tasks.keys()
+        ))
+        return self.execute(
+            'select hash, state from tasks join current_tasks '
+            'on tasks.hash = current_tasks.taskhash',
+        ).fetchall()
 
-    def get_task(self):
-        hashid = None
-        return json.loads(self.execute(
-            'select json from tasks where hash = ?', (hashid,)
-        ).fetchone()[0])
+    def get_task(self, hashid):
+        res = self.execute(
+            'select task from tasks where hash = ?',
+            (hashid,)
+        ).fetchone()
+        if res:
+            return json.loads(res[0])
+
+    def get_tasks(self, hashes):
+        cur = self.execute(
+            'select hash, task from tasks where hash in ({})'.format(
+                ','.join(len(hashes)*['?'])
+            ),
+            hashes
+        )
+        return {hashid: json.loads(task) for hashid, task in cur}
+
+    def get_file(self, hashid):
+        path = self.objects/hashid[:2]/hashid[2:]
+        if hashid not in self.objectdb:
+            if not path.is_file():
+                raise FileNotFoundError()
+        return path.resolve()

@@ -1,19 +1,15 @@
 from pathlib import Path
 from io import StringIO
-import hashlib
 import json
 
 from caflib.Template import Template
 from caflib.Utils import slugify, listify, timing
 from caflib.Logging import error
 from caflib.Generators import Linker, TargetGen, TaskGen
+from caflib.Cellar import get_hash
 
 
 _features = {}
-
-
-def get_hash(text):
-    return hashlib.sha1(text.encode()).hexdigest()
 
 
 class UnconsumedAttributes(Exception):
@@ -48,12 +44,6 @@ def before_templates(feat):
     return feat
 
 
-def symlink_children(symlinks):
-    def feat(task):
-        task.symlinks.update(symlinks)
-    return Feature('symlink_children', feat, 'before_files')
-
-
 class TargetNode:
     def __init__(self):
         self.path = None
@@ -82,7 +72,7 @@ class TaskNode:
     def __init__(self, task):
         self.task = task
         self.children = {}
-        self.symlinks = {}
+        self.childlinks = []
         self.parents = []
         self.blocking = []
 
@@ -97,32 +87,22 @@ class TaskNode:
             if child is self:
                 return f'{parent}/{name}'
 
-    def add_child(self, task, *args, blocks=False):
+    def add_child(self, task, name, *childlinks, blocks=False):
         if self is task:
             error(f'Task cannot depend on itself: {self}')
-        if len(args) > 0:
-            name, *symlinks = args
-        else:
-            name, symlinks = None, []
-        if name is not None:
-            name = slugify(name)
-        else:
-            for i in range(1, 10):
-                name = f'_{i}'
-                if name not in self.children:
-                    break
-            else:
-                error(f'Task should not have more than 9 unnamed children: {self}')
+        name = slugify(name)
+        if name in self.children:
+            error(f'Task already has child {name}: {self}')
         self.children[name] = task
         if blocks:
             self.blocking.append(name)
-        if symlinks:
-            for spec in symlinks:
+        if childlinks:
+            for spec in childlinks:
                 if isinstance(spec, tuple):
                     source, target = spec
                 else:
                     source = target = spec
-                self.symlinks[target] = f'{name}/{source}'
+                self.childlinks.append((name, source, target))
         task.parents.append(self)
 
     def seal(self, inputs):
@@ -138,7 +118,8 @@ class TaskNode:
             'children': {
                 name: TaskNode.hashes[child]
                 for name, child in self.children.items()
-            }
+            },
+            'childlinks': self.childlinks
         }, sort_keys=True))
         TaskNode.hashes[self] = myhash
 
@@ -166,13 +147,17 @@ class Task:
         return self.attrs.pop(attr, None)
 
     def open(self, filename, mode='r'):
+        if mode == 'r':
+            fobj = self.node_open(filename)
+            if fobj:
+                return fobj
         if mode in ['r', 'a']:
             if filename not in self.inputs:
                 raise FileNotFoundError(filename)
         elif mode == 'w':
             pass
         else:
-            error(f'Cannot open virtual files with mode {mode}')
+            error(f'Cannot open files with mode {mode}')
         return VirtualTextFile(filename, self.inputs)
 
     def symlink(self, source, target):
@@ -230,6 +215,16 @@ class Task:
                     features.remove(feat)
 
 
+def node_opener(node, cellar):
+    def node_open(filename):
+        for child, source, target in node.childlinks:
+            if filename != target:
+                continue
+            child = cellar.get_task(TaskNode.hashes[node.children[child]])
+            return cellar.get_file(child['outputs'][source]).open()
+    return node_open
+
+
 class Context:
     """Represent a build configuration: tasks and targets."""
 
@@ -266,8 +261,7 @@ class Context:
             error(f'File "{path}" does not exist.')
         for path in paths:
             if path not in self.files:
-                with path.open() as f:
-                    self.files[path] = f.read()
+                self.files[path] = path.read_text()
         return {
             str(path.relative_to(self.top)): self.files[path]
             for path in paths
@@ -312,9 +306,9 @@ class Context:
                     blocked = False
                 if blocked:
                     continue
+                node.task.node_open = node_opener(node, self.cellar)
                 node.task.process(
                     self,
-                    features=[symlink_children(node.symlinks)]
                 )
                 node.seal(inputs)
         return inputs
@@ -330,11 +324,12 @@ class Context:
                     'children': {
                         name: idxs[child]
                         for name, child in node.children.items()
-                    }
+                    },
+                    'childlinks': node.childlinks
                 } if node.task.command is not None else {
                     'blocking': node.blocking,
                     'children': {
-                        name: self.tasks.index(child)
+                        name: idxs[child]
                         for name, child in node.children.items()
                     }
                 }

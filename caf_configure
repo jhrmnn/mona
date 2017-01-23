@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from caflib.Configure import Context
 from caflib.Cellar import Cellar
+from caflib.Scheduler import Scheduler
 from caflib.Utils import print_timing, timing
 
 
@@ -26,8 +27,19 @@ with timing('all'):
     inputs = ctx.process()
     conf = ctx.get_configuration()
     targets = get_leafs(conf)
-    tasks = {hashid: {**task, 'children': {
-        name: conf['hashes'][child] for name, child in task['children'].items()
-    }} for hashid, task in zip(conf['hashes'], conf['tasks']) if 'command' in task}
-    cellar.store_build(tasks, targets, inputs)
+    tasks = {
+        hashid: {
+            **task,
+            'children': {
+                name: conf['hashes'][child]
+                for name, child in task['children'].items()
+            }
+        }
+        for hashid, task in zip(conf['hashes'], conf['tasks'])
+        if 'command' in task
+    }
+    tasks = cellar.store_build(tasks, targets, inputs)
+    scheduler = Scheduler('.caf')
+    scheduler.submit(tasks)
+
 print_timing()
