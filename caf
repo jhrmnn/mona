@@ -67,6 +67,6 @@ if __name__ == '__main__':
             unpack(None, path=None, cache=False)
             from caflib.Caf import Caf
     Caf.command()(unpack)
-    caf = Caf(caflibpath)
+    caf = Caf()
     signal.signal(signal.SIGINT, caf.finalize)
     caf(sys.argv)

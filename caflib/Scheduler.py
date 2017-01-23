@@ -10,21 +10,8 @@ from caflib.Cellar import Cellar
 class Task:
     def __init__(self, task, cellar):
         self.path = Path(tempfile.mkdtemp())
-        self.inputs = []
-        children = cellar.get_tasks(list(task['children'].values()))
-        for target, filehash in task['inputs'].items():
-            (self.path/target).symlink_to(cellar.get_file(filehash))
-            self.inputs.append(target)
-        for target, source in task['symlinks'].items():
-            (self.path/target).symlink_to(source)
-            self.inputs.append(target)
-        for child, source, target in task['childlinks']:
-            (self.path/target).symlink_to(cellar.get_file(
-                children[task['children'][child]]['outputs'][source]
-            ))
-            self.inputs.append(target)
+        self.inputs = cellar.checkout_task(task, self.path)
         self.command = task['command']
-        self.cellar = cellar
         self.state = (0, None)
 
     def error(self, exc):

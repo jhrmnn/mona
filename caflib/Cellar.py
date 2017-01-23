@@ -131,3 +131,47 @@ class Cellar:
             if not path.is_file():
                 raise FileNotFoundError()
         return path.resolve()
+
+    def checkout_task(self, task, path, outputs=False):
+        children = self.get_tasks(list(task['children'].values()))
+        all_files = []
+        for target, filehash in task['inputs'].items():
+            (path/target).symlink_to(self.get_file(filehash))
+            all_files.append(target)
+        for target, source in task['symlinks'].items():
+            (path/target).symlink_to(source)
+            all_files.append(target)
+        for child, source, target in task['childlinks']:
+            (path/target).symlink_to(self.get_file(
+                children[task['children'][child]]['outputs'][source]
+            ))
+            all_files.append(target)
+        if outputs and 'outputs' in task:
+            for target, filehash in task['outputs'].items():
+                (path/target).symlink_to(self.get_file(filehash))
+                all_files.append(target)
+        return all_files
+
+    def checkout(self, root):
+        targets = self.db.execute(
+            'select taskhash, path from targets join '
+            '(select id from builds order by created desc limit 1) b '
+            'on targets.buildid = b.id'
+        ).fetchall()
+        tasks = {hashid: json.loads(task) for hashid, task in self.db.execute(
+            'select tasks.hash, task from tasks join '
+            '(select distinct(taskhash) as hash from targets join '
+            '(select id from builds order by created desc limit 1) b '
+            'on targets.buildid = b.id) build '
+            'on tasks.hash = build.hash'
+        )}
+        paths = {}
+        for hashid, path in targets:
+            path = Path(root)/path
+            if hashid in paths:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.symlink_to(paths[hashid])
+            else:
+                path.mkdir(parents=True)
+                self.checkout_task(tasks[hashid], path, outputs=True)
+                paths[hashid] = path
