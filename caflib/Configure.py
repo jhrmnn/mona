@@ -1,5 +1,7 @@
 from pathlib import Path
 from io import StringIO
+import hashlib
+import json
 
 from caflib.Template import Template
 from caflib.Utils import slugify, listify, timing
@@ -8,6 +10,10 @@ from caflib.Generators import Linker, TargetGen, TaskGen
 
 
 _features = {}
+
+
+def get_hash(text):
+    return hashlib.sha1(text.encode()).hexdigest()
 
 
 class UnconsumedAttributes(Exception):
@@ -50,7 +56,7 @@ def symlink_children(symlinks):
 
 class TargetNode:
     def __init__(self):
-        self.path = Path()
+        self.path = None
 
     @property
     def children(self):
@@ -60,9 +66,10 @@ class TargetNode:
         return f"<TargetNode '{self.path}'>"
 
     def __str__(self):
-        return self.path.parent
+        return f'/{self.path.parent}' if len(self.path.parts) > 1 else ''
 
     def set_task(self, task, *paths):
+        self.path = Path()
         for path in paths:
             self.path /= slugify(path)
         self.task = task
@@ -70,6 +77,8 @@ class TargetNode:
 
 
 class TaskNode:
+    hashes = {}
+
     def __init__(self, task):
         self.task = task
         self.children = {}
@@ -86,7 +95,7 @@ class TaskNode:
         parent = self.parents[-1]
         for name, child in parent.children.items():
             if child is self:
-                return f'{name}<-{parent!s}'
+                return f'{parent}/{name}'
 
     def add_child(self, task, *args, blocks=False):
         if self is task:
@@ -115,6 +124,23 @@ class TaskNode:
                     source = target = spec
                 self.symlinks[target] = f'{name}/{source}'
         task.parents.append(self)
+
+    def seal(self, inputs):
+        for filename, content in self.task.inputs.items():
+            sha1 = get_hash(content)
+            if sha1 not in inputs:
+                inputs[sha1] = content
+            self.task.inputs[filename] = sha1
+        myhash = get_hash(json.dumps({
+            'command': self.task.command,
+            'inputs': self.task.inputs,
+            'symlinks': self.task.symlinks,
+            'children': {
+                name: TaskNode.hashes[child]
+                for name, child in self.children.items()
+            }
+        }, sort_keys=True))
+        TaskNode.hashes[self] = myhash
 
 
 class VirtualTextFile(StringIO):
@@ -235,9 +261,9 @@ class Context:
         if '?' in path or '*' in path:
             paths = (self.top/path).glob()
         else:
-            paths = self.top/path
+            paths = [self.top/path]
         if not paths:
-            error('File "{path}" does not exist.')
+            error(f'File "{path}" does not exist.')
         for path in paths:
             if path not in self.files:
                 with path.open() as f:
@@ -274,12 +300,24 @@ class Context:
 
     def process(self):
         with timing('task processing'):
+            inputs = {}
             for node in self.tasks:
-                if not node.blocking:
-                    node.task.process(
-                        self,
-                        features=[symlink_children(node.symlinks)]
-                    )
+                for name, child in node.children.items():
+                    if child not in TaskNode.hashes or \
+                            name in node.blocking and \
+                            self.cellar.get_state(TaskNode.hashes[child]) != 1:
+                        blocked = True
+                        break
+                else:
+                    blocked = False
+                if blocked:
+                    continue
+                node.task.process(
+                    self,
+                    features=[symlink_children(node.symlinks)]
+                )
+                node.seal(inputs)
+        return inputs
 
     def get_configuration(self):
         idxs = {task: i for i, task in enumerate(self.tasks)}
@@ -294,13 +332,14 @@ class Context:
                         for name, child in node.children.items()
                     }
                 } if node.task.command is not None else {
-                    'symlinks': node.symlinks,
+                    'blocking': node.blocking,
                     'children': {
                         name: self.tasks.index(child)
                         for name, child in node.children.items()
                     }
                 }
             ) for node in self.tasks],
+            'hashes': [TaskNode.hashes.get(node) for node in self.tasks],
             'targets': {
                 str(target.path): self.tasks.index(target.task)
                 for target in self.targets
@@ -308,4 +347,4 @@ class Context:
         }
 
     def load_tool(self, name):
-        __import__('caflib.Tools.' + name)
+        __import__(f'caflib.Tools.{name}')

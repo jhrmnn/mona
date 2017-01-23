@@ -1,14 +1,33 @@
 #!/usr/bin/env python3
 from caflib.Configure import Context
 from caflib.Cellar import Cellar
+from caflib.Utils import print_timing, timing
 
 
-import cscript
-cellar = Cellar('.caf')
-ctx = Context('.', cellar)
-cscript.configure(ctx)
-ctx.sort_tasks()
-ctx.process()
-conf = ctx.get_configuration()
-# import json
-# print(json.dumps(conf, indent=4, sort_keys=True))
+def get_leafs(conf):
+    leafs = {}
+    queue = list(conf['targets'].items())
+    while queue:
+        target, taskid = queue.pop()
+        if conf['hashes'][taskid]:
+            leafs[target] = conf['hashes'][taskid]
+        else:
+            for name, child in conf['tasks'][taskid]['children'].items():
+                queue.append((f'{target}/{name}', child))
+    return leafs
+
+
+with timing('all'):
+    import cscript
+    cellar = Cellar('.caf')
+    ctx = Context('.', cellar)
+    cscript.configure(ctx)
+    ctx.sort_tasks()
+    inputs = ctx.process()
+    conf = ctx.get_configuration()
+    targets = get_leafs(conf)
+    tasks = {hashid: {**task, 'children': {
+        name: conf['hashes'][child] for name, child in task['children'].items()
+    }} for hashid, task in zip(conf['hashes'], conf['tasks']) if 'command' in task}
+    cellar.store_build(tasks, targets, inputs)
+print_timing()
