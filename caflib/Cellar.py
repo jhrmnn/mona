@@ -56,17 +56,14 @@ class Cellar:
             return -1
         return res.fetchone()[0]
 
-    def fetch(self, hashid):
-        return json.loads(self.execute(
-            'select json from tasks where hash = ?', (hashid,)
-        ).fetchone()[0])
-
     def store_text(self, hashid, text):
         if hashid in self.objectdb:
             return
         path = self.objects/hashid[:2]/hashid[2:]
         if path.is_file():
             return
+        else:
+            self.objectdb.add(hashid)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open('w') as f:
             f.write(text)
@@ -82,6 +79,22 @@ class Cellar:
         self.executemany('insert into targets values (?,?,?)', (
             (hashid, buildid, path) for path, hashid in targets.items()
         ))
+        self.execute('drop table if exists queue')
+        self.execute(
+            'create table queue('
+            'taskhash text, state integer, '
+            'foreign key(taskhash) references tasks(hash)'
+            ')'
+        )
+        self.executemany('insert into queue values (?,?)', (
+            (hashid, 0) for hashid in tasks.keys()
+        ))
         for hashid, text in inputs.items():
             self.store_text(hashid, text)
         self.commit()
+
+    def get_task(self):
+        hashid = None
+        return json.loads(self.execute(
+            'select json from tasks where hash = ?', (hashid,)
+        ).fetchone()[0])
