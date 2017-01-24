@@ -56,7 +56,7 @@ class Cluster:
         self._intene = intene
 
     def __repr__(self):
-        return 'Cluster({!r})'.format(self.fragments)
+        return f'Cluster({self.fragments!r})'
 
     def __setitem__(self, key, value):
         self.fragments[key] = value

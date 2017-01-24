@@ -17,7 +17,7 @@ class Command:
         self._doc = doc or func.__doc__
 
     def __repr__(self):
-        return '<Command "{}">'.format(self.name)
+        return f'<Command "{self.name}">'
 
     def __str__(self):
         s = dedent(self._doc).rstrip()
@@ -52,8 +52,9 @@ class Command:
                                 kwargs[key] = getattr(ctx, func)(args[name])
                                 break
                         else:
-                            raise RuntimeError('{!r} has no context for "{}"'
-                                               .format(self, func))
+                            raise RuntimeError(
+                                f'{self!r} has no context for "{func}"'
+                            )
                     else:
                         kwargs[key] = func(args[name])
                 else:
@@ -93,7 +94,7 @@ class CLI(metaclass=CLIMeta):
         self.commands = self.__class__.commands.copy()
 
     def __repr__(self):
-        return '<CLI "{}">'.format(self.name)
+        return f'<CLI "{self.name}">'
 
     def __str__(self):
         parts = []
@@ -123,9 +124,9 @@ class CLI(metaclass=CLIMeta):
             for (trigger, *other), command in self.commands.items():
                 if not other:
                     table.add_row(trigger, format(command, 'header'))
-            return 'Commands:\n{}'.format(table)
+            return f'Commands:\n{table}'
         elif fmt == 'short':
-            return '{self:usage}\n\n{self:commands}'.format(self=self)
+            return f'{self:usage}\n\n{self:commands}'
         else:
             raise ValueError('Invalid format specifier')
 

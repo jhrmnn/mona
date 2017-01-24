@@ -346,8 +346,8 @@ def checkout(caf, path: '--path'):
 #         print('./caf make --queue {}'.format(queue_url))
 #     with open('.caf/LAST_QUEUE', 'w') as f:
 #         f.write(queue_url)
-#
-#
+
+
 # @Caf.command()
 # def append(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int)):
 #     """
@@ -407,7 +407,7 @@ def list_profiles(caf, _):
     Usage:
         caf list profiles
     """
-    for p in Path(os.environ['HOME']).glob('.config/caf/worker_*'):
+    for p in Path.home().glob('.config/caf/worker_*'):
         print(p.name)
 
 
@@ -567,12 +567,13 @@ def remote_add(caf, _, url: 'URL', name: 'NAME'):
     Usage:
         caf remote add URL [NAME]
     """
+    config = ConfigParser()
+    config.read([caf.cafdir/'config.ini'])
     host, path = url.split(':')
     name = name or host
-    if 'remotes' not in caf.conf:
-        caf.conf['remotes'] = {}
-    caf.conf['remotes'][name] = {'host': host, 'path': path}
-    caf.conf.save()
+    config[f'remote "{name}"'] = {'host': host, 'path': path}
+    with (caf.cafdir/'config.ini').open('w') as f:
+        config.write(f)
 
 
 @caf_remote.add_command(name='path')
@@ -583,7 +584,7 @@ def remote_path(caf, _, name: 'NAME'):
     Usage:
         caf remote path NAME
     """
-    print('{0[host]}:{0[path]}'.format(caf.conf['remotes'][name]))
+    print('{0[host]}:{0[path]}'.format(caf.config[f'remote "{name}"']))
 
 
 # @Caf.command()
@@ -626,8 +627,8 @@ def remote_path(caf, _, name: 'NAME'):
 #     """
 #     for remote in remotes:
 #         remote.push(targets, caf.cache, caf.out, dry=dry)
-#
-#
+
+
 # @Caf.command()
 # def fetch(caf, dry: '--dry', targets: 'TARGET', remotes: ('REMOTE', 'proc_remote'),
 #           get_all: '--all', follow: '--follow', only_mark: '--mark'):
@@ -645,24 +646,6 @@ def remote_path(caf, _, name: 'NAME'):
 #     """
 #     for remote in remotes:
 #         remote.fetch(targets, caf.cache, caf.out, dry=dry, get_all=get_all, follow=follow, only_mark=only_mark)
-
-
-# @Caf.command()
-# def template(caf):
-#     """
-#     Write a template cscript.
-#
-#     Usage:
-#         caf template
-#     """
-#     with open('cscript', 'w') as f:
-#         f.write(dedent("""\
-#             #!/usr/bin/env python3
-#
-#
-#             def configure(ctx):
-#                 pass
-#         """))
 
 
 @Caf.command()
@@ -713,17 +696,6 @@ def pack(caf):
     version = h.hexdigest()
     with open('caf', 'a') as f:
         f.write('# ==>\n')
-        f.write('# version: {}\n'.format(version))
-        f.write('# archive: {}\n'.format(b64encode(archive).decode()))
+        f.write(f'# version: {version}\n')
+        f.write(f'# archive: {b64encode(archive).decode()}\n')
         f.write('# <==\n')
-
-
-# @Caf.command()
-# def upgrade(caf):
-#     """
-#     Update itself from https://pub.janhermann.cz/.
-#
-#     Usage:
-#         caf upgrade
-#     """
-#     os.system('curl https://pub.janhermann.cz/static/caf >caf && chmod +x caf')

@@ -31,8 +31,7 @@ def slugify(x, top=True):
         except TypeError:
             pass
     if isinstance(x, tuple):
-        return '{}={}'.format(normalize_str(str(x[0])),
-                              _slugify(x[1]))
+        return f'{normalize_str(str(x[0]))}={_slugify(x[1])}'
     else:
         try:
             return ':'.join(_slugify(x) for x in x)
