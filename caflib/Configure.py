@@ -149,7 +149,8 @@ class Task:
 
     def open(self, filename, mode='r'):
         if mode == 'r':
-            fobj = self.node_open(filename)
+            with timing('node_open'):
+                fobj = self.node_open(filename)
             if fobj:
                 return fobj
         if mode in ['r', 'a']:
@@ -294,21 +295,21 @@ class Context:
         self.tasks = [self.tasks[i] for i in queue]
 
     def process(self):
-        with timing('task processing'):
-            inputs = {}
-            for node in self.tasks:
-                for name, child in node.children.items():
-                    if child not in TaskNode.hashes or \
-                            name in node.blocking and \
-                            self.cellar.get_state(TaskNode.hashes[child]) != 1:
-                        blocked = True
-                        break
-                else:
-                    blocked = False
-                if blocked:
-                    continue
-                node.task.node_open = node_opener(node, self.cellar)
-                node.task.process(self)
+        inputs = {}
+        for node in self.tasks:
+            for name, child in node.children.items():
+                if child not in TaskNode.hashes or \
+                        name in node.blocking and \
+                        self.cellar.get_state(TaskNode.hashes[child]) != 1:
+                    blocked = True
+                    break
+            else:
+                blocked = False
+            if blocked:
+                continue
+            node.task.node_open = node_opener(node, self.cellar)
+            node.task.process(self)
+            with timing('seal'):
                 node.seal(inputs)
         return inputs
 

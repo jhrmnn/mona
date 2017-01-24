@@ -54,7 +54,7 @@ class Caf(CLI):
             self.cafdir/'config.ini',
             os.path.expanduser('~/.config/caf/config.ini')
         ])
-        with timing('reading cscript'):
+        with timing('read cscript'):
             self.cscript = import_cscript(self.commands[('unpack',)]._func)
         self.out = Path(getattr(self.cscript, 'out', 'build'))
         self.top = Path(getattr(self.cscript, 'top', '.'))
@@ -193,14 +193,16 @@ def conf(caf, dry: '--dry'):
             (caf.cafdir/'objects').symlink_to(path)
     cellar = Cellar(caf.cafdir)
     ctx = Context('.', cellar)
-    with timing('dependency tree'):
+    with timing('evaluate cscript'):
         caf.cscript.configure(ctx)
+    with timing('sort tasks'):
         ctx.sort_tasks()
     if dry:
         return
     with timing('configure'):
         inputs = ctx.process()
-    conf = ctx.get_configuration()
+    with timing('get configuration'):
+        conf = ctx.get_configuration()
     targets = get_leafs(conf)
     tasks = {
         hashid: {
@@ -213,7 +215,8 @@ def conf(caf, dry: '--dry'):
         for hashid, task in zip(conf['hashes'], conf['tasks'])
         if 'command' in task
     }
-    tasks = cellar.store_build(tasks, targets, inputs)
+    with timing('store build'):
+        tasks = cellar.store_build(tasks, targets, inputs)
     scheduler = Scheduler(caf.cafdir)
     scheduler.submit(tasks)
 

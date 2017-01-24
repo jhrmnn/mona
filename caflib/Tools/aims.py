@@ -1,10 +1,8 @@
 from caflib.Tools import geomlib
 from caflib.Configure import feature
-from caflib.Utils import find_program
-from caflib.Logging import info, warn, error, report
+from caflib.Logging import info, error, report
 from pathlib import Path
 import numpy as np
-import os
 import shutil
 
 _reported = {}
@@ -34,34 +32,36 @@ def reporter():
         printer(msg)
 
 
+aimses = {}
+species_db = {}
+
+
 @feature('aims')
 def prepare_aims(task):
-    aims = task.consume('aims_delink')
-    if aims:
-        aims = shutil.which(aims)
-        if Path(aims).is_symlink():
-            aims = os.readlink(aims)
-        else:
-            aims = Path(aims).name
+    aims_name = task.consume('aims_delink')
+    if aims_name in aimses:
+        aims, aims_path = aimses[aims_name]
+    elif aims_name:
+        aims_path = Path(shutil.which(aims)).resolve()
+        aims = aims_path.name
+        aimses[aims] = aims, aims_path
     else:
-        aims = task.consume('aims')
+        aims = aims_name = task.consume('aims')
+        if aims in aimses:
+            aims, aims_path = aimses[aims]
+        elif aims:
+            aims_path = Path(shutil.which(aims))
+            aimses[aims] = aims, aims_path
+        else:
+            error('Missing aims specification.')
     aims_command = f'AIMS={aims} run_aims'
-    aims_binary = find_program(aims)
-    if not aims_binary:
-        if aims not in _reported:
-            msg = f'{aims} does not exit'
-            _reported[aims] = (warn, msg)
-        aims_binary = find_program('aims.master')
-    if not aims_binary:
-        warn(msg)
-        error("Don't know where to find species files")
     if aims not in _reported:
-        _reported[aims] = (info, f'{aims} is {aims_binary}')
+        _reported[aims] = (info, f'{aims} is {aims_path}')
     geomfile = task.consume('geomfile') or 'geometry.in'
     basis = task.consume('basis')
     if not basis:
         error('No basis was specified for aims')
-    basis_root = aims_binary.parents[1]/'aimsfiles/species_defaults'/basis
+    basis_root = aims_path.parents[1]/'aimsfiles/species_defaults'/basis
     subdirs = [Path(p) for p in task.consume('subdirs') or ['.']]
     if subdirs[0] != Path('.'):
         aims_command += ' >run.out 2>run.err'
@@ -91,8 +91,13 @@ def prepare_aims(task):
                     chunks.append(f'{attr}  {p2f(value)}')
         if not basis == 'none':
             for number, symbol in species:
-                with (basis_root/f'{number:02d}_{symbol}_default').open() as f:
-                    chunks.append(f.read())
+                if symbol not in species_db:
+                    with (basis_root/f'{number:02d}_{symbol}_default').open() as f:
+                        basis_def = f.read()
+                    species_db[symbol] = basis_def
+                else:
+                    basis_def = species_db[symbol]
+                chunks.append(basis_def)
         if len(chunks) > 1:
             task.inputs[str(subdir/'control.in')] = '\n\n'.join(chunks)
         if subdir == Path('.'):

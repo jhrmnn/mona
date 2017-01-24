@@ -25,7 +25,11 @@ class Linker:
 
     def _run(self):
         if self.child and self.parent:
-            self.parent.node.add_child(self.child.node, *self.args, **self.kwargs)
+            self.parent.node.add_child(
+                self.child.node,
+                *self.args,
+                **self.kwargs
+            )
             return self.parent
         return self
 

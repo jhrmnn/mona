@@ -1,5 +1,3 @@
-import subprocess
-from pathlib import Path
 import re
 import os
 from contextlib import contextmanager
@@ -95,15 +93,6 @@ def filter_cmd(args):
         elif arg:
             cmd.append(str(arg))
     return cmd
-
-
-def find_program(cmd):
-    try:
-        program = subprocess.check_output(['which', cmd]).decode().strip()
-    except subprocess.CalledProcessError:
-        return None
-    else:
-        return Path(program).resolve()
 
 
 @contextmanager

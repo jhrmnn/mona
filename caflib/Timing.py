@@ -25,9 +25,13 @@ class Timer:
             ]
             groups.sort(key=lambda x: x[0][1], reverse=True)
             table = Table(align=['<', '<'])
+            total = 0
             for group in groups:
                 for row in group:
-                    table.add_row(re.sub(r'\w+>', 4*' ', row[0]), f'{row[1]:.4f}')
+                    table.add_row(re.sub(r'[^>]*>', 4*' ', row[0]), f'{row[1]:.4f}')
+                    if '>' not in row[0]:
+                        total += row[1]
+            table.add_row('TOTAL', f'{total:.4f}')
             print(table, file=sys.stderr)
 
 
