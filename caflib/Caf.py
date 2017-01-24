@@ -10,9 +10,9 @@ import hashlib
 import subprocess as sp
 from configparser import ConfigParser
 
-from caflib.Utils import get_timestamp, cd, config_items
+from caflib.Utils import get_timestamp, cd, config_items, groupby
 from caflib.Timing import timing
-from caflib.Logging import error, dep_error, info
+from caflib.Logging import error, dep_error, info, Table, colstr
 from caflib.CLI import CLI, CLIExit
 from caflib.Cellar import Cellar
 from caflib.Remote import Remote, Local
@@ -496,50 +496,57 @@ def list_profiles(caf, _):
 #     sp.call(cmd)
 
 
-# @Caf.command()
-# def status(caf, targets: 'TARGET'):
-#     """
-#     Print number of initialized, running and finished tasks.
-#
-#     Usage:
-#         caf status [TARGET...]
-#     """
-#     def colored(stat):
-#         colors = 'blue green cyan red yellow normal'.split()
-#         return [colstr(s, color) if s else colstr(s, 'normal')
-#                 for s, color in zip(stat, colors)]
-#
-#     dirs = []
-#     if not targets:
-#         dirs.append((caf.brewery/latest, (caf.brewery/latest).glob('*')))
-#     targets = [caf.out/t for t in targets] \
-#         if targets else (caf.out).glob('*')
-#     for target in targets:
-#         if not target.is_dir() or str(target).startswith('.'):
-#             continue
-#         if target.is_symlink():
-#             dirs.append((target, [target]))
-#         else:
-#             dirs.append((target, target.glob('*')))
-#     print('number of {} tasks:'
-#           .format('/'.join(colored('running finished remote error prepared all'.split()))))
-#     table = Table(align=['<', *6*['>']], sep=[' ', *5*['/']])
-#     for directory, paths in sorted(dirs):
-#         stats = []
-#         locked = []
-#         for p in paths:
-#             stats.append(((p/'.lock').is_dir(), (p/'.caf/seal').is_file(),
-#                           (p/'.caf/remote_seal').is_file(),
-#                           (p/'.caf/error').is_file(), (p/'.caf/lock').is_file(),
-#                           (p/'.caf').is_dir()))
-#             if (p/'.lock').is_dir():
-#                 locked.append(p)
-#         stats = colored([stat.count(True) for stat in zip(*stats)])
-#         table.add_row(str(directory) + ':', *stats)
-#         if directory.parts[1] != 'Brewery':
-#             for path in locked:
-#                 table.add_row('{} {}'.format(colstr('>>', 'blue'), path), free=True)
-#     print(table)
+@Caf.command()
+def status(caf):
+    """
+    Print number of initialized, running and finished tasks.
+
+    Usage:
+        caf status
+    """
+    cellar = Cellar(caf.cafdir)
+    scheduler = Scheduler(caf.cafdir)
+    states = dict(scheduler.execute('select * from queue'))
+    cellar.execute('drop table if exists current_tasks')
+    cellar.execute(
+        'create temporary table current_tasks(taskhash text, state integer)'
+    )
+    cellar.executemany('insert into current_tasks values (?,?)', (
+        states.items()
+    ))
+    states = cellar.execute(
+        'select path, state from current_tasks join '
+        '(select taskhash, path from targets join '
+        '(select id from builds order by created desc limit 1) b '
+        'on targets.buildid = b.id) build '
+        'on current_tasks.taskhash = build.taskhash'
+    ).fetchall()
+    colors = 'yellow green red normal'.split()
+    print('number of {} tasks:'.format('/'.join(
+        colstr(s, color) for s, color in zip(
+            'running finished error all'.split(),
+            colors
+        )
+    )))
+    table = Table(
+        align=['<', *len(colors)*['>']],
+        sep=[' ', *(len(colors)-1)*['/']]
+    )
+    for root, group in groupby(states, key=lambda r: r[0].split('/', 1)[0]):
+        grouped = {
+            state: subgroup for state, subgroup
+            in groupby(group, key=lambda r: r[1])
+        }
+        stats = [len(grouped.get(state, [])) for state in [2, 1, -1]]
+        stats.append(len(group))
+        stats = [
+            colstr(s, color) if s else colstr(s, 'normal')
+            for s, color in zip(stats, colors)
+        ]
+        table.add_row(root + ':', *stats)
+        for path, _ in grouped.get(2, []):
+            table.add_row(f"{colstr('>>', 'yellow')} {path}", free=True)
+    print(table)
 
 
 @Caf.command()
