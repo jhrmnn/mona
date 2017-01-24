@@ -1,22 +1,15 @@
 from pathlib import Path
-import os
-import stat
 import json
 import sqlite3
 import hashlib
 from datetime import datetime
 
 
+from caflib.Utils import make_nonwritable
+
+
 def get_hash(text):
     return hashlib.sha1(text.encode()).hexdigest()
-
-
-def make_nonwritable(path):
-    os.chmod(
-        path,
-        stat.S_IMODE(os.lstat(path).st_mode) &
-        ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
-    )
 
 
 class Cellar:

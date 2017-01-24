@@ -1,17 +1,6 @@
 import sys
 from io import StringIO
 from itertools import chain
-from datetime import datetime
-from pathlib import Path
-
-
-def log_caf(argv):
-    cafdir = Path('.caf')
-    if not cafdir.is_dir():
-        cafdir.mkdir()
-        info(f'Initializing an empty repository in {cafdir.resolve()}.')
-    with open('.caf/log', 'a') as f:
-        f.write('{:%Y-%b-%d %H:%M:%S}: {}\n'.format(datetime.now(), ' '.join(argv)))
 
 
 class colstr(str):
@@ -26,7 +15,10 @@ class colstr(str):
               'normal': '\x1b[0m'}
 
     def __new__(cls, s, color):
-        obj = str.__new__(cls, colstr.colors[color] + str(s) + colstr.colors['normal'])
+        obj = str.__new__(
+            cls,
+            colstr.colors[color] + str(s) + colstr.colors['normal']
+        )
         obj.len = len(str(s))
         obj.orig = str(s)
         return obj
@@ -46,6 +38,21 @@ def info(s):
 def error(s):
     print(colstr(s, 'red'))
     sys.exit(1)
+
+
+_reports = []
+
+
+def report(f):
+    """Register function as a report.
+
+    Example:
+
+        @report
+        def my_report(...
+    """
+    _reports.append(f)
+    return f
 
 
 def dep_error(dep):
@@ -90,22 +97,25 @@ class Table:
     def __str__(self):
         col_nums = [len(row) for free, row in self.rows if not free]
         if len(set(col_nums)) != 1:
-            raise TableException('Unequal column lengths: {}'.format(col_nums))
+            raise TableException(f'Unequal column lengths: {col_nums}')
         col_nums = col_nums[0]
         cell_widths = [[len(cell) for cell in row]
                        for free, row in self.rows if not free]
         col_widths = [max(col) for col in zip(*cell_widths)]
-        seps = (col_nums-1)*[self.sep] if not isinstance(self.sep, list) else self.sep
+        seps = (col_nums-1)*[self.sep] if not isinstance(self.sep, list) \
+            else self.sep
         seps += ['\n']
-        aligns = col_nums*[self.align] if not isinstance(self.align, list) else self.align
+        aligns = col_nums*[self.align] if not isinstance(self.align, list) \
+            else self.align
         f = StringIO()
         for free, row in self.rows:
             if free:
-                f.write('{}\n'.format(row[0]))
+                f.write(f'{row[0]}\n')
             else:
                 cells = (alignize(cell, align, width)
                          for cell, align, width
                          in zip(row, aligns, col_widths))
-                f.write('{}{}'.format(self.indent,
-                                      ''.join(chain.from_iterable(zip(cells, seps)))))
+                f.write(
+                    self.indent + ''.join(chain.from_iterable(zip(cells, seps)))
+                )
         return f.getvalue()[:-1]

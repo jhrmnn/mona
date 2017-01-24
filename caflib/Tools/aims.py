@@ -1,7 +1,7 @@
 from caflib.Tools import geomlib
 from caflib.Configure import feature
-from caflib.Utils import find_program, report
-from caflib.Logging import info, warn, error
+from caflib.Utils import find_program
+from caflib.Logging import info, warn, error, report
 from pathlib import Path
 import numpy as np
 import os

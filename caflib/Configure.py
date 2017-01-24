@@ -3,11 +3,11 @@ from io import StringIO
 import json
 
 from caflib.Template import Template
-from caflib.Utils import slugify, listify, timing
+from caflib.Utils import slugify, listify
+from caflib.Timing import timing
 from caflib.Logging import error
 from caflib.Generators import Linker, TargetGen, TaskGen
 from caflib.Cellar import get_hash
-from caflib.Context import _features
 
 
 class UnconsumedAttributes(Exception):
@@ -22,6 +22,9 @@ class Feature:
 
     def __call__(self, task):
         self.f(task)
+
+
+_features = {}
 
 
 def feature(name):
@@ -195,7 +198,7 @@ class Task:
                 else:
                     error('Unexpected template specification: {file_spec}')
                 template = Template(source)
-                processed, used = template.substitute(self.attrs)
+                processed, used = template.render(self.attrs)
                 self.inputs[target] = processed
                 for attr in used:
                     self.consume(attr)

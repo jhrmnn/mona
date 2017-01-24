@@ -1,6 +1,5 @@
 from pathlib import Path
 import os
-import sys
 import io
 import tarfile
 from base64 import b64encode
@@ -9,10 +8,11 @@ import imp
 from textwrap import dedent
 import hashlib
 import subprocess as sp
+from configparser import ConfigParser
 
-from caflib.Utils import Configuration, mkdir, get_timestamp, \
-    timing, relink, print_timing, cd
-from caflib.Logging import error, log_caf, dep_error
+from caflib.Utils import get_timestamp, cd, config_items
+from caflib.Timing import timing
+from caflib.Logging import error, dep_error, info
 from caflib.CLI import CLI, CLIExit
 from caflib.Cellar import Cellar
 from caflib.Remote import Remote, Local
@@ -25,58 +25,56 @@ except ImportError:
     dep_error('docopt')
 
 
-def load_module(path, unpack):
-    path = Path(path)
-    modulename = path.stem
-    module = imp.new_module(modulename)
+def import_cscript(unpack):
+    cscript = imp.new_module('cscript')
+    try:
+        with open('cscript.py') as f:
+            script = f.read()
+    except FileNotFoundError:
+        error('Cscript does not exist.')
     for i in range(2):
         try:
-            exec(compile(path.open().read(), path.name, 'exec'), module.__dict__)
+            exec(compile(script, 'cscript', 'exec'), cscript.__dict__)
         except Exception as e:
             if isinstance(e, ImportError) and i == 0:
                 unpack(None, path=None)
-                continue
-            import traceback
-            traceback.print_exc()
-            raise RuntimeError(f'Could not load "{path}"') from e
-    return module
+            else:
+                import traceback
+                traceback.print_exc()
+                error('There was an error while reading cscript.')
+    return cscript
 
 
 class Caf(CLI):
     def __init__(self):
         super().__init__('caf')
-        self.conf = Configuration('.caf/conf.yaml')
-        self.conf_global = Configuration(
-            f'{os.environ["HOME"]}/.config/caf/conf.yaml'
-        )
+        self.cafdir = Path('.caf')
+        self.config = ConfigParser()
+        self.config.read([
+            self.cafdir/'config.ini',
+            os.path.expanduser('~/.config/caf/config.ini')
+        ])
         with timing('reading cscript'):
-            try:
-                if Path('cscript.py').is_file():
-                    self.cscript = load_module(
-                        'cscript.py',
-                        self.commands[('unpack',)]._func
-                    )
-                else:
-                    self.cscript = object()
-            except RuntimeError:
-                error('There was an error while reading cscript.')
+            self.cscript = import_cscript(self.commands[('unpack',)]._func)
         self.out = Path(getattr(self.cscript, 'out', 'build'))
         self.top = Path(getattr(self.cscript, 'top', '.'))
-        self.cafdir = Path('.caf')
         self.remotes = {
             name: Remote(r['host'], r['path'], self.top)
-            for name, r in self.conf.get('remotes', {}).items()
+            for name, r in config_items(self.config, 'remote')
         }
         self.remotes['local'] = Local()
 
     def __call__(self, argv):
-        log_caf(argv)
+        if not self.cafdir.is_dir():
+            self.cafdir.mkdir()
+            info(f'Initializing an empty repository in {self.cafdir.resolve()}.')
+        with (self.cafdir/'log').open('a') as f:
+            f.write(f'{get_timestamp()}: {" ".join(argv)}\n')
         try:
             super().__call__(argv)  # try CLI as if local
         except CLIExit as e:  # store exception for reraise if remote fails too
             cliexit = e
         else:
-            print_timing()
             return
         # the local CLI above did not succeed, make a usage without local CLI
         usage = '\n'.join(
@@ -98,7 +96,7 @@ class Caf(CLI):
                     arg if arg != rargs['--queue'] else queue for arg in rargv
                 ]
             elif rargs['--last']:
-                with open('.caf/LAST_QUEUE') as f:
+                with (self.cafdir/'LAST_QUEUE').open() as f:
                     queue_url = f.read().strip()
                 last_index = rargv.index('--last')
                 rargv = rargv[:last_index] + ['--queue', queue_url] \
@@ -152,10 +150,6 @@ class Caf(CLI):
                 if q:
                     return f'{q["host"]}/token/{q["token"]}/queue/{qid}/append'
 
-    def finalize(self, *args):
-        print_timing()
-        sys.exit()
-
     def proc_remote(self, remotes):
         if remotes == 'all':
             remotes = self.remotes.values()
@@ -192,19 +186,12 @@ def conf(caf, dry: '--dry'):
     if not hasattr(caf.cscript, 'configure'):
         error('cscript has to contain function configure(ctx)')
     if not (caf.cafdir/'objects').exists():
-        if 'cache' in caf.conf_global:
-            timestamp = get_timestamp()
-            path = Path(caf.conf_global['cache']) / \
-                f'{Path().resolve().name}_{timestamp}'
-            mkdir(path)
-            relink(path, caf.cafdir/'objects', relative=False)
-    # with open('.gitignore', 'w') as f:
-    #     f.write('\n'.join(['.caf']))
-    # with open(os.devnull, 'w') as null:
-    #     sp.call(['git', 'init'], stdout=null)
-    #     sp.call(['git', 'add', 'caf', 'cscript.py', '.gitignore'], stdout=null)
-    #     sp.call(['git', 'commit', '-m', 'initial commit'], stdout=null)
-    cellar = Cellar('.caf')
+        if 'cache' in caf.config['core']:
+            ts = get_timestamp()
+            path = Path(caf.config['core']['cache'])/f'{Path.cwd().name}_{ts}'
+            path.mkdir()
+            (caf.cafdir/'objects').symlink_to(path)
+    cellar = Cellar(caf.cafdir)
     ctx = Context('.', cellar)
     with timing('dependency tree'):
         caf.cscript.configure(ctx)
@@ -227,11 +214,8 @@ def conf(caf, dry: '--dry'):
         if 'command' in task
     }
     tasks = cellar.store_build(tasks, targets, inputs)
-    scheduler = Scheduler('.caf')
+    scheduler = Scheduler(caf.cafdir)
     scheduler.submit(tasks)
-    # with open(os.devnull, 'w') as null:
-    #     sp.call(['git', 'add', '--all', 'build'], stdout=null)
-    #     sp.call(['git', 'commit', '-a', '-m', '#configuration'], stdout=null)
 
 
 @Caf.command(triggers=['conf make'])
@@ -260,7 +244,7 @@ def make(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
     """
     if do_conf:
         conf(['caf', 'conf'], caf)
-    scheduler = Scheduler('.caf')
+    scheduler = Scheduler(caf.cafdir)
     for task in scheduler.tasks():
         with cd(task.path):
             with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
@@ -320,7 +304,7 @@ def checkout(caf):
     Usage:
         caf checkout
     """
-    cellar = Cellar('.caf')
+    cellar = Cellar(caf.cafdir)
     cellar.checkout('build')
 
 
@@ -421,17 +405,17 @@ def list_profiles(caf, _):
         print(p.name)
 
 
-@caf_list.add_command(name='remotes')
-def list_remotes(caf, _):
-    """
-    List remotes.
-
-    Usage:
-        caf list remotes
-    """
-    remote_conf = Configuration()
-    remote_conf.update(caf.conf.get('remotes', {}))
-    print(remote_conf)
+# @caf_list.add_command(name='remotes')
+# def list_remotes(caf, _):
+#     """
+#     List remotes.
+#
+#     Usage:
+#         caf list remotes
+#     """
+#     remote_conf = Configuration()
+#     remote_conf.update(caf.conf.get('remotes', {}))
+#     print(remote_conf)
 
 
 # @caf_list.add_command(name='tasks')
