@@ -12,7 +12,7 @@ import subprocess as sp
 
 from caflib.Utils import Configuration, mkdir, get_timestamp, \
     timing, relink, print_timing, cd
-from caflib.Logging import error, info, log_caf, dep_error
+from caflib.Logging import error, log_caf, dep_error
 from caflib.CLI import CLI, CLIExit
 from caflib.Cellar import Cellar
 from caflib.Remote import Remote, Local
@@ -191,16 +191,13 @@ def conf(caf, dry: '--dry'):
     """
     if not hasattr(caf.cscript, 'configure'):
         error('cscript has to contain function configure(ctx)')
-    if not caf.cafdir.exists():
-        if 'cache' in caf.conf:
+    if not (caf.cafdir/'objects').exists():
+        if 'cache' in caf.conf_global:
             timestamp = get_timestamp()
-            path = Path(caf.conf['cache'])/f'{Path().resolve().name}_{timestamp}'
+            path = Path(caf.conf_global['cache']) / \
+                f'{Path().resolve().name}_{timestamp}'
             mkdir(path)
-            relink(path, caf.cafdir, relative=False)
-        else:
-            path = caf.cafdir
-            mkdir(path)
-        info(f'Initializing an empty repository in {path.resolve()}.')
+            relink(path, caf.cafdir/'objects', relative=False)
     # with open('.gitignore', 'w') as f:
     #     f.write('\n'.join(['.caf']))
     # with open(os.devnull, 'w') as null:

@@ -7,9 +7,7 @@ from caflib.Utils import slugify, listify, timing
 from caflib.Logging import error
 from caflib.Generators import Linker, TargetGen, TaskGen
 from caflib.Cellar import get_hash
-
-
-_features = {}
+from caflib.Context import _features
 
 
 class UnconsumedAttributes(Exception):
@@ -72,7 +70,7 @@ class TaskNode:
     def __init__(self, task):
         self.task = task
         self.children = {}
-        self.childlinks = []
+        self.childlinks = {}
         self.parents = []
         self.blocking = []
 
@@ -102,7 +100,7 @@ class TaskNode:
                     source, target = spec
                 else:
                     source = target = spec
-                self.childlinks.append((name, source, target))
+                self.childlinks[target] = (name, source)
         task.parents.append(self)
 
     def seal(self, inputs):
@@ -163,13 +161,13 @@ class Task:
     def symlink(self, source, target):
         self.symlinks[str(target)] = str(source)
 
-    def process(self, ctx, features=None):
+    def process(self, ctx):
         try:
             features = [
                 _features[feat] if isinstance(feat, str)
                 else Feature(feat.__name__, feat)
                 for feat in listify(self.consume('features'))
-            ] + (features or [])
+            ]
         except KeyError as e:
             error(f'Feature {e.args[0]} is not registered')
         self.process_features(features, 'before_files')
@@ -202,7 +200,7 @@ class Task:
                 for attr in used:
                     self.consume(attr)
         self.process_features(features)
-        self.command = self.consume('command')
+        self.command = self.consume('command') or ''
         if self.attrs:
             raise UnconsumedAttributes(list(self.attrs))
 
@@ -217,7 +215,7 @@ class Task:
 
 def node_opener(node, cellar):
     def node_open(filename):
-        for child, source, target in node.childlinks:
+        for target, (child, source) in node.childlinks.items():
             if filename != target:
                 continue
             child = cellar.get_task(TaskNode.hashes[node.children[child]])
@@ -307,9 +305,7 @@ class Context:
                 if blocked:
                     continue
                 node.task.node_open = node_opener(node, self.cellar)
-                node.task.process(
-                    self,
-                )
+                node.task.process(self)
                 node.seal(inputs)
         return inputs
 

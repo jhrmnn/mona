@@ -6,8 +6,10 @@ from pathlib import Path
 
 
 def log_caf(argv):
-    if not Path('.caf').is_dir():
-        Path('.caf').mkdir()
+    cafdir = Path('.caf')
+    if not cafdir.is_dir():
+        cafdir.mkdir()
+        info(f'Initializing an empty repository in {cafdir.resolve()}.')
     with open('.caf/log', 'a') as f:
         f.write('{:%Y-%b-%d %H:%M:%S}: {}\n'.format(datetime.now(), ' '.join(argv)))
 

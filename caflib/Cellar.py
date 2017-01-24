@@ -132,7 +132,7 @@ class Cellar:
                 raise FileNotFoundError()
         return path.resolve()
 
-    def checkout_task(self, task, path, outputs=False):
+    def checkout_task(self, task, path):
         children = self.get_tasks(list(task['children'].values()))
         all_files = []
         for target, filehash in task['inputs'].items():
@@ -141,12 +141,15 @@ class Cellar:
         for target, source in task['symlinks'].items():
             (path/target).symlink_to(source)
             all_files.append(target)
-        for child, source, target in task['childlinks']:
-            (path/target).symlink_to(self.get_file(
-                children[task['children'][child]]['outputs'][source]
-            ))
+        for target, (child, source) in task['childlinks'].items():
+            childtask = children[task['children'][child]]
+            (path/target).symlink_to(
+                self.get_file(childtask['outputs'][source])
+                if 'outputs' in childtask
+                else Path(child)/source
+            )
             all_files.append(target)
-        if outputs and 'outputs' in task:
+        if 'outputs' in task:
             for target, filehash in task['outputs'].items():
                 (path/target).symlink_to(self.get_file(filehash))
                 all_files.append(target)
@@ -165,13 +168,26 @@ class Cellar:
             'on targets.buildid = b.id) build '
             'on tasks.hash = build.hash'
         )}
+        root = Path(root).resolve()
         paths = {}
         for hashid, path in targets:
-            path = Path(root)/path
+            path = root/path
             if hashid in paths:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.symlink_to(paths[hashid])
             else:
                 path.mkdir(parents=True)
-                self.checkout_task(tasks[hashid], path, outputs=True)
+                self.checkout_task(tasks[hashid], path)
                 paths[hashid] = path
+        queue = list(paths.items())
+        while queue:
+            hashid, path = queue.pop()
+            for name, childhash in tasks[hashid]['children'].items():
+                if childhash in paths:
+                    (path/name).symlink_to(paths[childhash])
+                else:
+                    tasks[childhash] = self.get_task(childhash)
+                    (path/name).mkdir()
+                    self.checkout_task(tasks[childhash], path/name)
+                    paths[childhash] = path/name
+                    queue.append((childhash, path/name))
