@@ -302,13 +302,16 @@ def make(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
 
 
 @Caf.command()
-def checkout(caf):
+def checkout(caf, path: '--path'):
     """
     Usage:
-        caf checkout
+        caf checkout [-p PATH]
+
+    Options:
+        -p, --path PATH          Where to checkout [default: build].
     """
     cellar = Cellar(caf.cafdir)
-    cellar.checkout('build')
+    cellar.checkout(path)
 
 
 # @Caf.command(triggers=['conf submit'])
