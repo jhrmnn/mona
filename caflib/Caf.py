@@ -7,6 +7,7 @@ from itertools import takewhile
 import imp
 from textwrap import dedent
 import hashlib
+import sqlite3
 import subprocess as sp
 from configparser import ConfigParser
 
@@ -194,7 +195,10 @@ def conf(caf, dry: '--dry'):
     cellar = Cellar(caf.cafdir)
     ctx = Context('.', cellar)
     with timing('evaluate cscript'):
-        caf.cscript.configure(ctx)
+        try:
+            caf.cscript.configure(ctx)
+        except:
+            error('There was an error when executing configure()', trace=True)
     with timing('sort tasks'):
         ctx.sort_tasks()
     if dry:
@@ -506,7 +510,10 @@ def status(caf):
     """
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
-    states = dict(scheduler.execute('select * from queue'))
+    try:
+        states = dict(scheduler.execute('select * from queue'))
+    except sqlite3.OperationalError:
+        error('There is no queue.')
     cellar.execute('drop table if exists current_tasks')
     cellar.execute(
         'create temporary table current_tasks(taskhash text, state integer)'

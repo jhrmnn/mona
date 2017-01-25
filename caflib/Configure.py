@@ -14,6 +14,10 @@ class UnconsumedAttributes(Exception):
     pass
 
 
+class FeatureException(Exception):
+    pass
+
+
 class Feature:
     def __init__(self, name, f, attribs=None):
         self.name = name
@@ -213,7 +217,12 @@ class Task:
             for feat in list(features):
                 if not attrib or attrib in feat.attribs:
                     with timing(feat.name):
-                        feat(self)
+                        try:
+                            feat(self)
+                        except Exception as e:
+                            import traceback
+                            traceback.print_exc()
+                            raise FeatureException(feat.name) from e
                     features.remove(feat)
 
 
@@ -308,7 +317,10 @@ class Context:
             if blocked:
                 continue
             node.task.node_open = node_opener(node, self.cellar)
-            node.task.process(self)
+            try:
+                node.task.process(self)
+            except FeatureException as e:
+                error(f'Feature "{e.args[0]}" failed in {node}.')
             with timing('seal'):
                 node.seal(inputs)
         return inputs

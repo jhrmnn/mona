@@ -6,6 +6,7 @@ from datetime import datetime
 
 
 from caflib.Utils import make_nonwritable
+from caflib.Timing import timing
 
 
 def get_hash(text):
@@ -166,21 +167,28 @@ class Cellar:
         for hashid, path in targets:
             path = root/path
             if hashid in paths:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.symlink_to(paths[hashid])
+                with timing('bones'):
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.symlink_to(paths[hashid])
             else:
-                path.mkdir(parents=True)
-                self.checkout_task(tasks[hashid], path)
+                with timing('bones'):
+                    path.mkdir(parents=True)
+                with timing('checkout'):
+                    self.checkout_task(tasks[hashid], path)
                 paths[hashid] = path
         queue = list(paths.items())
         while queue:
             hashid, path = queue.pop()
             for name, childhash in tasks[hashid]['children'].items():
                 if childhash in paths:
-                    (path/name).symlink_to(paths[childhash])
+                    with timing('bones'):
+                        (path/name).symlink_to(paths[childhash])
                 else:
-                    tasks[childhash] = self.get_task(childhash)
-                    (path/name).mkdir()
-                    self.checkout_task(tasks[childhash], path/name)
+                    with timing('sql'):
+                        tasks[childhash] = self.get_task(childhash)
+                    with timing('bones'):
+                        (path/name).mkdir()
+                    with timing('checkout'):
+                        self.checkout_task(tasks[childhash], path/name)
                     paths[childhash] = path/name
                     queue.append((childhash, path/name))
