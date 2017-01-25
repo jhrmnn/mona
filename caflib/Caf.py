@@ -3,7 +3,7 @@ import os
 import io
 import tarfile
 from base64 import b64encode
-from itertools import takewhile, chain
+from itertools import takewhile
 import imp
 from textwrap import dedent
 import hashlib
@@ -17,7 +17,7 @@ from caflib.CLI import CLI, CLIExit
 from caflib.Cellar import Cellar
 from caflib.Remote import Remote, Local
 from caflib.Configure import Context
-from caflib.Scheduler import Scheduler
+from caflib.Scheduler import Scheduler, State
 
 try:
     from docopt import docopt, DocoptExit
@@ -217,40 +217,40 @@ def conf(caf):
         if 'command' in task
     }
     with timing('store build'):
-        tasks = cellar.store_build(tasks, targets, inputs)
+        tasks = dict(cellar.store_build(tasks, targets, inputs))
+    labels = {}
+    for path, hashid in cellar.virtual_checkout(hashes=tasks.keys()).items():
+        if hashid not in labels:
+            labels[hashid] = path
+    tasks = [(hashid, state, labels[hashid]) for hashid, state in tasks.items()]
     scheduler = Scheduler(caf.cafdir)
     scheduler.submit(tasks)
 
 
 @Caf.command(triggers=['conf make'])
 def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
-         limit: ('--limit', int), queue: '--queue', myid: '--id',
-         dry: '--dry', do_conf: 'conf', verbose: '--verbose',
+         limit: ('--limit', int), queue: '--queue',
+         dry: '--dry', do_conf: 'conf',
          last_queue: '--last'):
     """
     Execute build tasks.
 
     Usage:
-        caf [conf] make [-v] [-l N] [-p PROFILE [-j N] | [--id ID] [--dry]]
-                        [--last | -q URL | PATH...]
+        caf [conf] make [-l N] [-p PROFILE [-j N] | --dry] [--last | -q URL | PATH...]
 
     Options:
         -n, --dry                  Dry run (do not write to disk).
-        --id ID                    ID of worker [default: 1].
         -p, --profile PROFILE      Run worker via ~/.config/caf/worker_PROFILE.
         -q, --queue URL            Take tasks from web queue.
         --last                     As above, but use the last submitted queue.
         -j N                       Number of launched workers [default: 1].
         -l, --limit N              Limit number of tasks to N.
-        -v, --verbose              Be more verbose.
     """
     if do_conf:
         conf(['caf', 'conf'], caf)
     if profile:
         pass
         cmd = [os.path.expanduser(f'~/.config/caf/worker_{profile}')]
-        if verbose:
-            cmd.append('-v')
         if limit:
             cmd.extend(('-l', str(limit)))
         if queue:
@@ -261,55 +261,31 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
                 sp.check_call(cmd)
             except sp.CalledProcessError:
                 error(f'Running ~/.config/caf/worker_{profile} did not succeed.')
+        return
+    scheduler = Scheduler(
+        caf.cafdir,
+        url=caf.get_queue_url(queue, 'get') if queue else None,
+        tmpdir=caf.config['core'].get('tmpdir', None)
+    )
+    if patterns:
+        cellar = Cellar(caf.cafdir)
+        hashes = set(hashid for hashid, _ in cellar.glob(*patterns))
     else:
-        scheduler = Scheduler(caf.cafdir)
-        if patterns:
-            cellar = Cellar(caf.cafdir)
-            hashes = set(chain.from_iterable(cellar.dglob(*patterns).values()))
-        else:
-            hashes = None
-        for task in scheduler.tasks(hashes=hashes):
-            with cd(task.path):
-                with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
-                    try:
-                        sp.check_call(
-                            task.command,
-                            shell=True,
-                            stdout=stdout,
-                            stderr=stderr
-                        )
-                    except sp.CalledProcessError as exc:
-                        task.error(exc)
-                    else:
-                        task.done()
-    # else:
-    #     if queue or last_queue:
-    #         if last_queue:
-    #             with open('.caf/LAST_QUEUE') as f:
-    #                 queue = f.read().strip()
-    #         url = caf.get_queue_url(queue, 'get')
-    #         worker = QueueWorker(
-    #             myid, caf.cache, url, dry=dry, limit=limit, debug=verbose
-    #         )
-    #     else:
-    #         if targets:
-    #             roots = [caf.out/t for t in targets]
-    #         else:
-    #             targets = caf.out.glob('*')
-    #         tasks = OrderedDict()
-    #         for path in find_tasks(*roots, unsealed=True, maxdepth=maxdepth):
-    #             cellarid = get_stored(path)
-    #             if cellarid not in tasks:
-    #                 tasks[cellarid] = str(path)
-    #         worker = LocalWorker(
-    #             myid,
-    #             caf.cellar.workplace,
-    #             list(reversed(tasks.items())),
-    #             dry=dry,
-    #             limit=limit,
-    #             debug=verbose
-    #         )
-    #     worker.work()
+        hashes = None
+    for task in scheduler.tasks(hashes=hashes, limit=limit):
+        with cd(task.path):
+            with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
+                try:
+                    sp.check_call(
+                        task.command,
+                        shell=True,
+                        stdout=stdout,
+                        stderr=stderr
+                    )
+                except sp.CalledProcessError as exc:
+                    task.error(exc)
+                else:
+                    task.done()
 
 
 @Caf.command()
@@ -422,17 +398,17 @@ def list_profiles(caf, _):
         print(p.name)
 
 
-# @caf_list.add_command(name='remotes')
-# def list_remotes(caf, _):
-#     """
-#     List remotes.
-#
-#     Usage:
-#         caf list remotes
-#     """
-#     remote_conf = Configuration()
-#     remote_conf.update(caf.conf.get('remotes', {}))
-#     print(remote_conf)
+@caf_list.add_command(name='remotes')
+def list_remotes(caf, _):
+    """
+    List remotes.
+
+    Usage:
+        caf list remotes
+    """
+    for name, remote in config_items(caf.config, 'remote'):
+        print(name)
+        print(f'\t{remote["host"]}:{remote["path"]}')
 
 
 @caf_list.add_command(name='tasks')
@@ -458,11 +434,11 @@ def list_tasks(caf, _, do_finished: '--finished',
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
     for hashid, path in cellar.glob(*patterns, hashes=states.keys()):
-        if do_finished and states[hashid] != 1:
+        if do_finished and states[hashid] != State.DONE:
             continue
-        if do_error and states[hashid] != -1:
+        if do_error and states[hashid] != State.ERROR:
             continue
-        if do_unfinished and states[hashid] == 1:
+        if do_unfinished and states[hashid] == State.DONE:
             continue
         if both_paths:
             print(path, hashid)
@@ -470,35 +446,6 @@ def list_tasks(caf, _, do_finished: '--finished',
             print(hashid)
         else:
             print(path)
-
-
-# @Caf.command()
-# def search(caf, older: '--older', contains: '--contains',
-#            contains_not: '--contains-not'):
-#     """
-#     Search within stored tasks.
-#
-#     Usage:
-#         caf search [--contains PATTERN] [--contains-not PATTERN] [--older TIME]
-#
-#     Options:
-#         --contains PATTERN         Search tasks containing PATTERN.
-#         --contains-not PATTERN     Search tasks not containing PATTERN.
-#         --older TIME               Search tasks older than.
-#     """
-#     cmd = ['find', str(caf.cellar), '-maxdepth', '3',
-#            '-mindepth', '3', '-type', 'd']
-#     if older:
-#         lim = older
-#         if lim[0] not in ['-', '+']:
-#             lim = '+' + lim
-#         cmd.extend(['-ctime', lim])
-#     if contains:
-#         cmd.extend(['-exec', 'test', '-e', '{{}}/{}'.format(contains), ';'])
-#     if contains_not:
-#         cmd.extend(['!', '-exec', 'test', '-e', '{{}}/{}'.format(contains_not), ';'])
-#     cmd.append('-print')
-#     sp.call(cmd)
 
 
 @Caf.command()
@@ -522,26 +469,30 @@ def status(caf, patterns: 'PATH'):
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
-    all_hashids = cellar.dglob(*patterns, hashes=states.keys())
+    groups = cellar.dglob(*patterns, hashes=states.keys())
     table = Table(
         align=['<', *len(colors)*['>']],
         sep=['   ', *(len(colors)-1)*['/']]
     )
-    for pattern, hashids in all_hashids.items():
-        if not hashids:
+    for pattern, hashes_paths in groups.items():
+        if not hashes_paths:
             pattern = colstr(pattern, 'red')
         grouped = {
             state: subgroup for state, subgroup
-            in groupby(hashids, key=lambda h: states[h])
+            in groupby(hashes_paths, key=lambda x: states[x[0]])
         }
-        stats = [len(grouped.get(state, [])) for state in [2, 1, -1]]
-        stats.append(len(hashids))
+        stats = [len(grouped.get(state, [])) for state in [
+            State.RUNNING,
+            State.DONE,
+            State.ERROR
+        ]]
+        stats.append(len(hashes_paths))
         stats = [
             colstr(s, color) if s else colstr(s, 'normal')
             for s, color in zip(stats, colors)
         ]
         table.add_row(pattern, *stats)
-        for path, _ in grouped.get(2, []):
+        for _, path in grouped.get(State.RUNNING, []):
             table.add_row(f"{colstr('>>', 'yellow')} {path}", free=True)
     print(table)
 

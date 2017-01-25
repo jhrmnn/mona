@@ -56,25 +56,35 @@ class Cellar:
             return -1
         return res[0]
 
-    def store_text(self, hashid, text):
+    def store(self, hashid, text=None, file=None):
         if hashid in self.objectdb:
             return
+        self.objectdb.add(hashid)
         path = self.objects/hashid[:2]/hashid[2:]
         if path.is_file():
             return
-        else:
-            self.objectdb.add(hashid)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text)
+        if text is not None:
+            path.write_text(text)
+        elif file is not None:
+            file.rename(path)
         make_nonwritable(path)
+        return True
+
+    def store_text(self, hashid, text):
+        return self.store(hashid, text=text)
+
+    def store_file(self, hashid, file):
+        return self.store(hashid, file=file)
 
     def seal_task(self, hashid, outputs):
         task = self.get_task(hashid)
         task['outputs'] = {}
-        for name, text in outputs.items():
-            texthash = get_hash(text)
-            self.store_text(texthash, text)
-            task['outputs'][name] = texthash
+        for name, path in outputs.items():
+            with path.open() as f:
+                filehash = get_hash(f.read())
+            self.store_file(filehash, path)
+            task['outputs'][name] = filehash
         self.execute(
             'update tasks set task = ?, state = 1 where hash = ?',
             (json.dumps(task), hashid)
@@ -186,17 +196,16 @@ class Cellar:
 
     def dglob(self, *patterns, hashes=None):
         tree = self.virtual_checkout(hashes=hashes)
-        all_hashids = defaultdict(list)
+        groups = defaultdict(list)
         for patt in patterns:
-            matched_any = False
             for path, hashid in tree.items():
                 matched = match_glob(path, patt)
                 if matched:
-                    all_hashids[matched].append(hashid)
+                    groups[matched].append((hashid, path))
                     matched_any = True
             if not matched_any:
-                all_hashids[patt] = []
-        return all_hashids
+                groups[patt] = []
+        return groups
 
     def glob(self, *patterns, hashes=None):
         tree = self.virtual_checkout(hashes=hashes)

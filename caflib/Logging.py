@@ -1,6 +1,10 @@
 import sys
+import os
 from io import StringIO
 from itertools import chain
+
+
+DEBUG = 'DEBUG' in os.environ
 
 
 class colstr(str):
@@ -29,6 +33,11 @@ class colstr(str):
 
 def warn(s):
     print(colstr(s, 'yellow'))
+
+
+def debug(s):
+    if DEBUG:
+        print(s)
 
 
 def info(s):

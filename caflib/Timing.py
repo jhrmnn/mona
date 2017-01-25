@@ -35,19 +35,19 @@ class Timer:
             print(table, file=sys.stderr)
 
 
-_timer = Timer()
+TIMER = Timer()
 
 
 @contextmanager
 def timing(name):
-    if _timer.active:
-        label = '>'.join(_timer.stack + [name])
-        _timer.timing[label]
-        _timer.stack.append(name)
+    if TIMER.active:
+        label = '>'.join(TIMER.stack + [name])
+        TIMER.timing[label]
+        TIMER.stack.append(name)
         tm = time.time()
     try:
         yield
     finally:
-        if _timer.active:
-            _timer.timing[label] += time.time()-tm
-            _timer.stack.pop(-1)
+        if TIMER.active:
+            TIMER.timing[label] += time.time()-tm
+            TIMER.stack.pop(-1)
