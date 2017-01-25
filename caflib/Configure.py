@@ -63,10 +63,13 @@ class TargetNode:
     def __str__(self):
         return f'/{self.path.parent}' if len(self.path.parts) > 1 else ''
 
-    def set_task(self, task, *paths):
-        self.path = Path()
+    def set_task(self, task, root, *paths):
+        self.path = Path(root)
         for path in paths:
-            self.path /= slugify(path)
+            try:
+                self.path /= path
+            except TypeError as e:
+                error(f'{path!r} cannot be used in target definition')
         self.task = task
         task.parents.append(self)
 

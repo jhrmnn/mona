@@ -24,7 +24,9 @@ class Dataset:
                 tasks[geomid] + ctx.link(fragment)
                 for fragment, geomid
                 in cluster.fragments.items()
-            ] + ctx() * ctx.target(self.name, *key)
+            ] + ctx() * ctx.target(
+                f'set_{self.name}', '_'.join(str(k) for k in key)
+            )
         ) for key, cluster in self.clusters.items()]
         tasktree.sort(key=lambda x: x[0])
         for level in reversed(range(self.depth)):

@@ -149,7 +149,7 @@ class Cellar:
                 all_files.append(target)
         return all_files
 
-    def checkout(self, root):
+    def get_last_build(self):
         targets = self.db.execute(
             'select taskhash, path from targets join '
             '(select id from builds order by created desc limit 1) b '
@@ -162,6 +162,25 @@ class Cellar:
             'on targets.buildid = b.id) build '
             'on tasks.hash = build.hash'
         )}
+        return tasks, targets
+
+    def virtual_checkout(self, objects=False):
+        tasks, targets = self.get_last_build()
+        tree = {path: hashid for hashid, path in targets}
+        while targets:
+            hashid, path = targets.pop()
+            for name, childhash in tasks[hashid]['children'].items():
+                childpath = f'{path}/{name}'
+                tree[childpath] = childhash
+                if childhash not in tasks:
+                    tasks[childhash] = self.get_task(childhash)
+                targets.append((childhash, childpath))
+        if objects:
+            tree = {path: tasks[hashid] for path, hashid in tree.items()}
+        return tree
+
+    def checkout(self, root):
+        tasks, targets = self.get_last_build()
         root = Path(root).resolve()
         paths = {}
         for hashid, path in targets:

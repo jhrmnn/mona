@@ -197,8 +197,10 @@ def conf(caf, dry: '--dry'):
     with timing('evaluate cscript'):
         try:
             caf.cscript.configure(ctx)
-        except:
-            error('There was an error when executing configure()', trace=True)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            error('There was an error when executing configure()')
     with timing('sort tasks'):
         ctx.sort_tasks()
     if dry:
@@ -306,16 +308,21 @@ def make(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
 
 
 @Caf.command()
-def checkout(caf, path: '--path'):
+def checkout(caf, path: '--path', dry: '--dry'):
     """
     Usage:
-        caf checkout [-p PATH]
+        caf checkout [-p PATH] [--dry]
 
     Options:
         -p, --path PATH          Where to checkout [default: build].
+        --dry                    Only print paths.
     """
     cellar = Cellar(caf.cafdir)
-    cellar.checkout(path)
+    if dry:
+        for path in sorted(cellar.virtual_checkout().keys()):
+            print(path)
+    else:
+        cellar.checkout(path)
 
 
 # @Caf.command(triggers=['conf submit'])

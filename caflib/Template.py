@@ -53,7 +53,7 @@ class Template:
             elif default:
                 try:
                     value = eval(default)
-                except:
+                except Exception:
                     error(
                         'There was an error when processing default '
                         'of key "{token}" in template "{self.name}"'
