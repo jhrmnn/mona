@@ -3,10 +3,12 @@ import json
 import sqlite3
 import hashlib
 from datetime import datetime
+from collections import defaultdict, OrderedDict
 
 
 from caflib.Utils import make_nonwritable
 from caflib.Timing import timing
+from caflib.Glob import match_glob
 
 
 def get_hash(text):
@@ -111,6 +113,7 @@ class Cellar:
             return json.loads(res[0])
 
     def get_tasks(self, hashes):
+        hashes = list(hashes)
         cur = self.execute(
             'select hash, task from tasks where hash in ({})'.format(
                 ','.join(len(hashes)*['?'])
@@ -163,20 +166,44 @@ class Cellar:
         )}
         return tasks, targets
 
-    def virtual_checkout(self, objects=False):
+    def virtual_checkout(self, objects=False, hashes=None):
         tasks, targets = self.get_last_build()
-        tree = {path: hashid for hashid, path in targets}
+        if hashes:
+            tasks.update(self.get_tasks(hashes))
+        tree = [(path, hashid) for hashid, path in targets]
         while targets:
             hashid, path = targets.pop()
             for name, childhash in tasks[hashid]['children'].items():
                 childpath = f'{path}/{name}'
-                tree[childpath] = childhash
+                tree.append((childpath, childhash))
                 if childhash not in tasks:
                     tasks[childhash] = self.get_task(childhash)
                 targets.append((childhash, childpath))
         if objects:
-            tree = {path: tasks[hashid] for path, hashid in tree.items()}
+            tree = [(path, tasks[hashid]) for path, hashid in tree]
+        tree = OrderedDict(sorted(tree))
         return tree
+
+    def dglob(self, *patterns, hashes=None):
+        tree = self.virtual_checkout(hashes=hashes)
+        all_hashids = defaultdict(list)
+        for patt in patterns:
+            matched_any = False
+            for path, hashid in tree.items():
+                matched = match_glob(path, patt)
+                if matched:
+                    all_hashids[matched].append(hashid)
+                    matched_any = True
+            if not matched_any:
+                all_hashids[patt] = []
+        return all_hashids
+
+    def glob(self, *patterns, hashes=None):
+        tree = self.virtual_checkout(hashes=hashes)
+        for patt in patterns:
+            for path, hashid in tree.items():
+                if match_glob(path, patt):
+                    yield hashid, path
 
     def checkout(self, root):
         tasks, targets = self.get_last_build()

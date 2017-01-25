@@ -5,6 +5,7 @@ import tempfile
 import shutil
 
 from caflib.Cellar import Cellar
+from caflib.Logging import error
 
 
 class Task:
@@ -64,11 +65,13 @@ class Scheduler:
         finally:
             self.execute('end transaction')
 
-    def tasks(self):
+    def tasks(self, hashes=None):
         self.db.isolation_level = None
         while True:
-            states = dict(self.execute('select * from queue'))
+            states = self.get_states()
             for hashid, state in states.items():
+                if hashes and hashid not in hashes:
+                    continue
                 if state != 0:
                     continue
                 task = self.cellar.get_task(hashid)
@@ -97,3 +100,9 @@ class Scheduler:
                 break
             else:
                 break
+
+    def get_states(self):
+        try:
+            return dict(self.execute('select * from queue'))
+        except sqlite3.OperationalError:
+            error('There is no queue.')
