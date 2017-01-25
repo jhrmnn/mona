@@ -126,7 +126,7 @@ class Cellar:
                 raise FileNotFoundError()
         return path.resolve()
 
-    def checkout_task(self, task, path):
+    def checkout_task(self, task, path, resolve=True):
         children = self.get_tasks(list(task['children'].values()))
         all_files = []
         for target, filehash in task['inputs'].items():
@@ -138,8 +138,7 @@ class Cellar:
         for target, (child, source) in task['childlinks'].items():
             childtask = children[task['children'][child]]
             (path/target).symlink_to(
-                self.get_file(childtask['outputs'][source])
-                if 'outputs' in childtask
+                self.get_file(childtask['outputs'][source]) if resolve
                 else Path(child)/source
             )
             all_files.append(target)
@@ -193,7 +192,7 @@ class Cellar:
                 with timing('bones'):
                     path.mkdir(parents=True)
                 with timing('checkout'):
-                    self.checkout_task(tasks[hashid], path)
+                    self.checkout_task(tasks[hashid], path, resolve=False)
                 paths[hashid] = path
         queue = list(paths.items())
         while queue:
@@ -208,6 +207,8 @@ class Cellar:
                     with timing('bones'):
                         (path/name).mkdir()
                     with timing('checkout'):
-                        self.checkout_task(tasks[childhash], path/name)
+                        self.checkout_task(
+                            tasks[childhash], path/name, resolve=False
+                        )
                     paths[childhash] = path/name
                     queue.append((childhash, path/name))

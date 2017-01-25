@@ -9,7 +9,7 @@ from caflib.Cellar import Cellar
 
 class Task:
     def __init__(self, task, cellar):
-        self.path = Path(tempfile.mkdtemp())
+        self.path = Path(tempfile.mkdtemp(prefix='caf'))
         self.inputs = cellar.checkout_task(task, self.path)
         self.command = task['command']
         self.state = (0, None)

@@ -1,8 +1,9 @@
 class Linker:
     """Represents a dependency between tasks."""
 
-    def __init__(self, *args, parent=None, child=None, **kwargs):
-        self.args = args
+    def __init__(self, name, *childlinks, parent=None, child=None, **kwargs):
+        self.name = name
+        self.childlinks = childlinks
         self.kwargs = kwargs
         self.parent = parent
         self.child = child
@@ -27,7 +28,8 @@ class Linker:
         if self.child and self.parent:
             self.parent.node.add_child(
                 self.child.node,
-                *self.args,
+                self.name,
+                *self.childlinks,
                 **self.kwargs
             )
             return self.parent
@@ -37,10 +39,9 @@ class Linker:
 class TargetGen:
     """Represents a target."""
 
-    def __init__(self, node, *args, **kwargs):
+    def __init__(self, node, path):
         self.node = node
-        self.args = args
-        self.kwargs = kwargs
+        self.path = path
 
     def __repr__(self):
         return f'TargetGen({self.node!r}, {repr(self.args)[1:-1]}, **{self.kwargs})'
@@ -48,7 +49,7 @@ class TargetGen:
     def __rmul__(self, task):
         if not isinstance(task, TaskGen):
             return NotImplemented
-        self.node.set_task(task.node, *self.args, **self.kwargs)
+        self.node.set_task(task.node, self.path)
         return task
 
     __rmatmul__ = __rmul__
@@ -64,11 +65,9 @@ class TaskGen:
         return f'TaskGen({self.node!r})'
 
     def __radd__(self, obj):
-        if isinstance(obj, TaskGen):
-            return obj + Linker() + self
         try:
             for x in obj:
                 x + self
             return self
-        except TypeError:
+        except TypeError as e:
             return NotImplemented

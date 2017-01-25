@@ -16,31 +16,11 @@ def config_items(config, group=None):
                 yield m['member'], section
 
 
-def normalize_str(s):
-    return re.sub(r'[^0-9a-zA-Z.()=+#]', '-', s)
-
-
-def slugify(x, top=True):
-    if isinstance(x, str):
-        return normalize_str(x)
-    if isinstance(x, bytes):
-        return normalize_str(x.encode())
-    if top:
-        try:
-            return '_'.join(_slugify(x) for x in x)
-        except TypeError:
-            pass
-    if isinstance(x, tuple):
-        return f'{normalize_str(str(x[0]))}={_slugify(x[1])}'
-    else:
-        try:
-            return ':'.join(_slugify(x) for x in x)
-        except TypeError:
-            return normalize_str(str(x))
-
-
-def _slugify(x):
-    return slugify(x, top=False)
+def slugify(s, path=False):
+    s = re.sub(r'[^:_0-9a-zA-Z.()=+#/]', '-', s)
+    if not path:
+        s = s.replace('/', '-')
+    return s
 
 
 def get_timestamp():

@@ -1,4 +1,4 @@
-from itertools import groupby
+# from itertools import groupby
 
 
 class Dataset:
@@ -24,20 +24,15 @@ class Dataset:
                 tasks[geomid] + ctx.link(fragment)
                 for fragment, geomid
                 in cluster.fragments.items()
-            ] + ctx() * ctx.target(
-                f'set_{self.name}', '_'.join(str(k) for k in key)
-            )
+            ] + ctx()
         ) for key, cluster in self.clusters.items()]
         tasktree.sort(key=lambda x: x[0])
-        for level in reversed(range(self.depth)):
-            tasktree = [(
-                groupkey,
-                [task + ctx.link(key[-1]) for key, task in group] + ctx()
-            ) for groupkey, group in groupby(tasktree, key=lambda x: x[0][:level])]
-        return tasktree[0][1]
+        return [
+            task + ctx.link('_'.join(str(k) for k in key))
+            for key, task in tasktree
+        ] + ctx()
 
     def __setitem__(self, key, value):
-        assert isinstance(key, tuple)
         if self.depth is None:
             self.depth = len(key)
         else:

@@ -3,7 +3,7 @@ from io import StringIO
 import json
 
 from caflib.Template import Template
-from caflib.Utils import slugify, listify
+from caflib.Utils import listify, slugify
 from caflib.Timing import timing
 from caflib.Logging import error
 from caflib.Generators import Linker, TargetGen, TaskGen
@@ -63,13 +63,11 @@ class TargetNode:
     def __str__(self):
         return f'/{self.path.parent}' if len(self.path.parts) > 1 else ''
 
-    def set_task(self, task, root, *paths):
-        self.path = Path(root)
-        for path in paths:
-            try:
-                self.path /= path
-            except TypeError as e:
-                error(f'{path!r} cannot be used in target definition')
+    def set_task(self, task, path):
+        try:
+            self.path = slugify(path, path=True)
+        except TypeError:
+            error(f'Target path {path!r} is not a string')
         self.task = task
         task.parents.append(self)
 
@@ -98,7 +96,10 @@ class TaskNode:
     def add_child(self, task, name, *childlinks, blocks=False):
         if self is task:
             error(f'Task cannot depend on itself: {self}')
-        name = slugify(name)
+        try:
+            name = slugify(name)
+        except TypeError:
+            error(f'Dependency name {name!r} is not a string')
         if name in self.children:
             error(f'Task already has child {name}: {self}')
         self.children[name] = task
@@ -115,20 +116,23 @@ class TaskNode:
 
     def seal(self, inputs):
         for filename, content in self.task.inputs.items():
-            sha1 = get_hash(content)
-            if sha1 not in inputs:
-                inputs[sha1] = content
-            self.task.inputs[filename] = sha1
-        myhash = get_hash(json.dumps({
+            hashid = get_hash(content)
+            if hashid not in inputs:
+                inputs[hashid] = content
+            self.task.inputs[filename] = hashid
+        blob = json.dumps({
             'command': self.task.command,
             'inputs': self.task.inputs,
             'symlinks': self.task.symlinks,
-            'children': {
-                name: TaskNode.hashes[child]
-                for name, child in self.children.items()
-            },
-            'childlinks': self.childlinks
-        }, sort_keys=True))
+            'children': list(sorted(
+                TaskNode.hashes[child] for child in self.children.values()
+            )),
+            'childlinks': {
+                target: (TaskNode.hashes[self.children[name]], source)
+                for target, (name, source) in self.childlinks.items()
+            }
+        }, sort_keys=True)
+        myhash = get_hash(blob)
         TaskNode.hashes[self] = myhash
 
 
@@ -258,8 +262,7 @@ class Context:
 
     __call__ = add_task
 
-    def link(self, *args, **kwargs):
-        return Linker(*args, **kwargs)
+    link = Linker
 
     def target(self, *args, **kwargs):
         targetnode = TargetNode()

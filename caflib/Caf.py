@@ -6,12 +6,13 @@ from base64 import b64encode
 from itertools import takewhile
 import imp
 from textwrap import dedent
+from collections import defaultdict
 import hashlib
 import sqlite3
 import subprocess as sp
 from configparser import ConfigParser
 
-from caflib.Utils import get_timestamp, cd, config_items, groupby
+from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Timing import timing
 from caflib.Logging import error, dep_error, info, Table, colstr
 from caflib.CLI import CLI, CLIExit
@@ -19,6 +20,7 @@ from caflib.Cellar import Cellar
 from caflib.Remote import Remote, Local
 from caflib.Configure import Context
 from caflib.Scheduler import Scheduler
+from caflib.Glob import match_glob
 
 try:
     from docopt import docopt, DocoptExit
@@ -59,6 +61,7 @@ class Caf(CLI):
             self.cscript = import_cscript(self.commands[('unpack',)]._func)
         self.out = Path(getattr(self.cscript, 'out', 'build'))
         self.top = Path(getattr(self.cscript, 'top', '.'))
+        self.paths = listify(getattr(self.cscript, 'paths', []))
         self.remotes = {
             name: Remote(r['host'], r['path'], self.top)
             for name, r in config_items(self.config, 'remote')
@@ -253,30 +256,45 @@ def make(caf, profile: '--profile', n: ('-j', int), targets: 'TARGET',
     """
     if do_conf:
         conf(['caf', 'conf'], caf)
-    scheduler = Scheduler(caf.cafdir)
-    for task in scheduler.tasks():
-        with cd(task.path):
-            with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
-                try:
-                    sp.check_call(task.command, shell=True, stdout=stdout, stderr=stderr)
-                except sp.CalledProcessError as exc:
-                    task.error(exc)
-                else:
-                    task.done()
-    # if profile:
-    #     for _ in range(n):
-    #         cmd = [
-    #             f'{os.environ["HOME"]}/.config/caf/worker_{profile}',
-    #             '-v' if verbose else None,
-    #             ('--limit', limit),
-    #             ('--queue', queue),
-    #             targets,
-    #             ('--maxdepth', maxdepth)
-    #         ]
-    #         try:
-    #             sp.check_call(filter_cmd(cmd))
-    #         except sp.CalledProcessError:
-    #             error(f'Running ~/.config/caf/worker_{profile} did not succeed.')
+    if profile:
+        pass
+        # cmd = os.path.expanduser(f'~/.config/caf/worker_{profile}')
+        # if verbose:
+        #     cmd += ' -v'
+        # if limit:
+        #     cmd += f' --limit {limit}'
+        # if queue:
+        #     cmd += f' --queue {queue}'
+        #
+        # for _ in range(n):
+        #     cmd = [
+        #         f'{os.environ["HOME"]},
+        #         '-v' if verbose else None,
+        #         ('--limit', limit),
+        #         ('--queue', queue),
+        #         targets,
+        #         ('--maxdepth', maxdepth)
+        #     ]
+        #     try:
+        #         sp.check_call(filter_cmd(cmd))
+        #     except sp.CalledProcessError:
+        #         error(f'Running ~/.config/caf/worker_{profile} did not succeed.')
+    else:
+        scheduler = Scheduler(caf.cafdir)
+        for task in scheduler.tasks():
+            with cd(task.path):
+                with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
+                    try:
+                        sp.check_call(
+                            task.command,
+                            shell=True,
+                            stdout=stdout,
+                            stderr=stderr
+                        )
+                    except sp.CalledProcessError as exc:
+                        task.error(exc)
+                    else:
+                        task.done()
     # else:
     #     if queue or last_queue:
     #         if last_queue:
@@ -508,33 +526,13 @@ def list_profiles(caf, _):
 
 
 @Caf.command()
-def status(caf):
+def status(caf, patterns: 'PATH'):
     """
     Print number of initialized, running and finished tasks.
 
     Usage:
-        caf status
+        caf status [PATH...]
     """
-    cellar = Cellar(caf.cafdir)
-    scheduler = Scheduler(caf.cafdir)
-    try:
-        states = dict(scheduler.execute('select * from queue'))
-    except sqlite3.OperationalError:
-        error('There is no queue.')
-    cellar.execute('drop table if exists current_tasks')
-    cellar.execute(
-        'create temporary table current_tasks(taskhash text, state integer)'
-    )
-    cellar.executemany('insert into current_tasks values (?,?)', (
-        states.items()
-    ))
-    states = cellar.execute(
-        'select path, state from current_tasks join '
-        '(select taskhash, path from targets join '
-        '(select id from builds order by created desc limit 1) b '
-        'on targets.buildid = b.id) build '
-        'on current_tasks.taskhash = build.taskhash'
-    ).fetchall()
     colors = 'yellow green red normal'.split()
     print('number of {} tasks:'.format('/'.join(
         colstr(s, color) for s, color in zip(
@@ -542,22 +540,42 @@ def status(caf):
             colors
         )
     )))
+    patterns = patterns or caf.paths
+    if not patterns:
+        return
+    cellar = Cellar(caf.cafdir)
+    scheduler = Scheduler(caf.cafdir)
+    tree = cellar.virtual_checkout()
+    all_hashids = defaultdict(list)
+    for patt in patterns:
+        matched_any = False
+        for path, hashid in tree.items():
+            matched = match_glob(path, patt)
+            if matched:
+                all_hashids[matched].append(hashid)
+                matched_any = True
+        if not matched_any:
+            all_hashids[colstr(patt, 'red')] = []
+    try:
+        states = dict(scheduler.execute('select * from queue'))
+    except sqlite3.OperationalError:
+        error('There is no queue.')
     table = Table(
         align=['<', *len(colors)*['>']],
-        sep=[' ', *(len(colors)-1)*['/']]
+        sep=['   ', *(len(colors)-1)*['/']]
     )
-    for root, group in groupby(states, key=lambda r: r[0].split('/', 1)[0]):
+    for pattern, hashids in all_hashids.items():
         grouped = {
             state: subgroup for state, subgroup
-            in groupby(group, key=lambda r: r[1])
+            in groupby(hashids, key=lambda h: states[h])
         }
         stats = [len(grouped.get(state, [])) for state in [2, 1, -1]]
-        stats.append(len(group))
+        stats.append(len(hashids))
         stats = [
             colstr(s, color) if s else colstr(s, 'normal')
             for s, color in zip(stats, colors)
         ]
-        table.add_row(root + ':', *stats)
+        table.add_row(pattern, *stats)
         for path, _ in grouped.get(2, []):
             table.add_row(f"{colstr('>>', 'yellow')} {path}", free=True)
     print(table)
