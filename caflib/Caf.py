@@ -14,7 +14,7 @@ import signal
 
 from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Timing import timing
-from caflib.Logging import error, info, Table, colstr, warn
+from caflib.Logging import error, info, Table, colstr, warn, no_cafdir
 from caflib.CLI import CLI, CLIExit
 from caflib.Cellar import Cellar
 from caflib.Remote import Remote, Local
@@ -65,11 +65,9 @@ class Caf(CLI):
         self.remotes['local'] = Local()
 
     def __call__(self, argv):
-        if not self.cafdir.is_dir():
-            self.cafdir.mkdir()
-            info(f'Initializing an empty repository in {self.cafdir.resolve()}.')
-        with (self.cafdir/'log').open('a') as f:
-            f.write(f'{get_timestamp()}: {" ".join(argv)}\n')
+        if self.cafdir.exists():
+            with (self.cafdir/'log').open('a') as f:
+                f.write(f'{get_timestamp()}: {" ".join(argv)}\n')
         try:
             super().__call__(argv)  # try CLI as if local
         except CLIExit as e:  # store exception for reraise if remote fails too
@@ -184,12 +182,16 @@ def conf(caf):
     """
     if not hasattr(caf.cscript, 'configure'):
         error('cscript has to contain function configure(ctx)')
-    if not (caf.cafdir/'objects').exists():
+    if not caf.cafdir.is_dir():
+        caf.cafdir.mkdir()
+        info(f'Initializing an empty repository in {caf.cafdir.resolve()}.')
         if 'cache' in caf.config['core']:
             ts = get_timestamp()
             path = Path(caf.config['core']['cache'])/f'{Path.cwd().name}_{ts}'
             path.mkdir()
             (caf.cafdir/'objects').symlink_to(path)
+        else:
+            (caf.cafdir/'objects').mkdir()
     cellar = Cellar(caf.cafdir)
     ctx = Context(caf.top, cellar)
     with timing('evaluate cscript'):
@@ -587,8 +589,11 @@ def remote_add(caf, _, url: 'URL', name: 'NAME'):
     host, path = url.split(':')
     name = name or host
     config[f'remote "{name}"'] = {'host': host, 'path': path}
-    with (caf.cafdir/'config.ini').open('w') as f:
-        config.write(f)
+    try:
+        with (caf.cafdir/'config.ini').open('w') as f:
+            config.write(f)
+    except FileNotFoundError:
+        no_cafdir()
 
 
 @caf_remote.add_command(name='path')

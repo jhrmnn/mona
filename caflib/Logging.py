@@ -52,6 +52,10 @@ def error(s):
     sys.exit(1)
 
 
+def no_cafdir():
+    error('Not a caf repository')
+
+
 _reports = []
 
 

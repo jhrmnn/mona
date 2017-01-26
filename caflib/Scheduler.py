@@ -5,7 +5,7 @@ import tempfile
 import shutil
 
 from caflib.Cellar import Cellar, State
-from caflib.Logging import error, debug
+from caflib.Logging import error, debug, no_cafdir
 from caflib.Utils import get_timestamp
 
 
@@ -27,7 +27,10 @@ class Task:
 
 class Scheduler:
     def __init__(self, path, url=None, tmpdir=None):
-        self.db = sqlite3.connect(str(Path(path)/'queue.db'))
+        try:
+            self.db = sqlite3.connect(str(Path(path)/'queue.db'))
+        except sqlite3.OperationalError:
+            no_cafdir()
         self.cellar = Cellar(path)
         self.url = url
         self.tmpdir = tmpdir

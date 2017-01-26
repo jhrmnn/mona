@@ -5,7 +5,7 @@ import hashlib
 from datetime import datetime
 from collections import defaultdict, OrderedDict
 
-from caflib.Logging import info
+from caflib.Logging import info, no_cafdir
 from caflib.Utils import make_nonwritable
 from caflib.Timing import timing
 from caflib.Glob import match_glob
@@ -28,7 +28,10 @@ class Cellar:
         path = Path(path).resolve()
         self.objects = path/'objects'
         self.objectdb = set()
-        self.db = sqlite3.connect(str(path/'index.db'))
+        try:
+            self.db = sqlite3.connect(str(path/'index.db'))
+        except sqlite3.OperationalError:
+            no_cafdir()
         self.execute(
             'create table if not exists tasks ('
             'hash text primary key, task text, created text, state integer'
