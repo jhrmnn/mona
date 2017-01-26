@@ -10,6 +10,7 @@ import hashlib
 import subprocess as sp
 from configparser import ConfigParser
 import shutil
+import signal
 
 from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Timing import timing
@@ -229,6 +230,11 @@ def conf(caf):
     scheduler.submit(tasks)
 
 
+def sig_handler(sig, frame):
+    print(f'Received signal {signal.Signals(sig).name}')
+    raise KeyboardInterrupt
+
+
 @Caf.command(triggers=['conf make'])
 def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
          limit: ('--limit', int), queue: '--queue', dry: '--dry',
@@ -273,6 +279,8 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         hashes = set(hashid for hashid, _ in cellar.glob(*patterns))
     else:
         hashes = None
+    signal.signal(signal.SIGTERM, sig_handler)
+    signal.signal(signal.SIGXCPU, sig_handler)
     for task in scheduler.tasks(hashes=hashes, limit=limit):
         with cd(task.path):
             with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
