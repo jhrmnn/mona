@@ -545,17 +545,17 @@ def status(caf, patterns: 'PATH'):
             for s, color in zip(stats, colors)
         ]
         table.add_row(pattern, *stats)
-        for color, state in [
-                ('yellow', State.RUNNING),
-                ('blue', State.INTERRUPTED),
-                ('red', State.ERROR),
-        ]:
-            for hashid, path in grouped.get(state, []):
-                table.add_row(
-                    f"{colstr('>>', color)} {path} "
-                    f"{colstr(queue[hashid][2], color)} {queue[hashid][3]}",
-                    free=True
-                )
+    for color, state in [
+            ('yellow', State.RUNNING),
+            ('blue', State.INTERRUPTED),
+            ('red', State.ERROR),
+    ]:
+        for hashid, path in grouped.get(state, []):
+            table.add_row(
+                f"{colstr('>>', color)} {path} "
+                f"{colstr(queue[hashid][2], color)} {queue[hashid][3]}",
+                free=True
+            )
     print(table)
 
 
@@ -635,6 +635,21 @@ def check(caf, remotes: ('REMOTE', 'proc_remote')):
         remote.check(scheduler)
 
 
+@Caf.command()
+def fetch(caf, paths: 'PATH', queue: '--queue'):
+    """
+    Fetch targets from remote.
+
+    Usage:
+        caf fetch REMOTE [PATH...] [-q]
+
+    Options:
+        -q, --queue       Only mark tasks in queue as finished on remote.
+    """
+    for remote in remotes:
+        remote.fetch(targets, caf.cache, caf.out, dry=dry, get_all=get_all, follow=follow, only_mark=only_mark)
+
+
 # @Caf.command()
 # def push(caf, targets: 'TARGET', dry: '--dry', remotes: ('REMOTE', 'proc_remote')):
 #     """
@@ -648,25 +663,6 @@ def check(caf, remotes: ('REMOTE', 'proc_remote')):
 #     """
 #     for remote in remotes:
 #         remote.push(targets, caf.cache, caf.out, dry=dry)
-
-
-# @Caf.command()
-# def fetch(caf, dry: '--dry', targets: 'TARGET', remotes: ('REMOTE', 'proc_remote'),
-#           get_all: '--all', follow: '--follow', only_mark: '--mark'):
-#     """
-#     Fetch targets from remote and store them in local Cellar.
-#
-#     Usage:
-#         caf fetch REMOTE [TARGET...] [--dry] [--all] [--follow] [--mark]
-#
-#     Options:
-#         -n, --dry         Dry run (do not write to disk).
-#         --all             Do not check which tasks are finished.
-#         --follow          Follow dependencies.
-#         --mark            Do not really fetch, only mark with remote seals.
-#     """
-#     for remote in remotes:
-#         remote.fetch(targets, caf.cache, caf.out, dry=dry, get_all=get_all, follow=follow, only_mark=only_mark)
 
 
 @Caf.command()
