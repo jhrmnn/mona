@@ -12,17 +12,14 @@ from configparser import ConfigParser
 
 from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Timing import timing
-from caflib.Logging import error, dep_error, info, Table, colstr
+from caflib.Logging import error, info, Table, colstr, warn
 from caflib.CLI import CLI, CLIExit
 from caflib.Cellar import Cellar
 from caflib.Remote import Remote, Local
 from caflib.Configure import Context
 from caflib.Scheduler import Scheduler, State
 
-try:
-    from docopt import docopt, DocoptExit
-except ImportError:
-    dep_error('docopt')
+from docopt import docopt, DocoptExit
 
 
 def import_cscript(unpack):
@@ -178,6 +175,8 @@ def get_leafs(conf):
 @Caf.command()
 def conf(caf):
     """
+    Prepare tasks -- process cscript.py and store tasks in cellar.
+
     Usage:
         caf conf
     """
@@ -218,10 +217,12 @@ def conf(caf):
     }
     with timing('store build'):
         tasks = dict(cellar.store_build(tasks, targets, inputs))
-    labels = {}
+    labels = {hashid: None for hashid in tasks}
     for path, hashid in cellar.virtual_checkout(hashes=tasks.keys()).items():
-        if hashid not in labels:
+        if not labels[hashid]:
             labels[hashid] = path
+    if any(label is None for label in labels.values()):
+        warn('Some tasks are not accessible.')
     tasks = [(hashid, state, labels[hashid]) for hashid, state in tasks.items()]
     scheduler = Scheduler(caf.cafdir)
     scheduler.submit(tasks)
@@ -229,22 +230,21 @@ def conf(caf):
 
 @Caf.command(triggers=['conf make'])
 def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
-         limit: ('--limit', int), queue: '--queue',
-         dry: '--dry', do_conf: 'conf',
-         last_queue: '--last'):
+         limit: ('--limit', int), queue: '--queue', dry: '--dry',
+         do_conf: 'conf', last_queue: '--last'):
     """
     Execute build tasks.
 
     Usage:
-        caf [conf] make [-l N] [-p PROFILE [-j N] | --dry] [--last | -q URL | PATH...]
+        caf [conf] make [-l N] [-p PROFILE [-j N] | --dry] [PATH... | -q URL | --last]
 
     Options:
-        -n, --dry                  Dry run (do not write to disk).
+        -l, --limit N              Limit number of tasks to N.
         -p, --profile PROFILE      Run worker via ~/.config/caf/worker_PROFILE.
+        -j N                       Number of launched workers [default: 1].
+        -n, --dry                  Dry run (do not write to disk).
         -q, --queue URL            Take tasks from web queue.
         --last                     As above, but use the last submitted queue.
-        -j N                       Number of launched workers [default: 1].
-        -l, --limit N              Limit number of tasks to N.
     """
     if do_conf:
         conf(['caf', 'conf'], caf)
@@ -284,21 +284,25 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
                     )
                 except sp.CalledProcessError as exc:
                     task.error(exc)
+                except KeyboardInterrupt:
+                    task.interrupt()
                 else:
                     task.done()
 
 
 @Caf.command()
-def checkout(caf, path: '--path'):
+def checkout(caf, path: '--path', patterns: 'PATH'):
     """
+    Create the dependecy tree physically on a file system.
+
     Usage:
-        caf checkout [-p PATH]
+        caf checkout [-p PATH] [PATH...]
 
     Options:
         -p, --path PATH          Where to checkout [default: build].
     """
     cellar = Cellar(caf.cafdir)
-    cellar.checkout(path)
+    cellar.checkout(path, patterns=patterns)
 
 
 # @Caf.command(triggers=['conf submit'])
@@ -542,19 +546,19 @@ def remote_path(caf, _, name: 'NAME'):
     print('{0[host]}:{0[path]}'.format(caf.config[f'remote "{name}"']))
 
 
-# @Caf.command()
-# def update(caf, delete: '--delete', remotes: ('REMOTE', 'proc_remote')):
-#     """
-#     Sync the contents of . to remote excluding .caf/db and ./build.
-#
-#     Usage:
-#         caf update REMOTE [--delete]
-#
-#     Options:
-#         --delete                   Delete files when syncing.
-#     """
-#     for remote in remotes:
-#         remote.update(delete=delete)
+@Caf.command()
+def update(caf, delete: '--delete', remotes: ('REMOTE', 'proc_remote')):
+    """
+    Update a remote.
+
+    Usage:
+        caf update REMOTE [--delete]
+
+    Options:
+        --delete                   Delete files when syncing.
+    """
+    for remote in remotes:
+        remote.update(delete=delete)
 
 
 # @Caf.command()

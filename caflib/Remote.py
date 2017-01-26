@@ -1,6 +1,8 @@
-import subprocess
+import subprocess as sp
+import os
+
+
 from caflib.Logging import info, error
-from caflib.Utils import filter_cmd
 
 
 class Remote:
@@ -10,33 +12,37 @@ class Remote:
         self.top = top
 
     def update(self, delete=False):
-        info('Updating {.host}...'.format(self))
-        subprocess.check_call(['ssh', self.host, 'mkdir -p {.path}'.format(self)])
-        paths = subprocess.check_output(['git', 'ls-files']).decode().split()
-        paths = [p for p in paths if not p.startswith('build/')]
+        info(f'Updating {self.host}...')
+        sp.check_call(['ssh', self.host, f'mkdir -p {self.path}'])
+        exclude = []
+        for file in ['.cafignore', os.path.expanduser('~/.config/caf/ignore')]:
+            if os.path.exists(file):
+                with open(file) as f:
+                    exclude.extend(l.strip() for l in f.readlines())
         cmd = [
-            'rsync',
-            '-cirl',
-            '--delete' if delete else None,
-            '--exclude=*.pyc',
-            '--exclude=__pycache__',
-            '--files-from=-',
-            '.',
-            '{0.host}:{0.path}'.format(self)
+            'rsync', '-cirl', '--copy-unsafe-links',
+            '--exclude=.*', '--exclude=build', '--exclude=*.pyc',
+            '--exclude=__pycache__'
         ]
-        p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
-        p.communicate('\n'.join(paths).encode())
+        if delete:
+            cmd += '--delete'
+        cmd.extend(f'--exclude={patt}' for patt in exclude)
+        cmd.extend(['caf', 'cscript.py', str(self.top)])
+        if os.path.exists('caflib'):
+            cmd.append('caflib')
+        cmd.append(f'{self.host}:{self.path}')
+        sp.check_call(cmd)
 
     def command(self, cmd, get_output=False):
         if not get_output:
             info('Running `./caf {}` on {.host}...'.format(cmd, self))
-        caller = subprocess.check_output if get_output else subprocess.check_call
+        caller = sp.check_output if get_output else sp.check_call
         try:
             output = caller([
                 'ssh', '-t', '-o', 'LogLevel=QUIET',
                 self.host,
-                'sh -c "cd {.path} && exec python3.5 -u caf {}"'.format(self, cmd)])
-        except subprocess.CalledProcessError:
+                'sh -c "cd {.path} && exec python3 -u caf {}"'.format(self, cmd)])
+        except sp.CalledProcessError:
             error('Command `{}` on {.host} ended with error'
                   .format(cmd, self))
         return output.strip() if get_output else None
@@ -95,7 +101,7 @@ class Remote:
     #            '--files-from=-',
     #            '{0.host}:{0.path}/{1}'.format(self, cache),
     #            str(cache)]
-    #     p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
+    #     p = sp.Popen(filter_cmd(cmd), stdin=sp.PIPE)
     #     p.communicate('\n'.join(paths).encode())
     #
     # def push(self, targets, cache, root, dry=False):
@@ -115,12 +121,11 @@ class Remote:
     #            '--files-from=-',
     #            str(cache),
     #            '{0.host}:{0.path}/{1}'.format(self, cache)]
-    #     p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
+    #     p = sp.Popen(filter_cmd(cmd), stdin=sp.PIPE)
     #     p.communicate('\n'.join(paths).encode())
 
     def go(self):
-        subprocess.call(['ssh', '-t', self.host,
-                         'cd {.path} && exec $SHELL'.format(self)])
+        sp.call(['ssh', '-t', self.host, f'cd {self.path} && exec $SHELL'])
 
 
 class Local:
@@ -132,13 +137,12 @@ class Local:
 
     def command(self, cmd, get_output=False):
         if not get_output:
-            info('Running `./caf {}` on {.host}...'.format(cmd, self))
-        caller = subprocess.check_output if get_output else subprocess.check_call
+            info(f'Running `./caf {cmd}` on {self.host}...')
+        caller = sp.check_output if get_output else sp.check_call
         try:
-            output = caller('sh -c "python3 -u caf {}"'.format(cmd), shell=True)
-        except subprocess.CalledProcessError:
-            error('Command `{}` on {.host} ended with error'
-                  .format(cmd, self))
+            output = caller(f'sh -c "python3 -u caf {cmd}"', shell=True)
+        except sp.CalledProcessError:
+            error(f'Command `{cmd}` on {self.host} ended with error')
         return output.strip() if get_output else None
 
     def check(self, root):

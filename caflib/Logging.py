@@ -64,13 +64,6 @@ def report(f):
     return f
 
 
-def dep_error(dep):
-    print(colstr('caf requires {}'.format(dep), 'red'))
-    print('Install all dependencies with\n\n'
-          '    pip3 install docopt pyyaml progressbar2')
-    sys.exit(1)
-
-
 class TableException(Exception):
     pass
 

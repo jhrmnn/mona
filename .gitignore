@@ -1,7 +1,6 @@
-/build
-/_caf
-/.caf
 *.pyc
 __pycache__
-/.caf-*
+/build
+/.caf
 /docs/_build
+/src

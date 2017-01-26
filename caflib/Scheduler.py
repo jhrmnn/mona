@@ -5,7 +5,7 @@ import tempfile
 import shutil
 
 from caflib.Cellar import Cellar
-from caflib.Logging import error
+from caflib.Logging import error, debug
 from caflib.Utils import get_timestamp
 
 
@@ -28,6 +28,9 @@ class Task:
 
     def done(self):
         self.state = (State.DONE, None)
+
+    def interrupt(self):
+        self.state = (State.INTERRUPTED, None)
 
 
 class Scheduler:
@@ -82,6 +85,7 @@ class Scheduler:
                 print(f'{nrun} tasks ran, quitting')
                 break
             states = self.get_states()
+            was_interrupted = False
             for hashid, state in states.items():
                 if hashes and hashid not in hashes:
                     continue
@@ -106,6 +110,7 @@ class Scheduler:
                         (hashid,)
                     )
                 tmppath = Path(tempfile.mkdtemp(prefix='caf', dir=self.tmpdir))
+                debug(f'Executing {label} in {tmppath}')
                 self.execute(
                     'update queue set path = ? where taskhash = ?',
                     (str(tmppath), hashid)
@@ -113,7 +118,10 @@ class Scheduler:
                 inputs = self.cellar.checkout_task(task, tmppath)
                 task = Task(task['command'], tmppath)
                 yield task
-                if task.state[0] == State.DONE:
+                if task.state[0] == State.INTERRUPTED:
+                    was_interrupted = True
+                    break
+                elif task.state[0] == State.DONE:
                     outputs = {}
                     for filepath in tmppath.glob('**/*'):
                         rel_path = filepath.relative_to(tmppath)
@@ -127,7 +135,7 @@ class Scheduler:
                         (State.DONE, hashid)
                     )
                     print(f'{get_timestamp()}: {label} finished successfully')
-                else:
+                elif task.state[0] == State.ERROR:
                     error(str(task.state[1]))
                     tmppath.rename(tmppath.name)
                     nerror += 1
@@ -140,6 +148,9 @@ class Scheduler:
                 break
             else:
                 print(f'No available tasks to do, quitting')
+                break
+            if was_interrupted:
+                print(f'{get_timestamp()}: Interrupted, quitting')
                 break
         print(f'Executed {nrun} tasks')
 

@@ -1,6 +1,7 @@
 from pathlib import Path
 from io import StringIO
 import json
+import os
 
 from caflib.Template import Template
 from caflib.Utils import listify, slugify
@@ -124,13 +125,11 @@ class TaskNode:
             'command': self.task.command,
             'inputs': self.task.inputs,
             'symlinks': self.task.symlinks,
-            'children': list(sorted(
-                TaskNode.hashes[child] for child in self.children.values()
-            )),
-            'childlinks': {
-                target: (TaskNode.hashes[self.children[name]], source)
-                for target, (name, source) in self.childlinks.items()
-            }
+            'children': {
+                name: TaskNode.hashes[child]
+                for name, child in self.children.items()
+            },
+            'childlinks': self.childlinks
         }, sort_keys=True)
         myhash = get_hash(blob)
         TaskNode.hashes[self] = myhash
@@ -193,10 +192,10 @@ class Task:
             for file_spec in listify(self.consume('files')):
                 if isinstance(file_spec, tuple):
                     path, target = file_spec
-                    self.inputs[target] = ctx.get_sources(path)[path]
+                    self.inputs[target] = ctx.get_sources(ctx.top/path)[path]
                 elif isinstance(file_spec, str):
                     path = file_spec
-                    for path, contents in ctx.get_sources(path).items():
+                    for path, contents in ctx.get_sources(ctx.top/path).items():
                         self.inputs[path] = contents
                 else:
                     error('Unexpected file specification: {file_spec}')
@@ -209,6 +208,8 @@ class Task:
                     source = target = file_spec
                 else:
                     error('Unexpected template specification: {file_spec}')
+                if isinstance(source, os.PathLike):
+                    source = ctx.top/source
                 template = Template(source)
                 processed, used = template.render(self.attrs)
                 self.inputs[target] = processed

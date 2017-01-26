@@ -1,12 +1,17 @@
 from textwrap import dedent
 from collections import OrderedDict
+import sys
 
-from caflib.Logging import dep_error, Table
+from caflib.Logging import Table, colstr
 
 try:
     from docopt import docopt
 except ImportError:
-    dep_error('docopt')
+    print(colstr('Requires docopt', 'red'))
+    print(
+        'Install with\n\n'
+        '    pip3 install docopt')
+    sys.exit(1)
 
 
 class Command:

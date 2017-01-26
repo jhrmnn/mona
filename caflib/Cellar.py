@@ -6,6 +6,7 @@ from datetime import datetime
 from collections import defaultdict, OrderedDict
 
 
+from caflib.Logging import info
 from caflib.Utils import make_nonwritable
 from caflib.Timing import timing
 from caflib.Glob import match_glob
@@ -92,6 +93,16 @@ class Cellar:
         self.commit()
 
     def store_build(self, tasks, targets, inputs):
+        self.execute('drop table if exists current_tasks')
+        self.execute('create temporary table current_tasks(hash text)')
+        self.executemany('insert into current_tasks values (?)', (
+            (key,) for key in tasks.keys()
+        ))
+        res = self.execute(
+            'select tasks.hash from tasks join current_tasks '
+            'on current_tasks.hash = tasks.hash'
+        ).fetchall()
+        info(f'Will store {len(tasks)-len(res)} new tasks.')
         now = datetime.today().isoformat(timespec='seconds')
         self.executemany('insert or ignore into tasks values (?,?,?,?)', (
             (hashid, json.dumps(task), now, 0) for hashid, task in tasks.items()
@@ -104,14 +115,9 @@ class Cellar:
         for hashid, text in inputs.items():
             self.store_text(hashid, text)
         self.commit()
-        self.execute('drop table if exists current_tasks')
-        self.execute('create temporary table current_tasks(taskhash text)')
-        self.executemany('insert into current_tasks values (?)', (
-            (key,) for key in tasks.keys()
-        ))
         return self.execute(
-            'select hash, state from tasks join current_tasks '
-            'on tasks.hash = current_tasks.taskhash',
+            'select tasks.hash, state from tasks join current_tasks '
+            'on tasks.hash = current_tasks.hash',
         ).fetchall()
 
     def get_task(self, hashid):
@@ -190,7 +196,7 @@ class Cellar:
                     tasks[childhash] = self.get_task(childhash)
                 targets.append((childhash, childpath))
         if objects:
-            tree = [(path, tasks[hashid]) for path, hashid in tree]
+            tree = [(path, (hashid, tasks[hashid])) for path, hashid in tree]
         tree = OrderedDict(sorted(tree))
         return tree
 
@@ -198,6 +204,7 @@ class Cellar:
         tree = self.virtual_checkout(hashes=hashes)
         groups = defaultdict(list)
         for patt in patterns:
+            matched_any = False
             for path, hashid in tree.items():
                 matched = match_glob(path, patt)
                 if matched:
@@ -214,37 +221,24 @@ class Cellar:
                 if match_glob(path, patt):
                     yield hashid, path
 
-    def checkout(self, root):
-        tasks, targets = self.get_last_build()
+    def checkout(self, root, patterns=None):
         root = Path(root).resolve()
-        paths = {}
-        for hashid, path in targets:
-            path = root/path
-            if hashid in paths:
-                with timing('bones'):
-                    path.parent.mkdir(parents=True, exist_ok=True)
-                    path.symlink_to(paths[hashid])
-            else:
-                with timing('bones'):
-                    path.mkdir(parents=True)
-                with timing('checkout'):
-                    self.checkout_task(tasks[hashid], path, resolve=False)
-                paths[hashid] = path
-        queue = list(paths.items())
-        while queue:
-            hashid, path = queue.pop()
-            for name, childhash in tasks[hashid]['children'].items():
-                if childhash in paths:
-                    with timing('bones'):
-                        (path/name).symlink_to(paths[childhash])
+        tree = self.virtual_checkout(objects=True)
+        patterns = patterns or ['**']
+        checked = {}
+        for patt in patterns:
+            for path, (hashid, task) in tree.items():
+                if not match_glob(path, patt):
+                    continue
+                rootpath = root/path
+                if hashid in checked:
+                    if not rootpath.exists():
+                        with timing('bones'):
+                            rootpath.parent.mkdir(parents=True, exist_ok=True)
+                            rootpath.symlink_to(checked[hashid])
                 else:
-                    with timing('sql'):
-                        tasks[childhash] = self.get_task(childhash)
                     with timing('bones'):
-                        (path/name).mkdir()
+                        rootpath.mkdir(parents=True)
                     with timing('checkout'):
-                        self.checkout_task(
-                            tasks[childhash], path/name, resolve=False
-                        )
-                    paths[childhash] = path/name
-                    queue.append((childhash, path/name))
+                        self.checkout_task(task, rootpath, resolve=False)
+                    checked[hashid] = rootpath
