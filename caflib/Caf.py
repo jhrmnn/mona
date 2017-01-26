@@ -103,14 +103,14 @@ class Caf(CLI):
         if args['COMMAND'] in ['conf', 'make']:
             for remote in remotes:
                 remote.update()
-        if 'make' in rargs and not rargs['conf'] and not args['--no-check']:
+        if 'make' in rargs and not rargs['conf']:
             for remote in remotes:
                 remote.check(self.out)
         for remote in remotes:
             remote.command(' '.join(
                 arg if ' ' not in arg else repr(arg) for arg in rargv[1:]
             ))
-            if 'make' in rargs and rargs['conf'] and not args['--no-check']:
+            if 'make' in rargs and rargs['conf']:
                 remote.check(self.out)
 
     def __format__(self, fmt):
@@ -120,13 +120,7 @@ class Caf(CLI):
             s = """\
             Usage:
                 caf COMMAND [ARGS...]
-                caf [--no-check] REMOTE COMMAND [ARGS...]
-            """.rstrip()
-            return dedent(s)
-        if fmt == 'options':
-            s = """\
-            Options:
-                --no-check           Do not check remote cellar.
+                caf REMOTE COMMAND [ARGS...]
             """.rstrip()
             return dedent(s)
         return super().__format__(fmt)
@@ -185,7 +179,7 @@ def conf(caf):
     if not caf.cafdir.is_dir():
         caf.cafdir.mkdir()
         info(f'Initializing an empty repository in {caf.cafdir.resolve()}.')
-        if 'cache' in caf.config['core']:
+        if caf.config.has_option('core', 'cache'):
             ts = get_timestamp()
             path = Path(caf.config['core']['cache'])/f'{Path.cwd().name}_{ts}'
             path.mkdir()
@@ -507,6 +501,11 @@ def status(caf, patterns: 'PATH'):
     Usage:
         caf status [PATH...]
     """
+    cellar = Cellar(caf.cafdir)
+    scheduler = Scheduler(caf.cafdir)
+    patterns = patterns or caf.paths
+    if not patterns:
+        return
     colors = 'yellow green red normal'.split()
     print('number of {} tasks:'.format('/'.join(
         colstr(s, color) for s, color in zip(
@@ -514,11 +513,6 @@ def status(caf, patterns: 'PATH'):
             colors
         )
     )))
-    patterns = patterns or caf.paths
-    if not patterns:
-        return
-    cellar = Cellar(caf.cafdir)
-    scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
     groups = cellar.dglob(*patterns, hashes=states.keys())
     queue = scheduler.get_queue()
@@ -622,16 +616,17 @@ def update(caf, delete: '--delete', remotes: ('REMOTE', 'proc_remote')):
         remote.update(delete=delete)
 
 
-# @Caf.command()
-# def check(caf, remotes: ('REMOTE', 'proc_remote')):
-#     """
-#     Verify that hashes of the local and remote tasks match.
-#
-#     Usage:
-#         caf check REMOTE
-#     """
-#     for remote in remotes:
-#         remote.check(caf.out)
+@Caf.command()
+def check(caf, remotes: ('REMOTE', 'proc_remote')):
+    """
+    Verify that hashes of the local and remote tasks match.
+
+    Usage:
+        caf check REMOTE
+    """
+    scheduler = Scheduler(caf.cafdir)
+    for remote in remotes:
+        remote.check(scheduler)
 
 
 # @Caf.command()

@@ -35,39 +35,46 @@ class Remote:
 
     def command(self, cmd, get_output=False):
         if not get_output:
-            info('Running `./caf {}` on {.host}...'.format(cmd, self))
+            info(f'Running `./caf {cmd}` on {self.host}...')
         caller = sp.check_output if get_output else sp.check_call
         try:
             output = caller([
                 'ssh', '-t', '-o', 'LogLevel=QUIET',
                 self.host,
-                'sh -c "cd {.path} && exec python3 -u caf {}"'.format(self, cmd)])
+                f'sh -c "cd {self.path} && exec python3 -u caf {cmd}"'
+            ])
         except sp.CalledProcessError:
-            error('Command `{}` on {.host} ended with error'
-                  .format(cmd, self))
+            error(f'Command `{cmd}` on {self.host} ended with error')
         return output.strip() if get_output else None
 
-    # def check(self, root):
-    #     info('Checking {}...'.format(self.host))
-    #     here = {}
-    #     for path in find_tasks(root):
-    #         cellarpath = get_stored(path, require=None)
-    #         if cellarpath:
-    #             here[str(path)] = str(cellarpath)
-    #     there = dict(l.split() for l
-    #                  in self.command('list tasks --stored --both', get_output=True)
-    #                  .decode().strip().split('\n'))
-    #     missing = []
-    #     for task, target in here.items():
-    #         if target != there.get(task):
-    #             missing.append((task, target, there.get(task)))
-    #     if missing:
-    #         for item in missing:
-    #             print('{}: {} is not {}'.format(*item))
-    #         error('Local Tasks are not in remote Cellar')
-    #     else:
-    #         info('Local Tasks are in remote Cellar.')
-    #
+    def check(self, scheduler):
+        info(f'Checking {self.host}...')
+        local_hashes = {
+            label: hashid for hashid, (_, label, *_)
+            in scheduler.get_queue().items()
+        }
+        remote_hashes = dict(
+            reversed(l.split()) for l in self.command(
+                'list tasks --both', get_output=True
+            ).decode().strip().split('\n')
+        )
+        is_ok = True
+        for path, hashid in local_hashes.items():
+            if path not in remote_hashes:
+                print(f'{path} does not exist on remote')
+                is_ok = False
+            elif remote_hashes[path] != hashid:
+                print(f'{path} has a different hash on remote')
+                is_ok = False
+        for path, hashid in remote_hashes.items():
+            if path not in local_hashes:
+                print(f'{path} does not exist on local')
+                is_ok = False
+        if is_ok:
+            info('Local tasks are on remote')
+        else:
+            error('Local tasks are not on remote')
+
     # def fetch(self, targets, cache, root, dry=False, get_all=False, follow=False, only_mark=False):
     #     info('Fetching from {}...'.format(self.host))
     #     if not get_all:
