@@ -114,6 +114,15 @@ class Scheduler:
                         'where taskhash = ?',
                         (State.RUNNING, get_timestamp(), hashid)
                     )
+                if not task['command']:
+                    self.cellar.seal_task(hashid, {})
+                    self.execute(
+                        'update queue set state = ?, changed = ?, path = "" '
+                        'where taskhash = ?',
+                        (State.DONE, get_timestamp(), hashid)
+                    )
+                    print(f'{get_timestamp()}: {label} finished successfully')
+                    break
                 tmppath = Path(tempfile.mkdtemp(
                     prefix='caftsk_', dir=self.tmpdir
                 ))
@@ -132,6 +141,7 @@ class Scheduler:
                         'where taskhash = ?',
                         (State.INTERRUPTED, get_timestamp(), hashid)
                     )
+                    print(f'{get_timestamp()}: {label} was interrupted')
                     break
                 elif task.state[0] == State.DONE:
                     outputs = {}
