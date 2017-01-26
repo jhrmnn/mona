@@ -271,7 +271,7 @@ class Context:
         return TargetGen(targetnode, *args, **kwargs)
 
     def get_sources(self, path):
-        if '?' in path or '*' in path:
+        if '?' in str(path) or '*' in str(path):
             paths = (self.top/path).glob()
         else:
             paths = [self.top/path]

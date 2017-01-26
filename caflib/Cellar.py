@@ -130,12 +130,23 @@ class Cellar:
 
     def get_tasks(self, hashes):
         hashes = list(hashes)
-        cur = self.execute(
-            'select hash, task from tasks where hash in ({})'.format(
-                ','.join(len(hashes)*['?'])
-            ),
-            hashes
-        )
+        if len(hashes) < 10:
+            cur = self.execute(
+                'select hash, task from tasks where hash in ({})'.format(
+                    ','.join(len(hashes)*['?'])
+                ),
+                hashes
+            )
+        else:
+            self.execute('drop table if exists current_tasks')
+            self.execute('create temporary table current_tasks(hash text)')
+            self.executemany('insert into current_tasks values (?)', (
+                (hashid,) for hashid in hashes
+            ))
+            cur = self.execute(
+                'select tasks.hash, task from tasks join current_tasks '
+                'on current_tasks.hash = tasks.hash'
+            )
         return {hashid: json.loads(task) for hashid, task in cur}
 
     def get_file(self, hashid):
