@@ -91,7 +91,7 @@ class Scheduler:
             states = self.get_states()
             was_interrupted = False
             for hashid, state in states.items():
-                if hashes and hashid not in hashes:
+                if hashes is not None and hashid not in hashes:
                     continue
                 if state != State.CLEAN:
                     continue
