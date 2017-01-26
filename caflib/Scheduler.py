@@ -4,17 +4,9 @@ from contextlib import contextmanager
 import tempfile
 import shutil
 
-from caflib.Cellar import Cellar
+from caflib.Cellar import Cellar, State
 from caflib.Logging import error, debug
 from caflib.Utils import get_timestamp
-
-
-class State:
-    CLEAN = 0
-    DONE = 1
-    ERROR = -1
-    RUNNING = 2
-    INTERRUPTED = 3
 
 
 class Task:
@@ -35,8 +27,7 @@ class Task:
 
 class Scheduler:
     def __init__(self, path, url=None, tmpdir=None):
-        self.path = Path(path)
-        self.db = sqlite3.connect(str(self.path/'queue.db'))
+        self.db = sqlite3.connect(str(Path(path)/'queue.db'))
         self.cellar = Cellar(path)
         self.url = url
         self.tmpdir = tmpdir
@@ -51,16 +42,26 @@ class Scheduler:
         self.db.commit()
 
     def submit(self, tasks):
-        self.db.isolation_level = ''
+        try:
+            queue = {
+                hashid: row for hashid, *row
+                in self.execute('select * from queue')
+            }
+        except sqlite3.OperationalError:
+            queue = {}
         self.execute('drop table if exists queue')
         self.execute(
             'create table queue('
-            'taskhash text, state integer, label text, path text'
+            'taskhash text, state integer, label text, path text, changed text'
             ')'
         )
         self.executemany(
-            'insert into queue values (?,?,?,?)',
-            ((*task, '') for task in tasks)
+            'insert into queue values (?,?,?,?,?)', (
+                (hashid, state, label, '', get_timestamp())
+                if hashid not in queue
+                else (hashid, queue[hashid][0], label, *queue[hashid][2:4])
+                for hashid, state, label in tasks
+            )
         )
         self.commit()
 
@@ -106,10 +107,13 @@ class Scheduler:
                         break
                         print(f'({label} already locked!')
                     self.execute(
-                        'update queue set state = 2 where taskhash = ?',
-                        (hashid,)
+                        'update queue set state = ?, changed = ? '
+                        'where taskhash = ?',
+                        (State.RUNNING, get_timestamp(), hashid)
                     )
-                tmppath = Path(tempfile.mkdtemp(prefix='caf', dir=self.tmpdir))
+                tmppath = Path(tempfile.mkdtemp(
+                    prefix='caftsk_', dir=self.tmpdir
+                ))
                 debug(f'Executing {label} in {tmppath}')
                 self.execute(
                     'update queue set path = ? where taskhash = ?',
@@ -120,6 +124,11 @@ class Scheduler:
                 yield task
                 if task.state[0] == State.INTERRUPTED:
                     was_interrupted = True
+                    self.execute(
+                        'update queue set state = ?, changed = ? '
+                        'where taskhash = ?',
+                        (State.INTERRUPTED, get_timestamp(), hashid)
+                    )
                     break
                 elif task.state[0] == State.DONE:
                     outputs = {}
@@ -131,17 +140,17 @@ class Scheduler:
                     shutil.rmtree(tmppath)
                     nerror = 0
                     self.execute(
-                        'update queue set state = ?, path = "" where taskhash = ?',
-                        (State.DONE, hashid)
+                        'update queue set state = ?, changed = ?, path = "" '
+                        'where taskhash = ?',
+                        (State.DONE, get_timestamp(), hashid)
                     )
                     print(f'{get_timestamp()}: {label} finished successfully')
                 elif task.state[0] == State.ERROR:
-                    error(str(task.state[1]))
-                    tmppath.rename(tmppath.name)
+                    print(task.state[1])
                     nerror += 1
                     self.execute(
-                        'update queue set state = ? where taskhash = ?',
-                        (State.ERROR, hashid)
+                        'update queue set state = ?, changed = ? where taskhash = ?',
+                        (State.ERROR, get_timestamp(), hashid)
                     )
                     print(f'{get_timestamp()}: {label} finished with error')
                 nrun += 1
@@ -157,5 +166,22 @@ class Scheduler:
     def get_states(self):
         try:
             return dict(self.execute('select taskhash, state from queue'))
+        except sqlite3.OperationalError:
+            error('There is no queue.')
+
+    def reset_task(self, hashid):
+        self.execute(
+            'update queue set state = ?, changed = ?, path = "" '
+            'where taskhash = ?',
+            (State.CLEAN, get_timestamp(), hashid)
+        )
+        self.commit()
+
+    def get_queue(self):
+        try:
+            return {
+                hashid: row for hashid, *row
+                in self.execute('select * from queue')
+            }
         except sqlite3.OperationalError:
             error('There is no queue.')

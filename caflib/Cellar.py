@@ -5,11 +5,18 @@ import hashlib
 from datetime import datetime
 from collections import defaultdict, OrderedDict
 
-
 from caflib.Logging import info
 from caflib.Utils import make_nonwritable
 from caflib.Timing import timing
 from caflib.Glob import match_glob
+
+
+class State:
+    CLEAN = 0
+    DONE = 1
+    ERROR = -1
+    RUNNING = 2
+    INTERRUPTED = 3
 
 
 def get_hash(text):
@@ -18,10 +25,10 @@ def get_hash(text):
 
 class Cellar:
     def __init__(self, path):
-        self.path = Path(path)
-        self.objects = self.path/'objects'
+        path = Path(path).resolve()
+        self.objects = path/'objects'
         self.objectdb = set()
-        self.db = sqlite3.connect(str(self.path/'index.db'))
+        self.db = sqlite3.connect(str(path/'index.db'))
         self.execute(
             'create table if not exists tasks ('
             'hash text primary key, task text, created text, state integer'
@@ -87,8 +94,17 @@ class Cellar:
             self.store_file(filehash, path)
             task['outputs'][name] = filehash
         self.execute(
-            'update tasks set task = ?, state = 1 where hash = ?',
-            (json.dumps(task), hashid)
+            'update tasks set task = ?, state = ? where hash = ?',
+            (json.dumps(task), State.DONE, hashid)
+        )
+        self.commit()
+
+    def reset_task(self, hashid):
+        task = self.get_task(hashid)
+        task['outputs'] = {}
+        self.execute(
+            'update tasks set task = ?, state = ? where hash = ?',
+            (json.dumps(task), State.CLEAN, hashid)
         )
         self.commit()
 
@@ -233,23 +249,35 @@ class Cellar:
                     yield hashid, path
 
     def checkout(self, root, patterns=None):
+        tasks, targets = self.get_last_build()
         root = Path(root).resolve()
-        tree = self.virtual_checkout(objects=True)
-        patterns = patterns or ['**']
-        checked = {}
-        for patt in patterns:
-            for path, (hashid, task) in tree.items():
-                if not match_glob(path, patt):
-                    continue
-                rootpath = root/path
-                if hashid in checked:
+        paths = {}
+        nsymlinks = 0
+        ntasks = 0
+        while targets:
+            hashid, path = targets.pop()
+            if hashid not in tasks:
+                with timing('sql'):
+                    tasks[hashid] = self.get_task(hashid)
+            for name, childhash in tasks[hashid]['children'].items():
+                childpath = f'{path}/{name}'
+                targets.append((childhash, childpath))
+            if not any(match_glob(path, patt) for patt in patterns):
+                continue
+            rootpath = root/path
+            if hashid in paths:
+                with timing('bones'):
+                    rootpath.parent.mkdir(parents=True, exist_ok=True)
                     if not rootpath.exists():
-                        with timing('bones'):
-                            rootpath.parent.mkdir(parents=True, exist_ok=True)
-                            rootpath.symlink_to(checked[hashid])
-                else:
-                    with timing('bones'):
-                        rootpath.mkdir(parents=True)
-                    with timing('checkout'):
-                        self.checkout_task(task, rootpath, resolve=False)
-                    checked[hashid] = rootpath
+                        rootpath.symlink_to(paths[hashid])
+                        nsymlinks += 1
+            else:
+                with timing('bones'):
+                    rootpath.mkdir(parents=True)
+                with timing('checkout'):
+                    nsymlinks += len(self.checkout_task(
+                        tasks[hashid], rootpath, resolve=False
+                    ))
+                    ntasks += 1
+                paths[hashid] = rootpath
+        info(f'Checked out {ntasks} tasks: {nsymlinks} symlinks')

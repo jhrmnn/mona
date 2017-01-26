@@ -9,6 +9,7 @@ from textwrap import dedent
 import hashlib
 import subprocess as sp
 from configparser import ConfigParser
+import shutil
 
 from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Timing import timing
@@ -189,7 +190,7 @@ def conf(caf):
             path.mkdir()
             (caf.cafdir/'objects').symlink_to(path)
     cellar = Cellar(caf.cafdir)
-    ctx = Context('.', cellar)
+    ctx = Context(caf.top, cellar)
     with timing('evaluate cscript'):
         try:
             caf.cscript.configure(ctx)
@@ -291,7 +292,7 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
 
 
 @Caf.command()
-def checkout(caf, path: '--path', patterns: 'PATH'):
+def checkout(caf, path: ('--path', Path), patterns: 'PATH'):
     """
     Create the dependecy tree physically on a file system.
 
@@ -301,8 +302,10 @@ def checkout(caf, path: '--path', patterns: 'PATH'):
     Options:
         -p, --path PATH          Where to checkout [default: build].
     """
+    if path.exists():
+        error(f'Cannot checkout to existing path: {path}')
     cellar = Cellar(caf.cafdir)
-    cellar.checkout(path, patterns=patterns)
+    cellar.checkout(path, patterns=patterns or ['**'])
 
 
 # @Caf.command(triggers=['conf submit'])
@@ -370,20 +373,43 @@ def checkout(caf, path: '--path', patterns: 'PATH'):
 #         f.write(queue_url)
 
 
-# @Caf.command()
-# def reset(caf, targets: 'TARGET'):
-#     """
-#     Remove working lock and error on tasks.
-#
-#     Usage:
-#         caf reset [TARGET...]
-#     """
-#     roots = [caf.out/t for t in targets] if targets else (caf.out).glob('*')
-#     for path in find_tasks(*roots):
-#         if (path/'.lock').is_dir():
-#             (path/'.lock').rmdir()
-#         if (path/'.caf/error').is_file():
-#             (path/'.caf/error').unlink()
+@Caf.command()
+def reset(caf, patterns: 'PATH', hard: '--hard', running: '--running'):
+    """
+    Remove all temporary checkouts and set tasks to clean.
+
+    Usage:
+        caf reset [PATH...] [--running] [--hard]
+
+    Options:
+        --running       Also reset running tasks.
+        --hard          Also reset finished tasks and remove outputs.
+    """
+    if hard and input('Are you sure? ["y" to confirm] ') != 'y':
+        return
+    cellar = Cellar(caf.cafdir)
+    scheduler = Scheduler(caf.cafdir)
+    states = scheduler.get_states()
+    queue = scheduler.get_queue()
+    if patterns:
+        hashes = set(
+            hashid for hashid, _
+            in cellar.glob(*patterns, hashes=states.keys())
+        )
+    else:
+        hashes = queue.keys()
+    for hashid in hashes:
+        if states[hashid] in (State.ERROR, State.INTERRUPTED) \
+                or running and states[hashid] == State.RUNNING:
+            path = queue[hashid][2]
+            try:
+                shutil.rmtree(path)
+            except FileNotFoundError:
+                pass
+            scheduler.reset_task(hashid)
+        elif hard and states[hashid] == State.DONE:
+            scheduler.reset_task(hashid)
+            cellar.reset_task(hashid)
 
 
 caf_list = CLI('list', header='List various entities.')
@@ -419,13 +445,13 @@ def list_remotes(caf, _):
 def list_tasks(caf, _, do_finished: '--finished',
                do_error: '--error', do_unfinished: '--unfinished',
                in_cellar: '--hash', both_paths: '--both',
-               patterns: 'PATH'):
+               patterns: 'PATH', with_path: '--path'):
     """
     List tasks.
 
     Usage:
-        caf list tasks PATH... [--finished | --error | --unfinished]
-                       [--hash | --both]
+        caf list tasks [PATH...] [--finished | --error | --unfinished]
+                       [--hash | --both] [--path]
 
     Options:
         --finished                 List finished tasks.
@@ -433,11 +459,19 @@ def list_tasks(caf, _, do_finished: '--finished',
         --error                    List tasks in error.
         --hash                     Print task hash.
         --both                     Print path in build and cellar.
+        --path                     Display temporary paths.
     """
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
-    for hashid, path in cellar.glob(*patterns, hashes=states.keys()):
+    queue = scheduler.get_queue()
+    if patterns:
+        hashes_paths = cellar.glob(*patterns, hashes=states.keys())
+    else:
+        hashes_paths = (
+            (hashid, label) for hashid, (_, label, *_) in queue.items()
+        )
+    for hashid, path in hashes_paths:
         if do_finished and states[hashid] != State.DONE:
             continue
         if do_error and states[hashid] != State.ERROR:
@@ -445,11 +479,14 @@ def list_tasks(caf, _, do_finished: '--finished',
         if do_unfinished and states[hashid] == State.DONE:
             continue
         if both_paths:
-            print(path, hashid)
+            s = f'{hashid} {path}'
         elif in_cellar:
-            print(hashid)
+            s = hashid
         else:
-            print(path)
+            s = path
+        if with_path and queue[hashid][2]:
+            s += f' {queue[hashid][2]}'
+        print(s)
 
 
 @Caf.command()
@@ -474,13 +511,15 @@ def status(caf, patterns: 'PATH'):
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
     groups = cellar.dglob(*patterns, hashes=states.keys())
+    queue = scheduler.get_queue()
+    groups['ALL'] = [(hashid, label) for hashid, (_, label, *_) in queue.items()]
     table = Table(
         align=['<', *len(colors)*['>']],
         sep=['   ', *(len(colors)-1)*['/']]
     )
     for pattern, hashes_paths in groups.items():
         if not hashes_paths:
-            pattern = colstr(pattern, 'red')
+            pattern = colstr(pattern, 'bryellow')
         grouped = {
             state: subgroup for state, subgroup
             in groupby(hashes_paths, key=lambda x: states[x[0]])
@@ -496,8 +535,17 @@ def status(caf, patterns: 'PATH'):
             for s, color in zip(stats, colors)
         ]
         table.add_row(pattern, *stats)
-        for _, path in grouped.get(State.RUNNING, []):
-            table.add_row(f"{colstr('>>', 'yellow')} {path}", free=True)
+        for color, state in [
+                ('yellow', State.RUNNING),
+                ('blue', State.INTERRUPTED),
+                ('red', State.ERROR),
+        ]:
+            for hashid, path in grouped.get(state, []):
+                table.add_row(
+                    f"{colstr('>>', color)} {path} "
+                    f"{colstr(queue[hashid][2], color)} {queue[hashid][3]}",
+                    free=True
+                )
     print(table)
 
 

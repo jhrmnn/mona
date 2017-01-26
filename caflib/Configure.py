@@ -272,9 +272,9 @@ class Context:
 
     def get_sources(self, path):
         if '?' in str(path) or '*' in str(path):
-            paths = (self.top/path).glob()
+            paths = path.glob()
         else:
-            paths = [self.top/path]
+            paths = [path]
         if not paths:
             error(f'File "{path}" does not exist.')
         for path in paths:

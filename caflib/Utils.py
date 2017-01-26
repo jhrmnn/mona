@@ -27,34 +27,12 @@ def get_timestamp():
     return format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
 
 
-# def mkdir(path, parents=False, exist_ok=False):
-#     path = Path(path)
-#     if not parents or len(path.parts) == 1:
-#         if not (exist_ok and path.is_dir()):
-#             path.mkdir()
-#     else:
-#         os.makedirs(str(path), exist_ok=exist_ok)
-#     return path
-
-
 def make_nonwritable(path):
     os.chmod(
         path,
         stat.S_IMODE(os.lstat(path).st_mode) &
         ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
     )
-
-
-# def relink(path, linkname=None, relative=True):
-#     link = Path(linkname) if linkname else Path(Path(path).name)
-#     if link.is_symlink():
-#         link.unlink()
-#     if not link.parent.is_dir():
-#         mkdir(link.parent, parents=True)
-#     if relative:
-#         link.symlink_to(os.path.relpath(str(path), str(link.parent)))
-#     else:
-#         link.symlink_to(path)
 
 
 def filter_cmd(args):

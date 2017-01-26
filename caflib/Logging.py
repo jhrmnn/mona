@@ -8,15 +8,18 @@ DEBUG = 'DEBUG' in os.environ
 
 
 class colstr(str):
-    colors = {'bold': '\x1b[01;1m',
-              'red': '\x1b[01;31m',
-              'green': '\x1b[32m',
-              'yellow': '\x1b[33m',
-              'pink': '\x1b[35m',
-              'blue': '\x1b[01;34m',
-              'cyan': '\x1b[36m',
-              'grey': '\x1b[37m',
-              'normal': '\x1b[0m'}
+    colors = {
+        'red': '\x1b[31m',
+        'green': '\x1b[32m',
+        'yellow': '\x1b[33m',
+        'blue': '\x1b[34m',
+        'bryellow': '\x1b[93m',
+        'brblue': '\x1b[94m',
+        'pink': '\x1b[35m',
+        'cyan': '\x1b[36m',
+        'grey': '\x1b[37m',
+        'normal': '\x1b[0m'
+    }
 
     def __new__(cls, s, color):
         obj = str.__new__(
