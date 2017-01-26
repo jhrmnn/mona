@@ -71,6 +71,19 @@ def report(f):
     return f
 
 
+def handle_broken_pipe():
+    try:
+        sys.stdout.flush()
+    finally:
+        try:
+            sys.stdout.close()
+        finally:
+            try:
+                sys.stderr.flush()
+            finally:
+                sys.stderr.close()
+
+
 class TableException(Exception):
     pass
 

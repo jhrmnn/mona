@@ -91,12 +91,12 @@ def prepare_aims(task):
                     chunks.append(f'{attr}  {p2f(value)}')
         if not basis == 'none':
             for number, symbol in species:
-                if symbol not in species_db:
+                if (basis, symbol) not in species_db:
                     with (basis_root/f'{number:02d}_{symbol}_default').open() as f:
                         basis_def = f.read()
-                    species_db[symbol] = basis_def
+                    species_db[basis, symbol] = basis_def
                 else:
-                    basis_def = species_db[symbol]
+                    basis_def = species_db[basis, symbol]
                 chunks.append(basis_def)
         if len(chunks) > 1:
             task.inputs[str(subdir/'control.in')] = '\n\n'.join(chunks)

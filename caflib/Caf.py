@@ -5,6 +5,7 @@ import tarfile
 from base64 import b64encode
 from itertools import takewhile
 import imp
+import sys
 from textwrap import dedent
 import hashlib
 import subprocess as sp
@@ -14,7 +15,8 @@ import signal
 
 from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Timing import timing
-from caflib.Logging import error, info, Table, colstr, warn, no_cafdir
+from caflib.Logging import error, info, Table, colstr, warn, no_cafdir, \
+    handle_broken_pipe
 from caflib.CLI import CLI, CLIExit
 from caflib.Cellar import Cellar
 from caflib.Remote import Remote, Local
@@ -490,7 +492,11 @@ def list_tasks(caf, _, do_finished: '--finished',
             s = path
         if with_path and queue[hashid][2]:
             s += f' {queue[hashid][2]}'
-        print(s)
+        try:
+            sys.stdout.write(f'{s}\n')
+        except BrokenPipeError:
+            handle_broken_pipe()
+            break
 
 
 @Caf.command()
