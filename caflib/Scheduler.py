@@ -190,6 +190,14 @@ class Scheduler:
         )
         self.commit()
 
+    def task_done(self, hashid):
+        self.execute(
+            'update queue set state = ?, changed = ?, path = "" '
+            'where taskhash = ?',
+            (State.DONE, get_timestamp(), hashid)
+        )
+        self.commit()
+
     def get_queue(self):
         try:
             return {

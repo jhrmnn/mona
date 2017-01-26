@@ -12,6 +12,7 @@ import subprocess as sp
 from configparser import ConfigParser
 import shutil
 import signal
+import json
 
 from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Timing import timing
@@ -107,13 +108,13 @@ class Caf(CLI):
                 remote.update()
         if 'make' in rargs and not rargs['conf']:
             for remote in remotes:
-                remote.check(self.out)
+                self.commands[('check',)]._func(self, remotes)
         for remote in remotes:
             remote.command(' '.join(
                 arg if ' ' not in arg else repr(arg) for arg in rargv[1:]
             ))
             if 'make' in rargs and rargs['conf']:
-                remote.check(self.out)
+                self.commands[('check',)]._func(self, remotes)
 
     def __format__(self, fmt):
         if fmt == 'header':
@@ -218,7 +219,7 @@ def conf(caf):
     with timing('store build'):
         tasks = dict(cellar.store_build(tasks, targets, inputs))
     labels = {hashid: None for hashid in tasks}
-    for path, hashid in cellar.virtual_checkout(hashes=tasks.keys()).items():
+    for path, hashid in cellar.get_tree(hashes=tasks.keys()).items():
         if not labels[hashid]:
             labels[hashid] = path
     if any(label is None for label in labels.values()):
@@ -263,14 +264,14 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         cmd.extend(patterns)
         for _ in range(n):
             try:
-                sp.check_call(cmd)
+                sp.run(cmd, check=True)
             except sp.CalledProcessError:
                 error(f'Running ~/.config/caf/worker_{profile} did not succeed.')
         return
     scheduler = Scheduler(
         caf.cafdir,
         url=caf.get_queue_url(queue, 'get') if queue else None,
-        tmpdir=caf.config['core'].get('tmpdir', None)
+        tmpdir=caf.config.get('core', 'tmpdir', fallback=None)
     )
     if patterns:
         cellar = Cellar(caf.cafdir)
@@ -283,11 +284,12 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         with cd(task.path):
             with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
                 try:
-                    sp.check_call(
+                    sp.run(
                         task.command,
                         shell=True,
                         stdout=stdout,
-                        stderr=stderr
+                        stderr=stderr,
+                        check=True
                     )
                 except sp.CalledProcessError as exc:
                     task.error(exc)
@@ -298,20 +300,25 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
 
 
 @Caf.command()
-def checkout(caf, path: ('--path', Path), patterns: 'PATH'):
+def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json'):
     """
     Create the dependecy tree physically on a file system.
 
     Usage:
-        caf checkout [-p PATH] [PATH...]
+        caf checkout [-p PATH | --json] [PATH...]
 
     Options:
-        -p, --path PATH          Where to checkout [default: build].
+        -p, --path PATH     Where to checkout [default: build].
+        --json              Do not checkout, print JSONs of hashes from STDIN.
     """
-    if path.exists():
-        error(f'Cannot checkout to existing path: {path}')
     cellar = Cellar(caf.cafdir)
-    cellar.checkout(path, patterns=patterns or ['**'])
+    if not do_json:
+        if path.exists():
+            error(f'Cannot checkout to existing path: {path}')
+        cellar.checkout(path, patterns=patterns or ['**'])
+    else:
+        hashes = [l.strip() for l in sys.stdin.readlines()]
+        json.dump(cellar.get_tasks(hashes), sys.stdout)
 
 
 # @Caf.command(triggers=['conf submit'])
@@ -399,8 +406,7 @@ def reset(caf, patterns: 'PATH', hard: '--hard', running: '--running'):
     queue = scheduler.get_queue()
     if patterns:
         hashes = set(
-            hashid for hashid, _
-            in cellar.glob(*patterns, hashes=states.keys())
+            hashid for hashid, _ in cellar.glob(*patterns, hashes=states.keys())
         )
     else:
         hashes = queue.keys()
@@ -569,7 +575,7 @@ def cmd(caf, cmd: 'CMD'):
 
     This is a simple convenience alias for running commands remotely.
     """
-    sp.call(cmd, shell=True)
+    sp.run(cmd, shell=True)
 
 
 caf_remote = CLI('remote', header='Manage remotes.')
@@ -631,23 +637,35 @@ def check(caf, remotes: ('REMOTE', 'proc_remote')):
         caf check REMOTE
     """
     scheduler = Scheduler(caf.cafdir)
+    hashes = {
+        label: hashid for hashid, (_, label, *_) in scheduler.get_queue().items()
+    }
     for remote in remotes:
-        remote.check(scheduler)
+        remote.check(hashes)
 
 
 @Caf.command()
-def fetch(caf, paths: 'PATH', queue: '--queue'):
+def fetch(caf, patterns: 'PATH', remotes: ('REMOTE', 'proc_remote')):
     """
     Fetch targets from remote.
 
     Usage:
-        caf fetch REMOTE [PATH...] [-q]
-
-    Options:
-        -q, --queue       Only mark tasks in queue as finished on remote.
+        caf fetch REMOTE [PATH...]
     """
+    cellar = Cellar(caf.cafdir)
+    scheduler = Scheduler(caf.cafdir)
+    states = scheduler.get_states()
+    if patterns:
+        hashes = set(hashid for hashid, _ in cellar.glob(*patterns))
+    else:
+        hashes = states.keys()
     for remote in remotes:
-        remote.fetch(targets, caf.cache, caf.out, dry=dry, get_all=get_all, follow=follow, only_mark=only_mark)
+        tasks = remote.fetch(
+            [hashid for hashid in hashes if states[hashid] == State.CLEAN],
+        )
+        for hashid, task in tasks.items():
+            cellar.seal_task(hashid, hashed_outputs=task['outputs'])
+            scheduler.task_done(hashid)
 
 
 # @Caf.command()

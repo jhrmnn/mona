@@ -17,6 +17,7 @@ class State:
     ERROR = -1
     RUNNING = 2
     INTERRUPTED = 3
+    REMOTE = 5
 
 
 def get_hash(text):
@@ -88,14 +89,17 @@ class Cellar:
     def store_file(self, hashid, file):
         return self.store(hashid, file=file)
 
-    def seal_task(self, hashid, outputs):
+    def seal_task(self, hashid, outputs=None, hashed_outputs=None):
         task = self.get_task(hashid)
-        task['outputs'] = {}
-        for name, path in outputs.items():
-            with path.open() as f:
-                filehash = get_hash(f.read())
-            self.store_file(filehash, path)
-            task['outputs'][name] = filehash
+        if outputs:
+            task['outputs'] = {}
+            for name, path in outputs.items():
+                with path.open() as f:
+                    filehash = get_hash(f.read())
+                self.store_file(filehash, path)
+                task['outputs'][name] = filehash
+        elif hashed_outputs:
+            task['outputs'] = hashed_outputs
         self.execute(
             'update tasks set task = ?, state = ? where hash = ?',
             (json.dumps(task), State.DONE, hashid)
@@ -212,7 +216,7 @@ class Cellar:
         )}
         return tasks, targets
 
-    def virtual_checkout(self, objects=False, hashes=None):
+    def get_tree(self, objects=False, hashes=None):
         tasks, targets = self.get_last_build()
         if hashes:
             tasks.update(self.get_tasks(hashes))
@@ -231,7 +235,7 @@ class Cellar:
         return tree
 
     def dglob(self, *patterns, hashes=None):
-        tree = self.virtual_checkout(hashes=hashes)
+        tree = self.get_tree(hashes=hashes)
         groups = defaultdict(list)
         for patt in patterns:
             matched_any = False
@@ -245,7 +249,7 @@ class Cellar:
         return groups
 
     def glob(self, *patterns, hashes=None):
-        tree = self.virtual_checkout(hashes=hashes)
+        tree = self.get_tree(hashes=hashes)
         for patt in patterns:
             for path, hashid in tree.items():
                 if match_glob(path, patt):
