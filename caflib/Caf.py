@@ -238,13 +238,13 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
     Execute build tasks.
 
     Usage:
-        caf make [PATH...] [-l N] [-p PROFILE [-j N] | --dry] [-q URL | --last]
+        caf make [PATH...] [-l N] [-p PROFILE [-j N]] [--dry] [-q URL | --last]
 
     Options:
         -l, --limit N              Limit number of tasks to N.
         -p, --profile PROFILE      Run worker via ~/.config/caf/worker_PROFILE.
         -j N                       Number of launched workers [default: 1].
-        -n, --dry                  Dry run (do not write to disk).
+        -n, --dry                  Dry run (do not actually work on tasks).
         -q, --queue URL            Take tasks from web queue.
         --last                     As above, but use the last submitted queue.
     """
@@ -282,7 +282,7 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         hashes = None
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
-    for task in scheduler.tasks_for_work(hashes=hashes, limit=limit):
+    for task in scheduler.tasks_for_work(hashes=hashes, limit=limit, dry=dry):
         with cd(task.path):
             with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
                 try:
@@ -584,7 +584,7 @@ def remote_add(caf, _, url: 'URL', name: 'NAME'):
     Usage:
         caf remote add URL [NAME]
     """
-    config = ConfigParser()
+    config = ConfigParser(interpolation=None)
     config.read([caf.cafdir/'config.ini'])
     host, path = url.split(':')
     name = name or host

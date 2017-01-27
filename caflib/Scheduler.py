@@ -79,13 +79,13 @@ class Scheduler:
     def candidate_tasks(self, states):
         yield from states
 
-    def is_state_ok(self, state, hashid):
+    def is_state_ok(self, state, hashid, label):
         return state == State.CLEAN
 
     def skip_task(self, hashid):
         pass
 
-    def tasks_for_work(self, hashes=None, limit=None, nmaxerror=5):
+    def tasks_for_work(self, hashes=None, limit=None, nmaxerror=5, dry=False):
         self.db.isolation_level = None
         nrun = 0
         nerror = 0
@@ -119,8 +119,11 @@ class Scheduler:
                     debug(f'{label} is in filter, skipping')
                     continue
                 state = states[hashid]
-                if not self.is_state_ok(state, hashid):
+                if not self.is_state_ok(state, hashid, label):
                     debug(f'{label} does not have conforming state, skipping')
+                    continue
+                if dry:
+                    self.skip_task(hashid)
                     continue
                 task = self.cellar.get_task(hashid)
                 if any(
@@ -264,9 +267,10 @@ class RemoteScheduler(Scheduler):
             else:
                 return
 
-    def is_state_ok(self, state, hashid):
+    def is_state_ok(self, state, hashid, label):
         if state == State.DONE:
-            self.rem_task_done(hashid)
+            print(f'Task {label} already done')
+            self.task_done(hashid)
             return False
         if state in (State.ERROR, State.RUNNING, State.INTERRUPTED):
             self.reset_task(hashid)
