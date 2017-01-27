@@ -17,7 +17,6 @@ class State:
     ERROR = -1
     RUNNING = 2
     INTERRUPTED = 3
-    REMOTE = 5
 
 
 def get_hash(text):

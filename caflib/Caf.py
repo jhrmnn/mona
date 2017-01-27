@@ -10,7 +10,6 @@ from textwrap import dedent
 import hashlib
 import subprocess as sp
 from configparser import ConfigParser
-import shutil
 import signal
 import json
 
@@ -19,10 +18,11 @@ from caflib.Timing import timing
 from caflib.Logging import error, info, Table, colstr, warn, no_cafdir, \
     handle_broken_pipe
 from caflib.CLI import CLI, CLIExit
-from caflib.Cellar import Cellar
+from caflib.Cellar import Cellar, State
 from caflib.Remote import Remote, Local
 from caflib.Configure import Context
-from caflib.Scheduler import Scheduler, State
+from caflib.Scheduler import RemoteScheduler, Scheduler
+from caflib.Announcer import Announcer
 
 from docopt import docopt, DocoptExit
 
@@ -91,8 +91,9 @@ class Caf(CLI):
         except DocoptExit:  # remote CLI failed too, reraise CLIExit
             raise cliexit
         if 'make' in rargs:
+            # this substitues only locally known values
             if rargs['--queue']:  # substitute URL
-                queue = self.get_queue_url(rargs['--queue'], 'get')
+                queue = self.get_queue_url(rargs['--queue'])
                 rargv = [
                     arg if arg != rargs['--queue'] else queue for arg in rargv
                 ]
@@ -128,23 +129,6 @@ class Caf(CLI):
             return dedent(s)
         return super().__format__(fmt)
 
-    def get_queue_url(self, queue, action):
-        if 'queue' in self.conf:
-            if action == 'submit':
-                q = self.conf['queue'].get(queue)
-                if q:
-                    return f'{q["host"]}/token/{q["token"]}/submit'
-            elif action == 'get':
-                queue, qid = queue.split(':', 1)
-                q = self.conf['queue'].get(queue)
-                if q:
-                    return f'{q["host"]}/token/{q["token"]}/queue/{qid}/get'
-            elif action == 'append':
-                queue, qid = queue.split(':', 1)
-                q = self.conf['queue'].get(queue)
-                if q:
-                    return f'{q["host"]}/token/{q["token"]}/queue/{qid}/append'
-
     def proc_remote(self, remotes):
         if remotes == 'all':
             remotes = self.remotes.values()
@@ -154,6 +138,18 @@ class Caf(CLI):
             except KeyError as e:
                 error(f'Remote "{e.args[0]}" is not defined')
         return remotes
+
+    def get_queue_url(self, queue):
+        queue, num = queue.split(':') if ':' in queue else (queue, None)
+        queue_sec = f'queue "{queue}"'
+        if self.config.has_section(queue_sec):
+            host = queue_sec['host']
+            token = queue_sec['token']
+            queue = f'{host}/token/{token}'
+        if num:
+            return f'{queue}:{num}'
+        else:
+            return queue
 
 
 def get_leafs(conf):
@@ -234,15 +230,14 @@ def sig_handler(sig, frame):
     raise KeyboardInterrupt
 
 
-@Caf.command(triggers=['conf make'])
+@Caf.command()
 def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
-         limit: ('--limit', int), queue: '--queue', dry: '--dry',
-         do_conf: 'conf', last_queue: '--last'):
+         limit: ('--limit', int), url: '--queue', dry: '--dry', _: '--last'):
     """
     Execute build tasks.
 
     Usage:
-        caf [conf] make [-l N] [-p PROFILE [-j N] | --dry] [PATH... | -q URL | --last]
+        caf make [-l N] [-p PROFILE [-j N] | --dry] [PATH... | -q URL | --last]
 
     Options:
         -l, --limit N              Limit number of tasks to N.
@@ -252,15 +247,13 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         -q, --queue URL            Take tasks from web queue.
         --last                     As above, but use the last submitted queue.
     """
-    if do_conf:
-        conf(['caf', 'conf'], caf)
     if profile:
         pass
         cmd = [os.path.expanduser(f'~/.config/caf/worker_{profile}')]
         if limit:
             cmd.extend(('-l', str(limit)))
-        if queue:
-            cmd.extend(('-q', queue))
+        if url:
+            cmd.extend(('-q', url))
         cmd.extend(patterns)
         for _ in range(n):
             try:
@@ -268,11 +261,18 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
             except sp.CalledProcessError:
                 error(f'Running ~/.config/caf/worker_{profile} did not succeed.')
         return
-    scheduler = Scheduler(
-        caf.cafdir,
-        url=caf.get_queue_url(queue, 'get') if queue else None,
-        tmpdir=caf.config.get('core', 'tmpdir', fallback=None)
-    )
+    if url:
+        scheduler = RemoteScheduler(
+            caf.cafdir,
+            tmpdir=caf.config.get('core', 'tmpdir', fallback=None),
+            url=url,
+            curl=caf.config.get('core', 'curl', fallback=None)
+        )
+    else:
+        scheduler = Scheduler(
+            caf.cafdir,
+            tmpdir=caf.config.get('core', 'tmpdir', fallback=None),
+        )
     if patterns:
         cellar = Cellar(caf.cafdir)
         hashes = set(hashid for hashid, _ in cellar.glob(*patterns))
@@ -280,7 +280,7 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         hashes = None
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
-    for task in scheduler.tasks(hashes=hashes, limit=limit):
+    for task in scheduler.tasks_for_work(hashes=hashes, limit=limit):
         with cd(task.path):
             with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
                 try:
@@ -321,38 +321,32 @@ def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json'):
         json.dump(cellar.get_tasks(hashes), sys.stdout)
 
 
-# @Caf.command(triggers=['conf submit'])
-# def submit(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int),
-#            do_conf: 'conf'):
-#     """
-#     Submit the list of prepared tasks to a queue server.
-#
-#     Usage:
-#         caf [conf] submit URL [TARGET...] [--maxdepth N]
-#
-#     Options:
-#         --maxdepth N             Maximum depth.
-#     """
-#     from urllib.request import urlopen
-#     if do_conf:
-#         conf(['caf', 'conf'], caf)
-#     url = caf.get_queue_url(queue, 'submit')
-#     roots = [caf.out/t for t in targets] \
-#         if targets else (caf.out).glob('*')
-#     tasks = OrderedDict()
-#     for path in find_tasks(*roots, unsealed=True, maxdepth=maxdepth):
-#         cellarid = get_stored(path)
-#         if cellarid not in tasks:
-#             tasks[cellarid] = path
-#     if not tasks:
-#         error('No tasks to submit')
-#     data = '\n'.join('{} {}'.format(label, h)
-#                      for h, label in reversed(tasks.items())).encode()
-#     with urlopen(url, data=data) as r:
-#         queue_url = r.read().decode()
-#         print('./caf make --queue {}'.format(queue_url))
-#     with open('.caf/LAST_QUEUE', 'w') as f:
-#         f.write(queue_url)
+@Caf.command()
+def submit(caf, patterns: 'PATH', url: 'URL'):
+    """
+    Submit the list of prepared tasks to a queue server.
+
+    Usage:
+        caf submit URL [PATH...]
+    """
+    announcer = Announcer(url, caf.config.get('core', 'curl', fallback=None))
+    scheduler = Scheduler(caf.cafdir)
+    queue = scheduler.get_queue()
+    if patterns:
+        cellar = Cellar(caf.cafdir)
+        hashes = dict(cellar.glob(*patterns))
+    else:
+        hashes = {hashid: label for hashid, (state, label, *_) in queue.items()}
+    hashes = {
+        hashid: label for hashid, label in hashes.items()
+        if queue[hashid][0] == State.CLEAN
+    }
+    if not hashes:
+        error('No tasks to submit')
+    queue_url = announcer.submit(hashes)
+    print('./caf make --queue {queue_url}')
+    with (caf.cafir/'LAST_QUEUE').open('w') as f:
+        f.write(queue_url)
 
 
 # @Caf.command()
@@ -400,6 +394,8 @@ def reset(caf, patterns: 'PATH', hard: '--hard', running: '--running'):
     """
     if hard and input('Are you sure? ["y" to confirm] ') != 'y':
         return
+    if hard:
+        running = True
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
@@ -413,11 +409,6 @@ def reset(caf, patterns: 'PATH', hard: '--hard', running: '--running'):
     for hashid in hashes:
         if states[hashid] in (State.ERROR, State.INTERRUPTED) \
                 or running and states[hashid] == State.RUNNING:
-            path = queue[hashid][2]
-            try:
-                shutil.rmtree(path)
-            except FileNotFoundError:
-                pass
             scheduler.reset_task(hashid)
         elif hard and states[hashid] == State.DONE:
             scheduler.reset_task(hashid)

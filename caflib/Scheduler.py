@@ -7,6 +7,7 @@ import shutil
 from caflib.Cellar import Cellar, State
 from caflib.Logging import error, debug, no_cafdir
 from caflib.Utils import get_timestamp
+from caflib.Announcer import Announcer
 
 
 class Task:
@@ -26,13 +27,12 @@ class Task:
 
 
 class Scheduler:
-    def __init__(self, path, url=None, tmpdir=None):
+    def __init__(self, path, tmpdir=None):
         try:
             self.db = sqlite3.connect(str(Path(path)/'queue.db'))
         except sqlite3.OperationalError:
             no_cafdir()
         self.cellar = Cellar(path)
-        self.url = url
         self.tmpdir = tmpdir
 
     def execute(self, *args):
@@ -76,7 +76,16 @@ class Scheduler:
         finally:
             self.execute('end transaction')
 
-    def tasks(self, hashes=None, limit=None, nmaxerror=5):
+    def candidate_tasks(self, states):
+        yield from states
+
+    def is_state_ok(self, state, hashid):
+        return state == State.CLEAN
+
+    def skip_task(self, hashid):
+        pass
+
+    def tasks_for_work(self, hashes=None, limit=None, nmaxerror=5):
         self.db.isolation_level = None
         nrun = 0
         nerror = 0
@@ -89,17 +98,26 @@ class Scheduler:
                 print(f'{nrun} tasks ran, quitting')
                 break
             states = self.get_states()
+            skipped = set()
+            will_continue = True
             was_interrupted = False
-            for hashid, state in states.items():
+            for hashid in self.candidate_tasks(states.keys()):
                 if hashes is not None and hashid not in hashes:
                     continue
-                if state != State.CLEAN:
+                if hashid in skipped:
+                    will_continue = False
+                    break
+                else:
+                    skipped.add(hashid)
+                state = states[hashid]
+                if not self.is_state_ok(state, hashid):
                     continue
                 task = self.cellar.get_task(hashid)
                 if any(
-                        states[child] != State.DONE
+                        state != State.DONE
                         for child in task['children'].values()
                 ):
+                    self.skip_task(hashid)
                     continue
                 with self.db_lock():
                     state, label = self.execute(
@@ -116,11 +134,7 @@ class Scheduler:
                     )
                 if not task['command']:
                     self.cellar.seal_task(hashid, {})
-                    self.execute(
-                        'update queue set state = ?, changed = ?, path = "" '
-                        'where taskhash = ?',
-                        (State.DONE, get_timestamp(), hashid)
-                    )
+                    self.task_done(hashid)
                     print(f'{get_timestamp()}: {label} finished successfully')
                     break
                 tmppath = Path(tempfile.mkdtemp(
@@ -136,11 +150,7 @@ class Scheduler:
                 yield task
                 if task.state[0] == State.INTERRUPTED:
                     was_interrupted = True
-                    self.execute(
-                        'update queue set state = ?, changed = ? '
-                        'where taskhash = ?',
-                        (State.INTERRUPTED, get_timestamp(), hashid)
-                    )
+                    self.interrupt_task(hashid)
                     print(f'{get_timestamp()}: {label} was interrupted')
                     break
                 elif task.state[0] == State.DONE:
@@ -152,23 +162,18 @@ class Scheduler:
                     self.cellar.seal_task(hashid, outputs)
                     shutil.rmtree(tmppath)
                     nerror = 0
-                    self.execute(
-                        'update queue set state = ?, changed = ?, path = "" '
-                        'where taskhash = ?',
-                        (State.DONE, get_timestamp(), hashid)
-                    )
+                    self.task_done(hashid)
                     print(f'{get_timestamp()}: {label} finished successfully')
                 elif task.state[0] == State.ERROR:
                     print(task.state[1])
                     nerror += 1
-                    self.execute(
-                        'update queue set state = ?, changed = ? where taskhash = ?',
-                        (State.ERROR, get_timestamp(), hashid)
-                    )
+                    self.task_error(hashid)
                     print(f'{get_timestamp()}: {label} finished with error')
                 nrun += 1
                 break
             else:
+                will_continue = False
+            if not will_continue:
                 print(f'No available tasks to do, quitting')
                 break
             if was_interrupted:
@@ -182,22 +187,6 @@ class Scheduler:
         except sqlite3.OperationalError:
             error('There is no queue.')
 
-    def reset_task(self, hashid):
-        self.execute(
-            'update queue set state = ?, changed = ?, path = "" '
-            'where taskhash = ?',
-            (State.CLEAN, get_timestamp(), hashid)
-        )
-        self.commit()
-
-    def task_done(self, hashid):
-        self.execute(
-            'update queue set state = ?, changed = ?, path = "" '
-            'where taskhash = ?',
-            (State.DONE, get_timestamp(), hashid)
-        )
-        self.commit()
-
     def get_queue(self):
         try:
             return {
@@ -206,3 +195,84 @@ class Scheduler:
             }
         except sqlite3.OperationalError:
             error('There is no queue.')
+
+    def reset_task(self, hashid):
+        path, = self.execute(
+            'select path from queue where taskhash = ?', (hashid,)
+        ).fetchone()
+        if path:
+            try:
+                shutil.rmtree(path)
+            except FileNotFoundError:
+                pass
+        self.execute(
+            'update queue set state = ?, changed = ?, path = "" '
+            'where taskhash = ?',
+            (State.CLEAN, get_timestamp(), hashid)
+        )
+        if self.db.isolation_level is not None:
+            self.commit()
+
+    def task_error(self, hashid):
+        self.execute(
+            'update queue set state = ?, changed = ? where taskhash = ?',
+            (State.ERROR, get_timestamp(), hashid)
+        )
+        if self.db.isolation_level is not None:
+            self.commit()
+
+    def task_done(self, hashid):
+        self.execute(
+            'update queue set state = ?, changed = ?, path = "" '
+            'where taskhash = ?',
+            (State.DONE, get_timestamp(), hashid)
+        )
+        if self.db.isolation_level is not None:
+            self.commit()
+
+    def task_interrupt(self, hashid):
+        self.execute(
+            'update queue set state = ?, changed = ? '
+            'where taskhash = ?',
+            (State.INTERRUPTED, get_timestamp(), hashid)
+        )
+        if self.db.isolation_level is not None:
+            self.commit()
+
+
+class RemoteScheduler(Scheduler):
+    def __init__(self, url, curl, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.announcer = Announcer(url, curl)
+
+    def candidate_tasks(self, states):
+        return self.announcer.get_task()
+
+    def is_state_ok(self, state, hashid):
+        if state == State.DONE:
+            self.rem_task_done(hashid)
+            return False
+        if state in (State.ERROR, State.RUNNING, State.INTERRUPTED):
+            self.reset_task(hashid)
+            return True
+        if state == State.CLEAN:
+            return True
+
+    def skip_task(self, hashid):
+        self.announcer.put_back(hashid)
+
+    def tasks_for_work(self, hashes=None, limit=None, nmaxerror=5):
+        assert hashes is None
+        super().tasks_for_work(limit=limit, nmaxerror=nmaxerror)
+
+    def task_error(self, hashid):
+        super().task_error(hashid)
+        self.announcer.task_error(hashid)
+
+    def task_done(self, hashid):
+        super().task_done(hashid)
+        self.announcer.task_done(hashid)
+
+    def task_interrupt(self, hashid):
+        super().task_error(hashid)
+        self.announcer.put_back(hashid)
