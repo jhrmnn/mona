@@ -51,11 +51,13 @@ class Announcer:
     def task_error(self, hashid):
         self.call_url(f'/change_state/{hashid}?state=Error')
 
-    def submit(self, hashes):
+    def submit(self, hashes, append=False):
         data = '\n'.join(reversed(
             [f'{label} {hashid}' for hashid, label in hashes.items()]
         )).encode()
-        return self.call_url('/submit', data=data).strip()
+        return self.call_url(
+            '/append' if append else '/submit', data=data
+        ).strip()
 
 
 # from http.client import HTTPSConnection

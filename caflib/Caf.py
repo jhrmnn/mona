@@ -141,7 +141,7 @@ class Caf(CLI):
 
     def get_queue_url(self, queue):
         queue_name, num = queue.rsplit(':', 1) if ':' in queue else (queue, None)
-        queue_conf = f'queue "{queue}"'
+        queue_conf = f'queue "{queue_name}"'
         if not self.config.has_section(queue_conf):
             return queue
         queue_conf = self.config[queue_conf]
@@ -324,12 +324,15 @@ def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json'):
 
 
 @Caf.command()
-def submit(caf, patterns: 'PATH', url: 'URL'):
+def submit(caf, patterns: 'PATH', url: 'URL', append: '--append'):
     """
     Submit the list of prepared tasks to a queue server.
 
     Usage:
-        caf submit URL [PATH...]
+        caf submit URL [PATH...] [-a]
+
+    Options:
+        -a, --append        Append to an existing queue.
     """
     url = caf.get_queue_url(url)
     announcer = Announcer(url, caf.config.get('core', 'curl', fallback=None))
@@ -346,41 +349,10 @@ def submit(caf, patterns: 'PATH', url: 'URL'):
     }
     if not hashes:
         error('No tasks to submit')
-    queue_url = announcer.submit(hashes)
+    queue_url = announcer.submit(hashes, append=append)
     print(f'./caf make --queue {queue_url}')
     with (caf.cafdir/'LAST_QUEUE').open('w') as f:
         f.write(queue_url)
-
-
-# @Caf.command()
-# def append(caf, targets: 'TARGET', queue: 'URL', maxdepth: ('--maxdepth', int)):
-#     """
-#     Append the list of prepared tasks to a given queue.
-#
-#     Usage:
-#         caf append URL [TARGET...] [--maxdepth N]
-#
-#     Options:
-#         --maxdepth N             Maximum depth.
-#     """
-#     from urllib.request import urlopen
-#     url = caf.get_queue_url(queue, 'append')
-#     roots = [caf.out/t for t in targets] \
-#         if targets else (caf.out).glob('*')
-#     tasks = OrderedDict()
-#     for path in find_tasks(*roots, unsealed=True, maxdepth=maxdepth):
-#         cellarid = get_stored(path)
-#         if cellarid not in tasks:
-#             tasks[cellarid] = path
-#     if not tasks:
-#         error('No tasks to submit')
-#     data = '\n'.join('{} {}'.format(label, h)
-#                      for h, label in reversed(tasks.items())).encode()
-#     with urlopen(url, data=data) as r:
-#         queue_url = r.read().decode()
-#         print('./caf make --queue {}'.format(queue_url))
-#     with open('.caf/LAST_QUEUE', 'w') as f:
-#         f.write(queue_url)
 
 
 @Caf.command()
