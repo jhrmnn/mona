@@ -140,16 +140,17 @@ class Caf(CLI):
         return remotes
 
     def get_queue_url(self, queue):
-        queue, num = queue.split(':') if ':' in queue else (queue, None)
-        queue_sec = f'queue "{queue}"'
-        if self.config.has_section(queue_sec):
-            host = queue_sec['host']
-            token = queue_sec['token']
-            queue = f'{host}/token/{token}'
-        if num:
-            return f'{queue}:{num}'
-        else:
+        queue_name, num = queue.rsplit(':', 1) if ':' in queue else (queue, None)
+        queue_conf = f'queue "{queue}"'
+        if not self.config.has_section(queue_conf):
             return queue
+        queue_conf = self.config[queue_conf]
+        host = queue_conf['host']
+        token = queue_conf['token']
+        queue = f'{host}/token/{token}'
+        if num:
+            queue += f'/queue/{num}'
+        return queue
 
 
 def get_leafs(conf):
@@ -237,7 +238,7 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
     Execute build tasks.
 
     Usage:
-        caf make [-l N] [-p PROFILE [-j N] | --dry] [PATH... | -q URL | --last]
+        caf make [PATH...] [-l N] [-p PROFILE [-j N] | --dry] [-q URL | --last]
 
     Options:
         -l, --limit N              Limit number of tasks to N.
@@ -262,11 +263,12 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
                 error(f'Running ~/.config/caf/worker_{profile} did not succeed.')
         return
     if url:
+        url = caf.get_queue_url(url)
         scheduler = RemoteScheduler(
+            url,
+            caf.config.get('core', 'curl', fallback=None),
             caf.cafdir,
             tmpdir=caf.config.get('core', 'tmpdir', fallback=None),
-            url=url,
-            curl=caf.config.get('core', 'curl', fallback=None)
         )
     else:
         scheduler = Scheduler(
@@ -329,6 +331,7 @@ def submit(caf, patterns: 'PATH', url: 'URL'):
     Usage:
         caf submit URL [PATH...]
     """
+    url = caf.get_queue_url(url)
     announcer = Announcer(url, caf.config.get('core', 'curl', fallback=None))
     scheduler = Scheduler(caf.cafdir)
     queue = scheduler.get_queue()
@@ -344,8 +347,8 @@ def submit(caf, patterns: 'PATH', url: 'URL'):
     if not hashes:
         error('No tasks to submit')
     queue_url = announcer.submit(hashes)
-    print('./caf make --queue {queue_url}')
-    with (caf.cafir/'LAST_QUEUE').open('w') as f:
+    print(f'./caf make --queue {queue_url}')
+    with (caf.cafdir/'LAST_QUEUE').open('w') as f:
         f.write(queue_url)
 
 

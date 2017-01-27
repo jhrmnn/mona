@@ -97,36 +97,46 @@ class Scheduler:
             if limit and nrun >= limit:
                 print(f'{nrun} tasks ran, quitting')
                 break
-            states = self.get_states()
+            queue = self.get_queue()
+            states = {hashid: state for hashid, (state, *_) in queue.items()}
+            labels = {hashid: label for hashid, (_, label, *_) in queue.items()}
             skipped = set()
             will_continue = True
             was_interrupted = False
+            debug(f'Starting candidate loop')
             for hashid in self.candidate_tasks(states.keys()):
-                if hashes is not None and hashid not in hashes:
-                    continue
+                label = labels[hashid]
+                debug(f'Got {hashid}:{label} as candidate')
                 if hashid in skipped:
+                    self.skip_task(hashid)
+                    debug(f'{label} has been skipped before')
                     will_continue = False
                     break
                 else:
                     skipped.add(hashid)
+                if hashes is not None and hashid not in hashes:
+                    self.skip_task(hashid)
+                    debug(f'{label} is in filter, skipping')
+                    continue
                 state = states[hashid]
                 if not self.is_state_ok(state, hashid):
+                    debug(f'{label} does not have conforming state, skipping')
                     continue
                 task = self.cellar.get_task(hashid)
                 if any(
-                        state != State.DONE
+                        states[child] != State.DONE
                         for child in task['children'].values()
                 ):
                     self.skip_task(hashid)
+                    debug(f'{label} has unsealed children, skipping')
                     continue
                 with self.db_lock():
-                    state, label = self.execute(
-                        'select state, label from queue where taskhash = ?',
-                        (hashid,)
+                    state, = self.execute(
+                        'select state from queue where taskhash = ?', (hashid,)
                     ).fetchone()
                     if state != State.CLEAN:
-                        break
                         print(f'({label} already locked!')
+                        break
                     self.execute(
                         'update queue set state = ?, changed = ? '
                         'where taskhash = ?',
@@ -172,6 +182,7 @@ class Scheduler:
                 nrun += 1
                 break
             else:
+                debug('No conforming candidate in a candidate loop')
                 will_continue = False
             if not will_continue:
                 print(f'No available tasks to do, quitting')
@@ -246,7 +257,12 @@ class RemoteScheduler(Scheduler):
         self.announcer = Announcer(url, curl)
 
     def candidate_tasks(self, states):
-        return self.announcer.get_task()
+        while True:
+            hashid = self.announcer.get_task()
+            if hashid:
+                yield hashid
+            else:
+                return
 
     def is_state_ok(self, state, hashid):
         if state == State.DONE:
@@ -260,10 +276,6 @@ class RemoteScheduler(Scheduler):
 
     def skip_task(self, hashid):
         self.announcer.put_back(hashid)
-
-    def tasks_for_work(self, hashes=None, limit=None, nmaxerror=5):
-        assert hashes is None
-        super().tasks_for_work(limit=limit, nmaxerror=nmaxerror)
 
     def task_error(self, hashid):
         super().task_error(hashid)

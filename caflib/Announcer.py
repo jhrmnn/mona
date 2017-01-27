@@ -1,12 +1,65 @@
 import subprocess as sp
 from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
-# from http.client import HTTPSConnection
-# from urllib.parse import urlencode
 import socket
 
-
 from caflib.Logging import error
+
+
+class Announcer:
+    def __init__(self, url, num=None, curl=None):
+        self.curl = curl
+        self.url = url
+
+    def call_url(self, url, data=None):
+        url = f'{self.url}{url}'
+        if self.curl:
+            if data:
+                error('Cannot send data with custom curl')
+            try:
+                return sp.run(
+                    self.curl % url, shell=True, check=True
+                ).stdout.decode()
+            except sp.CalledProcessError as exc:
+                if exc.returncode == 22:
+                    return
+                else:
+                    raise
+        else:
+            try:
+                with urlopen(url, timeout=30, data=data) as req:
+                    return req.read().decode()
+            except HTTPError:
+                return
+            except URLError as exc:
+                print(f'error: Cannot connect to {self.url}: {exc.reason}')
+                return
+
+    def get_task(self):
+        r = self.call_url(f'/get?caller={socket.gethostname()}')
+        if not r:
+            return
+        hashid, *_ = r.split()
+        return hashid
+
+    def put_back(self, hashid):
+        self.call_url(f'/put_back/{hashid}')
+
+    def task_done(self, hashid):
+        self.call_url(f'/change_state/{hashid}?state=Done')
+
+    def task_error(self, hashid):
+        self.call_url(f'/change_state/{hashid}?state=Error')
+
+    def submit(self, hashes):
+        data = '\n'.join(reversed(
+            [f'{label} {hashid}' for hashid, label in hashes.items()]
+        )).encode()
+        return self.call_url('/submit', data=data).strip()
+
+
+# from http.client import HTTPSConnection
+# from urllib.parse import urlencode
 # from contextlib import contextmanager
 #
 #
@@ -57,88 +110,3 @@ from caflib.Logging import error
 #                 {'Content-type': 'application/x-www-form-urlencoded'}
 #             )
 #             conn.getresponse()
-#
-#     def get_task(self):
-#         if self.curl:
-#             try:
-#                 response = subprocess.check_output(
-#                     self.curl % self.url, shell=True).decode()
-#             except subprocess.CalledProcessError as e:
-#                 if e.returncode == 22:
-#                     return None, None
-#                 else:
-#                     raise
-#         else:
-#             try:
-#                 with urlopen(self.url, timeout=30) as r:
-#                     response = r.read().decode()
-#             except HTTPError:
-#                 return None, None
-#             except URLError as e:
-#                 self.info(
-#                     'error: Cannot connect to {}: {}'.format(self.url, e.reason)
-#                 )
-#                 return None, None
-#         task, label, url_state, url_putback = response.split()
-#         self.url_state[task] = url_state
-#         self.url_putback[task] = url_putback
-#         return label, task
-#
-#     def put_back(self, label, taskid):
-#         self.call_url(self.url_putback.pop(taskid))
-#
-#     def task_done(self, taskid):
-#         self.call_url(self.url_state.pop(taskid) + '?state=Done')
-#
-#     def task_error(self, taskid):
-#         self.call_url(self.url_state.pop(taskid) + '?state=Error')
-
-
-class Announcer:
-    def __init__(self, url, curl=None):
-        self.curl = curl
-        self.url, self.num = url.split(':') if ':' in url else (url, None)
-
-    def call_url(self, url, data=None):
-        url = f'{self.url}{url}'
-        if self.curl:
-            if data:
-                error('Cannot send data with custom curl')
-            try:
-                return sp.run(
-                    self.curl % url, shell=True, check=True
-                ).stdout.decode()
-            except sp.CalledProcessError as exc:
-                if exc.returncode == 22:
-                    return
-                else:
-                    raise
-        else:
-            try:
-                with urlopen(url, timeout=30, data=data) as req:
-                    return req.read().decode()
-            except HTTPError:
-                return
-            except URLError as exc:
-                print(f'error: Cannot connect to {self.url}: {exc.reason}')
-                return
-
-    def get_task(self):
-        r = self.call_url(f'/queue/{self.num}/get?caller={socket.gethostname()}')
-        hashid, *_ = r.split()
-        return hashid
-
-    def put_back(self, hashid):
-        self.call_url(f'/queue/{self.num}/put_back/{hashid}')
-
-    def task_done(self, hashid):
-        self.call_url(f'/queue/{self.num}/change_state/{hashid}?state=Done')
-
-    def task_error(self, hashid):
-        self.call_url(f'/queue/{self.num}/change_state/{hashid}?state=Error')
-
-    def submit(self, hashes):
-        data = '\n'.join(reversed(
-            [f'{label} {hashid}' for hashid, label in hashes.items()]
-        )).encode()
-        return self.call_url('/submit', data=data).strip()
