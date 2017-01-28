@@ -10,16 +10,20 @@ def match_glob(path, pattern):
     else:
         regex = re.compile(
             pattern
+            .replace('<>', '([^/]*)')
+            .replace('<', '(')
+            .replace('>', ')')
+            .replace('{', '(?:')
+            .replace('}', ')')
+            .replace(',', '|')
             .replace('**', r'\\')
             .replace('*', '[^/]*')
-            .replace(r'\\', '.*')
-            .replace('<>', '([^/]*)') +
-            '$'
+            .replace(r'\\', '.*') + '$'
         )
         regexes[pattern] = regex
     m = regex.match(path)
     if not m:
         return
     for group in m.groups():
-        pattern = pattern.replace('<>', group, 1)
+        pattern = re.sub(r'<.*?>', group, pattern, 1)
     return pattern
