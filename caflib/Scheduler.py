@@ -32,6 +32,12 @@ class Scheduler:
             self.db = sqlite3.connect(str(Path(path)/'queue.db'))
         except sqlite3.OperationalError:
             no_cafdir()
+        self.execute(
+            'create table if not exists queue ('
+            'taskhash text primary key, state integer, label text, path text, '
+            'changed text, active integer'
+            ') without rowid'
+        )
         self.cellar = Cellar(path)
         self.tmpdir = tmpdir
 
@@ -45,24 +51,26 @@ class Scheduler:
         self.db.commit()
 
     def submit(self, tasks):
-        try:
-            queue = {
-                hashid: row for hashid, *row
-                in self.execute('select * from queue')
-            }
-        except sqlite3.OperationalError:
-            queue = {}
-        self.execute('drop table if exists queue')
+        self.execute('drop table if exists current_tasks')
+        self.execute('create temporary table current_tasks(hash text)')
+        self.executemany('insert into current_tasks values (?)', (
+            (hashid,) for hashid, *_ in tasks
+        ))
         self.execute(
-            'create table queue('
-            'taskhash text, state integer, label text, path text, changed text'
-            ')'
+            'update queue set active = 0 where taskhash not in current_tasks'
+        )
+        self.execute(
+            'update queue set active = 1 where taskhash in current_tasks'
         )
         self.executemany(
-            'insert into queue values (?,?,?,?,?)', (
+            'insert or ignore into queue values (?,?,?,?,?,1)', (
                 (hashid, state, label, '', get_timestamp())
-                if hashid not in queue
-                else (hashid, queue[hashid][0], label, *queue[hashid][2:4])
+                for hashid, state, label in tasks
+            )
+        )
+        self.executemany(
+            'update queue set label = ? where taskhash = ?', (
+                (hashid, label)
                 for hashid, state, label in tasks
             )
         )
@@ -135,7 +143,8 @@ class Scheduler:
                     continue
                 with self.db_lock():
                     state, = self.execute(
-                        'select state from queue where taskhash = ?', (hashid,)
+                        'select state from queue where taskhash = ? and active = 1',
+                        (hashid,)
                     ).fetchone()
                     if state != State.CLEAN:
                         print(f'({label} already locked!')
@@ -197,7 +206,9 @@ class Scheduler:
 
     def get_states(self):
         try:
-            return dict(self.execute('select taskhash, state from queue'))
+            return dict(self.execute(
+                'select taskhash, state from queue where active = 1'
+            ))
         except sqlite3.OperationalError:
             error('There is no queue.')
 
@@ -205,7 +216,10 @@ class Scheduler:
         try:
             return {
                 hashid: row for hashid, *row
-                in self.execute('select * from queue')
+                in self.execute(
+                    'select taskhash, state, label, path, changed from queue '
+                    'where active = 1'
+                )
             }
         except sqlite3.OperationalError:
             error('There is no queue.')
