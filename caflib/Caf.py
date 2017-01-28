@@ -234,12 +234,13 @@ def sig_handler(sig, frame):
 @Caf.command()
 def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
          limit: ('--limit', int), url: '--queue', dry: '--dry',
-         verbose: '--verbose', _: '--last'):
+         verbose: '--verbose', _: '--last', maxerror: ('--maxerror', int)):
     """
     Execute build tasks.
 
     Usage:
-        caf make [PATH...] [-v] [--dry] [-l N] [-p PROFILE [-j N]] [-q URL | --last]
+        caf make [PATH...] [-v] [--dry] [-p PROFILE [-j N]] [-q URL | --last]
+                 [-l N] [--maxerror N]
 
     Options:
         -l, --limit N              Limit number of tasks to N.
@@ -249,6 +250,7 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         -q, --queue URL            Take tasks from web queue.
         --last                     As above, but use the last submitted queue.
         -v, --verbose              Be verbose.
+        --maxerror N               Number of errors in row to quit [default: 5].
     """
     if profile:
         cmd = [os.path.expanduser(f'~/.config/caf/worker_{profile}')]
@@ -258,6 +260,8 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
             cmd.append('--dry')
         if limit:
             cmd.extend(('-l', str(limit)))
+        if maxerror:
+            cmd.extend(('--maxerror', str(maxerror)))
         if url:
             cmd.extend(('-q', url))
         cmd.extend(patterns)
@@ -289,7 +293,9 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         hashes = None
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
-    for task in scheduler.tasks_for_work(hashes=hashes, limit=limit, dry=dry):
+    for task in scheduler.tasks_for_work(
+            hashes=hashes, limit=limit, dry=dry, nmaxerror=maxerror
+    ):
         with cd(task.path):
             with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
                 try:
