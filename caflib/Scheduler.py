@@ -122,9 +122,6 @@ class Scheduler:
                 if not self.is_state_ok(state, hashid, label):
                     debug(f'{label} does not have conforming state, skipping')
                     continue
-                if dry:
-                    self.skip_task(hashid)
-                    continue
                 task = self.cellar.get_task(hashid)
                 if any(
                         states[child] != State.DONE
@@ -132,6 +129,9 @@ class Scheduler:
                 ):
                     self.skip_task(hashid)
                     debug(f'{label} has unsealed children, skipping')
+                    continue
+                if dry:
+                    self.skip_task(hashid)
                     continue
                 with self.db_lock():
                     state, = self.execute(

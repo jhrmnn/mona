@@ -18,6 +18,7 @@ from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Timing import timing
 from caflib.Logging import error, info, Table, colstr, warn, no_cafdir, \
     handle_broken_pipe
+import caflib.Logging as Logging
 from caflib.CLI import CLI, CLIExit
 from caflib.Cellar import Cellar, State
 from caflib.Remote import Remote, Local
@@ -232,12 +233,13 @@ def sig_handler(sig, frame):
 
 @Caf.command()
 def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
-         limit: ('--limit', int), url: '--queue', dry: '--dry', _: '--last'):
+         limit: ('--limit', int), url: '--queue', dry: '--dry',
+         verbose: '--verbose', _: '--last'):
     """
     Execute build tasks.
 
     Usage:
-        caf make [PATH...] [-l N] [-p PROFILE [-j N]] [--dry] [-q URL | --last]
+        caf make [PATH...] [-v] [--dry] [-l N] [-p PROFILE [-j N]] [-q URL | --last]
 
     Options:
         -l, --limit N              Limit number of tasks to N.
@@ -246,10 +248,14 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         -n, --dry                  Dry run (do not actually work on tasks).
         -q, --queue URL            Take tasks from web queue.
         --last                     As above, but use the last submitted queue.
+        -v, --verbose              Be verbose.
     """
     if profile:
-        pass
         cmd = [os.path.expanduser(f'~/.config/caf/worker_{profile}')]
+        if verbose:
+            cmd.append('-v')
+        if dry:
+            cmd.append('--dry')
         if limit:
             cmd.extend(('-l', str(limit)))
         if url:
@@ -261,6 +267,8 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
             except sp.CalledProcessError:
                 error(f'Running ~/.config/caf/worker_{profile} did not succeed.')
         return
+    if verbose:
+        Logging.DEBUG = True
     if url:
         url = caf.get_queue_url(url)
         scheduler = RemoteScheduler(
