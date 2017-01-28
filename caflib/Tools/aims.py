@@ -42,7 +42,7 @@ def prepare_aims(task):
     if aims_name in aimses:
         aims, aims_path = aimses[aims_name]
     elif aims_name:
-        aims_path = Path(shutil.which(aims)).resolve()
+        aims_path = Path(shutil.which(aims_name)).resolve()
         aims = aims_path.name
         aimses[aims] = aims, aims_path
     else:

@@ -5,6 +5,7 @@ import tarfile
 from base64 import b64encode
 from itertools import takewhile
 import imp
+import shutil
 import sys
 from textwrap import dedent
 import hashlib
@@ -107,15 +108,13 @@ class Caf(CLI):
         if args['COMMAND'] in ['conf', 'make']:
             for remote in remotes:
                 remote.update()
-        if 'make' in rargs and not rargs['conf']:
+        if 'make' in rargs:
             for remote in remotes:
                 self.commands[('check',)]._func(self, remotes)
         for remote in remotes:
             remote.command(' '.join(
                 arg if ' ' not in arg else repr(arg) for arg in rargv[1:]
             ))
-            if 'make' in rargs and rargs['conf']:
-                self.commands[('check',)]._func(self, remotes)
 
     def __format__(self, fmt):
         if fmt == 'header':
@@ -302,21 +301,26 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
 
 
 @Caf.command()
-def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json'):
+def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json',
+             force: '--force'):
     """
     Create the dependecy tree physically on a file system.
 
     Usage:
-        caf checkout [-p PATH | --json] [PATH...]
+        caf checkout [-p PATH | --json] [PATH...] [-f]
 
     Options:
         -p, --path PATH     Where to checkout [default: build].
         --json              Do not checkout, print JSONs of hashes from STDIN.
+        -f, --force         Remove PATH if exists.
     """
     cellar = Cellar(caf.cafdir)
     if not do_json:
         if path.exists():
-            error(f'Cannot checkout to existing path: {path}')
+            if force:
+                shutil.rmtree(path)
+            else:
+                error(f'Cannot checkout to existing path: {path}')
         cellar.checkout(path, patterns=patterns or ['**'])
     else:
         hashes = [l.strip() for l in sys.stdin.readlines()]
