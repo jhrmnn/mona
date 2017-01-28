@@ -7,7 +7,7 @@ from caflib.Logging import error
 
 
 class Announcer:
-    def __init__(self, url, num=None, curl=None):
+    def __init__(self, url, curl=None):
         self.curl = curl
         self.url = url
 
