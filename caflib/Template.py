@@ -7,26 +7,27 @@ from hashlib import sha1
 class Template:
     _cache = {}
 
-    def __init__(self, path_or_stringio):
+    def __init__(self, source):
         try:
-            text = path_or_stringio.getvalue()
+            text = source.getvalue()
         except AttributeError:
-            self.key = path = Path(path_or_stringio)
+            self.key = path = Path(source)
             self.name = path.name
             if self.key not in Template._cache:
                 try:
-                    Template._cache[self.key] = path.open().read()
-                    info('Loading template "{}"'.format(path))
+                    with path.open() as f:
+                        Template._cache[self.key] = f.read()
                 except FileNotFoundError:
-                    error('Template "{}" does not exist'.format(path))
+                    error('Template "{path}" does not exist')
+                else:
+                    info(f'Loaded template "{path}"')
         else:
             self.key = sha1(text.encode()).hexdigest()
             self.name = self.key[-7:]
             if self.key not in Template._cache:
                 Template._cache[self.key] = text
-                info('Loading anonymous template')
 
-    def substitute(self, mapping):
+    def render(self, mapping):
         used = set()
 
         def replacer(m):
@@ -52,20 +53,27 @@ class Template:
             elif default:
                 try:
                     value = eval(default)
-                except:
-                    error('There was an error when processing default of key "{}" '
-                          'in template "{}"'.format(token, self.name))
+                except Exception:
+                    error(
+                        'There was an error when processing default '
+                        'of key "{token}" in template "{self.name}"'
+                    )
             else:
-                error('"{}" not defined when processing template {}'
-                      .format(token, self.name))
+                error(
+                    '"{token}" not defined when processing template {self.name}'
+                )
             used.add(token)
             try:
                 return format(value, fmt) if fmt else str(value)
             except ValueError:
-                error('Unknown format "{}" when processing key "{}" in template "{}"'
-                      .format(fmt, token, self.name))
+                error(
+                    'Unknown format "{fmt}" when processing key "{token}" '
+                    'in template "{self.name}"'
+                )
 
-        replaced = re.sub(r'\{\{\s*([^\s}]([^}]*[^\s}])?)\s*\}\}',
-                          replacer,
-                          Template._cache[self.key])
+        replaced = re.sub(
+            r'\{\{\s*([^\s}]([^}]*[^\s}])?)\s*\}\}',
+            replacer,
+            Template._cache[self.key]
+        )
         return replaced, used

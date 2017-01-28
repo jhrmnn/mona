@@ -1,8 +1,9 @@
-import subprocess
+import subprocess as sp
+import os
+import json
+
+
 from caflib.Logging import info, error
-from caflib.Utils import filter_cmd
-from caflib.Listing import find_tasks
-from caflib.Context import get_stored
 
 
 class Remote:
@@ -12,117 +13,107 @@ class Remote:
         self.top = top
 
     def update(self, delete=False):
-        info('Updating {.host}...'.format(self))
-        subprocess.check_call(['ssh', self.host, 'mkdir -p {.path}'.format(self)])
-        paths = subprocess.check_output(['git', 'ls-files']).decode().split()
-        paths = [p for p in paths if not p.startswith('build/')]
+        info(f'Updating {self.host}...')
+        sp.run(['ssh', self.host, f'mkdir -p {self.path}'], check=True)
+        exclude = []
+        for file in ['.cafignore', os.path.expanduser('~/.config/caf/ignore')]:
+            if os.path.exists(file):
+                with open(file) as f:
+                    exclude.extend(l.strip() for l in f.readlines())
         cmd = [
-            'rsync',
-            '-cirl',
-            '--delete' if delete else None,
-            '--exclude=*.pyc',
-            '--exclude=__pycache__',
-            '--files-from=-',
-            '.',
-            '{0.host}:{0.path}'.format(self)
+            'rsync', '-cirl', '--copy-unsafe-links',
+            '--exclude=.*', '--exclude=build', '--exclude=*.pyc',
+            '--exclude=__pycache__'
         ]
-        p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
-        p.communicate('\n'.join(paths).encode())
+        if delete:
+            cmd += '--delete'
+        cmd.extend(f'--exclude={patt}' for patt in exclude)
+        cmd.extend(['caf', 'cscript.py', str(self.top)])
+        if os.path.exists('caflib'):
+            cmd.append('caflib')
+        cmd.append(f'{self.host}:{self.path}')
+        sp.run(cmd, check=True)
 
-    def command(self, cmd, get_output=False):
+    def command(self, cmd, get_output=False, inp=None):
         if not get_output:
-            info('Running `./caf {}` on {.host}...'.format(cmd, self))
-        caller = subprocess.check_output if get_output else subprocess.check_call
+            info(f'Running `./caf {cmd}` on {self.host}...')
+        if inp:
+            inp = inp.encode()
         try:
-            output = caller([
+            output = sp.run([
                 'ssh', '-t', '-o', 'LogLevel=QUIET',
                 self.host,
-                'sh -c "cd {.path} && exec python3.5 -u caf {}"'.format(self, cmd)])
-        except subprocess.CalledProcessError:
-            error('Command `{}` on {.host} ended with error'
-                  .format(cmd, self))
-        return output.strip() if get_output else None
+                f'sh -c "cd {self.path} && exec python3 -u caf {cmd}"'
+            ], check=True, input=inp, stdout=sp.PIPE if get_output else None)
+        except sp.CalledProcessError:
+            error(f'Command `{cmd}` on {self.host} ended with error')
+        if get_output:
+            return output.stdout.decode()
 
-    def check(self, root):
-        info('Checking {}...'.format(self.host))
-        here = {}
-        for path in find_tasks(root):
-            cellarpath = get_stored(path, require=None)
-            if cellarpath:
-                here[str(path)] = str(cellarpath)
-        there = dict(l.split() for l
-                     in self.command('list tasks --stored --both', get_output=True)
-                     .decode().strip().split('\n'))
-        missing = []
-        for task, target in here.items():
-            if target != there.get(task):
-                missing.append((task, target, there.get(task)))
-        if missing:
-            for item in missing:
-                print('{}: {} is not {}'.format(*item))
-            error('Local Tasks are not in remote Cellar')
+    def check(self, hashes):
+        info(f'Checking {self.host}...')
+        remote_hashes = dict(
+            reversed(l.split()) for l in self.command(
+                'list tasks --both', get_output=True
+            ).strip().split('\n')
+        )
+        is_ok = True
+        for path, hashid in hashes.items():
+            if path not in remote_hashes:
+                print(f'{path} does not exist on remote')
+                is_ok = False
+            elif remote_hashes[path] != hashid:
+                print(f'{path} has a different hash on remote')
+                is_ok = False
+        for path, hashid in remote_hashes.items():
+            if path not in hashes:
+                print(f'{path} does not exist on local')
+                is_ok = False
+        if is_ok:
+            info('Local tasks are on remote')
         else:
-            info('Local Tasks are in remote Cellar.')
+            error('Local tasks are not on remote')
 
-    def fetch(self, targets, cache, root, dry=False, get_all=False, follow=False, only_mark=False):
-        info('Fetching from {}...'.format(self.host))
-        if not get_all:
-            there = self.command(
-                'list tasks {} --finished --cellar {}'.format(
-                    ' '.join(targets) if targets else '',
-                    '--maxdepth 1' if not follow else ''
-                ),
-                get_output=True
-            ).decode().split('\r\n')
-        roots = [p for p in root.glob('*')
-                 if not targets or p.name in targets]
-        paths = set()
-        for task in find_tasks(*roots, stored=True, follow=follow):
-            cellarpath = get_stored(task)
-            if get_all or cellarpath in there:
-                if only_mark:
-                    with (cache/cellarpath/'.caf/remote_seal').open('w') as f:
-                        f.write('{0.host}:{0.path}'.format(self))
-                else:
-                    paths.add(cellarpath)
-        if only_mark:
-            return
-        cmd = ['rsync',
-               '-cirlP',
-               '--delete',
-               '--exclude=*.pyc',
-               '--exclude=.caf/env',
-               '--exclude=__pycache__',
-               '--dry-run' if dry else None,
-               '--files-from=-',
-               '{0.host}:{0.path}/{1}'.format(self, cache),
-               str(cache)]
-        p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
-        p.communicate('\n'.join(paths).encode())
+    def fetch(self, hashes):
+        info(f'Fetching from {self.host}...')
+        tasks = {hashid: task for hashid, task in json.loads(self.command(
+            'checkout --json', get_output=True, inp='\n'.join(hashes)
+        )).items() if 'outputs' in task}
+        info(f'Will fetch {len(tasks)}/{len(hashes)} tasks')
+        paths = set(
+            hashid
+            for task in tasks.values()
+            for hashid in task['outputs'].values()
+        )
+        cmd = [
+            'rsync', '-cirlP', '--files-from=-',
+            f'{self.host}:{self.path}/.caf/objects', '.caf/objects'
+        ]
+        sp.run(cmd, input='\n'.join(f'{p[0:2]}/{p[2:]}' for p in paths).encode())
+        return tasks
 
-    def push(self, targets, cache, root, dry=False):
-        info('Pushing to {}...'.format(self.host))
-        roots = [p for p in root.glob('*')
-                 if not targets or p.name in targets]
-        paths = set()
-        for task in find_tasks(*roots, stored=True, follow=False):
-            paths.add(get_stored(task))
-        cmd = ['rsync',
-               '-cirlP',
-               '--delete',
-               '--exclude=*.pyc',
-               '--exclude=.caf/env',
-               '--exclude=__pycache__',
-               '--dry-run' if dry else None,
-               '--files-from=-',
-               str(cache),
-               '{0.host}:{0.path}/{1}'.format(self, cache)]
-        p = subprocess.Popen(filter_cmd(cmd), stdin=subprocess.PIPE)
-        p.communicate('\n'.join(paths).encode())
+    # def push(self, targets, cache, root, dry=False):
+    #     info('Pushing to {}...'.format(self.host))
+    #     roots = [p for p in root.glob('*')
+    #              if not targets or p.name in targets]
+    #     paths = set()
+    #     for task in find_tasks(*roots, stored=True, follow=False):
+    #         paths.add(get_stored(task))
+    #     cmd = ['rsync',
+    #            '-cirlP',
+    #            '--delete',
+    #            '--exclude=*.pyc',
+    #            '--exclude=.caf/env',
+    #            '--exclude=__pycache__',
+    #            '--dry-run' if dry else None,
+    #            '--files-from=-',
+    #            str(cache),
+    #            '{0.host}:{0.path}/{1}'.format(self, cache)]
+    #     p = sp.Popen(filter_cmd(cmd), stdin=sp.PIPE)
+    #     p.communicate('\n'.join(paths).encode())
 
     def go(self):
-        subprocess.call(['ssh', '-t', self.host,
-                         'cd {.path} && exec $SHELL'.format(self)])
+        sp.call(['ssh', '-t', self.host, f'cd {self.path} && exec $SHELL'])
 
 
 class Local:
@@ -134,13 +125,12 @@ class Local:
 
     def command(self, cmd, get_output=False):
         if not get_output:
-            info('Running `./caf {}` on {.host}...'.format(cmd, self))
-        caller = subprocess.check_output if get_output else subprocess.check_call
+            info(f'Running `./caf {cmd}` on {self.host}...')
+        caller = sp.check_output if get_output else sp.check_call
         try:
-            output = caller('sh -c "python3 -u caf {}"'.format(cmd), shell=True)
-        except subprocess.CalledProcessError:
-            error('Command `{}` on {.host} ended with error'
-                  .format(cmd, self))
+            output = caller(f'sh -c "python3 -u caf {cmd}"', shell=True)
+        except sp.CalledProcessError:
+            error(f'Command `{cmd}` on {self.host} ended with error')
         return output.strip() if get_output else None
 
     def check(self, root):

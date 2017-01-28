@@ -1,30 +1,31 @@
 import sys
+import os
 from io import StringIO
 from itertools import chain
-from datetime import datetime
-from pathlib import Path
 
 
-def log_caf(argv):
-    if not Path('.caf').is_dir():
-        Path('.caf').mkdir()
-    with open('.caf/log', 'a') as f:
-        f.write('{:%Y-%b-%d %H:%M:%S}: {}\n'.format(datetime.now(), ' '.join(argv)))
+DEBUG = 'DEBUG' in os.environ
 
 
 class colstr(str):
-    colors = {'bold': '\x1b[01;1m',
-              'red': '\x1b[01;31m',
-              'green': '\x1b[32m',
-              'yellow': '\x1b[33m',
-              'pink': '\x1b[35m',
-              'blue': '\x1b[01;34m',
-              'cyan': '\x1b[36m',
-              'grey': '\x1b[37m',
-              'normal': '\x1b[0m'}
+    colors = {
+        'red': '\x1b[31m',
+        'green': '\x1b[32m',
+        'yellow': '\x1b[33m',
+        'blue': '\x1b[34m',
+        'bryellow': '\x1b[93m',
+        'brblue': '\x1b[94m',
+        'pink': '\x1b[35m',
+        'cyan': '\x1b[36m',
+        'grey': '\x1b[37m',
+        'normal': '\x1b[0m'
+    }
 
     def __new__(cls, s, color):
-        obj = str.__new__(cls, colstr.colors[color] + str(s) + colstr.colors['normal'])
+        obj = str.__new__(
+            cls,
+            colstr.colors[color] + str(s) + colstr.colors['normal']
+        )
         obj.len = len(str(s))
         obj.orig = str(s)
         return obj
@@ -38,6 +39,11 @@ def warn(s):
         colstr(s, 'yellow'),
         file=sys.stdout if sys.stdout.isatty() else sys.stderr
     )
+
+
+def debug(s):
+    if DEBUG:
+        print(s)
 
 
 def info(s):
@@ -54,11 +60,36 @@ def error(s):
     )
 
 
-def dep_error(dep):
-    print(colstr('caf requires {}'.format(dep), 'red'))
-    print('Install all dependencies with\n\n'
-          '    pip3 install docopt pyyaml progressbar2')
-    sys.exit(1)
+def no_cafdir():
+    error('Not a caf repository')
+
+
+_reports = []
+
+
+def report(f):
+    """Register function as a report.
+
+    Example:
+
+        @report
+        def my_report(...
+    """
+    _reports.append(f)
+    return f
+
+
+def handle_broken_pipe():
+    try:
+        sys.stdout.flush()
+    finally:
+        try:
+            sys.stdout.close()
+        finally:
+            try:
+                sys.stderr.flush()
+            finally:
+                sys.stderr.close()
 
 
 class TableException(Exception):
@@ -96,22 +127,25 @@ class Table:
     def __str__(self):
         col_nums = [len(row) for free, row in self.rows if not free]
         if len(set(col_nums)) != 1:
-            raise TableException('Unequal column lengths: {}'.format(col_nums))
+            raise TableException(f'Unequal column lengths: {col_nums}')
         col_nums = col_nums[0]
         cell_widths = [[len(cell) for cell in row]
                        for free, row in self.rows if not free]
         col_widths = [max(col) for col in zip(*cell_widths)]
-        seps = (col_nums-1)*[self.sep] if not isinstance(self.sep, list) else self.sep
+        seps = (col_nums-1)*[self.sep] if not isinstance(self.sep, list) \
+            else self.sep
         seps += ['\n']
-        aligns = col_nums*[self.align] if not isinstance(self.align, list) else self.align
+        aligns = col_nums*[self.align] if not isinstance(self.align, list) \
+            else self.align
         f = StringIO()
         for free, row in self.rows:
             if free:
-                f.write('{}\n'.format(row[0]))
+                f.write(f'{row[0]}\n')
             else:
                 cells = (alignize(cell, align, width)
                          for cell, align, width
                          in zip(row, aligns, col_widths))
-                f.write('{}{}'.format(self.indent,
-                                      ''.join(chain.from_iterable(zip(cells, seps)))))
+                f.write(
+                    self.indent + ''.join(chain.from_iterable(zip(cells, seps)))
+                )
         return f.getvalue()[:-1]
