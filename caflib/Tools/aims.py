@@ -77,7 +77,10 @@ def prepare_aims(task):
         species = sorted(set((a.number, a.symbol) for a in geom))
         if str(subdir/'control.in') not in task.inputs:
             error('No control file found')
-        chunks = [task.inputs[str(subdir/'control.in')]]
+        chunks = ['\n'.join(
+            l for l in task.inputs[str(subdir/'control.in')].split('\n')
+            if not l.lstrip().startswith('#') and l.strip()
+        ) + '\n']
         for attr in sorted(list(task.attrs)):
             if attr in _tags:
                 value = task.consume(attr)
@@ -88,6 +91,8 @@ def prepare_aims(task):
                 elif isinstance(value, list):
                     chunks.append('\n'.join(f'{attr}  {p2f(v)}' for v in value))
                 else:
+                    if attr == 'xc' and value.startswith('libxc'):
+                        chunks.append('override_warning_libxc')
                     chunks.append(f'{attr}  {p2f(value)}')
         if not basis == 'none':
             for number, symbol in species:
