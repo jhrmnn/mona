@@ -494,8 +494,6 @@ def status(caf, patterns: 'PATH'):
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     patterns = patterns or caf.paths
-    if not patterns:
-        return
     colors = 'yellow green red normal'.split()
     print('number of {} tasks:'.format('/'.join(
         colstr(s, color) for s, color in zip(
