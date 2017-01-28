@@ -58,6 +58,7 @@ def error(s):
         colstr(s, 'red'),
         file=sys.stdout if sys.stdout.isatty() else sys.stderr
     )
+    sys.exit(1)
 
 
 def no_cafdir():
