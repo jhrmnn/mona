@@ -60,7 +60,8 @@ class Scheduler:
             'update queue set active = 0 where taskhash not in current_tasks'
         )
         self.execute(
-            'update queue set active = 1 where taskhash in current_tasks'
+            'delete from queue where active = 0 and state in (?, ?)',
+            (State.CLEAN, State.DONE)
         )
         self.executemany(
             'insert or ignore into queue values (?,?,?,?,?,1)', (
@@ -69,9 +70,8 @@ class Scheduler:
             )
         )
         self.executemany(
-            'update queue set label = ? where taskhash = ?', (
-                (hashid, label)
-                for hashid, state, label in tasks
+            'update queue set active = 1, label = ? where taskhash = ?', (
+                (hashid, label) for hashid, state, label in tasks
             )
         )
         self.commit()
