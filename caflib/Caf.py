@@ -310,17 +310,18 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
 
 @Caf.command()
 def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json',
-             force: '--force'):
+             force: '--force', nth: ('-n', int)):
     """
     Create the dependecy tree physically on a file system.
 
     Usage:
-        caf checkout [-p PATH | --json] [PATH...] [-f]
+        caf checkout [-p PATH | --json] [PATH...] [-f] [-n N]
 
     Options:
         -p, --path PATH     Where to checkout [default: build].
         --json              Do not checkout, print JSONs of hashes from STDIN.
         -f, --force         Remove PATH if exists.
+        -n N                Nth build to the past [default: 0].
     """
     cellar = Cellar(caf.cafdir)
     if not do_json:
@@ -329,7 +330,7 @@ def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json',
                 shutil.rmtree(path)
             else:
                 error(f'Cannot checkout to existing path: {path}')
-        cellar.checkout(path, patterns=patterns or ['**'])
+        cellar.checkout(path, patterns=patterns or ['**'], nth=nth)
     else:
         hashes = [l.strip() for l in sys.stdin.readlines()]
         json.dump(cellar.get_tasks(hashes), sys.stdout)
@@ -429,6 +430,21 @@ def list_remotes(caf, _):
     for name, remote in config_items(caf.config, 'remote'):
         print(name)
         print(f'\t{remote["host"]}:{remote["path"]}')
+
+
+@caf_list.add_command(name='builds')
+def list_builds(caf, _):
+    """
+    List builds.
+
+    Usage:
+        caf list builds
+    """
+    cellar = Cellar(caf.cafdir)
+    table = Table(align='<<')
+    for i, created in reversed(list(enumerate(cellar.get_builds()))):
+        table.add_row(str(i), created)
+    print(table)
 
 
 @caf_list.add_command(name='tasks')

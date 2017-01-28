@@ -200,11 +200,12 @@ class Cellar:
                 all_files.append(target)
         return all_files
 
-    def get_last_build(self):
+    def get_build(self, nth=0):
         targets = self.db.execute(
             'select taskhash, path from targets join '
-            '(select id from builds order by created desc limit 1) b '
-            'on targets.buildid = b.id'
+            '(select id from builds order by created desc limit 1 offset ?) b '
+            'on targets.buildid = b.id',
+            (nth,)
         ).fetchall()
         tasks = {hashid: json.loads(task) for hashid, task in self.db.execute(
             'select tasks.hash, task from tasks join '
@@ -215,8 +216,13 @@ class Cellar:
         )}
         return tasks, targets
 
+    def get_builds(self):
+        return [created for created, in self.db.execute(
+            'select created from builds order by created desc',
+        )]
+
     def get_tree(self, objects=False, hashes=None):
-        tasks, targets = self.get_last_build()
+        tasks, targets = self.get_build()
         if hashes:
             tasks.update(self.get_tasks(hashes))
         tree = [(path, hashid) for hashid, path in targets]
@@ -254,8 +260,8 @@ class Cellar:
                 if match_glob(path, patt):
                     yield hashid, path
 
-    def checkout(self, root, patterns=None):
-        tasks, targets = self.get_last_build()
+    def checkout(self, root, patterns=None, nth=0):
+        tasks, targets = self.get_build(nth=nth)
         root = Path(root).resolve()
         paths = {}
         nsymlinks = 0
