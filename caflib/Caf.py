@@ -369,9 +369,10 @@ def submit(caf, patterns: 'PATH', url: 'URL', append: '--append'):
     if not hashes:
         error('No tasks to submit')
     queue_url = announcer.submit(hashes, append=append)
-    print(f'./caf make --queue {queue_url}')
-    with (caf.cafdir/'LAST_QUEUE').open('w') as f:
-        f.write(queue_url)
+    if queue_url:
+        print(f'./caf make --queue {queue_url}')
+        with (caf.cafdir/'LAST_QUEUE').open('w') as f:
+            f.write(queue_url)
 
 
 @Caf.command()

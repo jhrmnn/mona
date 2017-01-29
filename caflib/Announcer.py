@@ -17,9 +17,13 @@ class Announcer:
             if data:
                 error('Cannot send data with custom curl')
             try:
-                return sp.run(
-                    self.curl % url, shell=True, check=True
-                ).stdout.decode()
+                res = sp.run(
+                    self.curl % url, shell=True, check=True, stdout=sp.PIPE
+                )
+                if res.stdout:
+                    return res.stdout.decode()
+                else:
+                    return
             except sp.CalledProcessError as exc:
                 if exc.returncode == 22:
                     return
@@ -55,9 +59,11 @@ class Announcer:
         data = '\n'.join(reversed(
             [f'{label} {hashid}' for hashid, label in hashes.items()]
         )).encode()
-        return self.call_url(
+        res = self.call_url(
             '/append' if append else '/submit', data=data
-        ).strip()
+        )
+        if res:
+            return res.strip()
 
 
 # from http.client import HTTPSConnection
