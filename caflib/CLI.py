@@ -2,15 +2,10 @@ from textwrap import dedent
 from collections import OrderedDict
 import sys
 
-from caflib.Logging import Table, colstr
-
 try:
     from docopt import docopt
 except ImportError:
-    print(colstr('Requires docopt', 'red'))
-    print(
-        'Install with\n\n'
-        '    pip3 install docopt')
+    print('Error: Cannot import docopt')
     sys.exit(1)
 
 
@@ -125,11 +120,13 @@ class CLI(metaclass=CLIMeta):
             """.rstrip()
             return dedent(usage)
         elif fmt == 'commands':
-            table = Table(align='<', indent='    ', sep='    ')
-            for (trigger, *other), command in self.commands.items():
-                if not other:
-                    table.add_row(trigger, format(command, 'header'))
-            return f'Commands:\n{table}'
+            maxwidth = max(len(trigger) for trigger, *_ in self.commands)
+            commands = [
+                f'    {trigger:{maxwidth}}    {command:header}'
+                for (trigger, *other), command in self.commands.items()
+                if not other
+            ]
+            return 'Commands:\n{}'.format('\n'.join(commands))
         elif fmt == 'short':
             return f'{self:usage}\n\n{self:commands}'
         else:
