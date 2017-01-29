@@ -14,6 +14,7 @@ from caflib.Glob import match_glob
 class State:
     CLEAN = 0
     DONE = 1
+    DONEREMOTE = 5
     ERROR = -1
     RUNNING = 2
     INTERRUPTED = 3

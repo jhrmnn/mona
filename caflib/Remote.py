@@ -74,11 +74,14 @@ class Remote:
         else:
             error('Local tasks are not on remote')
 
-    def fetch(self, hashes):
+    def fetch(self, hashes, files=True):
         info(f'Fetching from {self.host}...')
         tasks = {hashid: task for hashid, task in json.loads(self.command(
             'checkout --json', get_output=True, inp='\n'.join(hashes)
         )).items() if 'outputs' in task}
+        if not files:
+            info(f'Fetched {len(tasks)}/{len(hashes)} task metadata')
+            return tasks
         info(f'Will fetch {len(tasks)}/{len(hashes)} tasks')
         paths = set(
             hashid

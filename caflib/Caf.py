@@ -404,9 +404,10 @@ def reset(caf, patterns: 'PATH', hard: '--hard', running: '--running'):
         if states[hashid] in (State.ERROR, State.INTERRUPTED) \
                 or running and states[hashid] == State.RUNNING:
             scheduler.reset_task(hashid)
-        elif hard and states[hashid] == State.DONE:
+        elif hard and states[hashid] in (State.DONE, State.DONEREMOTE):
             scheduler.reset_task(hashid)
-            cellar.reset_task(hashid)
+            if states[hashid] == State.DONE:
+                cellar.reset_task(hashid)
 
 
 caf_list = CLI('list', header='List various entities.')
@@ -516,10 +517,10 @@ def status(caf, patterns: 'PATH'):
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     patterns = patterns or caf.paths
-    colors = 'yellow green red normal'.split()
+    colors = 'yellow green cyan red normal'.split()
     print('number of {} tasks:'.format('/'.join(
         colstr(s, color) for s, color in zip(
-            'running finished error all'.split(),
+            'running finished remote error all'.split(),
             colors
         )
     )))
@@ -541,6 +542,7 @@ def status(caf, patterns: 'PATH'):
         stats = [len(grouped.get(state, [])) for state in [
             State.RUNNING,
             State.DONE,
+            State.DONEREMOTE,
             State.ERROR
         ]]
         stats.append(len(hashes_paths))
@@ -643,12 +645,16 @@ def check(caf, remotes: ('REMOTE', 'proc_remote')):
 
 
 @Caf.command()
-def fetch(caf, patterns: 'PATH', remotes: ('REMOTE', 'proc_remote')):
+def fetch(caf, patterns: 'PATH', remotes: ('REMOTE', 'proc_remote'),
+          nofiles: '--no-files'):
     """
     Fetch targets from remote.
 
     Usage:
-        caf fetch REMOTE [PATH...]
+        caf fetch REMOTE [PATH...] [--no-files]
+
+    Options:
+        --no-files          Fetch task metadata, but not files.
     """
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
@@ -660,10 +666,12 @@ def fetch(caf, patterns: 'PATH', remotes: ('REMOTE', 'proc_remote')):
     for remote in remotes:
         tasks = remote.fetch(
             [hashid for hashid in hashes if states[hashid] == State.CLEAN],
+            files=not nofiles
         )
         for hashid, task in tasks.items():
-            cellar.seal_task(hashid, hashed_outputs=task['outputs'])
-            scheduler.task_done(hashid)
+            if not nofiles:
+                cellar.seal_task(hashid, hashed_outputs=task['outputs'])
+            scheduler.task_done(hashid, remote=remote.host if nofiles else None)
 
 
 # @Caf.command()

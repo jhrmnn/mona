@@ -249,11 +249,15 @@ class Scheduler:
         if self.db.isolation_level is not None:
             self.commit()
 
-    def task_done(self, hashid):
+    def task_done(self, hashid, remote=None):
         self.execute(
-            'update queue set state = ?, changed = ?, path = "" '
-            'where taskhash = ?',
-            (State.DONE, get_timestamp(), hashid)
+            'update queue set state = ?, changed = ?, path = ? '
+            'where taskhash = ?', (
+                State.DONE if not remote else State.DONEREMOTE,
+                get_timestamp(),
+                '' if not remote else f'REMOTE:{remote}',
+                hashid
+            )
         )
         if self.db.isolation_level is not None:
             self.commit()
@@ -282,7 +286,7 @@ class RemoteScheduler(Scheduler):
                 return
 
     def is_state_ok(self, state, hashid, label):
-        if state == State.DONE:
+        if state in (State.DONE, State.DONEREMOTE):
             print(f'Task {label} already done')
             self.task_done(hashid)
             return False
