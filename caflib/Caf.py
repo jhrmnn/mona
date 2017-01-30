@@ -459,22 +459,24 @@ def list_builds(caf, _):
 def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
                do_error: '--error', do_unfinished: '--unfinished',
                disp_hash: '--hash', disp_path: '--path',
-               patterns: 'PATH', disp_time: '--time', disp_temp: '--temp'):
+               patterns: 'PATH', disp_time: '--time', disp_temp: '--temp',
+               no_color: '--no-color'):
     """
     List tasks.
 
     Usage:
         caf list tasks [PATH...] [--finished | --error | --unfinished | --running]
-                       [--hash] [--path] [--temp] [--time]
+                       [--hash] [--path] [--temp] [--time] [--no-color]
 
     Options:
-        --finished                 List finished tasks.
-        --unfinished               List unfinished tasks.
-        --error                    List tasks in error.
-        --hash                     Display task hash.
-        --path                     Display task virtual path.
-        --temp                     Display temporary path.
-        --time                     Display timestamp.
+        --finished          List finished tasks.
+        --unfinished        List unfinished tasks.
+        --error             List tasks in error.
+        --hash              Display task hash.
+        --path              Display task virtual path.
+        --temp              Display temporary path.
+        --time              Display timestamp.
+        --no-color          Do not color paths.
     """
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
@@ -503,7 +505,10 @@ def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
         if disp_time:
             tokens.append(queue[hashid][3])
         if disp_path or not tokens:
-            tokens.append(path)
+            tokens.append(
+                path if no_color
+                else colstr(path, State.color[states[hashid]])
+            )
         try:
             sys.stdout.write(' '.join(str(t) for t in tokens) + '\n')
         except BrokenPipeError:
@@ -512,12 +517,15 @@ def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
 
 
 @Caf.command()
-def status(caf, patterns: 'PATH'):
+def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
     """
     Print number of initialized, running and finished tasks.
 
     Usage:
-        caf status [PATH...]
+        caf status [PATH...] [-i]
+
+    Options:
+        -i, --incomplete      Print only incomplete patterns.
     """
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
@@ -551,16 +559,15 @@ def status(caf, patterns: 'PATH'):
             State.ERROR
         ]]
         stats.append(len(hashes_paths))
+        if incomplete and stats[1] + stats[2] == stats[4] and pattern != 'All':
+            continue
         stats = [
             colstr(s, color) if s else colstr(s, 'normal')
             for s, color in zip(stats, colors)
         ]
         table.add_row(pattern, *stats)
-    for color, state in [
-            ('yellow', State.RUNNING),
-            ('blue', State.INTERRUPTED),
-            ('red', State.ERROR),
-    ]:
+    for state in [State.RUNNING, State.INTERRUPTED, State.ERROR]:
+        color = State.color[state]
         for hashid, path in grouped.get(state, []):
             table.add_row(
                 f"{colstr('>>', color)} {path} "

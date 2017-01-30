@@ -18,6 +18,14 @@ class State:
     ERROR = -1
     RUNNING = 2
     INTERRUPTED = 3
+    color = {
+        CLEAN: 'normal',
+        DONE: 'green',
+        DONEREMOTE: 'cyan',
+        ERROR: 'red',
+        RUNNING: 'yellow',
+        INTERRUPTED: 'blue',
+    }
 
 
 def get_hash(text):
