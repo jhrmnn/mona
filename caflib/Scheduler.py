@@ -71,7 +71,7 @@ class Scheduler:
         )
         self.executemany(
             'update queue set active = 1, label = ? where taskhash = ?', (
-                (hashid, label) for hashid, state, label in tasks
+                (label, hashid) for hashid, state, label in tasks
             )
         )
         self.commit()
