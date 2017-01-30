@@ -19,8 +19,6 @@ class Template:
                         Template._cache[self.key] = f.read()
                 except FileNotFoundError:
                     error('Template "{path}" does not exist')
-                else:
-                    info(f'Loaded template "{path}"')
         else:
             self.key = sha1(text.encode()).hexdigest()
             self.name = self.key[-7:]
