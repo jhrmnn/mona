@@ -489,11 +489,11 @@ def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
             (hashid, label) for hashid, (_, label, *_) in queue.items()
         )
     for hashid, path in hashes_paths:
-        if do_finished and states[hashid] != State.DONE:
+        if do_finished and states[hashid] not in (State.DONE, State.DONEREMOTE):
             continue
         if do_error and states[hashid] != State.ERROR:
             continue
-        if do_unfinished and states[hashid] == State.DONE:
+        if do_unfinished and states[hashid] in (State.DONE, State.DONEREMOTE):
             continue
         if do_running and states[hashid] != State.RUNNING:
             continue
@@ -566,7 +566,7 @@ def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
             for s, color in zip(stats, colors)
         ]
         table.add_row(pattern, *stats)
-    for state in [State.RUNNING, State.INTERRUPTED, State.ERROR]:
+    for state in [State.RUNNING, State.INTERRUPTED]:
         color = State.color[state]
         for hashid, path in grouped.get(state, []):
             table.add_row(
