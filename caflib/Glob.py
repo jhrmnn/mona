@@ -10,6 +10,7 @@ def match_glob(path, pattern):
     else:
         regex = re.compile(
             pattern
+            .replace('?', '[^/]')
             .replace('<>', '([^/]*)')
             .replace('<', '(')
             .replace('>', ')')

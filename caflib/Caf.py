@@ -456,24 +456,25 @@ def list_builds(caf, _):
 
 
 @caf_list.add_command(name='tasks')
-def list_tasks(caf, _, do_finished: '--finished',
+def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
                do_error: '--error', do_unfinished: '--unfinished',
-               in_cellar: '--hash', both_paths: '--both',
-               patterns: 'PATH', with_path: '--path'):
+               disp_hash: '--hash', disp_path: '--path',
+               patterns: 'PATH', disp_time: '--time', disp_temp: '--temp'):
     """
     List tasks.
 
     Usage:
-        caf list tasks [PATH...] [--finished | --error | --unfinished]
-                       [--hash | --both] [--path]
+        caf list tasks [PATH...] [--finished | --error | --unfinished | --running]
+                       [--hash] [--path] [--temp] [--time]
 
     Options:
         --finished                 List finished tasks.
         --unfinished               List unfinished tasks.
         --error                    List tasks in error.
-        --hash                     Print task hash.
-        --both                     Print path in build and cellar.
-        --path                     Display temporary paths.
+        --hash                     Display task hash.
+        --path                     Display task virtual path.
+        --temp                     Display temporary path.
+        --time                     Display timestamp.
     """
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
@@ -492,16 +493,19 @@ def list_tasks(caf, _, do_finished: '--finished',
             continue
         if do_unfinished and states[hashid] == State.DONE:
             continue
-        if both_paths:
-            s = f'{hashid} {path}'
-        elif in_cellar:
-            s = hashid
-        else:
-            s = path
-        if with_path and queue[hashid][2]:
-            s += f' {queue[hashid][2]}'
+        if do_running and states[hashid] != State.RUNNING:
+            continue
+        tokens = []
+        if disp_hash:
+            tokens.append(hashid)
+        if disp_temp and queue[hashid][2]:
+            tokens.append(queue[hashid][2])
+        if disp_time:
+            tokens.append(queue[hashid][3])
+        if disp_path or not tokens:
+            tokens.append(path)
         try:
-            sys.stdout.write(f'{s}\n')
+            sys.stdout.write(' '.join(str(t) for t in tokens) + '\n')
         except BrokenPipeError:
             handle_broken_pipe()
             break
