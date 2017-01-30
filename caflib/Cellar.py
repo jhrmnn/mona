@@ -24,6 +24,10 @@ def get_hash(text):
     return hashlib.sha1(text.encode()).hexdigest()
 
 
+def get_hash_bytes(text):
+    return hashlib.sha1(text).hexdigest()
+
+
 class Cellar:
     def __init__(self, path):
         path = Path(path).resolve()
@@ -94,8 +98,12 @@ class Cellar:
         if outputs:
             task['outputs'] = {}
             for name, path in outputs.items():
-                with path.open() as f:
-                    filehash = get_hash(f.read())
+                try:
+                    with path.open() as f:
+                        filehash = get_hash(f.read())
+                except UnicodeDecodeError:
+                    with path.open('rb') as f:
+                        filehash = get_hash_bytes(f.read())
                 self.store_file(filehash, path)
                 task['outputs'][name] = filehash
         elif hashed_outputs:
