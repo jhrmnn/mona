@@ -131,7 +131,9 @@ class Caf(CLI):
 
     def proc_remote(self, remotes):
         if remotes == 'all':
-            remotes = self.remotes.values()
+            remotes = [
+                r for r in self.remotes.values() if not isinstance(r, Local)
+            ]
         else:
             try:
                 remotes = [self.remotes[r] for r in remotes.split(',')]

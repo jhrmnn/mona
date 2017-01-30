@@ -9,7 +9,7 @@ _reported = {}
 _tags = [
     'xc', 'many_body_dispersion', 'k_grid', 'python_hook', 'sc_accuracy_eev',
     'sc_accuracy_rho', 'sc_accuracy_etot', 'sc_iter_limit', 'total_energy_method',
-    'charge', 'output'
+    'charge', 'output', 'RI_method'
 ]
 
 
