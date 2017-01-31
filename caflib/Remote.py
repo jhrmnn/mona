@@ -54,7 +54,7 @@ class Remote:
         info(f'Checking {self.host}...')
         remote_hashes = dict(
             reversed(l.split()) for l in self.command(
-                'list tasks --both', get_output=True
+                'list tasks --hash --path --no-color', get_output=True
             ).strip().split('\n')
         )
         is_ok = True
