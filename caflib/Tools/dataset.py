@@ -24,6 +24,7 @@ class Dataset:
                 tasks[geomid] + ctx.link(fragment)
                 for fragment, geomid
                 in cluster.fragments.items()
+                if tasks[geomid]
             ] + ctx()
         ) for key, cluster in self.clusters.items()]
         tasktree.sort(key=lambda x: x[0])
