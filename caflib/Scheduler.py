@@ -94,6 +94,7 @@ class Scheduler:
         pass
 
     def tasks_for_work(self, hashes=None, limit=None, nmaxerror=5, dry=False):
+        self.db.commit()
         self.db.isolation_level = None
         nrun = 0
         nerror = 0
@@ -203,6 +204,7 @@ class Scheduler:
                 print(f'{get_timestamp()}: Interrupted, quitting')
                 break
         print(f'Executed {nrun} tasks')
+        self.db.isolation_level = ''
 
     def get_states(self):
         try:
