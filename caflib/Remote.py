@@ -83,6 +83,10 @@ class Remote:
             info(f'Fetched {len(tasks)}/{len(hashes)} task metadata')
             return tasks
         info(f'Will fetch {len(tasks)}/{len(hashes)} tasks')
+        if len(tasks) == 0:
+            return {}
+        elif input('Continue? ["y" to confirm]: ') != 'y':
+            return {}
         paths = set(
             hashid
             for task in tasks.values()
