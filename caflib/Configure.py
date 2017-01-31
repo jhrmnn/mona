@@ -51,6 +51,8 @@ def before_templates(feat):
 
 
 class TargetNode:
+    all_targets = []
+
     def __init__(self):
         self.path = None
 
@@ -66,9 +68,12 @@ class TargetNode:
 
     def set_task(self, task, path):
         try:
-            self.path = slugify(path, path=True)
+            self.path = Path(slugify(path, path=True))
         except TypeError:
             error(f'Target path {path!r} is not a string')
+        if self.path in TargetNode.all_targets:
+            error(f'Multiple definitions of target "{self.path}"')
+        TargetNode.all_targets.append(self.path)
         self.task = task
         task.parents.append(self)
 
