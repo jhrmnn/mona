@@ -132,24 +132,34 @@ class Cellar:
         )
         self.commit()
 
-    def store_build(self, tasks, targets, inputs):
+    def store_build(self, tasks, targets, inputs, labels):
         self.execute('drop table if exists current_tasks')
         self.execute('create temporary table current_tasks(hash text)')
         self.executemany('insert into current_tasks values (?)', (
             (key,) for key in tasks.keys()
         ))
-        res = self.execute(
+        existing = [hashid for hashid, in self.execute(
             'select tasks.hash from tasks join current_tasks '
             'on current_tasks.hash = tasks.hash'
-        ).fetchall()
-        nnew = len(tasks)-len(res)
+        )]
+        nnew = len(tasks)-len(existing)
         info(f'Will store {nnew} new tasks.')
         if nnew > 0:
-            if input('Continue? ["y" to confirm]: ') != 'y':
-                sys.exit()
+            while True:
+                answer = input('Continue? ["y" to confirm, "l" to list]: ')
+                if answer == 'y':
+                    break
+                elif answer == 'l':
+                    for label in sorted(
+                            labels[h] for h in set(tasks)-set(existing)
+                    ):
+                        print(label)
+                else:
+                    sys.exit()
         now = datetime.today().isoformat(timespec='seconds')
         self.executemany('insert or ignore into tasks values (?,?,?,?)', (
             (hashid, json.dumps(task), now, 0) for hashid, task in tasks.items()
+            # TODO sort_keys=True
         ))
         cur = self.execute('insert into builds values (?,?)', (None, now))
         buildid = cur.lastrowid

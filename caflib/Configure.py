@@ -363,7 +363,8 @@ class Context:
             'targets': {
                 str(target.path): self.tasks.index(target.task)
                 for target in self.targets
-            }
+            },
+            'labels': [str(node) for node in self.tasks]
         }
 
     def load_tool(self, name):

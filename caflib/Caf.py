@@ -215,8 +215,11 @@ def conf(caf):
         for hashid, task in zip(conf['hashes'], conf['tasks'])
         if 'command' in task
     }
+    labels = {
+        hashid: label for hashid, label in zip(conf['hashes'], conf['labels'])
+    }
     with timing('store build'):
-        tasks = dict(cellar.store_build(tasks, targets, inputs))
+        tasks = dict(cellar.store_build(tasks, targets, inputs, labels))
     labels = {hashid: None for hashid in tasks}
     for path, hashid in cellar.get_tree(hashes=tasks.keys()).items():
         if not labels[hashid]:
