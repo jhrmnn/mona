@@ -282,7 +282,7 @@ class Cellar:
                 if match_glob(path, patt):
                     yield hashid, path
 
-    def checkout(self, root, patterns=None, nth=0):
+    def checkout(self, root, patterns=None, nth=0, finished=False):
         tasks, targets = self.get_build(nth=nth)
         root = Path(root).resolve()
         paths = {}
@@ -297,6 +297,8 @@ class Cellar:
                 childpath = path/name
                 targets.append((childhash, childpath))
             if not any(match_glob(str(path), patt) for patt in patterns):
+                continue
+            if finished and 'outputs' not in tasks[hashid]:
                 continue
             rootpath = root/path
             if hashid in paths:
