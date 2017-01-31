@@ -223,12 +223,12 @@ class Cellar:
         return all_files
 
     def get_build(self, nth=0):
-        targets = self.db.execute(
+        targets = [(hashid, Path(path)) for hashid, path in self.db.execute(
             'select taskhash, path from targets join '
             '(select id from builds order by created desc limit 1 offset ?) b '
             'on targets.buildid = b.id',
             (nth,)
-        ).fetchall()
+        )]
         tasks = {hashid: json.loads(task) for hashid, task in self.db.execute(
             'select tasks.hash, task from tasks join '
             '(select distinct(taskhash) as hash from targets join '
@@ -247,12 +247,12 @@ class Cellar:
         tasks, targets = self.get_build()
         if hashes:
             tasks.update(self.get_tasks(hashes))
-        tree = [(path, hashid) for hashid, path in targets]
+        tree = [(str(path), hashid) for hashid, path in targets]
         while targets:
             hashid, path = targets.pop()
             for name, childhash in tasks[hashid]['children'].items():
-                childpath = f'{path}/{name}'
-                tree.append((childpath, childhash))
+                childpath = path/name
+                tree.append((str(childpath), childhash))
                 if childhash not in tasks:
                     tasks[childhash] = self.get_task(childhash)
                 targets.append((childhash, childpath))
@@ -294,9 +294,9 @@ class Cellar:
                 with timing('sql'):
                     tasks[hashid] = self.get_task(hashid)
             for name, childhash in tasks[hashid]['children'].items():
-                childpath = f'{path}/{name}'
+                childpath = path/name
                 targets.append((childhash, childpath))
-            if not any(match_glob(path, patt) for patt in patterns):
+            if not any(match_glob(str(path), patt) for patt in patterns):
                 continue
             rootpath = root/path
             if hashid in paths:
