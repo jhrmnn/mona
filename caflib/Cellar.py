@@ -4,6 +4,7 @@ import sqlite3
 import hashlib
 from datetime import datetime
 from collections import defaultdict, OrderedDict
+import sys
 
 from caflib.Logging import info, no_cafdir
 from caflib.Utils import make_nonwritable
@@ -141,7 +142,11 @@ class Cellar:
             'select tasks.hash from tasks join current_tasks '
             'on current_tasks.hash = tasks.hash'
         ).fetchall()
-        info(f'Will store {len(tasks)-len(res)} new tasks.')
+        nnew = len(tasks)-len(res)
+        info(f'Will store {nnew} new tasks.')
+        if nnew > 0:
+            if input('Continue? ["y" to confirm]: ') != 'y':
+                sys.exit()
         now = datetime.today().isoformat(timespec='seconds')
         self.executemany('insert or ignore into tasks values (?,?,?,?)', (
             (hashid, json.dumps(task), now, 0) for hashid, task in tasks.items()
