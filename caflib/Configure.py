@@ -64,7 +64,7 @@ class TargetNode:
         return f"<TargetNode '{self.path}'>"
 
     def __str__(self):
-        return f'/{self.path.parent}' if len(self.path.parts) > 1 else ''
+        return f'{self.path.parent}' if len(self.path.parts) > 1 else ''
 
     def set_task(self, task, path):
         try:
@@ -97,7 +97,8 @@ class TaskNode:
         parent = self.parents[-1]
         for name, child in parent.children.items():
             if child is self:
-                return f'{parent}/{name}'
+                par = str(parent)
+                return f'{par}/{name}' if par else name
 
     def add_child(self, task, name, *childlinks, blocks=False):
         if self is task:
