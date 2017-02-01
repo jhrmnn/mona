@@ -2,6 +2,7 @@ from pathlib import Path
 from io import StringIO
 import json
 import os
+import importlib
 
 from caflib.Template import Template
 from caflib.Utils import listify, slugify
@@ -368,4 +369,4 @@ class Context:
         }
 
     def load_tool(self, name):
-        __import__(f'caflib.Tools.{name}')
+        importlib.import_module(f'caflib.Tools.{name}')
