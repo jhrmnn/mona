@@ -293,7 +293,7 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         )
     if patterns:
         cellar = Cellar(caf.cafdir)
-        hashes = set(hashid for hashid, _ in cellar.glob(*patterns))
+        hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
     else:
         hashes = None
     signal.signal(signal.SIGTERM, sig_handler)
@@ -367,7 +367,7 @@ def submit(caf, patterns: 'PATH', url: 'URL', append: '--append'):
     queue = scheduler.get_queue()
     if patterns:
         cellar = Cellar(caf.cafdir)
-        hashes = dict(cellar.glob(*patterns))
+        hashes = dict(cellar.get_tree().glob(*patterns))
     else:
         hashes = {hashid: label for hashid, (state, label, *_) in queue.items()}
     hashes = {
@@ -405,7 +405,8 @@ def reset(caf, patterns: 'PATH', hard: '--hard', running: '--running'):
     queue = scheduler.get_queue()
     if patterns:
         hashes = set(
-            hashid for hashid, _ in cellar.glob(*patterns, hashes=states.keys())
+            hashid for hashid, _
+            in cellar.get_tree(hashes=states.keys()).glob(*patterns)
         )
     else:
         hashes = queue.keys()
@@ -491,7 +492,7 @@ def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
     states = scheduler.get_states()
     queue = scheduler.get_queue()
     if patterns:
-        hashes_paths = cellar.glob(*patterns, hashes=states.keys())
+        hashes_paths = cellar.get_tree(hashes=states.keys()).glob(*patterns)
     else:
         hashes_paths = (
             (hashid, label) for hashid, (_, label, *_) in queue.items()
@@ -546,7 +547,7 @@ def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
         )
     )))
     states = scheduler.get_states()
-    groups = cellar.dglob(*patterns, hashes=states.keys())
+    groups = cellar.get_tree(hashes=states.keys()).dglob(*patterns)
     queue = scheduler.get_queue()
     groups['ALL'] = [(hashid, label) for hashid, (_, label, *_) in queue.items()]
     table = Table(
@@ -680,7 +681,7 @@ def fetch(caf, patterns: 'PATH', remotes: ('REMOTE', 'proc_remote'),
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
     if patterns:
-        hashes = set(hashid for hashid, _ in cellar.glob(*patterns))
+        hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
     else:
         hashes = states.keys()
     for remote in remotes:

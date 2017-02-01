@@ -37,6 +37,31 @@ def get_hash_bytes(text):
     return hashlib.sha1(text).hexdigest()
 
 
+class Tree(OrderedDict):
+    def __init__(self, *args, objects=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.objects = objects or {}
+
+    def dglob(self, *patterns):
+        groups = defaultdict(list)
+        for patt in patterns:
+            matched_any = False
+            for path, hashid in self.items():
+                matched = match_glob(path, patt)
+                if matched:
+                    groups[matched].append((hashid, path))
+                    matched_any = True
+            if not matched_any:
+                groups[patt] = []
+        return groups
+
+    def glob(self, *patterns):
+        for patt in patterns:
+            for path, hashid in self.items():
+                if match_glob(path, patt):
+                    yield hashid, path
+
+
 class Cellar:
     def __init__(self, path):
         path = Path(path).resolve()
@@ -266,31 +291,7 @@ class Cellar:
                 if childhash not in tasks:
                     tasks[childhash] = self.get_task(childhash)
                 targets.append((childhash, childpath))
-        if objects:
-            tree = [(path, (hashid, tasks[hashid])) for path, hashid in tree]
-        tree = OrderedDict(sorted(tree))
-        return tree
-
-    def dglob(self, *patterns, hashes=None):
-        tree = self.get_tree(hashes=hashes)
-        groups = defaultdict(list)
-        for patt in patterns:
-            matched_any = False
-            for path, hashid in tree.items():
-                matched = match_glob(path, patt)
-                if matched:
-                    groups[matched].append((hashid, path))
-                    matched_any = True
-            if not matched_any:
-                groups[patt] = []
-        return groups
-
-    def glob(self, *patterns, hashes=None):
-        tree = self.get_tree(hashes=hashes)
-        for patt in patterns:
-            for path, hashid in tree.items():
-                if match_glob(path, patt):
-                    yield hashid, path
+        return Tree(sorted(tree), objects=tasks if objects else None)
 
     def checkout(self, root, patterns=None, nth=0, finished=False):
         tasks, targets = self.get_build(nth=nth)
