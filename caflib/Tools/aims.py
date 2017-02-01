@@ -9,7 +9,7 @@ _reported = {}
 _tags = [
     'xc', 'many_body_dispersion', 'k_grid', 'python_hook', 'sc_accuracy_eev',
     'sc_accuracy_rho', 'sc_accuracy_etot', 'sc_iter_limit', 'total_energy_method',
-    'charge', 'output', 'RI_method'
+    'charge', 'output', 'RI_method', 'xc_pre'
 ]
 
 
@@ -77,10 +77,15 @@ def prepare_aims(task):
         species = sorted(set((a.number, a.symbol) for a in geom))
         if str(subdir/'control.in') not in task.inputs:
             error('No control file found')
-        chunks = ['\n'.join(
-            l for l in task.inputs[str(subdir/'control.in')].split('\n')
-            if not l.lstrip().startswith('#') and l.strip()
-        ) + '\n']
+        chunks = []
+        for filename in list(task.inputs):
+            if filename.startswith(str(subdir/'control.')) \
+                    and filename.endswith('.in'):
+                chunks.append('\n'.join(
+                    l for l in task.inputs[filename].split('\n')
+                    if not l.lstrip().startswith('#') and l.strip()
+                ) + '\n')
+                del task.inputs[filename]
         for attr in sorted(list(task.attrs)):
             if attr in _tags:
                 value = task.consume(attr)
@@ -103,8 +108,7 @@ def prepare_aims(task):
                 else:
                     basis_def = species_db[basis, symbol]
                 chunks.append(basis_def)
-        if len(chunks) > 1:
-            task.inputs[str(subdir/'control.in')] = '\n\n'.join(chunks)
+        task.inputs[str(subdir/'control.in')] = '\n\n'.join(chunks)
         if subdir == Path('.'):
             command.append(aims_command)
         else:
