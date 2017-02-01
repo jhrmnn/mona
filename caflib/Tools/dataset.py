@@ -44,6 +44,7 @@ class Dataset:
         return {
             key: cluster.get_int_ene(energies[key])*scale
             for key, cluster in self.clusters.items()
+            if key in energies
         }
 
 
