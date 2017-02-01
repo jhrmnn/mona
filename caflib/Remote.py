@@ -41,7 +41,7 @@ class Remote:
             inp = inp.encode()
         try:
             output = sp.run([
-                'ssh', '-t', '-o', 'LogLevel=QUIET',
+                'ssh',
                 self.host,
                 f'sh -c "cd {self.path} && exec python3 -u caf {cmd}"'
             ], check=True, input=inp, stdout=sp.PIPE if get_output else None)
