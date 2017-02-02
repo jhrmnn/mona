@@ -685,10 +685,12 @@ def fetch(caf, patterns: 'PATH', remotes: ('REMOTE', 'proc_remote'),
     else:
         hashes = states.keys()
     for remote in remotes:
-        tasks = remote.fetch(
-            [hashid for hashid in hashes if states[hashid] == State.CLEAN],
-            files=not nofiles
-        )
+        tasks = remote.fetch([
+            hashid for hashid in hashes if states[hashid] == State.CLEAN
+        ] if nofiles else [
+            hashid for hashid in hashes
+            if states[hashid] in (State.CLEAN, State.DONEREMOTE)
+        ], files=not nofiles)
         for hashid, task in tasks.items():
             if not nofiles:
                 cellar.seal_task(hashid, hashed_outputs=task['outputs'])
