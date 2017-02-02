@@ -148,7 +148,7 @@ class Scheduler:
                         (hashid,)
                     ).fetchone()
                     if state != State.CLEAN:
-                        print(f'({label} already locked!')
+                        debug(f'{label} already locked!')
                         break
                     self.execute(
                         'update queue set state = ?, changed = ? '
