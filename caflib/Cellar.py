@@ -233,7 +233,7 @@ class Cellar:
         if hashid not in self.objectdb:
             if not path.is_file():
                 raise FileNotFoundError()
-        return path.resolve()
+        return path
 
     def checkout_task(self, task, path, resolve=True):
         children = self.get_tasks(list(task['children'].values()))
