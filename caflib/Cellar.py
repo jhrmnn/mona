@@ -5,6 +5,7 @@ import hashlib
 from datetime import datetime
 from collections import defaultdict, OrderedDict
 import sys
+import os
 
 from caflib.Logging import info, no_cafdir
 from caflib.Utils import make_nonwritable
@@ -169,7 +170,7 @@ class Cellar:
         )]
         nnew = len(tasks)-len(existing)
         info(f'Will store {nnew} new tasks.')
-        if nnew > 0:
+        if nnew > 0 and 'TIMING' not in os.environ:
             while True:
                 answer = input('Continue? ["y" to confirm, "l" to list]: ')
                 if answer == 'y':
@@ -200,12 +201,13 @@ class Cellar:
         ).fetchall()
 
     def get_task(self, hashid):
-        res = self.execute(
-            'select task from tasks where hash = ?',
-            (hashid,)
-        ).fetchone()
-        if res:
-            return json.loads(res[0])
+        with timing('get_task'):
+            res = self.execute(
+                'select task from tasks where hash = ?',
+                (hashid,)
+            ).fetchone()
+            if res:
+                return json.loads(res[0])
 
     def get_tasks(self, hashes):
         hashes = list(hashes)

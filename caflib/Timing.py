@@ -5,7 +5,6 @@ import re
 from contextlib import contextmanager
 from collections import defaultdict
 
-
 from caflib.Utils import groupby
 from caflib.Logging import Table
 

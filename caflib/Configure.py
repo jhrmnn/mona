@@ -52,7 +52,7 @@ def before_templates(feat):
 
 
 class TargetNode:
-    all_targets = []
+    all_targets = set()
 
     def __init__(self):
         self.path = None
@@ -74,7 +74,7 @@ class TargetNode:
             error(f'Target path {path!r} is not a string')
         if self.path in TargetNode.all_targets:
             error(f'Multiple definitions of target "{self.path}"')
-        TargetNode.all_targets.append(self.path)
+        TargetNode.all_targets.add(self.path)
         self.task = task
         task.parents.append(self)
 
@@ -193,7 +193,7 @@ class Task:
             error(f'Feature {e.args[0]} is not registered')
         self.process_features(features, 'before_files')
         with timing('texts'):
-            for text, target in (self.consume('texts') or {}).items():
+            for target, text in (self.consume('texts') or {}).items():
                 self.inputs[target] = text
         with timing('files'):
             for file_spec in listify(self.consume('files')):

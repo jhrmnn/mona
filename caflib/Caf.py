@@ -239,12 +239,13 @@ def sig_handler(sig, frame):
 @Caf.command()
 def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
          limit: ('--limit', int), url: '--queue', dry: '--dry',
-         verbose: '--verbose', _: '--last', maxerror: ('--maxerror', int)):
+         verbose: '--verbose', _: '--last', maxerror: ('--maxerror', int),
+         randomize: '--random'):
     """
     Execute build tasks.
 
     Usage:
-        caf make [PATH...] [-v] [--dry] [-p PROFILE [-j N]] [-q URL | --last]
+        caf make [PATH...] [-v] [--dry] [-p PROFILE [-j N]] [-q URL | --last | -r]
                  [-l N] [--maxerror N]
 
     Options:
@@ -256,11 +257,14 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
         --last                     As above, but use the last submitted queue.
         -v, --verbose              Be verbose.
         --maxerror N               Number of errors in row to quit [default: 5].
+        -r, --random               Pick tasks in random order.
     """
     if profile:
         cmd = [os.path.expanduser(f'~/.config/caf/worker_{profile}')]
         if verbose:
             cmd.append('-v')
+        if randomize:
+            cmd.append('-r')
         if dry:
             cmd.append('--dry')
         if limit:
@@ -299,18 +303,20 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
     for task in scheduler.tasks_for_work(
-            hashes=hashes, limit=limit, dry=dry, nmaxerror=maxerror
+            hashes=hashes, limit=limit, dry=dry, nmaxerror=maxerror,
+            randomize=randomize
     ):
         with cd(task.path):
             with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
                 try:
-                    sp.run(
-                        task.command,
-                        shell=True,
-                        stdout=stdout,
-                        stderr=stderr,
-                        check=True
-                    )
+                    with timing('task exec'):
+                        sp.run(
+                            task.command,
+                            shell=True,
+                            stdout=stdout,
+                            stderr=stderr,
+                            check=True
+                        )
                 except sp.CalledProcessError as exc:
                     task.error(exc)
                 except KeyboardInterrupt:

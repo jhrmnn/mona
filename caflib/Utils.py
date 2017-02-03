@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from itertools import groupby as groupby_
 import stat
+import random
 
 
 def config_items(config, group=None):
@@ -33,6 +34,12 @@ def make_nonwritable(path):
         stat.S_IMODE(os.lstat(path).st_mode) &
         ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
     )
+
+
+def sample(seq):
+    queue = list(seq)
+    while queue:
+        yield queue.pop(random.randrange(0, len(queue)))
 
 
 def filter_cmd(args):

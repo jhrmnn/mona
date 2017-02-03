@@ -6,8 +6,9 @@ import shutil
 
 from caflib.Cellar import Cellar, State
 from caflib.Logging import error, debug, no_cafdir
-from caflib.Utils import get_timestamp
+from caflib.Utils import get_timestamp, sample
 from caflib.Announcer import Announcer
+from caflib.Timing import timing
 
 
 class Task:
@@ -84,8 +85,11 @@ class Scheduler:
         finally:
             self.execute('end transaction')
 
-    def candidate_tasks(self, states):
-        yield from states
+    def candidate_tasks(self, states, randomize=False):
+        if randomize:
+            yield from sample(states)
+        else:
+            yield from states
 
     def is_state_ok(self, state, hashid, label):
         return state == State.CLEAN
@@ -93,9 +97,13 @@ class Scheduler:
     def skip_task(self, hashid):
         pass
 
-    def tasks_for_work(self, hashes=None, limit=None, nmaxerror=5, dry=False):
+    def tasks_for_work(
+            self, hashes=None, limit=None, nmaxerror=5, dry=False,
+            randomize=False
+    ):
         self.db.commit()
         self.db.isolation_level = None
+        hashes = set(hashes) if hashes else None
         nrun = 0
         nerror = 0
         print(f'{get_timestamp()}: Started work')
@@ -113,7 +121,7 @@ class Scheduler:
             will_continue = True
             was_interrupted = False
             debug(f'Starting candidate loop')
-            for hashid in self.candidate_tasks(states.keys()):
+            for hashid in self.candidate_tasks(states, randomize=randomize):
                 label = labels[hashid]
                 debug(f'Got {hashid}:{label} as candidate')
                 if hashid in skipped:
@@ -142,58 +150,65 @@ class Scheduler:
                 if dry:
                     self.skip_task(hashid)
                     continue
-                with self.db_lock():
-                    state, = self.execute(
-                        'select state from queue where taskhash = ? and active = 1',
-                        (hashid,)
-                    ).fetchone()
-                    if state != State.CLEAN:
-                        debug(f'{label} already locked!')
-                        break
-                    self.execute(
-                        'update queue set state = ?, changed = ? '
-                        'where taskhash = ?',
-                        (State.RUNNING, get_timestamp(), hashid)
-                    )
+                with timing('lock task'):
+                    with self.db_lock():
+                        state, = self.execute(
+                            'select state from queue where taskhash = ? and active = 1',
+                            (hashid,)
+                        ).fetchone()
+                        if state != State.CLEAN:
+                            print(f'{label} already locked!')
+                            break
+                        self.execute(
+                            'update queue set state = ?, changed = ? '
+                            'where taskhash = ?',
+                            (State.RUNNING, get_timestamp(), hashid)
+                        )
                 if not task['command']:
                     self.cellar.seal_task(hashid, {})
                     self.task_done(hashid)
                     print(f'{get_timestamp()}: {label} finished successfully')
-                    break
+                    continue
                 tmppath = Path(tempfile.mkdtemp(
                     prefix='caftsk_', dir=self.tmpdir
                 ))
                 debug(f'Executing {label} in {tmppath}')
-                self.execute(
-                    'update queue set path = ? where taskhash = ?',
-                    (str(tmppath), hashid)
-                )
-                inputs = self.cellar.checkout_task(task, tmppath)
+                with timing('note temp'):
+                    self.execute(
+                        'update queue set path = ? where taskhash = ?',
+                        (str(tmppath), hashid)
+                    )
+                with timing('checkout'):
+                    inputs = self.cellar.checkout_task(task, tmppath)
                 task = Task(task['command'], tmppath)
                 yield task
                 if task.state[0] == State.INTERRUPTED:
                     was_interrupted = True
-                    self.interrupt_task(hashid)
+                    self.task_interrupt(hashid)
                     print(f'{get_timestamp()}: {label} was interrupted')
                     break
                 elif task.state[0] == State.DONE:
                     outputs = {}
-                    for filepath in tmppath.glob('**/*'):
-                        rel_path = filepath.relative_to(tmppath)
-                        if str(rel_path) not in inputs:
-                            outputs[str(rel_path)] = filepath
-                    self.cellar.seal_task(hashid, outputs)
-                    shutil.rmtree(tmppath)
+                    with timing('collect output'):
+                        for filepath in tmppath.glob('**/*'):
+                            rel_path = filepath.relative_to(tmppath)
+                            if str(rel_path) not in inputs:
+                                outputs[str(rel_path)] = filepath
+                    with timing('seal task'):
+                        self.cellar.seal_task(hashid, outputs)
+                    with timing('clean up'):
+                        shutil.rmtree(tmppath)
                     nerror = 0
-                    self.task_done(hashid)
+                    with timing('announce done'):
+                        self.task_done(hashid)
                     print(f'{get_timestamp()}: {label} finished successfully')
                 elif task.state[0] == State.ERROR:
                     print(task.state[1])
                     nerror += 1
                     self.task_error(hashid)
                     print(f'{get_timestamp()}: {label} finished with error')
+                skipped = set()
                 nrun += 1
-                break
             else:
                 debug('No conforming candidate in a candidate loop')
                 will_continue = False
@@ -279,7 +294,7 @@ class RemoteScheduler(Scheduler):
         super().__init__(*args, **kwargs)
         self.announcer = Announcer(url, curl)
 
-    def candidate_tasks(self, states):
+    def candidate_tasks(self, states, **kwargs):
         while True:
             hashid = self.announcer.get_task()
             if hashid:
