@@ -499,7 +499,9 @@ def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
         hashes_paths = cellar.get_tree(hashes=states.keys()).glob(*patterns)
     else:
         hashes_paths = (
-            (hashid, label) for hashid, (_, label, *_) in queue.items()
+            (hashid, label) for hashid, (_, label, *_) in sorted(
+                queue.items(), key=lambda r: r[1]
+            )
         )
     for hashid, path in hashes_paths:
         if do_finished and states[hashid] not in (State.DONE, State.DONEREMOTE):
