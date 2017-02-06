@@ -597,6 +597,18 @@ def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
 
 
 @Caf.command()
+def gc(caf):
+    """
+    Discard old and unused tasks.
+
+    Usage:
+        caf gc
+    """
+    scheduler = Scheduler(caf.cafdir)
+    scheduler.gc()
+
+
+@Caf.command()
 def cmd(caf, cmd: 'CMD'):
     """
     Execute any shell command.

@@ -258,6 +258,26 @@ class Scheduler:
         if self.db.isolation_level is not None:
             self.commit()
 
+    def gc(self):
+        cur = self.execute(
+            'select path, taskhash from queue where state in (?,?,?)',
+            (State.ERROR, State.INTERRUPTED, State.RUNNING)
+        )
+        for path, hashid in cur:
+            try:
+                shutil.rmtree(path)
+            except FileNotFoundError:
+                pass
+        self.execute(
+            'update queue set state = ?, changed = ?, path = "" '
+            'where state in (?,?,?)', (
+                State.CLEAN, get_timestamp(),
+                State.ERROR, State.INTERRUPTED, State.RUNNING
+            )
+        )
+        if self.db.isolation_level is not None:
+            self.commit()
+
     def task_error(self, hashid):
         self.execute(
             'update queue set state = ?, changed = ? where taskhash = ?',
