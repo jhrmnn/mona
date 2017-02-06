@@ -124,7 +124,7 @@ class Scheduler:
             states = {hashid: state for hashid, (state, *_) in queue.items()}
             labels = {hashid: label for hashid, (_, label, *_) in queue.items()}
             skipped = set()
-            will_continue = True
+            will_continue = False
             was_interrupted = False
             debug(f'Starting candidate loop')
             for hashid in self.candidate_tasks(states, randomize=randomize):
@@ -133,7 +133,6 @@ class Scheduler:
                 if hashid in skipped:
                     self.skip_task(hashid)
                     debug(f'{label} has been skipped before')
-                    will_continue = False
                     break
                 else:
                     skipped.add(hashid)
@@ -215,9 +214,7 @@ class Scheduler:
                     print(f'{get_timestamp()}: {label} finished with error')
                 skipped = set()
                 nrun += 1
-            else:
-                debug('No conforming candidate in a candidate loop')
-                will_continue = False
+                will_continue = True
             if not will_continue:
                 print(f'No available tasks to do, quitting')
                 break
