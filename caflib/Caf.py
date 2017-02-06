@@ -474,14 +474,13 @@ def list_builds(caf, _):
 def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
                do_error: '--error', do_unfinished: '--unfinished',
                disp_hash: '--hash', disp_path: '--path',
-               patterns: 'PATH', disp_time: '--time', disp_temp: '--temp',
-               no_color: '--no-color'):
+               patterns: 'PATH', disp_tmp: '--tmp', no_color: '--no-color'):
     """
     List tasks.
 
     Usage:
         caf list tasks [PATH...] [--finished | --error | --unfinished | --running]
-                       [--hash] [--path] [--temp] [--time] [--no-color]
+                       [--hash | --path | --tmp] [--no-color]
 
     Options:
         --finished          List finished tasks.
@@ -489,8 +488,7 @@ def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
         --error             List tasks in error.
         --hash              Display task hash.
         --path              Display task virtual path.
-        --temp              Display temporary path.
-        --time              Display timestamp.
+        --tmp               Display temporary path.
         --no-color          Do not color paths.
     """
     cellar = Cellar(caf.cafdir)
@@ -512,20 +510,21 @@ def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
             continue
         if do_running and states[hashid] != State.RUNNING:
             continue
-        tokens = []
+        if not no_color:
+            path = colstr(path, State.color[states[hashid]])
         if disp_hash:
-            tokens.append(hashid)
-        if disp_temp and queue[hashid][2]:
-            tokens.append(queue[hashid][2])
-        if disp_time:
-            tokens.append(queue[hashid][3])
-        if disp_path or not tokens:
-            tokens.append(
-                path if no_color
-                else colstr(path, State.color[states[hashid]])
-            )
+            line = hashid
+        elif disp_tmp:
+            if queue[hashid][2]:
+                line = queue[hashid][2]
+            else:
+                continue
+        elif disp_path:
+            line = path
+        else:
+            line = f'{hashid} {path} {queue[hashid][2] or ""}'
         try:
-            sys.stdout.write(' '.join(str(t) for t in tokens) + '\n')
+            sys.stdout.write(line + '\n')
         except BrokenPipeError:
             handle_broken_pipe()
             break
