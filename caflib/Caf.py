@@ -552,8 +552,12 @@ def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
             colors
         )
     )))
-    states = scheduler.get_states()
-    groups = cellar.get_tree(hashes=states.keys()).dglob(*patterns)
+    with timing('get_states'):
+        states = scheduler.get_states()
+    with timing('get tree'):
+        tree = cellar.get_tree(hashes=states.keys())
+    with timing('glob'):
+        groups = tree.dglob(*patterns)
     queue = scheduler.get_queue()
     groups['ALL'] = [(hashid, label) for hashid, (_, label, *_) in queue.items()]
     table = Table(
