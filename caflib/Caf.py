@@ -571,12 +571,12 @@ def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
             state: subgroup for state, subgroup
             in groupby(hashes_paths, key=lambda x: states[x[0]])
         }
-        stats = [len(grouped.get(state, [])) for state in [
+        stats = [len(grouped.get(state, [])) for state in (
             State.RUNNING,
             State.DONE,
             State.DONEREMOTE,
             State.ERROR
-        ]]
+        )]
         stats.append(len(hashes_paths))
         if incomplete and stats[1] + stats[2] == stats[4] and pattern != 'All':
             continue
@@ -585,7 +585,7 @@ def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
             for s, color in zip(stats, colors)
         ]
         table.add_row(pattern, *stats)
-    for state in [State.RUNNING, State.INTERRUPTED]:
+    for state in (State.RUNNING, State.INTERRUPTED):
         color = State.color[state]
         for hashid, path in grouped.get(state, []):
             table.add_row(
