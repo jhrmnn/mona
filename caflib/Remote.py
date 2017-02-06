@@ -26,7 +26,7 @@ class Remote:
             '--exclude=__pycache__'
         ]
         if delete:
-            cmd += '--delete'
+            cmd.append('--delete')
         cmd.extend(f'--exclude={patt}' for patt in exclude)
         cmd.extend(['caf', 'cscript.py', str(self.top)])
         if os.path.exists('caflib'):
