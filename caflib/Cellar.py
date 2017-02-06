@@ -247,11 +247,14 @@ class Cellar:
             (path/target).symlink_to(source)
             all_files.append(target)
         for target, (child, source) in task['childlinks'].items():
-            childtask = children[task['children'][child]]
-            (path/target).symlink_to(
-                self.get_file(childtask['outputs'][source]) if resolve
-                else Path(child)/source
-            )
+            if resolve:
+                childtask = children[task['children'][child]]
+                childfile = childtask['outputs'].get(
+                    source, childtask['inputs'].get(source)
+                )
+                (path/target).symlink_to(self.get_file(childfile))
+            else:
+                (path/target).symlink_to(Path(child)/source)
             all_files.append(target)
         if 'outputs' in task:
             for target, filehash in task['outputs'].items():
