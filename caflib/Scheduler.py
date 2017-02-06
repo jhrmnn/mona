@@ -75,6 +75,12 @@ class Scheduler:
                 (label, hashid) for hashid, state, label in tasks
             )
         )
+        self.executemany(
+            'update queue set state = ? where taskhash = ?', (
+                (state, hashid) for hashid, state, _ in tasks
+                if state == State.DONE
+            )
+        )
         self.commit()
 
     @contextmanager
