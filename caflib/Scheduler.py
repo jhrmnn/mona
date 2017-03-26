@@ -282,6 +282,10 @@ class Scheduler:
         if self.db.isolation_level is not None:
             self.commit()
 
+    def gc_all(self):
+        self.execute('delete from queue where active = 0')
+        self.commit()
+
     def task_error(self, hashid):
         self.execute(
             'update queue set state = ?, changed = ? where taskhash = ?',
