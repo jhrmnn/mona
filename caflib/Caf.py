@@ -425,9 +425,9 @@ def reset(caf, patterns: 'PATH', hard: '--hard', running: '--running'):
         if states[hashid] in (State.ERROR, State.INTERRUPTED) \
                 or running and states[hashid] == State.RUNNING:
             scheduler.reset_task(hashid)
-        elif hard and states[hashid] in (State.DONE, State.DONEREMOTE):
+        elif hard and states[hashid] in (State.DONE, State.DONEREMOTE, State.CLEAN):
             scheduler.reset_task(hashid)
-            if states[hashid] == State.DONE:
+            if states[hashid] in (State.DONE, State.CLEAN):
                 cellar.reset_task(hashid)
 
 
