@@ -49,7 +49,8 @@ class Scheduler:
         return self.db.executemany(*args)
 
     def commit(self):
-        self.db.commit()
+        if self.db.isolation_level is not None:
+            self.db.commit()
 
     def submit(self, tasks):
         self.execute('drop table if exists current_tasks')
@@ -259,8 +260,7 @@ class Scheduler:
             'where taskhash = ?',
             (State.CLEAN, get_timestamp(), hashid)
         )
-        if self.db.isolation_level is not None:
-            self.commit()
+        self.commit()
 
     def gc(self):
         cur = self.execute(
@@ -279,8 +279,7 @@ class Scheduler:
                 State.ERROR, State.INTERRUPTED, State.RUNNING
             )
         )
-        if self.db.isolation_level is not None:
-            self.commit()
+        self.commit()
 
     def gc_all(self):
         self.execute('delete from queue where active = 0')
@@ -291,8 +290,7 @@ class Scheduler:
             'update queue set state = ?, changed = ? where taskhash = ?',
             (State.ERROR, get_timestamp(), hashid)
         )
-        if self.db.isolation_level is not None:
-            self.commit()
+        self.commit()
 
     def task_done(self, hashid, remote=None):
         self.execute(
@@ -304,8 +302,7 @@ class Scheduler:
                 hashid
             )
         )
-        if self.db.isolation_level is not None:
-            self.commit()
+        self.commit()
 
     def task_interrupt(self, hashid):
         self.execute(
@@ -313,8 +310,7 @@ class Scheduler:
             'where taskhash = ?',
             (State.INTERRUPTED, get_timestamp(), hashid)
         )
-        if self.db.isolation_level is not None:
-            self.commit()
+        self.commit()
 
 
 class RemoteScheduler(Scheduler):
