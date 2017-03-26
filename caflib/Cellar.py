@@ -6,6 +6,7 @@ from datetime import datetime
 from collections import defaultdict, OrderedDict
 import sys
 import os
+import shutil
 
 from caflib.Logging import info, no_cafdir
 from caflib.Utils import make_nonwritable
@@ -61,6 +62,14 @@ class Tree(OrderedDict):
             for path, hashid in self.items():
                 if match_glob(path, patt):
                     yield hashid, path
+
+
+def symlink_to(src, dst):
+    return dst.symlink_to(src)
+
+
+def copy_to(src, dst):
+    return shutil.copyfile(src, dst)
 
 
 class Cellar:
@@ -237,14 +246,15 @@ class Cellar:
                 raise FileNotFoundError()
         return path
 
-    def checkout_task(self, task, path, resolve=True):
+    def checkout_task(self, task, path, resolve=True, nolink=False):
+        copier = copy_to if nolink else symlink_to
         children = self.get_tasks(list(task['children'].values()))
         all_files = []
         for target, filehash in task['inputs'].items():
-            (path/target).symlink_to(self.get_file(filehash))
+            copier(self.get_file(filehash), path/target)
             all_files.append(target)
         for target, source in task['symlinks'].items():
-            (path/target).symlink_to(source)
+            copier(source, path/target)
             all_files.append(target)
         for target, (child, source) in task['childlinks'].items():
             if resolve:
@@ -252,13 +262,13 @@ class Cellar:
                 childfile = childtask['outputs'].get(
                     source, childtask['inputs'].get(source)
                 )
-                (path/target).symlink_to(self.get_file(childfile))
+                copier(self.get_file(childfile), path/target)
             else:
-                (path/target).symlink_to(Path(child)/source)
+                symlink_to(Path(child)/source, path/target)
             all_files.append(target)
         if 'outputs' in task:
             for target, filehash in task['outputs'].items():
-                (path/target).symlink_to(self.get_file(filehash))
+                copier(self.get_file(filehash), path/target)
                 all_files.append(target)
         return all_files
 
@@ -298,7 +308,7 @@ class Cellar:
                 targets.append((childhash, childpath))
         return Tree(sorted(tree), objects=tasks if objects else None)
 
-    def checkout(self, root, patterns=None, nth=0, finished=False):
+    def checkout(self, root, patterns=None, nth=0, finished=False, nolink=False):
         tasks, targets = self.get_build(nth=nth)
         root = Path(root).resolve()
         paths = {}
@@ -328,8 +338,8 @@ class Cellar:
                     rootpath.mkdir(parents=True)
                 with timing('checkout'):
                     nsymlinks += len(self.checkout_task(
-                        tasks[hashid], rootpath, resolve=False
+                        tasks[hashid], rootpath, resolve=False, nolink=nolink
                     ))
                     ntasks += 1
                 paths[hashid] = rootpath
-        info(f'Checked out {ntasks} tasks: {nsymlinks} symlinks')
+        info(f'Checked out {ntasks} tasks: {nsymlinks} {"files" if nolink else "symlinks"}')

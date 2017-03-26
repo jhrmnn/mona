@@ -329,12 +329,13 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
 
 @Caf.command()
 def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json',
-             force: '--force', nth: ('-n', int), finished: '--finished'):
+             force: '--force', nth: ('-n', int), finished: '--finished',
+             nolink: '--no-link'):
     """
     Create the dependecy tree physically on a file system.
 
     Usage:
-        caf checkout [-p PATH | --json] [PATH...] [-f] [-n N] [--finished]
+        caf checkout [-p PATH | --json] [--no-link] [PATH...] [-f] [-n N] [--finished]
 
     Options:
         -p, --path PATH     Where to checkout [default: build].
@@ -342,6 +343,7 @@ def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json',
         -f, --force         Remove PATH if exists.
         -n N                Nth build to the past [default: 0].
         --finished          Check out only finished tasks.
+        -L, --no-link       Do not create links to cellar, but copy.
     """
     cellar = Cellar(caf.cafdir)
     if not do_json:
@@ -351,7 +353,8 @@ def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json',
             else:
                 error(f'Cannot checkout to existing path: {path}')
         cellar.checkout(
-            path, patterns=patterns or ['**'], nth=nth, finished=finished
+            path, patterns=patterns or ['**'], nth=nth, finished=finished,
+            nolink=nolink
         )
     else:
         hashes = [l.strip() for l in sys.stdin.readlines()]
