@@ -532,13 +532,16 @@ def load(fp, fmt):
             for _ in range(3)])
         species = fp.readline().split()
         nspecies = [int(x) for x in fp.readline().split()]
-        coordtype = fp.readline().strip()[0].lower()
+        while True:
+            coordtype = fp.readline().strip()[0].lower()
+            if coordtype in 'dc':
+                break
         if scale != 1:
             assert coordtype == 'd'
         atoms = []
         for sp, n in zip(species, nspecies):
             for _ in range(n):
-                xyz = [float(x) for x in fp.readline().split()]
+                xyz = [float(x) for x in fp.readline().split()[:3]]
                 if coordtype == 'd':
                     xyz = xyz.dot(lattice)
                 atoms.append(Atom(sp, xyz))
