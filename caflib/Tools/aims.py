@@ -9,7 +9,8 @@ _reported = {}
 _tags = [
     'xc', 'many_body_dispersion', 'k_grid', 'python_hook', 'sc_accuracy_eev',
     'sc_accuracy_rho', 'sc_accuracy_etot', 'sc_iter_limit', 'total_energy_method',
-    'charge', 'output', 'RI_method', 'xc_pre'
+    'charge', 'output', 'RI_method', 'xc_pre', 'relax_unit_cell',
+    'relax_geometry', 'vdw_correction_hirshfeld', 'force_occupation_basis'
 ]
 
 
