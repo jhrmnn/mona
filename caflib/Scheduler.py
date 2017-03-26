@@ -163,6 +163,7 @@ class Scheduler:
                         ).fetchone()
                         if state != State.CLEAN:
                             print(f'{label} already locked!')
+                            will_continue = True
                             break
                         self.execute(
                             'update queue set state = ?, changed = ? '
