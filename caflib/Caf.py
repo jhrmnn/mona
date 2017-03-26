@@ -603,15 +603,22 @@ def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
 
 
 @Caf.command()
-def gc(caf):
+def gc(caf, gc_all: '--all'):
     """
-    Discard old and unused tasks.
+    Discard running and error tasks.
 
     Usage:
-        caf gc
+        caf gc [--all]
+
+    Options:
+        -a, --all      Discard all nonactive tasks.
     """
     scheduler = Scheduler(caf.cafdir)
     scheduler.gc()
+    if gc_all:
+        scheduler.gc_all()
+        cellar = Cellar(caf.cafdir)
+        cellar.gc()
 
 
 @Caf.command()

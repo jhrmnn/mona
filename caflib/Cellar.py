@@ -131,6 +131,35 @@ class Cellar:
         make_nonwritable(path)
         return True
 
+    def gc(self):
+        tree = self.get_tree(objects=True)
+        self.execute('create temporary table retain(hash text)')
+        self.executemany('insert into retain values (?)', (
+            (hashid,) for hashid in tree.values()
+        ))
+        for task in tree.objects.values():
+            for filehash in task['inputs'].values():
+                self.execute('insert into retain values (?)', (filehash,))
+            if 'outputs' in task:
+                for filehash in task['outputs'].values():
+                    self.execute('insert into retain values (?)', (filehash,))
+        retain = set(r[0] for r in self.db.execute('select hash from retain'))
+        all_files = {''.join(p.parts[-2:]): p for p in self.objects.glob('*/*')}
+        n_files = 0
+        for filehash in set(all_files.keys()) - retain:
+            all_files[filehash].unlink()
+            n_files += 1
+        info(f'Removed {n_files} files.')
+        self.db.execute(
+            'delete from targets where buildid != '
+            '(select id from builds order by created desc limit 1)'
+        )
+        self.db.execute(
+            'delete from tasks '
+            'where hash not in (select distinct(hash) from retain)'
+        )
+        self.commit()
+
     def store_text(self, hashid, text):
         return self.store(hashid, text=text)
 
