@@ -298,6 +298,8 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
     if patterns:
         cellar = Cellar(caf.cafdir)
         hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
+        if not hashes:
+            return
     else:
         hashes = None
     signal.signal(signal.SIGTERM, sig_handler)
