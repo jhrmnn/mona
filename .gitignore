@@ -1,6 +1,2 @@
 *.pyc
-__pycache__
-/build
-/.caf
 /docs/_build
-/src
