@@ -21,10 +21,10 @@ class FeatureException(Exception):
 
 
 class Feature:
-    def __init__(self, name, f, attribs=None):
+    def __init__(self, name, f, attrs=None):
         self.name = name
         self.f = f
-        self.attribs = attribs or set()
+        self.attrs = attrs or set()
 
     def __call__(self, task):
         self.f(task)
@@ -42,12 +42,12 @@ def feature(name):
 
 
 def before_files(feat):
-    feat.attribs.add('before_files')
+    feat.attrs.add('before_files')
     return feat
 
 
 def before_templates(feat):
-    feat.attribs.add('before_templates')
+    feat.attrs.add('before_templates')
     return feat
 
 
@@ -227,10 +227,10 @@ class Task:
         if self.attrs:
             raise UnconsumedAttributes(list(self.attrs))
 
-    def process_features(self, features, attrib=None):
+    def process_features(self, features, attr=None):
         with timing('features'):
             for feat in list(features):
-                if not attrib or attrib in feat.attribs:
+                if not attr or attr in feat.attrs:
                     with timing(feat.name):
                         try:
                             feat(self)
