@@ -430,6 +430,15 @@ class Crystal(Molecule):
     def copy(self):
         return Crystal(self.lattice.copy(), Molecule(self.atoms).copy().atoms)
 
+    @classmethod
+    def from_molecule(cls, mol, padding=3.):
+        xyz = mol.xyz
+        X1 = xyz.min(0)-padding
+        X2 = xyz.max(0)+padding
+        dims = X2-X1
+        mol = mol.shifted(-X1)
+        return cls(np.diag(dims), mol.atoms)
+
     def supercell(self, ns):
         atoms = []
         for shift in product(*[range(n) for n in ns]):
