@@ -187,8 +187,7 @@ class Molecule:
             return np.array([a.xyz for a in self])/bohr
         elif attr == 'species':
             return [a.symbol for a in self]
-        else:
-            raise AttributeError
+        return self.__getattribute__(attr)
 
     def __eq__(self, other):
         if type(self) is not type(other):
