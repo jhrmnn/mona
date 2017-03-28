@@ -21,6 +21,8 @@ class FeatureException(Exception):
 
 
 class Feature:
+    db = {}
+
     def __init__(self, name, f, attrs=None):
         self.name = name
         self.f = f
@@ -29,24 +31,31 @@ class Feature:
     def __call__(self, task):
         self.f(task)
 
-
-_features = {}
+    @classmethod
+    def ensure_feature(cls, obj):
+        if type(obj) is cls:
+            return obj
+        if type(obj) is str:
+            return cls.db[obj]
+        return cls(obj.__name__, obj)
 
 
 def feature(name):
     def decorator(f):
         feat = Feature(name, f)
-        _features[name] = feat
+        Feature.db[name] = feat
         return feat
     return decorator
 
 
 def before_files(feat):
+    feat = Feature.ensure_feature(feat)
     feat.attrs.add('before_files')
     return feat
 
 
 def before_templates(feat):
+    feat = Feature.ensure_feature(feat)
     feat.attrs.add('before_templates')
     return feat
 
@@ -185,8 +194,7 @@ class Task:
     def process(self, ctx):
         try:
             features = [
-                _features[feat] if isinstance(feat, str)
-                else Feature(feat.__name__, feat)
+                Feature.ensure_feature(feat)
                 for feat in listify(self.consume('features'))
             ]
         except KeyError as e:
