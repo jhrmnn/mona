@@ -256,6 +256,10 @@ class Molecule:
         return [a.xyz.tolist() for a in self]
 
     @property
+    def xyz(self):
+        return np.array(self.coords)
+
+    @property
     def species(self):
         return [a.symbol for a in self]
 
