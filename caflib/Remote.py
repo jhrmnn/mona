@@ -22,7 +22,7 @@ class Remote:
                     exclude.extend(l.strip() for l in f.readlines())
         cmd = [
             'rsync', '-cirl', '--copy-unsafe-links',
-            '--exclude=.*', '--exclude=build', '--exclude=*.pyc',
+            '--exclude=.*', '--exclude=build*', '--exclude=*.pyc',
             '--exclude=__pycache__'
         ]
         if delete:
