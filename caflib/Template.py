@@ -18,7 +18,7 @@ class Template:
                     with path.open() as f:
                         Template._cache[self.key] = f.read()
                 except FileNotFoundError:
-                    error('Template "{path}" does not exist')
+                    error(f'Template "{path}" does not exist')
         else:
             self.key = sha1(text.encode()).hexdigest()
             self.name = self.key[-7:]
@@ -54,19 +54,19 @@ class Template:
                 except Exception:
                     error(
                         'There was an error when processing default '
-                        'of key "{token}" in template "{self.name}"'
+                        f'of key "{token}" in template "{self.name}"'
                     )
             else:
                 error(
-                    '"{token}" not defined when processing template {self.name}'
+                    f'"{token}" not defined when processing template {self.name}'
                 )
             used.add(token)
             try:
                 return format(value, fmt) if fmt else str(value)
             except ValueError:
                 error(
-                    'Unknown format "{fmt}" when processing key "{token}" '
-                    'in template "{self.name}"'
+                    f'Unknown format "{fmt}" when processing key "{token}" '
+                    f'in template "{self.name}"'
                 )
 
         replaced = re.sub(
