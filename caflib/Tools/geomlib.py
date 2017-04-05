@@ -167,7 +167,7 @@ class Molecule:
         if len(self) == 1:
             return self[0].number
         return hash(tuple(np.round(
-            sorted(np.linalg.eigvals(self.inertia)[0]),
+            sorted(np.linalg.eigvals(self.inertia)),
             settings['eq_precision']
         )))
 
@@ -278,14 +278,15 @@ class Molecule:
 
     @property
     def inertia(self):
-        return [sum(atom.prop['mass']*(
-            np.linalg.norm(atom.xyz)**2*np.eye(3) -
-            atom.xyz[:, None]*atom.xyz[None, :]
-        ) for atom in self.copy().shifted(-self.cms))]
+        masses = np.array([atom.prop['mass'] for atom in self])
+        xyz_w = np.sqrt(masses)[:, None]*self.shifted(-self.cms).xyz
+        A = np.array([np.diag(np.full(3, r)) for r in np.sum(xyz_w**2, 1)])
+        B = xyz_w[:, :, None]*xyz_w[:, None, :]
+        return np.sum(A-B, 0)
 
     @property
     def inertia_moments(self):
-        return sorted(np.linalg.eigvals(self.inertia)[0])
+        return sorted(np.linalg.eigvals(self.inertia))
 
     def shifted(self, delta):
         m = self.copy()

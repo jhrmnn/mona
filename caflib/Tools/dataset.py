@@ -61,5 +61,5 @@ class Cluster:
         self.fragments[key] = value
 
     def get_int_ene(self, energies):
-        assert self.fragments.keys() == energies.keys()
+        # assert self.fragments.keys() == energies.keys()
         return self._intene(energies)
