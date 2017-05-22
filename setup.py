@@ -14,7 +14,7 @@ setup(
         'Environment :: Console',
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)',
         'Natural Language :: English',
         'Operating System :: POSIX',
         'Programming Language :: Python :: 3.6',
