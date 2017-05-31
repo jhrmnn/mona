@@ -735,6 +735,28 @@ def fetch(caf, patterns: 'PATH', remotes: ('REMOTE', 'proc_remote'),
             scheduler.task_done(hashid, remote=remote.host if nofiles else None)
 
 
+caf_archive = CLI('archive', header='Cellar archiving.')
+Caf.commands[('archive',)] = caf_archive
+
+
+@caf_archive.add_command(name='store')
+def archive_store(caf, _, filename: 'FILE', patterns: 'PATH'):
+    """
+    Archives files accessible from the given tasks as tar.gz.
+
+    Usage:
+        caf archive save FILE [PATH...]
+    """
+    cellar = Cellar(caf.cafdir)
+    scheduler = Scheduler(caf.cafdir)
+    states = scheduler.get_states()
+    if patterns:
+        hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
+    else:
+        hashes = states.keys()
+    cellar.archive(hashes, filename)
+
+
 # @Caf.command()
 # def push(caf, targets: 'TARGET', dry: '--dry', remotes: ('REMOTE', 'proc_remote')):
 #     """
