@@ -30,7 +30,7 @@ bohr = 0.52917721092
 
 
 def scalar2str(x):
-    return f'{x:{settings["width"]}.{settings["precision"]}}'
+    return f'{x:{settings["width"]}.{settings["precision"]}f}'
 
 
 def vector2str(v):
@@ -158,7 +158,7 @@ class Molecule:
         ))
 
     def __add__(self, other):
-        return super().__init__(self.atoms + other.atoms)
+        return Molecule(self.atoms + other.atoms)
 
     def __len__(self):
         return len(self.atoms)
@@ -185,7 +185,7 @@ class Molecule:
     def dump(self, fp, fmt):
         if fmt == 'xyz':
             fp.write(f'{len(self)}\n')
-            json.dump({'formula': repr(self), **self.metadata}, fp)
+            json.dump({'formula': self.formula, **self.metadata}, fp)
             fp.write('\n')
             for atom in self:
                 fp.write(f'{atom:xyz}\n')
@@ -404,7 +404,7 @@ class Crystal(Molecule):
             if first == (1, 1, 1):
                 central.append(frag)
         return Crystal(
-            sum(central, Molecule([])).shifted(-sum(self.lattice)).atoms,
+            concat(central).shifted(-sum(self.lattice)).atoms,
             self.lattice,
         )
 
@@ -436,14 +436,18 @@ class Crystal(Molecule):
             raise ValueError(f'Unknown format: {fmt!r}')
 
 
+def concat(objs):
+    return sum(objs, Molecule([]))
+
+
 def load(fp, fmt):
     if fmt == 'xyz':
         n = int(fp.readline())
-        comment = fp.readline().rstrip()
+        comment = fp.readline().strip()
         try:
             metadata = json.loads(comment)
         except json.decoder.JSONDecodeError:
-            metadata = {'comment': comment}
+            metadata = {'comment': comment} if comment else {}
         atoms = []
         for _ in range(n):
             l = fp.readline().split()
