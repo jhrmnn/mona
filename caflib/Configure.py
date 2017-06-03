@@ -11,7 +11,6 @@ from caflib.Template import Template
 from caflib.Utils import listify, slugify
 from caflib.Timing import timing
 from caflib.Logging import error
-# from caflib.Generators import Linker, TargetGen, TaskGen
 from caflib.Cellar import get_hash, State
 
 
@@ -252,16 +251,6 @@ class Task:
                     features.remove(feat)
 
 
-def node_opener(node, cellar):
-    def node_open(filename):
-        for target, (child, source) in node.childlinks.items():
-            if filename != target:
-                continue
-            child = cellar.get_task(TaskNode.hashes[node.children[child]])
-            return cellar.get_file(child['outputs'][source]).open()
-    return node_open
-
-
 class VirtualFile:
     def __init__(self, hashid, cellar):
         self.hashid = hashid
@@ -323,21 +312,6 @@ class Context:
         tasknode.task.process(self)
         tasknode.seal(self.inputs)
         return TaskWrapper(tasknode, self.cellar)
-    # def add_task(self, **attrs):
-    #     attrs.setdefault('features', [])
-    #     task = Task(attrs)
-    #     tasknode = TaskNode(task)
-    #     self.tasks.append(tasknode)
-    #     return TaskGen(tasknode)
-
-    # __call__ = add_task
-
-    # link = Linker
-
-    # def target(self, *args, **kwargs):
-    #     targetnode = TargetNode()
-    #     self.targets.append(targetnode)
-    #     return TargetGen(targetnode, *args, **kwargs)
 
     def get_sources(self, path):
         if '?' in str(path) or '*' in str(path):
@@ -353,53 +327,6 @@ class Context:
             str(path.relative_to(self.top)): self.files[path]
             for path in paths
         }
-
-    # def sort_tasks(self):
-    #     idxs = {task: i for i, task in enumerate(self.tasks)}
-    #     nodes = list(range(len(self.tasks)))
-    #     queue = []
-    #     children = [
-    #         [idxs[child] for child in task.children.values()]
-    #         for task in self.tasks
-    #     ]
-    #     nparents = [
-    #         len(list(p for p in task.parents if isinstance(p, TaskNode)))
-    #         for task in self.tasks
-    #     ]
-    #     roots = [node for node in nodes if nparents[node] == 0]
-    #     parent_cnt = len(nodes)*[0]
-    #     while roots:
-    #         node = roots.pop()
-    #         queue.insert(0, node)
-    #         for child in children[node]:
-    #             parent_cnt[child] += 1
-    #             if parent_cnt[child] == nparents[child]:
-    #                 roots.append(child)
-    #     if parent_cnt != nparents:
-    #         error('There are cycles in the dependency tree')
-    #     self.tasks = [self.tasks[i] for i in queue]
-
-    # def process(self):
-    #     inputs = {}
-    #     for node in self.tasks:
-    #         for name, child in node.children.items():
-    #             if child not in TaskNode.hashes or \
-    #                     name in node.blocking and \
-    #                     self.cellar.get_state(TaskNode.hashes[child]) != 1:
-    #                 blocked = True
-    #                 break
-    #         else:
-    #             blocked = False
-    #         if blocked:
-    #             continue
-    #         node.task.node_open = node_opener(node, self.cellar)
-    #         try:
-    #             node.task.process(self)
-    #         except FeatureException as e:
-    #             error(f'Feature "{e.args[0]}" failed in {node}.')
-    #         with timing('seal'):
-    #             node.seal(inputs)
-    #     return inputs
 
     def get_configuration(self):
         idxs = {task: i for i, task in enumerate(self.tasks)}

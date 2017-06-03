@@ -36,22 +36,6 @@ def import_cscript(unpack):
     spec = importlib.util.spec_from_file_location('cscript', 'acscript.py')
     cscript = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cscript)
-    # cscript = imp.new_module('cscript')
-    # try:
-    #     with open('cscript.py') as f:
-    #         script = f.read()
-    # except FileNotFoundError:
-    #     error('Cscript does not exist.')
-    # for i in range(2):
-    #     try:
-    #         exec(compile(script, 'cscript', 'exec'), cscript.__dict__)
-    #     except Exception as e:
-    #         if isinstance(e, ImportError) and i == 0:
-    #             unpack(None, path=None)
-    #         else:
-    #             import traceback
-    #             traceback.print_exc()
-    #             error('There was an error while reading cscript.')
     return cscript
 
 
@@ -203,10 +187,6 @@ def conf(caf):
             import traceback
             traceback.print_exc()
             error('There was an error when executing run()')
-    # with timing('sort tasks'):
-    #     ctx.sort_tasks()
-    # with timing('configure'):
-    #     inputs = ctx.process()
     with timing('get configuration'):
         conf = ctx.get_configuration()
     targets = get_leafs(conf)
