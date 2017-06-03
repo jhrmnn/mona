@@ -7,7 +7,6 @@ import io
 import tarfile
 from base64 import b64encode
 from itertools import takewhile
-import imp
 import shutil
 import sys
 from textwrap import dedent
@@ -16,6 +15,7 @@ import subprocess as sp
 from configparser import ConfigParser
 import signal
 import json
+import importlib.util
 
 from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Timing import timing
@@ -28,27 +28,31 @@ from caflib.Remote import Remote, Local
 from caflib.Configure import Context
 from caflib.Scheduler import RemoteScheduler, Scheduler
 from caflib.Announcer import Announcer
+import caflib.asyncio
 
 from docopt import docopt, DocoptExit
 
 
 def import_cscript(unpack):
-    cscript = imp.new_module('cscript')
-    try:
-        with open('cscript.py') as f:
-            script = f.read()
-    except FileNotFoundError:
-        error('Cscript does not exist.')
-    for i in range(2):
-        try:
-            exec(compile(script, 'cscript', 'exec'), cscript.__dict__)
-        except Exception as e:
-            if isinstance(e, ImportError) and i == 0:
-                unpack(None, path=None)
-            else:
-                import traceback
-                traceback.print_exc()
-                error('There was an error while reading cscript.')
+    spec = importlib.util.spec_from_file_location('cscript', 'acscript.py')
+    cscript = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cscript)
+    # cscript = imp.new_module('cscript')
+    # try:
+    #     with open('cscript.py') as f:
+    #         script = f.read()
+    # except FileNotFoundError:
+    #     error('Cscript does not exist.')
+    # for i in range(2):
+    #     try:
+    #         exec(compile(script, 'cscript', 'exec'), cscript.__dict__)
+    #     except Exception as e:
+    #         if isinstance(e, ImportError) and i == 0:
+    #             unpack(None, path=None)
+    #         else:
+    #             import traceback
+    #             traceback.print_exc()
+    #             error('There was an error while reading cscript.')
     return cscript
 
 
@@ -179,8 +183,8 @@ def conf(caf):
     Usage:
         caf conf
     """
-    if not hasattr(caf.cscript, 'configure'):
-        error('cscript has to contain function configure(ctx)')
+    if not hasattr(caf.cscript, 'run'):
+        error('cscript has to contain function run()')
     if not caf.cafdir.is_dir():
         caf.cafdir.mkdir()
         info(f'Initializing an empty repository in {caf.cafdir.resolve()}.')
@@ -193,17 +197,20 @@ def conf(caf):
             (caf.cafdir/'objects').mkdir()
     cellar = Cellar(caf.cafdir)
     ctx = Context(caf.top, cellar)
+    caflib.asyncio.cellar = cellar
+    caflib.asyncio.ctx = ctx
+    caflib.asyncio.inputs = {}
     with timing('evaluate cscript'):
         try:
-            caf.cscript.configure(ctx)
+            caf.cscript.run()
         except Exception as e:
             import traceback
             traceback.print_exc()
-            error('There was an error when executing configure()')
-    with timing('sort tasks'):
-        ctx.sort_tasks()
-    with timing('configure'):
-        inputs = ctx.process()
+            error('There was an error when executing run()')
+    # with timing('sort tasks'):
+    #     ctx.sort_tasks()
+    # with timing('configure'):
+    #     inputs = ctx.process()
     with timing('get configuration'):
         conf = ctx.get_configuration()
     targets = get_leafs(conf)
@@ -222,7 +229,7 @@ def conf(caf):
         hashid: label for hashid, label in zip(conf['hashes'], conf['labels'])
     }
     with timing('store build'):
-        tasks = dict(cellar.store_build(tasks, targets, inputs, labels))
+        tasks = dict(cellar.store_build(tasks, targets, caflib.asyncio.inputs, labels))
     labels = {hashid: None for hashid in tasks}
     for path, hashid in cellar.get_tree(hashes=tasks.keys()).items():
         if not labels[hashid]:
