@@ -10,54 +10,6 @@ from caflib.Logging import error
 from caflib.Cellar import get_hash, State
 
 
-class UnconsumedAttributes(Exception):
-    pass
-
-
-class FeatureException(Exception):
-    pass
-
-
-class Feature:
-    db = {}
-
-    def __init__(self, name, f, attrs=None):
-        self.name = name
-        self.f = f
-        self.attrs = attrs or set()
-
-    def __call__(self, task):
-        self.f(task)
-
-    @classmethod
-    def ensure_feature(cls, obj):
-        if type(obj) is cls:
-            return obj
-        if type(obj) is str:
-            return cls.db[obj]
-        return cls(obj.__name__, obj)
-
-
-def feature(name):
-    def decorator(f):
-        feat = Feature(name, f)
-        Feature.db[name] = feat
-        return feat
-    return decorator
-
-
-def before_files(feat):
-    feat = Feature.ensure_feature(feat)
-    feat.attrs.add('before_files')
-    return feat
-
-
-def before_templates(feat):
-    feat = Feature.ensure_feature(feat)
-    feat.attrs.add('before_templates')
-    return feat
-
-
 class TargetNode:
     all_targets = set()
 
