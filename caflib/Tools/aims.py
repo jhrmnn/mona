@@ -61,44 +61,46 @@ def prepare_aims(task):
     if check_output or check_output is None:
         aims_command += ' && grep "Have a nice day" run.out >/dev/null'
     command = []
+    geom = task.consume('geom')
     for subdir in subdirs:
-        try:
-            geom = geomlib.loads(task.inputs[str(subdir/geomfile)], 'aims')
-        except KeyError:
-            error(f'No geometry file found: {task}, {task.path}')
-        species = sorted(set((a.number, a.symbol) for a in geom))
-        if str(subdir/'control.in') not in task.inputs:
-            error('No control file found')
+        if geom:
+            task.inputs[str(subdir/geomfile)] = geom.dumps('aims')
+        else:
+            try:
+                geom = geomlib.loads(task.inputs[str(subdir/geomfile)], 'aims')
+            except KeyError:
+                error(f'No geometry file found: {task}, {task.path}')
+        species = sorted(set((a.number, a.specie) for a in geom))
         chunks = []
         for filename in list(task.inputs):
-            if filename.startswith(str(subdir/'control.')) \
-                    and filename.endswith('.in'):
+            if 'control' in filename and filename.endswith('.in'):
                 chunks.append('\n'.join(
                     l for l in task.inputs[filename].split('\n')
                     if not l.lstrip().startswith('#') and l.strip()
                 ) + '\n')
                 del task.inputs[filename]
-        for attr in sorted(list(task.attrs)):
-            if attr in _tags:
-                value = task.consume(attr)
+        if 'tags' in task.attrs:
+            chunk = []
+            for tag, value in task.consume('tags').items():
                 if value is None:
                     continue
-                if isinstance(value, str) and value == '':
-                    chunks.append(str(attr))
+                if value is ():
+                    chunk.append(p2f(value))
                 elif isinstance(value, list):
-                    chunks.append('\n'.join(f'{attr}  {p2f(v)}' for v in value))
+                    chunk.extend(f'{tag}  {p2f(v)}' for v in value)
                 else:
-                    if attr == 'xc' and value.startswith('libxc'):
-                        chunks.append('override_warning_libxc')
-                    chunks.append(f'{attr}  {p2f(value)}')
+                    if value == 'xc' and value.startswith('libxc'):
+                        chunk.append('override_warning_libxc')
+                    chunk.append(f'{tag}  {p2f(value)}')
+            chunks.append('\n'.join(chunk))
         if not basis == 'none':
-            for number, symbol in species:
-                if (basis, symbol) not in species_db:
-                    with (basis_root/f'{number:02d}_{symbol}_default').open() as f:
+            for number, specie in species:
+                if (basis, specie) not in species_db:
+                    with (basis_root/f'{number:02d}_{specie}_default').open() as f:
                         basis_def = f.read()
-                    species_db[basis, symbol] = basis_def
+                    species_db[basis, specie] = basis_def
                 else:
-                    basis_def = species_db[basis, symbol]
+                    basis_def = species_db[basis, specie]
                 chunks.append(basis_def)
         task.inputs[str(subdir/'control.in')] = '\n\n'.join(chunks)
         if subdir == Path('.'):
