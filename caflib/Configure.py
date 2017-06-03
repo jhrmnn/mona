@@ -172,9 +172,9 @@ class Task:
         self.inputs = {}
         self.symlinks = {}
 
-    def consume(self, attr):
+    def consume(self, attr, default=None):
         """Return and clear a Task attribute."""
-        return self.attrs.pop(attr, None)
+        return self.attrs.pop(attr, default)
 
     def open(self, filename, mode='r'):
         if mode == 'r':
