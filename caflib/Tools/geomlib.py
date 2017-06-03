@@ -72,7 +72,10 @@ class Atom:
                 name = 'empty'
             else:
                 name = 'atom'
-            return f'{name} {vector2str(self.coord)} {self.specie:>2}'
+            s = f'{name} {vector2str(self.coord)} {self.specie:>2}'
+            for c in self.flags.get('constrained', []):
+                s += f'\nconstrain_relaxation {c}'
+            return s
         super().__format__(fmt)
 
     def prop(self, name):
@@ -129,9 +132,9 @@ class Atom:
 
 
 class Molecule:
-    def __init__(self, atoms, metadata=None):
+    def __init__(self, atoms, flags=None):
         self.atoms = atoms
-        self.metadata = metadata or {}
+        self.flags = flags or {}
 
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.formula!r}>'
@@ -168,13 +171,13 @@ class Molecule:
             return self.atoms[idx]
         except TypeError:
             pass
-        return self.metadata[idx]
+        return self.flags[idx]
 
     def __setitem__(self, key, value):
-        self.metadata[key] = value
+        self.flags[key] = value
 
     def copy(self):
-        return Molecule([atom.copy() for atom in self], self.metadata.copy())
+        return Molecule([atom.copy() for atom in self], self.flags.copy())
 
     def items(self):
         for atom in self:
@@ -185,13 +188,13 @@ class Molecule:
     def dump(self, fp, fmt):
         if fmt == 'xyz':
             fp.write(f'{len(self)}\n')
-            json.dump({'formula': self.formula, **self.metadata}, fp)
+            json.dump({'formula': self.formula, **self.flags}, fp)
             fp.write('\n')
             for atom in self:
                 fp.write(f'{atom:xyz}\n')
         elif fmt == 'aims':
             for atom in self:
-                fp.write('{atom:aims}\n')
+                fp.write(f'{atom:aims}\n')
         elif fmt == 'json':
             json.dump({'atoms': [[a.specie, list(a.xyz)] for a in self]}, fp)
         else:
@@ -230,7 +233,7 @@ class Molecule:
 
     @property
     def cms(self):
-        return sum(atom.mass*atom.coords for atom in self)/self.mass
+        return sum(atom.mass*atom.coord for atom in self)/self.mass
 
     @property
     def bounding_box(self):
@@ -357,8 +360,8 @@ def getfragments(C):
 
 
 class Crystal(Molecule):
-    def __init__(self, atoms, lattice):
-        super().__init__(atoms)
+    def __init__(self, atoms, lattice, flags=None):
+        super().__init__(atoms, flags)
         self.lattice = np.array(lattice)
 
     def __eq__(self, other):
@@ -366,7 +369,7 @@ class Crystal(Molecule):
             super().__eq__(other)
 
     def copy(self):
-        return Crystal([a.copy() for a in self], self.lattice.copy())
+        return Crystal([a.copy() for a in self], self.lattice.copy(), self.flags.copy())
 
     @classmethod
     def from_molecule(cls, mol, padding=3.):
@@ -380,17 +383,17 @@ class Crystal(Molecule):
     def supercell(self, ns):
         atoms = []
         for shift in product(*[range(n) for n in ns]):
-            for atom in self.atoms:
+            for atom in self:
                 atom = atom.copy()
                 atom.coord += sum(k*v for k, v in zip(shift, self.lattice))
                 atom.flags['cell'] = shift
                 atoms.append(atom)
-        return Crystal(atoms, np.array(ns)[:, None]*self.lattice)
+        return Crystal(atoms, np.array(ns)[:, None]*self.lattice, self.flags.copy())
 
     def get_kgrid(self, density=0.06):
         rec_lattice = 2*np.pi*np.linalg.inv(self.lattice.T)
         rec_lens = np.sqrt((rec_lattice**2).sum(1))
-        return np.ceil(rec_lens/(density*bohr))
+        return tuple(int(x) for x in np.ceil(rec_lens/(density*bohr)))
 
     def complete_molecules(self):
         def key(x):
@@ -406,16 +409,19 @@ class Crystal(Molecule):
         return Crystal(
             concat(central).shifted(-sum(self.lattice)).atoms,
             self.lattice,
+            self.flags
         )
 
     def dump(self, fp, fmt):
         if fmt == 'aims':
-            for l in self.lattice:
+            for i, l in enumerate(self.lattice):
                 fp.write(f'lattice_vector {vector2str(l)}\n')
+                for c in self.flags.get('constrained', {}).get(i, []):
+                    fp.write(f'constrain_relaxation {c}\n')
             for atom in self:
                 fp.write(f'{atom:aims}\n')
         elif fmt == 'vasp':
-            fp.write(f'Formula: {self}\n')
+            fp.write(f'Formula: {self.formula}\n')
             fp.write(scalar2str(1) + '\n')
             for l in self.lattice:
                 fp.write(vector2str(l) + '\n')
@@ -425,11 +431,11 @@ class Crystal(Molecule):
                 species[atom.specie].append(atom)
             fp.write(' '.join(str(len(atoms)) for atoms in species.values()) + '\n')
             fp.write('cartesian\n')
-            for atom in chain(*species):
-                fp.write(vector2str(atom.xyz) + '\n')
+            for atom in chain(*species.values()):
+                fp.write(vector2str(atom.coord) + '\n')
         elif fmt == 'json':
             json.dump({
-                'atoms': [[a.specie, a.xyz.tolist()] for a in self],
+                'atoms': [[a.specie, a.coord.tolist()] for a in self],
                 'lattice': self.lattice.tolist()
             }, fp)
         else:
@@ -445,14 +451,14 @@ def load(fp, fmt):
         n = int(fp.readline())
         comment = fp.readline().strip()
         try:
-            metadata = json.loads(comment)
+            flags = json.loads(comment)
         except json.decoder.JSONDecodeError:
-            metadata = {'comment': comment} if comment else {}
+            flags = {'comment': comment} if comment else {}
         atoms = []
         for _ in range(n):
             l = fp.readline().split()
             atoms.append(Atom(l[0], [float(x) for x in l[1:4]]))
-        return Molecule(atoms, metadata=metadata)
+        return Molecule(atoms, flags=flags)
     elif fmt == 'aims':
         atoms = []
         atoms_frac = []
