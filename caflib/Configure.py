@@ -4,12 +4,8 @@
 from pathlib import Path
 from io import StringIO
 import json
-import os
-import importlib
 
-from caflib.Template import Template
-from caflib.Utils import listify, slugify
-from caflib.Timing import timing
+from caflib.Utils import slugify
 from caflib.Logging import error
 from caflib.Cellar import get_hash, State
 
@@ -93,8 +89,9 @@ class TargetNode:
 class TaskNode:
     hashes = {}
 
-    def __init__(self, task):
-        self.task = task
+    def __init__(self, command):
+        self.command = command
+        self.inputs = {}
         self.children = {}
         self.childlinks = {}
         self.parents = []
@@ -134,15 +131,15 @@ class TaskNode:
         task.parents.append(self)
 
     def seal(self, inputs):
-        for filename, content in self.task.inputs.items():
+        for filename, content in self.inputs.items():
             hashid = get_hash(content)
             if hashid not in inputs:
                 inputs[hashid] = content
-            self.task.inputs[filename] = hashid
+            self.inputs[filename] = hashid
         blob = json.dumps({
-            'command': self.task.command,
-            'inputs': self.task.inputs,
-            'symlinks': self.task.symlinks,
+            'command': self.command,
+            'inputs': self.inputs,
+            'symlinks': {},
             'children': {
                 name: TaskNode.hashes[child]
                 for name, child in self.children.items()
@@ -162,93 +159,6 @@ class VirtualTextFile(StringIO):
     def __exit__(self, *args, **kwargs):
         self.inputs[self.name] = self.getvalue()
         super().__exit__(*args, **kwargs)
-
-
-class Task:
-    def __init__(self, attrs):
-        self.attrs = attrs
-        self.command = None
-        self.inputs = {}
-        self.symlinks = {}
-
-    def consume(self, attr, default=None):
-        """Return and clear a Task attribute."""
-        return self.attrs.pop(attr, default)
-
-    def open(self, filename, mode='r'):
-        if mode == 'r':
-            with timing('node_open'):
-                fobj = self.node_open(filename)
-            if fobj:
-                return fobj
-        if mode in ['r', 'a']:
-            if filename not in self.inputs:
-                raise FileNotFoundError(filename)
-        elif mode == 'w':
-            pass
-        else:
-            error(f'Cannot open files with mode {mode}')
-        return VirtualTextFile(filename, self.inputs)
-
-    def symlink(self, source, target):
-        self.symlinks[str(target)] = str(source)
-
-    def process(self, ctx):
-        try:
-            features = [
-                Feature.ensure_feature(feat)
-                for feat in listify(self.consume('features'))
-            ]
-        except KeyError as e:
-            error(f'Feature {e.args[0]} is not registered')
-        self.process_features(features, 'before_files')
-        with timing('texts'):
-            for target, text in (self.consume('texts') or {}).items():
-                self.inputs[target] = text
-        with timing('files'):
-            for file_spec in listify(self.consume('files')):
-                if isinstance(file_spec, tuple):
-                    path, target = file_spec
-                    self.inputs[target] = ctx.get_sources(ctx.top/path)[path]
-                elif isinstance(file_spec, str):
-                    path = file_spec
-                    for path, contents in ctx.get_sources(ctx.top/path).items():
-                        self.inputs[path] = contents
-                else:
-                    error('Unexpected file specification: {file_spec}')
-        self.process_features(features, 'before_templates')
-        with timing('templates'):
-            for file_spec in listify(self.consume('templates')):
-                if isinstance(file_spec, tuple):
-                    source, target = file_spec
-                elif isinstance(file_spec, str):
-                    source = target = file_spec
-                else:
-                    error('Unexpected template specification: {file_spec}')
-                if isinstance(source, os.PathLike):
-                    source = ctx.top/source
-                template = Template(source)
-                processed, used = template.render(self.attrs)
-                self.inputs[target] = processed
-                for attr in used:
-                    self.consume(attr)
-        self.process_features(features)
-        self.command = self.consume('command') or ''
-        if self.attrs:
-            raise UnconsumedAttributes(list(self.attrs))
-
-    def process_features(self, features, attr=None):
-        with timing('features'):
-            for feat in list(features):
-                if not attr or attr in feat.attrs:
-                    with timing(feat.name):
-                        try:
-                            feat(self)
-                        except Exception as e:
-                            import traceback
-                            traceback.print_exc()
-                            raise FeatureException(feat.name) from e
-                    features.remove(feat)
 
 
 class VirtualFile:
@@ -286,6 +196,36 @@ class TaskWrapper:
         }
 
 
+def get_configuration(tasks, targets):
+    idxs = {task: i for i, task in enumerate(tasks)}
+    return {
+        'tasks': [(
+            {
+                'command': node.command,
+                'inputs': node.inputs,
+                'symlinks': {},
+                'children': {
+                    name: idxs[child]
+                    for name, child in node.children.items()
+                },
+                'childlinks': node.childlinks
+            } if node.command is not None else {
+                'blocking': node.blocking,
+                'children': {
+                    name: idxs[child]
+                    for name, child in node.children.items()
+                }
+            }
+        ) for node in tasks],
+        'hashes': [TaskNode.hashes.get(node) for node in tasks],
+        'targets': {
+            str(target.path): tasks.index(target.task)
+            for target in targets
+        },
+        'labels': [str(node) for node in tasks]
+    }
+
+
 class Context:
     """Represent a build configuration: tasks and targets."""
 
@@ -298,9 +238,7 @@ class Context:
         self.inputs = {}
 
     def get_task(self, target=None, children=None, **kwargs):
-        kwargs.setdefault('features', [])
-        task = Task(kwargs)
-        tasknode = TaskNode(task)
+        tasknode = TaskNode(**kwargs)
         self.tasks.append(tasknode)
         if children:
             for childname, (child, childlinks) in children.items():
@@ -309,53 +247,5 @@ class Context:
             targetnode = TargetNode()
             self.targets.append(targetnode)
             targetnode.set_task(tasknode, target)
-        tasknode.task.process(self)
         tasknode.seal(self.inputs)
         return TaskWrapper(tasknode, self.cellar)
-
-    def get_sources(self, path):
-        if '?' in str(path) or '*' in str(path):
-            paths = path.glob()
-        else:
-            paths = [path]
-        if not paths:
-            error(f'File "{path}" does not exist.')
-        for path in paths:
-            if path not in self.files:
-                self.files[path] = path.read_text()
-        return {
-            str(path.relative_to(self.top)): self.files[path]
-            for path in paths
-        }
-
-    def get_configuration(self):
-        idxs = {task: i for i, task in enumerate(self.tasks)}
-        return {
-            'tasks': [(
-                {
-                    'command': node.task.command,
-                    'inputs': node.task.inputs,
-                    'symlinks': node.task.symlinks,
-                    'children': {
-                        name: idxs[child]
-                        for name, child in node.children.items()
-                    },
-                    'childlinks': node.childlinks
-                } if node.task.command is not None else {
-                    'blocking': node.blocking,
-                    'children': {
-                        name: idxs[child]
-                        for name, child in node.children.items()
-                    }
-                }
-            ) for node in self.tasks],
-            'hashes': [TaskNode.hashes.get(node) for node in self.tasks],
-            'targets': {
-                str(target.path): self.tasks.index(target.task)
-                for target in self.targets
-            },
-            'labels': [str(node) for node in self.tasks]
-        }
-
-    def load_tool(self, name):
-        importlib.import_module(f'caflib.Tools.{name}')

@@ -25,7 +25,7 @@ import caflib.Logging as Logging
 from caflib.CLI import CLI, CLIExit
 from caflib.Cellar import Cellar, State
 from caflib.Remote import Remote, Local
-from caflib.Configure import Context
+from caflib.Configure import Context, get_configuration
 from caflib.Scheduler import RemoteScheduler, Scheduler
 from caflib.Announcer import Announcer
 
@@ -188,7 +188,7 @@ def conf(caf):
             traceback.print_exc()
             error('There was an error when executing run()')
     with timing('get configuration'):
-        conf = ctx.get_configuration()
+        conf = get_configuration(ctx.tasks, ctx.targets)
     targets = get_leafs(conf)
     tasks = {
         hashid: {
