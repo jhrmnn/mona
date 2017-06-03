@@ -86,10 +86,11 @@ class TargetNode:
         task.parents.append(self)
 
 
-class TaskNode:
+class Task:
     hashes = {}
 
-    def __init__(self, command):
+    def __init__(self, cellar, command):
+        self.cellar = cellar
         self.command = command
         self.inputs = {}
         self.children = {}
@@ -98,7 +99,7 @@ class TaskNode:
         self.blocking = []
 
     def __repr__(self):
-        return f"<TaskNode '{self}'>"
+        return f"<Task '{self}'>"
 
     def __str__(self):
         if not self.parents:
@@ -141,13 +142,32 @@ class TaskNode:
             'inputs': self.inputs,
             'symlinks': {},
             'children': {
-                name: TaskNode.hashes[child]
+                name: Task.hashes[child]
                 for name, child in self.children.items()
             },
             'childlinks': self.childlinks
         }, sort_keys=True)
         myhash = get_hash(blob)
-        TaskNode.hashes[self] = myhash
+        Task.hashes[self] = myhash
+
+    @property
+    def hashid(self):
+        return Task.hashes[self]
+
+    @property
+    def state(self):
+        return self.cellar.get_state(self.hashid)
+
+    @property
+    def finished(self):
+        return self.state == State.DONE
+
+    @property
+    def outputs(self):
+        return {
+            name: VirtualFile(hashid, self.cellar) for name, hashid
+            in self.cellar.get_task(self.hashid)['outputs'].items()
+        }
 
 
 class VirtualTextFile(StringIO):
@@ -171,31 +191,6 @@ class VirtualFile:
         return self.cellar.get_file(self.hashid)
 
 
-class TaskWrapper:
-    def __init__(self, node, cellar):
-        self.node = node
-        self.cellar = cellar
-
-    @property
-    def hashid(self):
-        return TaskNode.hashes[self.node]
-
-    @property
-    def state(self):
-        return self.cellar.get_state(self.hashid)
-
-    @property
-    def finished(self):
-        return self.state == State.DONE
-
-    @property
-    def outputs(self):
-        return {
-            name: VirtualFile(hashid, self.cellar) for name, hashid
-            in self.cellar.get_task(self.hashid)['outputs'].items()
-        }
-
-
 def get_configuration(tasks, targets):
     idxs = {task: i for i, task in enumerate(tasks)}
     return {
@@ -217,7 +212,7 @@ def get_configuration(tasks, targets):
                 }
             }
         ) for node in tasks],
-        'hashes': [TaskNode.hashes.get(node) for node in tasks],
+        'hashes': [Task.hashes.get(node) for node in tasks],
         'targets': {
             str(target.path): tasks.index(target.task)
             for target in targets
@@ -238,14 +233,14 @@ class Context:
         self.inputs = {}
 
     def get_task(self, target=None, children=None, **kwargs):
-        tasknode = TaskNode(**kwargs)
+        tasknode = Task(self.cellar, **kwargs)
         self.tasks.append(tasknode)
         if children:
             for childname, (child, childlinks) in children.items():
-                tasknode.add_child(child.node, childname, *childlinks)
+                tasknode.add_child(child, childname, *childlinks)
         if target:
             targetnode = TargetNode()
             self.targets.append(targetnode)
             targetnode.set_task(tasknode, target)
         tasknode.seal(self.inputs)
-        return TaskWrapper(tasknode, self.cellar)
+        return tasknode
