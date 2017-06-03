@@ -11,8 +11,8 @@ from caflib.Template import Template
 from caflib.Utils import listify, slugify
 from caflib.Timing import timing
 from caflib.Logging import error
-from caflib.Generators import Linker, TargetGen, TaskGen
-from caflib.Cellar import get_hash
+# from caflib.Generators import Linker, TargetGen, TaskGen
+from caflib.Cellar import get_hash, State
 
 
 class UnconsumedAttributes(Exception):
@@ -262,6 +262,41 @@ def node_opener(node, cellar):
     return node_open
 
 
+class VirtualFile:
+    def __init__(self, hashid, cellar):
+        self.hashid = hashid
+        self.cellar = cellar
+
+    @property
+    def path(self):
+        return self.cellar.get_file(self.hashid)
+
+
+class TaskWrapper:
+    def __init__(self, node, cellar):
+        self.node = node
+        self.cellar = cellar
+
+    @property
+    def hashid(self):
+        return TaskNode.hashes[self.node]
+
+    @property
+    def state(self):
+        return self.cellar.get_state(self.hashid)
+
+    @property
+    def finished(self):
+        return self.state == State.DONE
+
+    @property
+    def outputs(self):
+        return {
+            name: VirtualFile(hashid, self.cellar) for name, hashid
+            in self.cellar.get_task(self.hashid)['outputs'].items()
+        }
+
+
 class Context:
     """Represent a build configuration: tasks and targets."""
 
@@ -271,22 +306,38 @@ class Context:
         self.tasks = []
         self.targets = []
         self.files = {}
+        self.inputs = {}
 
-    def add_task(self, **attrs):
-        attrs.setdefault('features', [])
-        task = Task(attrs)
+    def get_task(self, target=None, children=None, **kwargs):
+        kwargs.setdefault('features', [])
+        task = Task(kwargs)
         tasknode = TaskNode(task)
         self.tasks.append(tasknode)
-        return TaskGen(tasknode)
+        if children:
+            for childname, (child, childlinks) in children.items():
+                tasknode.add_child(child.node, childname, *childlinks)
+        if target:
+            targetnode = TargetNode()
+            self.targets.append(targetnode)
+            targetnode.set_task(tasknode, target)
+        tasknode.task.process(self)
+        tasknode.seal(self.inputs)
+        return TaskWrapper(tasknode, self.cellar)
+    # def add_task(self, **attrs):
+    #     attrs.setdefault('features', [])
+    #     task = Task(attrs)
+    #     tasknode = TaskNode(task)
+    #     self.tasks.append(tasknode)
+    #     return TaskGen(tasknode)
 
-    __call__ = add_task
+    # __call__ = add_task
 
-    link = Linker
+    # link = Linker
 
-    def target(self, *args, **kwargs):
-        targetnode = TargetNode()
-        self.targets.append(targetnode)
-        return TargetGen(targetnode, *args, **kwargs)
+    # def target(self, *args, **kwargs):
+    #     targetnode = TargetNode()
+    #     self.targets.append(targetnode)
+    #     return TargetGen(targetnode, *args, **kwargs)
 
     def get_sources(self, path):
         if '?' in str(path) or '*' in str(path):
@@ -303,52 +354,52 @@ class Context:
             for path in paths
         }
 
-    def sort_tasks(self):
-        idxs = {task: i for i, task in enumerate(self.tasks)}
-        nodes = list(range(len(self.tasks)))
-        queue = []
-        children = [
-            [idxs[child] for child in task.children.values()]
-            for task in self.tasks
-        ]
-        nparents = [
-            len(list(p for p in task.parents if isinstance(p, TaskNode)))
-            for task in self.tasks
-        ]
-        roots = [node for node in nodes if nparents[node] == 0]
-        parent_cnt = len(nodes)*[0]
-        while roots:
-            node = roots.pop()
-            queue.insert(0, node)
-            for child in children[node]:
-                parent_cnt[child] += 1
-                if parent_cnt[child] == nparents[child]:
-                    roots.append(child)
-        if parent_cnt != nparents:
-            error('There are cycles in the dependency tree')
-        self.tasks = [self.tasks[i] for i in queue]
+    # def sort_tasks(self):
+    #     idxs = {task: i for i, task in enumerate(self.tasks)}
+    #     nodes = list(range(len(self.tasks)))
+    #     queue = []
+    #     children = [
+    #         [idxs[child] for child in task.children.values()]
+    #         for task in self.tasks
+    #     ]
+    #     nparents = [
+    #         len(list(p for p in task.parents if isinstance(p, TaskNode)))
+    #         for task in self.tasks
+    #     ]
+    #     roots = [node for node in nodes if nparents[node] == 0]
+    #     parent_cnt = len(nodes)*[0]
+    #     while roots:
+    #         node = roots.pop()
+    #         queue.insert(0, node)
+    #         for child in children[node]:
+    #             parent_cnt[child] += 1
+    #             if parent_cnt[child] == nparents[child]:
+    #                 roots.append(child)
+    #     if parent_cnt != nparents:
+    #         error('There are cycles in the dependency tree')
+    #     self.tasks = [self.tasks[i] for i in queue]
 
-    def process(self):
-        inputs = {}
-        for node in self.tasks:
-            for name, child in node.children.items():
-                if child not in TaskNode.hashes or \
-                        name in node.blocking and \
-                        self.cellar.get_state(TaskNode.hashes[child]) != 1:
-                    blocked = True
-                    break
-            else:
-                blocked = False
-            if blocked:
-                continue
-            node.task.node_open = node_opener(node, self.cellar)
-            try:
-                node.task.process(self)
-            except FeatureException as e:
-                error(f'Feature "{e.args[0]}" failed in {node}.')
-            with timing('seal'):
-                node.seal(inputs)
-        return inputs
+    # def process(self):
+    #     inputs = {}
+    #     for node in self.tasks:
+    #         for name, child in node.children.items():
+    #             if child not in TaskNode.hashes or \
+    #                     name in node.blocking and \
+    #                     self.cellar.get_state(TaskNode.hashes[child]) != 1:
+    #                 blocked = True
+    #                 break
+    #         else:
+    #             blocked = False
+    #         if blocked:
+    #             continue
+    #         node.task.node_open = node_opener(node, self.cellar)
+    #         try:
+    #             node.task.process(self)
+    #         except FeatureException as e:
+    #             error(f'Feature "{e.args[0]}" failed in {node}.')
+    #         with timing('seal'):
+    #             node.seal(inputs)
+    #     return inputs
 
     def get_configuration(self):
         idxs = {task: i for i, task in enumerate(self.tasks)}

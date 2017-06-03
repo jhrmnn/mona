@@ -28,7 +28,6 @@ from caflib.Remote import Remote, Local
 from caflib.Configure import Context
 from caflib.Scheduler import RemoteScheduler, Scheduler
 from caflib.Announcer import Announcer
-import caflib.asyncio
 
 from docopt import docopt, DocoptExit
 
@@ -197,12 +196,9 @@ def conf(caf):
             (caf.cafdir/'objects').mkdir()
     cellar = Cellar(caf.cafdir)
     ctx = Context(caf.top, cellar)
-    caflib.asyncio.cellar = cellar
-    caflib.asyncio.ctx = ctx
-    caflib.asyncio.inputs = {}
     with timing('evaluate cscript'):
         try:
-            caf.cscript.run()
+            caf.cscript.run(ctx)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -229,7 +225,7 @@ def conf(caf):
         hashid: label for hashid, label in zip(conf['hashes'], conf['labels'])
     }
     with timing('store build'):
-        tasks = dict(cellar.store_build(tasks, targets, caflib.asyncio.inputs, labels))
+        tasks = dict(cellar.store_build(tasks, targets, ctx.inputs, labels))
     labels = {hashid: None for hashid in tasks}
     for path, hashid in cellar.get_tree(hashes=tasks.keys()).items():
         if not labels[hashid]:
