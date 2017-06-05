@@ -11,14 +11,16 @@ from collections import defaultdict
 from caflib.Utils import groupby
 from caflib.Logging import Table
 
+from typing import DefaultDict, List, Generator  # noqa
+
 
 class Timer:
-    def __init__(self):
+    def __init__(self) -> None:
         self.active = 'TIMING' in os.environ
-        self.timing = defaultdict(float)
-        self.stack = []
+        self.timing: DefaultDict[str, float] = defaultdict(float)
+        self.stack: List[str] = []
 
-    def __del__(self):
+    def __del__(self) -> None:
         if self.active:
             groups = [
                 sorted(group, key=lambda x: x[0])
@@ -27,7 +29,7 @@ class Timer:
             ]
             groups.sort(key=lambda x: x[0][1], reverse=True)
             table = Table(align=['<', '<'])
-            total = 0
+            total = 0.
             for group in groups:
                 for row in group:
                     table.add_row(re.sub(r'[^>]*>', 4*' ', row[0]), f'{row[1]:.4f}')
@@ -41,7 +43,7 @@ TIMER = Timer()
 
 
 @contextmanager
-def timing(name):
+def timing(name: str) -> Generator[None, None, None]:
     if TIMER.active:
         label = '>'.join(TIMER.stack + [name])
         TIMER.timing[label]

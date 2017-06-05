@@ -3,11 +3,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import re
 
+from typing import Dict, Pattern, Optional
 
-regexes = {}
+
+regexes: Dict[str, Pattern] = {}
 
 
-def match_glob(path, pattern):
+def match_glob(path: str, pattern: str) -> Optional[str]:
     if pattern in regexes:
         regex = regexes[pattern]
     else:
@@ -29,7 +31,7 @@ def match_glob(path, pattern):
         regexes[pattern] = regex
     m = regex.match(path)
     if not m:
-        return
+        return None
     for group in m.groups():
         pattern = re.sub(r'<.*?>', group, pattern, 1)
     return pattern

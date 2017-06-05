@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='caf',
-    version='0.2.0',
+    version='0.3.0',
     description='Distributed calculation framework',
     url='https://github.com/azag0/caf',
     author='Jan Hermann',

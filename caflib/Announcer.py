@@ -8,13 +8,16 @@ import socket
 
 from caflib.Logging import error
 
+from typing import Optional, Dict  # noqa
+from caflib.Cellar import Hash  # noqa
+
 
 class Announcer:
-    def __init__(self, url, curl=None):
+    def __init__(self, url: str, curl: str = None) -> None:
         self.curl = curl
         self.url = url
 
-    def call_url(self, url, data=None):
+    def call_url(self, url: str, data: bytes = None) -> Optional[str]:
         url = f'{self.url}{url}'
         if self.curl:
             if data:
@@ -24,12 +27,12 @@ class Announcer:
                     self.curl % url, shell=True, check=True, stdout=sp.PIPE
                 )
                 if res.stdout:
-                    return res.stdout.decode()
+                    return res.stdout.decode()  # type: ignore
                 else:
-                    return
+                    return None
             except sp.CalledProcessError as exc:
                 if exc.returncode == 22:
-                    return
+                    return None
                 else:
                     raise
         else:
@@ -37,28 +40,28 @@ class Announcer:
                 with urlopen(url, timeout=30, data=data) as req:
                     return req.read().decode()
             except HTTPError:
-                return
+                return None
             except URLError as exc:
                 print(f'error: Cannot connect to {self.url}: {exc.reason}')
-                return
+                return None
 
-    def get_task(self):
+    def get_task(self) -> Optional[Hash]:
         r = self.call_url(f'/get?caller={socket.gethostname()}')
         if not r:
-            return
+            return None
         hashid, *_ = r.split()
-        return hashid
+        return Hash(hashid)
 
-    def put_back(self, hashid):
+    def put_back(self, hashid: Hash) -> None:
         self.call_url(f'/put_back/{hashid}')
 
-    def task_done(self, hashid):
+    def task_done(self, hashid: Hash) -> None:
         self.call_url(f'/change_state/{hashid}?state=Done')
 
-    def task_error(self, hashid):
+    def task_error(self, hashid: Hash) -> None:
         self.call_url(f'/change_state/{hashid}?state=Error')
 
-    def submit(self, hashes, append=False):
+    def submit(self, hashes: Dict[Hash, str], append: bool = False) -> Optional[str]:
         data = '\n'.join(reversed(
             [f'{label} {hashid}' for hashid, label in hashes.items()]
         )).encode()
@@ -67,6 +70,7 @@ class Announcer:
         )
         if res:
             return res.strip()
+        return None
 
 
 # from http.client import HTTPSConnection

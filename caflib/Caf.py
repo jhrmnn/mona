@@ -7,7 +7,6 @@ import io
 import tarfile
 from base64 import b64encode
 from itertools import takewhile
-import imp
 import shutil
 import sys
 from textwrap import dedent
@@ -16,6 +15,7 @@ import subprocess as sp
 from configparser import ConfigParser
 import signal
 import json
+import importlib.util
 
 from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Timing import timing
@@ -25,7 +25,7 @@ import caflib.Logging as Logging
 from caflib.CLI import CLI, CLIExit
 from caflib.Cellar import Cellar, State
 from caflib.Remote import Remote, Local
-from caflib.Configure import Context
+from caflib.Configure import Context, get_configuration
 from caflib.Scheduler import RemoteScheduler, Scheduler
 from caflib.Announcer import Announcer
 
@@ -33,22 +33,9 @@ from docopt import docopt, DocoptExit
 
 
 def import_cscript(unpack):
-    cscript = imp.new_module('cscript')
-    try:
-        with open('cscript.py') as f:
-            script = f.read()
-    except FileNotFoundError:
-        error('Cscript does not exist.')
-    for i in range(2):
-        try:
-            exec(compile(script, 'cscript', 'exec'), cscript.__dict__)
-        except Exception as e:
-            if isinstance(e, ImportError) and i == 0:
-                unpack(None, path=None)
-            else:
-                import traceback
-                traceback.print_exc()
-                error('There was an error while reading cscript.')
+    spec = importlib.util.spec_from_file_location('cscript', 'cscript.py')
+    cscript = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cscript)
     return cscript
 
 
@@ -158,19 +145,6 @@ class Caf(CLI):
         return queue
 
 
-def get_leafs(conf):
-    leafs = {}
-    queue = list(conf['targets'].items())
-    while queue:
-        target, taskid = queue.pop()
-        if conf['hashes'][taskid]:
-            leafs[target] = conf['hashes'][taskid]
-        else:
-            for name, child in conf['tasks'][taskid]['children'].items():
-                queue.append((f'{target}/{name}', child))
-    return leafs
-
-
 @Caf.command()
 def conf(caf):
     """
@@ -179,8 +153,8 @@ def conf(caf):
     Usage:
         caf conf
     """
-    if not hasattr(caf.cscript, 'configure'):
-        error('cscript has to contain function configure(ctx)')
+    if not hasattr(caf.cscript, 'run'):
+        error('cscript has to contain function run()')
     if not caf.cafdir.is_dir():
         caf.cafdir.mkdir()
         info(f'Initializing an empty repository in {caf.cafdir.resolve()}.')
@@ -195,34 +169,15 @@ def conf(caf):
     ctx = Context(caf.top, cellar)
     with timing('evaluate cscript'):
         try:
-            caf.cscript.configure(ctx)
+            caf.cscript.run(ctx)
         except Exception as e:
             import traceback
             traceback.print_exc()
-            error('There was an error when executing configure()')
-    with timing('sort tasks'):
-        ctx.sort_tasks()
-    with timing('configure'):
-        inputs = ctx.process()
+            error('There was an error when executing run()')
     with timing('get configuration'):
-        conf = ctx.get_configuration()
-    targets = get_leafs(conf)
-    tasks = {
-        hashid: {
-            **task,
-            'children': {
-                name: conf['hashes'][child]
-                for name, child in task['children'].items()
-            }
-        }
-        for hashid, task in zip(conf['hashes'], conf['tasks'])
-        if 'command' in task
-    }
-    labels = {
-        hashid: label for hashid, label in zip(conf['hashes'], conf['labels'])
-    }
+        conf = get_configuration(ctx.tasks, ctx.targets)
     with timing('store build'):
-        tasks = dict(cellar.store_build(tasks, targets, inputs, labels))
+        tasks = dict(cellar.store_build(conf['tasks'], conf['targets'], ctx.inputs, conf['labels']))
     labels = {hashid: None for hashid in tasks}
     for path, hashid in cellar.get_tree(hashes=tasks.keys()).items():
         if not labels[hashid]:
@@ -521,7 +476,7 @@ def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
         if do_running and states[hashid] != State.RUNNING:
             continue
         if not no_color:
-            path = colstr(path, State.color[states[hashid]])
+            path = colstr(path, states[hashid].color)
         if disp_hash:
             line = hashid
         elif disp_tmp:
@@ -595,7 +550,7 @@ def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
         ]
         table.add_row(pattern, *stats)
     for state in (State.RUNNING, State.INTERRUPTED):
-        color = State.color[state]
+        color = state.color
         for hashid, path in grouped.get(state, []):
             table.add_row(
                 f"{colstr('>>', color)} {path} "

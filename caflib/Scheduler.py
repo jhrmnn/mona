@@ -13,27 +13,38 @@ from caflib.Utils import get_timestamp, sample
 from caflib.Announcer import Announcer
 from caflib.Timing import timing
 
+from typing import (  # noqa
+    cast, Tuple, Optional, Iterable, List, Generator, Set, Dict, Any
+)
+from caflib.Cellar import Hash, TPath  # noqa
+
+sqlite3.register_converter('state', lambda x: State(int(x)))  # type: ignore
+sqlite3.register_adapter(State, lambda state: cast(int, state.value))
+
 
 class Task:
-    def __init__(self, command, path):
+    def __init__(self, command: str, path: str) -> None:
         self.command = command
         self.path = path
-        self.state = (State.CLEAN, None)
+        self.state: Tuple[State, Optional[str]] = (State.CLEAN, None)
 
-    def error(self, exc):
+    def error(self, exc: str) -> None:
         self.state = (State.ERROR, exc)
 
-    def done(self):
+    def done(self) -> None:
         self.state = (State.DONE, None)
 
-    def interrupt(self):
+    def interrupt(self) -> None:
         self.state = (State.INTERRUPTED, None)
 
 
 class Scheduler:
-    def __init__(self, path, tmpdir=None):
+    def __init__(self, path: Path, tmpdir: str = None) -> None:
         try:
-            self.db = sqlite3.connect(str(Path(path)/'queue.db'))
+            self.db = sqlite3.connect(
+                str(path/'queue.db'),
+                detect_types=sqlite3.PARSE_COLNAMES
+            )
         except sqlite3.OperationalError:
             no_cafdir()
         self.execute(
@@ -45,17 +56,17 @@ class Scheduler:
         self.cellar = Cellar(path)
         self.tmpdir = tmpdir
 
-    def execute(self, *args):
-        return self.db.execute(*args)
+    def execute(self, sql: str, *parameters: Iterable) -> sqlite3.Cursor:
+        return self.db.execute(sql, *parameters)
 
-    def executemany(self, *args):
-        return self.db.executemany(*args)
+    def executemany(self, sql: str, *seq_of_parameters: Iterable[Iterable]) -> sqlite3.Cursor:
+        return self.db.executemany(sql, *seq_of_parameters)
 
-    def commit(self):
+    def commit(self) -> None:
         if self.db.isolation_level is not None:
             self.db.commit()
 
-    def submit(self, tasks):
+    def submit(self, tasks: List[Tuple[Hash, State, str]]) -> None:
         self.execute('drop table if exists current_tasks')
         self.execute('create temporary table current_tasks(hash text)')
         self.executemany('insert into current_tasks values (?)', (
@@ -88,32 +99,36 @@ class Scheduler:
         self.commit()
 
     @contextmanager
-    def db_lock(self):
+    def db_lock(self) -> Generator[None, None, None]:
         self.db.execute('begin immediate transaction')
         try:
             yield
         finally:
             self.execute('end transaction')
 
-    def candidate_tasks(self, states, randomize=False):
+    def candidate_tasks(self, states: Iterable[Hash], randomize: bool = False) \
+            -> Generator[Hash, None, None]:
         if randomize:
             yield from sample(states)
         else:
             yield from states
 
-    def is_state_ok(self, state, hashid, label):
+    def is_state_ok(self, state: State, hashid: Hash, label: str) -> bool:
         return state == State.CLEAN
 
-    def skip_task(self, hashid):
+    def skip_task(self, hashid: Hash) -> None:
         pass
 
     def tasks_for_work(
-            self, hashes=None, limit=None, nmaxerror=5, dry=False,
-            randomize=False
-    ):
+            self,
+            hashes: Set[Hash] = None,
+            limit: int = None,
+            nmaxerror: int = 5,
+            dry: bool = False,
+            randomize: bool = False
+    ) -> Generator[Task, None, None]:
         self.db.commit()
         self.db.isolation_level = None
-        hashes = set(hashes) if hashes else None
         nrun = 0
         nerror = 0
         print(f'{get_timestamp()}: Started work')
@@ -126,8 +141,8 @@ class Scheduler:
                 break
             queue = self.get_queue()
             states = {hashid: state for hashid, (state, *_) in queue.items()}
-            labels = {hashid: label for hashid, (_, label, *_) in queue.items()}
-            skipped = set()
+            labels = {hashid: label for hashid, (_, label, *__) in queue.items()}
+            skipped: Set[Hash] = set()
             will_continue = False
             was_interrupted = False
             debug(f'Starting candidate loop')
@@ -149,9 +164,10 @@ class Scheduler:
                     debug(f'{label} does not have conforming state, skipping')
                     continue
                 task = self.cellar.get_task(hashid)
+                assert task
                 if any(
                         states[child] != State.DONE
-                        for child in task['children'].values()
+                        for child in task.children.values()
                 ):
                     self.skip_task(hashid)
                     debug(f'{label} has unsealed children, skipping')
@@ -162,7 +178,7 @@ class Scheduler:
                 with timing('lock task'):
                     with self.db_lock():
                         state, = self.execute(
-                            'select state from queue where taskhash = ? and active = 1',
+                            'select state as "[state]" from queue where taskhash = ? and active = 1',
                             (hashid,)
                         ).fetchone()
                         if state != State.CLEAN:
@@ -174,7 +190,7 @@ class Scheduler:
                             'where taskhash = ?',
                             (State.RUNNING, get_timestamp(), hashid)
                         )
-                if not task['command']:
+                if not task.command:
                     self.cellar.seal_task(hashid, {})
                     self.task_done(hashid)
                     print(f'{get_timestamp()}: {label} finished successfully')
@@ -190,14 +206,14 @@ class Scheduler:
                     )
                 with timing('checkout'):
                     inputs = self.cellar.checkout_task(task, tmppath)
-                task = Task(task['command'], tmppath)
-                yield task
-                if task.state[0] == State.INTERRUPTED:
+                queue_task = Task(task.command, str(tmppath))
+                yield queue_task
+                if queue_task.state[0] == State.INTERRUPTED:
                     was_interrupted = True
                     self.task_interrupt(hashid)
                     print(f'{get_timestamp()}: {label} was interrupted')
                     break
-                elif task.state[0] == State.DONE:
+                elif queue_task.state[0] == State.DONE:
                     outputs = {}
                     with timing('collect output'):
                         for filepath in tmppath.glob('**/*'):
@@ -212,8 +228,8 @@ class Scheduler:
                     with timing('announce done'):
                         self.task_done(hashid)
                     print(f'{get_timestamp()}: {label} finished successfully')
-                elif task.state[0] == State.ERROR:
-                    print(task.state[1])
+                elif queue_task.state[0] == State.ERROR:
+                    print(queue_task.state[1])
                     nerror += 1
                     self.task_error(hashid)
                     print(f'{get_timestamp()}: {label} finished with error')
@@ -229,27 +245,27 @@ class Scheduler:
         print(f'Executed {nrun} tasks')
         self.db.isolation_level = ''
 
-    def get_states(self):
+    def get_states(self) -> Dict[Hash, State]:
         try:
             return dict(self.execute(
-                'select taskhash, state from queue where active = 1'
+                'select taskhash, state as "[state]" from queue where active = 1'
             ))
         except sqlite3.OperationalError:
             error('There is no queue.')
 
-    def get_queue(self):
+    def get_queue(self) -> Dict[Hash, Tuple[State, str, TPath, str]]:
         try:
             return {
                 hashid: row for hashid, *row
                 in self.execute(
-                    'select taskhash, state, label, path, changed from queue '
+                    'select taskhash, state as "[state]", label, path, changed from queue '
                     'where active = 1'
                 )
             }
         except sqlite3.OperationalError:
             error('There is no queue.')
 
-    def reset_task(self, hashid):
+    def reset_task(self, hashid: Hash) -> None:
         path, = self.execute(
             'select path from queue where taskhash = ?', (hashid,)
         ).fetchone()
@@ -265,7 +281,7 @@ class Scheduler:
         )
         self.commit()
 
-    def gc(self):
+    def gc(self) -> None:
         cur = self.execute(
             'select path, taskhash from queue where state in (?,?,?)',
             (State.ERROR, State.INTERRUPTED, State.RUNNING)
@@ -284,18 +300,18 @@ class Scheduler:
         )
         self.commit()
 
-    def gc_all(self):
+    def gc_all(self) -> None:
         self.execute('delete from queue where active = 0')
         self.commit()
 
-    def task_error(self, hashid):
+    def task_error(self, hashid: Hash) -> None:
         self.execute(
             'update queue set state = ?, changed = ? where taskhash = ?',
             (State.ERROR, get_timestamp(), hashid)
         )
         self.commit()
 
-    def task_done(self, hashid, remote=None):
+    def task_done(self, hashid: Hash, remote: bool = None) -> None:
         self.execute(
             'update queue set state = ?, changed = ?, path = ? '
             'where taskhash = ?', (
@@ -307,7 +323,7 @@ class Scheduler:
         )
         self.commit()
 
-    def task_interrupt(self, hashid):
+    def task_interrupt(self, hashid: Hash) -> None:
         self.execute(
             'update queue set state = ?, changed = ? '
             'where taskhash = ?',
@@ -317,11 +333,12 @@ class Scheduler:
 
 
 class RemoteScheduler(Scheduler):
-    def __init__(self, url, curl, *args, **kwargs):
+    def __init__(self, url: str, curl: str, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.announcer = Announcer(url, curl)
 
-    def candidate_tasks(self, states, **kwargs):
+    def candidate_tasks(self, states: Iterable[Hash], randomize: bool = False) \
+            -> Generator[Hash, None, None]:
         while True:
             hashid = self.announcer.get_task()
             if hashid:
@@ -329,7 +346,7 @@ class RemoteScheduler(Scheduler):
             else:
                 return
 
-    def is_state_ok(self, state, hashid, label):
+    def is_state_ok(self, state: State, hashid: Hash, label: str) -> bool:
         if state in (State.DONE, State.DONEREMOTE):
             print(f'Task {label} already done')
             self.task_done(hashid)
@@ -339,18 +356,19 @@ class RemoteScheduler(Scheduler):
             return True
         if state == State.CLEAN:
             return True
+        assert False
 
-    def skip_task(self, hashid):
+    def skip_task(self, hashid: Hash) -> None:
         self.announcer.put_back(hashid)
 
-    def task_error(self, hashid):
+    def task_error(self, hashid: Hash) -> None:
         super().task_error(hashid)
         self.announcer.task_error(hashid)
 
-    def task_done(self, hashid):
+    def task_done(self, hashid: Hash, remote: bool = None) -> None:
         super().task_done(hashid)
         self.announcer.task_done(hashid)
 
-    def task_interrupt(self, hashid):
+    def task_interrupt(self, hashid: Hash) -> None:
         super().task_error(hashid)
         self.announcer.put_back(hashid)
