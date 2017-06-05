@@ -145,19 +145,6 @@ class Caf(CLI):
         return queue
 
 
-def get_leafs(conf):
-    leafs = {}
-    queue = list(conf['targets'].items())
-    while queue:
-        target, taskid = queue.pop()
-        if conf['hashes'][taskid]:
-            leafs[target] = conf['hashes'][taskid]
-        else:
-            for name, child in conf['tasks'][taskid]['children'].items():
-                queue.append((f'{target}/{name}', child))
-    return leafs
-
-
 @Caf.command()
 def conf(caf):
     """
@@ -189,23 +176,8 @@ def conf(caf):
             error('There was an error when executing run()')
     with timing('get configuration'):
         conf = get_configuration(ctx.tasks, ctx.targets)
-    targets = get_leafs(conf)
-    tasks = {
-        hashid: {
-            **task,
-            'children': {
-                name: conf['hashes'][child]
-                for name, child in task['children'].items()
-            }
-        }
-        for hashid, task in zip(conf['hashes'], conf['tasks'])
-        if 'command' in task
-    }
-    labels = {
-        hashid: label for hashid, label in zip(conf['hashes'], conf['labels'])
-    }
     with timing('store build'):
-        tasks = dict(cellar.store_build(tasks, targets, ctx.inputs, labels))
+        tasks = dict(cellar.store_build(conf['tasks'], conf['targets'], ctx.inputs, conf['labels']))
     labels = {hashid: None for hashid in tasks}
     for path, hashid in cellar.get_tree(hashes=tasks.keys()).items():
         if not labels[hashid]:

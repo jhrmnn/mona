@@ -66,7 +66,7 @@ class Scheduler:
         )
         self.execute(
             'delete from queue where active = 0 and state in (?, ?)',
-            (State.CLEAN, State.DONE)
+            (State.CLEAN.value, State.DONE.value)
         )
         self.executemany(
             'insert or ignore into queue values (?,?,?,?,?,1)', (

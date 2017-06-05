@@ -6,6 +6,8 @@ import os
 from io import StringIO
 from itertools import chain
 
+from typing import Callable, Any, List, Tuple
+
 
 DEBUG = 'DEBUG' in os.environ
 
@@ -24,39 +26,40 @@ class colstr(str):
         'normal': '\x1b[0m'
     }
 
-    def __new__(cls, s, color):
-        obj = str.__new__(
+    def __new__(cls, s: str, color: str) -> str:
+        return str.__new__(  # type: ignore
             cls,
             colstr.colors[color] + str(s) + colstr.colors['normal']
         )
-        obj.len = len(str(s))
-        obj.orig = str(s)
-        return obj
 
-    def __len__(self):
+    def __init__(self, s: str, color: str) -> None:
+        self.len = len(str(s))
+        self.orig = str(s)
+
+    def __len__(self) -> int:
         return self.len
 
 
-def warn(s):
+def warn(s: str) -> None:
     print(
         colstr(s, 'yellow'),
         file=sys.stdout if sys.stdout.isatty() else sys.stderr
     )
 
 
-def debug(s):
+def debug(s: str) -> None:
     if DEBUG:
         print(s)
 
 
-def info(s):
+def info(s: str) -> None:
     print(
         colstr(s, 'green'),
         file=sys.stdout if sys.stdout.isatty() else sys.stderr
     )
 
 
-def error(s):
+def error(s: str) -> None:
     print(
         colstr(s, 'red'),
         file=sys.stdout if sys.stdout.isatty() else sys.stderr
@@ -64,14 +67,14 @@ def error(s):
     sys.exit(1)
 
 
-def no_cafdir():
+def no_cafdir() -> None:
     error('Not a caf repository')
 
 
 _reports = []
 
 
-def report(f):
+def report(f: Callable) -> Callable:
     """Register function as a report.
 
     Example:
@@ -83,7 +86,7 @@ def report(f):
     return f
 
 
-def handle_broken_pipe():
+def handle_broken_pipe() -> None:
     try:
         sys.stdout.flush()
     finally:
@@ -100,7 +103,7 @@ class TableException(Exception):
     pass
 
 
-def alignize(s, align, width):
+def alignize(s: str, align: str, width: int) -> str:
     l = len(s)
     if l < width:
         if align == '<':
@@ -113,33 +116,33 @@ def alignize(s, align, width):
 
 
 class Table:
-    def __init__(self, **kwargs):
-        self.rows = []
+    def __init__(self, **kwargs: Any) -> None:
+        self.rows: List[Tuple[bool, Tuple[Any, ...]]] = []
         self.set_format(**kwargs)
 
-    def add_row(self, *row, free=False):
+    def add_row(self, *row: Any, free: bool = False) -> None:
         self.rows.append((free, row))
 
-    def set_format(self, sep=' ', align='>', indent=''):
+    def set_format(self, sep: str = ' ', align: str = '>', indent: str = '') -> None:
         self.sep = sep
         self.align = align
         self.indent = indent
 
-    def sort(self, key=lambda x: x[0]):
+    def sort(self, key: Callable[[Any], Any] = lambda x: x[0]) -> None:
         self.rows.sort(key=lambda x: key(x[1]), reverse=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         col_nums = [len(row) for free, row in self.rows if not free]
         if len(set(col_nums)) != 1:
             raise TableException(f'Unequal column lengths: {col_nums}')
-        col_nums = col_nums[0]
+        col_num = col_nums[0]
         cell_widths = [[len(cell) for cell in row]
                        for free, row in self.rows if not free]
         col_widths = [max(col) for col in zip(*cell_widths)]
-        seps = (col_nums-1)*[self.sep] if not isinstance(self.sep, list) \
+        seps = (col_num-1)*[self.sep] if not isinstance(self.sep, list) \
             else self.sep
         seps += ['\n']
-        aligns = col_nums*[self.align] if not isinstance(self.align, list) \
+        aligns = col_num*[self.align] if not isinstance(self.align, list) \
             else self.align
         f = StringIO()
         for free, row in self.rows:

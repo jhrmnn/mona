@@ -2,58 +2,98 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from pathlib import Path
-from io import StringIO
 import json
+import inspect
+import pickle
 
 from caflib.Utils import slugify
 from caflib.Logging import error
-from caflib.Cellar import get_hash, State
+from caflib.Cellar import get_hash, State, TaskObject, Cellar
+
+from typing import (  # noqa
+    NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
+    NewType, Type
+)
+from caflib.Cellar import Hash, TPath  # noqa
 
 
-class TargetNode:
-    all_targets = set()
+Contents = NewType('Contents', str)
 
-    def __init__(self):
-        self.path = None
+
+class Target:
+    all_targets: Set[Path] = set()
+
+    def __init__(self) -> None:
+        self.path: Optional[Path] = None
 
     @property
-    def children(self):
+    def children(self) -> Dict[str, 'Task']:
+        assert self.path and self.task
         return {self.path.name: self.task}
 
-    def __repr__(self):
-        return f"<TargetNode '{self.path}'>"
+    def __repr__(self) -> str:
+        return f"<Target '{self.path}'>"
 
-    def __str__(self):
-        return f'{self.path.parent}' if len(self.path.parts) > 1 else ''
+    def __str__(self) -> str:
+        assert self.path
+        return str(self.path.parent) if len(self.path.parts) > 1 else ''
 
-    def set_task(self, task, path):
+    def set_task(self, task: 'Task', path: TPath) -> None:
         try:
             self.path = Path(slugify(path, path=True))
         except TypeError:
             error(f'Target path {path!r} is not a string')
-        if self.path in TargetNode.all_targets:
+        if self.path in Target.all_targets:
             error(f'Multiple definitions of target "{self.path}"')
-        TargetNode.all_targets.add(self.path)
+        assert self.path
+        Target.all_targets.add(self.path)
         self.task = task
         task.parents.append(self)
 
 
+class UnknownInputType(Exception):
+    pass
+
+
+InputTarget = Union[str, Tuple[str], Tuple[str, 'VirtualFile']]
+Input = Union[str, Tuple[str, InputTarget]]
+
+
 class Task:
-    hashes = {}
+    tasks: Dict[Hash, 'Task'] = {}
 
-    def __init__(self, cellar, command):
-        self.cellar = cellar
-        self.command = command
-        self.inputs = {}
-        self.children = {}
-        self.childlinks = {}
-        self.parents = []
-        self.blocking = []
+    def __init__(self, *, command: str, inputs: List[Input] = None, ctx: 'Context') -> None:
+        self.obj = TaskObject(command, {}, {}, {}, {}, None)
+        file: Union[str, Tuple[str], Tuple[str, 'VirtualFile']]
+        if inputs:
+            for item in inputs:
+                if isinstance(item, str):
+                    path, file = item, item
+                elif isinstance(item, tuple) and len(item) == 2:
+                    path, file = item
+                else:
+                    raise UnknownInputType(item)
+                if isinstance(file, str):
+                    self.obj.inputs[path] = ctx.get_source(Path(file))
+                elif isinstance(file, tuple) and len(file) == 1:
+                    self.obj.inputs[path] = ctx.store_text(file[0])
+                elif isinstance(file, tuple) and len(file) == 2:
+                    childname, vfile = cast(Tuple[str, VirtualFile], file)
+                    self.obj.children[childname] = vfile.task.hashid
+                    self.obj.childlinks[path] = (childname, vfile.name)
+                    vfile.task.parents.append(self)
+                else:
+                    raise UnknownInputType(item)
+        blob = json.dumps(self.obj.to_obj(), sort_keys=True)
+        self.hashid: Hash = get_hash(blob)
+        Task.tasks[self.hashid] = self
+        self.parents: List[Union[Target, Task]] = []
+        self.ctx = ctx
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Task '{self}'>"
 
-    def __str__(self):
+    def __str__(self) -> str:
         if not self.parents:
             return '?'
         parent = self.parents[-1]
@@ -61,138 +101,140 @@ class Task:
             if child is self:
                 par = str(parent)
                 return f'{par}/{name}' if par else name
-
-    def add_child(self, task, name, *childlinks, blocks=False):
-        if self is task:
-            error(f'Task cannot depend on itself: {self}')
-        try:
-            name = slugify(name)
-        except TypeError:
-            error(f'Dependency name {name!r} is not a string')
-        if name in self.children:
-            error(f'Task already has child {name}: {self}')
-        self.children[name] = task
-        if blocks:
-            self.blocking.append(name)
-        if childlinks:
-            for spec in childlinks:
-                if isinstance(spec, tuple):
-                    source, target = spec
-                else:
-                    source = target = spec
-                self.childlinks[target] = (name, source)
-        task.parents.append(self)
-
-    def seal(self, inputs):
-        for filename, content in self.inputs.items():
-            hashid = get_hash(content)
-            if hashid not in inputs:
-                inputs[hashid] = content
-            self.inputs[filename] = hashid
-        blob = json.dumps({
-            'command': self.command,
-            'inputs': self.inputs,
-            'symlinks': {},
-            'children': {
-                name: Task.hashes[child]
-                for name, child in self.children.items()
-            },
-            'childlinks': self.childlinks
-        }, sort_keys=True)
-        myhash = get_hash(blob)
-        Task.hashes[self] = myhash
+        assert False
 
     @property
-    def hashid(self):
-        return Task.hashes[self]
+    def children(self) -> Dict[str, 'Task']:
+        return {name: Task.tasks[hashid] for name, hashid in self.obj.children.items()}
 
     @property
-    def state(self):
-        return self.cellar.get_state(self.hashid)
+    def state(self) -> State:
+        # mypy complains on direct return
+        state: State = self.ctx.cellar.get_state(self.hashid)
+        return state
 
     @property
-    def finished(self):
+    def finished(self) -> bool:
         return self.state == State.DONE
 
     @property
-    def outputs(self):
-        return {
-            name: VirtualFile(hashid, self.cellar) for name, hashid
-            in self.cellar.get_task(self.hashid)['outputs'].items()
-        }
-
-
-class VirtualTextFile(StringIO):
-    def __init__(self, name, inputs):
-        super().__init__(inputs.get(name))
-        self.name = name
-        self.inputs = inputs
-
-    def __exit__(self, *args, **kwargs):
-        self.inputs[self.name] = self.getvalue()
-        super().__exit__(*args, **kwargs)
+    def outputs(self) -> Union[Dict[str, 'StoredFile'], 'FakeOutputs']:
+        if self.obj and self.obj.outputs is not None:
+            return {
+                name: StoredFile(name, self) for name in self.obj.outputs
+            }
+        return FakeOutputs(self)
 
 
 class VirtualFile:
-    def __init__(self, hashid, cellar):
-        self.hashid = hashid
-        self.cellar = cellar
+    def __init__(self, name: str, task: Task) -> None:
+        self.name = name
+        self.task = task
 
     @property
-    def path(self):
-        return self.cellar.get_file(self.hashid)
+    def cellarid(self) -> str:
+        return f'{self.task.hashid}/{self.name}'
 
 
-def get_configuration(tasks, targets):
-    idxs = {task: i for i, task in enumerate(tasks)}
+class StoredFile(VirtualFile):
+    @property
+    def hashid(self) -> Hash:
+        assert self.task.obj.outputs is not None
+        return self.task.obj.outputs[self.name]
+
+    @property
+    def path(self) -> Path:
+        # mypy complains on direct return
+        path: Path = self.task.ctx.cellar.get_file(self.hashid)
+        return path
+
+
+class FakeOutputs:
+    def __init__(self, task: Task) -> None:
+        self.task = task
+
+    def __getitem__(self, name: str) -> VirtualFile:
+        return VirtualFile(name, self.task)
+
+
+class PickledTask(Task):
+    @property
+    def result(self) -> Any:
+        taskobj = self.ctx.cellar.get_task(self.hashid)
+        assert taskobj
+        assert taskobj.outputs
+        filehash = taskobj.outputs['_result.pickle']
+        with open(self.ctx.cellar.get_file(filehash), 'rb') as f:
+            return pickle.load(f)
+
+
+def function_task(func: Callable) -> Callable[..., Task]:
+    func_code = inspect.getsource(func).split('\n', 1)[1]
+    signature = inspect.signature(func)
+
+    def task_gen(*args: InputTarget, target: TPath = None, ctx: 'Context') -> Task:
+        assert len(args) == len(signature.parameters)
+        task_code = f"""\
+import pickle
+
+{func_code}
+result = {func.__name__}({', '.join(repr(arg) for arg in signature.parameters)})
+with open('_result.pickle', 'bw') as f:
+    pickle.dump(result, f)"""
+        inputs = list(zip(signature.parameters, args))
+        inputs.append(('_exec.py', (task_code,)))
+        return ctx.get_task(
+            command='python3 _exec.py',
+            inputs=inputs,
+            target=target,
+            klass=PickledTask,
+        )
+    return task_gen
+
+
+def get_configuration(tasks: List[Task], targets: List[Target]) -> Dict[str, Dict]:
     return {
-        'tasks': [(
-            {
-                'command': node.command,
-                'inputs': node.inputs,
-                'symlinks': {},
-                'children': {
-                    name: idxs[child]
-                    for name, child in node.children.items()
-                },
-                'childlinks': node.childlinks
-            } if node.command is not None else {
-                'blocking': node.blocking,
-                'children': {
-                    name: idxs[child]
-                    for name, child in node.children.items()
-                }
-            }
-        ) for node in tasks],
-        'hashes': [Task.hashes.get(node) for node in tasks],
-        'targets': {
-            str(target.path): tasks.index(target.task)
-            for target in targets
-        },
-        'labels': [str(node) for node in tasks]
+        'tasks': {task.hashid: task.obj.to_obj() for task in tasks},
+        'targets': {str(target.path): target.task.hashid for target in targets},
+        'labels': {task.hashid: str(task) for task in tasks}
     }
 
 
 class Context:
     """Represent a build configuration: tasks and targets."""
 
-    def __init__(self, top, cellar):
+    def __init__(self, top: str, cellar: Cellar) -> None:
         self.top = Path(top)
         self.cellar = cellar
-        self.tasks = []
-        self.targets = []
-        self.files = {}
-        self.inputs = {}
+        self.tasks: List[Task] = []
+        self.targets: List[Target] = []
+        self.inputs: Dict[Hash, Contents] = {}
+        self._sources: Dict[Path, Hash] = {}
 
-    def get_task(self, target=None, children=None, **kwargs):
-        tasknode = Task(self.cellar, **kwargs)
-        self.tasks.append(tasknode)
-        if children:
-            for childname, (child, childlinks) in children.items():
-                tasknode.add_child(child, childname, *childlinks)
+    def get_task(
+            self, *,
+            target: TPath = None,
+            klass: Type[Task] = Task,
+            **kwargs: Any
+    ) -> Task:
+        task = klass(ctx=self, **kwargs)
         if target:
-            targetnode = TargetNode()
+            targetnode = Target()
             self.targets.append(targetnode)
-            targetnode.set_task(tasknode, target)
-        tasknode.seal(self.inputs)
-        return tasknode
+            targetnode.set_task(task, target)
+        self.tasks.append(task)
+        return task
+
+    def get_source(self, path: Path) -> Hash:
+        if path in self._sources:
+            return self._sources[path]
+        content = Contents(path.read_text())
+        hashid = self.store_text(content)
+        self._sources[path] = hashid
+        return hashid
+
+    def store_text(self, content: Contents) -> Hash:
+        hashid = get_hash(content)
+        if hashid not in self.inputs:
+            self.inputs[hashid] = content
+        return hashid
