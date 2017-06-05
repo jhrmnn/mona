@@ -6,7 +6,11 @@ import os
 from io import StringIO
 from itertools import chain
 
-from typing import Callable, Any, List, Tuple
+from typing import Callable, Any, List, Tuple, TYPE_CHECKING  # noqa
+if TYPE_CHECKING:
+    from mypy_extensions import NoReturn
+else:
+    NoReturn = None
 
 
 DEBUG = 'DEBUG' in os.environ
@@ -59,7 +63,7 @@ def info(s: str) -> None:
     )
 
 
-def error(s: str) -> None:
+def error(s: str) -> NoReturn:
     print(
         colstr(s, 'red'),
         file=sys.stdout if sys.stdout.isatty() else sys.stderr

@@ -55,6 +55,10 @@ class UnknownInputType(Exception):
     pass
 
 
+class MalformedTask(Exception):
+    pass
+
+
 InputTarget = Union[str, Tuple[str], Tuple[str, 'VirtualFile']]
 Input = Union[str, Tuple[str, InputTarget]]
 
@@ -90,18 +94,26 @@ class Task:
         self.parents: List[Union[Target, Task]] = []
         self.ctx = ctx
 
+    def __hash__(self) -> int:
+        return hash(self.hashid)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Task):
+            return NotImplemented  # type: ignore
+        return self.hashid == other.hashid
+
     def __repr__(self) -> str:
-        return f"<Task '{self}'>"
+        return f'<Task obj={self.obj!r} hash={self.hashid!r} parents={self.parents!r}>'
 
     def __str__(self) -> str:
         if not self.parents:
             return '?'
         parent = self.parents[-1]
         for name, child in parent.children.items():
-            if child is self:
+            if child == self:
                 par = str(parent)
                 return f'{par}/{name}' if par else name
-        assert False
+        raise MalformedTask(repr(self))
 
     @property
     def children(self) -> Dict[str, 'Task']:
@@ -119,7 +131,7 @@ class Task:
 
     @property
     def outputs(self) -> Union[Dict[str, 'StoredFile'], 'FakeOutputs']:
-        if self.obj and self.obj.outputs is not None:
+        if self.obj.outputs is not None:
             return {
                 name: StoredFile(name, self) for name in self.obj.outputs
             }
@@ -171,19 +183,28 @@ class PickledTask(Task):
 def function_task(func: Callable) -> Callable[..., Task]:
     func_code = inspect.getsource(func).split('\n', 1)[1]
     signature = inspect.signature(func)
+    positional = [p.name for p in signature.parameters.values() if p.default is p.empty]
 
-    def task_gen(*args: InputTarget, target: TPath = None, ctx: 'Context') -> Task:
-        assert len(args) == len(signature.parameters)
+    def task_gen(
+            *args: InputTarget,
+            target: TPath = None,
+            ctx: 'Context',
+            **kwargs: Any
+    ) -> Task:
+        assert len(args) == len(positional)
+        arglist = ', '.join(repr(p) for p in positional)
+        for kw, val in kwargs.items():
+            arglist += f', {kw}={val!r}'
         task_code = f"""\
 import pickle
 
 {func_code}
-result = {func.__name__}({', '.join(repr(arg) for arg in signature.parameters)})
+result = {func.__name__}({arglist})
 with open('_result.pickle', 'bw') as f:
     pickle.dump(result, f)"""
-        inputs = list(zip(signature.parameters, args))
+        inputs = list(zip(positional, args))
         inputs.append(('_exec.py', (task_code,)))
-        return ctx.get_task(
+        return ctx(
             command='python3 _exec.py',
             inputs=inputs,
             target=target,
@@ -211,7 +232,7 @@ class Context:
         self.inputs: Dict[Hash, Contents] = {}
         self._sources: Dict[Path, Hash] = {}
 
-    def get_task(
+    def __call__(
             self, *,
             target: TPath = None,
             klass: Type[Task] = Task,

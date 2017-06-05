@@ -33,7 +33,7 @@ from docopt import docopt, DocoptExit
 
 
 def import_cscript(unpack):
-    spec = importlib.util.spec_from_file_location('cscript', 'acscript.py')
+    spec = importlib.util.spec_from_file_location('cscript', 'cscript.py')
     cscript = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cscript)
     return cscript
@@ -476,7 +476,7 @@ def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
         if do_running and states[hashid] != State.RUNNING:
             continue
         if not no_color:
-            path = colstr(path, State.color[states[hashid]])
+            path = colstr(path, states[hashid].color)
         if disp_hash:
             line = hashid
         elif disp_tmp:
@@ -550,7 +550,7 @@ def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
         ]
         table.add_row(pattern, *stats)
     for state in (State.RUNNING, State.INTERRUPTED):
-        color = State.color[state]
+        color = state.color
         for hashid, path in grouped.get(state, []):
             table.add_row(
                 f"{colstr('>>', color)} {path} "

@@ -10,7 +10,7 @@ from collections import defaultdict
 import sys
 import os
 import shutil
-from enum import Enum
+from enum import IntEnum
 
 from caflib.Logging import info, no_cafdir
 from caflib.Utils import make_nonwritable
@@ -27,21 +27,24 @@ TPath = NewType('TPath', str)
 TimeStamp = NewType('TimeStamp', str)
 
 
-class State(Enum):
+class State(IntEnum):
     CLEAN = 0
     DONE = 1
     DONEREMOTE = 5
     ERROR = -1
     RUNNING = 2
     INTERRUPTED = 3
-    color = {
-        CLEAN: 'normal',
-        DONE: 'green',
-        DONEREMOTE: 'cyan',
-        ERROR: 'red',
-        RUNNING: 'yellow',
-        INTERRUPTED: 'blue',
-    }
+
+    @property
+    def color(self) -> str:
+        return {
+            State.CLEAN: 'normal',
+            State.DONE: 'green',
+            State.DONEREMOTE: 'cyan',
+            State.ERROR: 'red',
+            State.RUNNING: 'yellow',
+            State.INTERRUPTED: 'blue',
+        }[self]
 
 
 def get_hash(text: str) -> Hash:
@@ -112,12 +115,12 @@ def copy_to(src: Path, dst: Path) -> None:
 
 
 class Cellar:
-    def __init__(self, path: Path) -> None:
-        path = path.resolve()
-        self.objects = path/'objects'
+    def __init__(self, path: os.PathLike) -> None:
+        fullpath = Path(path).resolve()
+        self.objects = fullpath/'objects'
         self.objectdb: Set[Hash] = set()
         try:
-            self.db = sqlite3.connect(str(path/'index.db'))
+            self.db = sqlite3.connect(str(fullpath/'index.db'))
         except sqlite3.OperationalError:
             no_cafdir()
         self.execute(
