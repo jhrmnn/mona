@@ -369,10 +369,14 @@ class Cellar:
         children = self.get_tasks(task.children.values())
         all_files = []
         for target, filehash in task.inputs.items():
-            copier(self.get_file(filehash), path/target)
+            fulltarget = path/target
+            fulltarget.parent.mkdir(parents=True, exist_ok=True)
+            copier(self.get_file(filehash), fulltarget)
             all_files.append(target)
         for target, source in task.symlinks.items():
-            Path(path/target).symlink_to(source)
+            fulltarget = path/target
+            fulltarget.parent.mkdir(parents=True, exist_ok=True)
+            fulltarget.symlink_to(source)
         for target, (child, source) in task.childlinks.items():
             if resolve:
                 childtask = children[task.children[child]]
