@@ -35,7 +35,10 @@ from docopt import docopt, DocoptExit
 def import_cscript(unpack):
     spec = importlib.util.spec_from_file_location('cscript', 'cscript.py')
     cscript = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(cscript)
+    try:
+        spec.loader.exec_module(cscript)
+    except FileNotFoundError:
+        return object()
     return cscript
 
 
