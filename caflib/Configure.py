@@ -60,7 +60,7 @@ class MalformedTask(Exception):
 
 
 InputTarget = Union[Path, Contents, Tuple[str, 'VirtualFile']]
-Input = Union[str, Tuple[str, InputTarget]]
+Input = Union[str, Path, Tuple[str, InputTarget]]
 
 
 class Task:
@@ -73,6 +73,8 @@ class Task:
             for item in inputs:
                 if isinstance(item, str):
                     path, file = item, Path(item)
+                elif isinstance(item, Path):
+                    path, file = str(item), item
                 elif isinstance(item, tuple) and len(item) == 2:
                     path, file = item
                 else:
@@ -234,7 +236,7 @@ class Context:
 
     def __call__(
             self, *,
-            target: TPath = None,
+            target: Union[TPath, str] = None,
             klass: Type[Task] = Task,
             **kwargs: Any
     ) -> Task:
@@ -242,7 +244,7 @@ class Context:
         if target:
             targetnode = Target()
             self.targets.append(targetnode)
-            targetnode.set_task(task, target)
+            targetnode.set_task(task, TPath(target))
         self.tasks.append(task)
         return task
 
