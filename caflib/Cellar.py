@@ -19,7 +19,7 @@ from caflib.Glob import match_glob
 
 from typing import (  # noqa
     NewType, NamedTuple, Dict, Tuple, Any, List, DefaultDict, Iterable,
-    Generator, Set, cast, Optional, Union, Callable
+    Iterator, Set, cast, Optional, Union, Callable
 )
 
 Hash = NewType('Hash', str)
@@ -37,14 +37,20 @@ class State(IntEnum):
 
     @property
     def color(self) -> str:
-        return {
-            State.CLEAN: 'normal',
-            State.DONE: 'green',
-            State.DONEREMOTE: 'cyan',
-            State.ERROR: 'red',
-            State.RUNNING: 'yellow',
-            State.INTERRUPTED: 'blue',
-        }[self]
+        return state_colors[self]
+
+
+state_colors: Dict[State, str] = {
+    State.CLEAN: 'normal',
+    State.DONE: 'green',
+    State.DONEREMOTE: 'cyan',
+    State.ERROR: 'red',
+    State.RUNNING: 'yellow',
+    State.INTERRUPTED: 'blue',
+}
+
+sqlite3.register_converter('state', lambda x: State(int(x)))  # type: ignore
+sqlite3.register_adapter(State, lambda state: cast(int, state.value))
 
 
 def get_hash(text: str) -> Hash:
@@ -55,26 +61,29 @@ def get_hash_bytes(text: bytes) -> Hash:
     return Hash(hashlib.sha1(text).hexdigest())
 
 
-class _TaskObject(NamedTuple):
+class TaskObject(NamedTuple):
     command: str
     inputs: Dict[str, Hash]
     symlinks: Dict[str, str]
     children: Dict[str, Hash]
     childlinks: Dict[str, Tuple[str, str]]
-    outputs: Optional[Dict[str, Hash]]
+    outputs: Optional[Dict[str, Hash]] = None
 
-
-class TaskObject(_TaskObject):
-    @classmethod
-    def from_obj(cls, obj: Dict[str, Any]) -> 'TaskObject':
-        kwargs: Dict[str, Any] = {'outputs': None, **obj}
-        return cls(**kwargs)
-
-    def to_obj(self) -> Dict[str, Any]:
-        obj = self._asdict()
+    @property
+    def data(self) -> str:
+        obj: Dict[str, Any] = self._asdict()
         if self.outputs is None:
             del obj['outputs']
-        return obj
+        return json.dumps(obj, sort_keys=True)
+
+    @classmethod
+    def from_data(cls, data: bytes) -> 'TaskObject':
+        obj: Dict[str, Any] = json.loads(data)
+        return cls(**obj)
+
+
+sqlite3.register_converter('task', TaskObject.from_data)  # type: ignore
+sqlite3.register_adapter(TaskObject, lambda task: task.data)
 
 
 class Tree(Dict[TPath, Hash]):
@@ -99,7 +108,7 @@ class Tree(Dict[TPath, Hash]):
                 groups[patt] = []
         return groups
 
-    def glob(self, *patterns: str) -> Generator[Tuple[Hash, TPath], None, None]:
+    def glob(self, *patterns: str) -> Iterator[Tuple[Hash, TPath]]:
         for patt in patterns:
             for path, hashid in self.items():
                 if match_glob(path, patt):
@@ -120,7 +129,10 @@ class Cellar:
         self.objects = fullpath/'objects'
         self.objectdb: Set[Hash] = set()
         try:
-            self.db = sqlite3.connect(str(fullpath/'index.db'))
+            self.db = sqlite3.connect(
+                str(fullpath/'index.db'),
+                detect_types=sqlite3.PARSE_COLNAMES
+            )
         except sqlite3.OperationalError:
             no_cafdir()
         self.execute(
@@ -152,7 +164,7 @@ class Cellar:
 
     def get_state(self, hashid: Hash) -> State:
         res = self.execute(
-            'select state from tasks where hash = ?', (hashid,)
+            'select state as "[state]" from tasks where hash = ?', (hashid,)
         ).fetchone()
         if not res:
             return State.ERROR
@@ -185,7 +197,9 @@ class Cellar:
             if task.outputs is not None:
                 for filehash in task.outputs.values():
                     self.execute('insert into retain values (?)', (filehash,))
-        retain = set(r[0] for r in self.db.execute('select hash from retain'))
+        retain: Set[Hash] = set(
+            hashid for hashid, in self.db.execute('select hash from retain')
+        )
         all_files = {Hash(''.join(p.parts[-2:])): p for p in self.objects.glob('*/*')}
         n_files = 0
         for filehash in set(all_files.keys()) - retain:
@@ -208,14 +222,14 @@ class Cellar:
     def store_file(self, hashid: Hash, file: Path) -> bool:
         return self.store(hashid, file=file)
 
-    def _get_task_obj(self, hashid: Hash) -> Optional[Dict[str, Any]]:
-        row = self.execute(
-            'select task from tasks where hash = ?', (hashid,)
-        ).fetchone()
-        if not row:
-            return None
-        blob, = row
-        return cast(Dict[str, Any], json.loads(blob))
+    def get_task(self, hashid: Hash) -> Optional[TaskObject]:
+        with timing('get_task'):
+            row: Optional[Tuple[TaskObject]] = self.execute(
+                'select task as "[task]" from tasks where hash = ?', (hashid,)
+            ).fetchone()
+            if not row:
+                return None
+            return row[0]
 
     def _update_outputs(
             self,
@@ -223,12 +237,23 @@ class Cellar:
             state: State,
             outputs: Dict[str, Hash]
     ) -> None:
-        obj = self._get_task_obj(hashid)
-        assert obj
-        obj['outputs'] = outputs
+        task = self.get_task(hashid)
+        assert task
+        if task.outputs is not None:
+            task.outputs.clear()
+            task.outputs.update(outputs)
+        else:
+            task = TaskObject(
+                task.command,
+                task.inputs,
+                task.symlinks,
+                task.children,
+                task.childlinks,
+                outputs
+            )
         self.execute(
             'update tasks set task = ?, state = ? where hash = ?',
-            (json.dumps(obj), state.value, hashid)
+            (task, state, hashid)
         )
         self.commit()
 
@@ -267,7 +292,7 @@ class Cellar:
         self.executemany('insert into current_tasks values (?)', (
             (key,) for key in tasks.keys()
         ))
-        existing = [hashid for hashid, in self.execute(
+        existing: List[Hash] = [hashid for hashid, in self.execute(
             'select tasks.hash from tasks join current_tasks '
             'on current_tasks.hash = tasks.hash'
         )]
@@ -285,13 +310,13 @@ class Cellar:
                         print(label)
                 else:
                     sys.exit()
-        now = datetime.today().isoformat(timespec='seconds')  # type: ignore
+        now = datetime.today().isoformat(timespec='seconds')
         self.executemany('insert or ignore into tasks values (?,?,?,?)', (
-            (hashid, json.dumps(task), now, 0) for hashid, task in tasks.items()
+            (hashid, task, now, 0) for hashid, task in tasks.items()
             # TODO sort_keys=True
         ))
         cur = self.execute('insert into builds values (?,?)', (None, now))
-        buildid = cur.lastrowid
+        buildid: int = cur.lastrowid
         self.executemany('insert into targets values (?,?,?)', (
             (hashid, buildid, path) for path, hashid in targets.items()
         ))
@@ -299,22 +324,15 @@ class Cellar:
             self.store_text(hashid, text)
         self.commit()
         return self.execute(
-            'select tasks.hash, state from tasks join current_tasks '
+            'select tasks.hash, state as "[state]" from tasks join current_tasks '
             'on tasks.hash = current_tasks.hash',
         ).fetchall()
-
-    def get_task(self, hashid: Hash) -> Optional[TaskObject]:
-        with timing('get_task'):
-            obj = self._get_task_obj(hashid)
-            if not obj:
-                return None
-            return TaskObject.from_obj(obj)
 
     def get_tasks(self, hashes: Iterable[Hash]) -> Dict[Hash, TaskObject]:
         hashes = list(hashes)
         if len(hashes) < 10:
             cur = self.execute(
-                'select hash, task from tasks where hash in ({})'.format(
+                'select hash, task as "[task]" from tasks where hash in ({})'.format(
                     ','.join(len(hashes)*['?'])
                 ),
                 hashes
@@ -326,10 +344,10 @@ class Cellar:
                 (hashid,) for hashid in hashes
             ))
             cur = self.execute(
-                'select tasks.hash, task from tasks join current_tasks '
+                'select tasks.hash, task as "[task]" from tasks join current_tasks '
                 'on current_tasks.hash = tasks.hash'
             )
-        return {hashid: TaskObject.from_obj(json.loads(blob)) for hashid, blob in cur}
+        return {hashid: task for hashid, task in cur}
 
     def get_file(self, hashid: Hash) -> Path:
         path = self.objects/hashid[:2]/hashid[2:]
@@ -378,9 +396,8 @@ class Cellar:
             (nth,)
         )]
         tasks = {
-            hashid: TaskObject.from_obj(json.loads(blob)) for hashid, blob
-            in self.db.execute(
-                'select tasks.hash, task from tasks join '
+            hashid: task for hashid, task in self.db.execute(
+                'select tasks.hash, task as "[task]" from tasks join '
                 '(select distinct(taskhash) as hash from targets join '
                 '(select id from builds order by created desc limit 1) b '
                 'on targets.buildid = b.id) build '

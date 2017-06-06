@@ -7,33 +7,52 @@ from caflib.Logging import info, report
 from pathlib import Path
 import shutil
 
-_reported = {}
+from typing import Callable, Dict, Tuple, Any
+from caflib.Tools import geomlib  # noqa
+from caflib.Configure import Contents
+
+_reported: Dict[str, Tuple[Callable[[str], None], str]] = {}
 
 
 @report
-def reporter():
+def reporter() -> None:
     for printer, msg in _reported.values():
         printer(msg)
 
 
-species_db = {}
-aims_paths = {}
+species_db: Dict[Tuple[str, str], str] = {}
+aims_paths: Dict[str, Path] = {}
 
 
-def get_aims_path(aims):
+class AimsNotFound(Exception):
+    pass
+
+
+def get_aims_path(aims: str) -> Path:
     if aims in aims_paths:
         return aims_paths[aims]
-    path = Path(shutil.which(aims)).resolve()
+    aims_full = shutil.which(aims)
+    if not aims_full:
+        raise AimsNotFound(aims)
+    path = Path(aims_full).resolve()
     aims_paths[aims] = path
     return path
 
 
-def delink_aims(aims):
+def delink_aims(aims: str) -> str:
     return get_aims_path(aims).name
 
 
 class AimsTask(Task):
-    def __init__(self, *, aims, basis, geom, tags, check=True, **kwargs):
+    def __init__(
+            self, *,
+            aims: str,
+            basis: str,
+            geom: geomlib.Molecule,
+            tags: Dict[str, Any],
+            check: bool = True,
+            **kwargs: Any
+    ) -> None:
         aims_path = get_aims_path(aims)
         command = f'AIMS={aims} run_aims'
         if check:
@@ -62,8 +81,10 @@ class AimsTask(Task):
             else:
                 basis_def = species_db[basis, specie]
             lines.extend(['', basis_def])
+        from typing import List, Union
+        from caflib.Configure import VirtualFile
         inputs = [
-            ('geometry.in', (geom.dumps('aims'),)),
-            ('control.in', ('\n'.join(lines),))
+            ('geometry.in', Contents(geom.dumps('aims'))),
+            ('control.in', Contents('\n'.join(lines)))
         ]
         super().__init__(command=command, inputs=inputs, **kwargs)

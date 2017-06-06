@@ -11,7 +11,7 @@ from collections import defaultdict
 from caflib.Utils import groupby
 from caflib.Logging import Table
 
-from typing import DefaultDict, List, Generator  # noqa
+from typing import DefaultDict, List, Iterator # noqa
 
 
 class Timer:
@@ -43,7 +43,7 @@ TIMER = Timer()
 
 
 @contextmanager
-def timing(name: str) -> Generator[None, None, None]:
+def timing(name: str) -> Iterator[None]:
     if TIMER.active:
         label = '>'.join(TIMER.stack + [name])
         TIMER.timing[label]

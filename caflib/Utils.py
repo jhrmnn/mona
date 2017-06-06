@@ -10,7 +10,7 @@ import stat
 import random
 
 from typing import (
-    Dict, Any, Generator, Tuple, Iterable, TypeVar, List, Callable
+    Dict, Any, Iterator, Tuple, Iterable, TypeVar, List, Callable
 )
 
 _T = TypeVar('_T')
@@ -18,7 +18,7 @@ _V = TypeVar('_V')
 
 
 def config_items(config: Dict[str, Any], group: str = None) \
-        -> Generator[Tuple[str, Any], None, None]:
+        -> Iterator[Tuple[str, Any]]:
     if not group:
         yield from config.items()
     else:
@@ -47,7 +47,7 @@ def make_nonwritable(path: os.PathLike) -> None:
     )
 
 
-def sample(seq: Iterable[_T]) -> Generator[_T, None, None]:
+def sample(seq: Iterable[_T]) -> Iterator[_T]:
     queue = list(seq)
     while queue:
         yield queue.pop(random.randrange(0, len(queue)))
@@ -71,7 +71,7 @@ def filter_cmd(args: List[Any]) -> List[Any]:
 
 
 @contextmanager
-def cd(path: str) -> Generator[None, None, None]:
+def cd(path: str) -> Iterator[None]:
     path = str(path)
     cwd = os.getcwd()
     os.chdir(path)
@@ -95,7 +95,7 @@ def listify(obj: Any) -> List[Any]:
 
 
 def groupby(lst: Iterable[_T], key: Callable[[_T], _V]) \
-        -> Generator[Tuple[_V, List[_T]], None, None]:
+        -> Iterator[Tuple[_V, List[_T]]]:
     keylst = [(key(x), x) for x in lst]
     keylst.sort(key=lambda x: x[0])
     for k, group in groupby_(keylst, key=lambda x: x[0]):

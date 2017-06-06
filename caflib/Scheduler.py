@@ -14,12 +14,9 @@ from caflib.Announcer import Announcer
 from caflib.Timing import timing
 
 from typing import (  # noqa
-    cast, Tuple, Optional, Iterable, List, Generator, Set, Dict, Any
+    cast, Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any
 )
 from caflib.Cellar import Hash, TPath  # noqa
-
-sqlite3.register_converter('state', lambda x: State(int(x)))  # type: ignore
-sqlite3.register_adapter(State, lambda state: cast(int, state.value))
 
 
 class Task:
@@ -99,7 +96,7 @@ class Scheduler:
         self.commit()
 
     @contextmanager
-    def db_lock(self) -> Generator[None, None, None]:
+    def db_lock(self) -> Iterator[None]:
         self.db.execute('begin immediate transaction')
         try:
             yield
@@ -107,7 +104,7 @@ class Scheduler:
             self.execute('end transaction')
 
     def candidate_tasks(self, states: Iterable[Hash], randomize: bool = False) \
-            -> Generator[Hash, None, None]:
+            -> Iterator[Hash]:
         if randomize:
             yield from sample(states)
         else:
@@ -126,7 +123,7 @@ class Scheduler:
             nmaxerror: int = 5,
             dry: bool = False,
             randomize: bool = False
-    ) -> Generator[Task, None, None]:
+    ) -> Iterator[Task]:
         self.db.commit()
         self.db.isolation_level = None
         nrun = 0
@@ -338,7 +335,7 @@ class RemoteScheduler(Scheduler):
         self.announcer = Announcer(url, curl)
 
     def candidate_tasks(self, states: Iterable[Hash], randomize: bool = False) \
-            -> Generator[Hash, None, None]:
+            -> Iterator[Hash]:
         while True:
             hashid = self.announcer.get_task()
             if hashid:

@@ -9,9 +9,15 @@ from functools import cmp_to_key
 import json
 from pathlib import Path
 import csv
+import os
 from io import StringIO
-import numpy as np
+import numpy as np  # type: ignore
 from numpy import sin, cos
+
+from typing import (
+    Iterable, Dict, Any, Tuple, cast, Union, List, Iterator, IO, ClassVar,
+    Sized, DefaultDict
+)
 
 settings = {
     'precision': 8,
@@ -29,15 +35,15 @@ geom_formats = {
 bohr = 0.52917721092
 
 
-def scalar2str(x):
+def scalar2str(x: float) -> str:
     return f'{x:{settings["width"]}.{settings["precision"]}f}'
 
 
-def vector2str(v):
+def vector2str(v: Iterable[float]) -> str:
     return ' '.join(scalar2str(x) for x in v)
 
 
-def cmp3d(x, y):
+def cmp3d(x: np.ndarray, y: np.ndarray) -> int:
     thre = 10**-settings['eq_precision']
     for i in range(3):
         diff = x[i]-y[i]
@@ -46,16 +52,20 @@ def cmp3d(x, y):
     return 0
 
 
+Coord = Union[Tuple[float, ...], List[float]]
+
+
 class Atom:
+    data: ClassVar[Dict[str, Dict[str, Any]]]
     # Atom.data is defined at the end of this file for readability
 
-    def __init__(self, specie, coord, flags=None):
+    def __init__(self, specie: str, coord: Coord, flags: Dict[str, Any] = None) -> None:
         self.specie = specie.capitalize()
-        self.number = Atom.data[self.specie]['number']
+        self.number: int = Atom.data[self.specie]['number']
         self.coord = np.array(coord, float)
         self.flags = flags or {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Atom({!r}, {}, flags={!r})'.format(
             self.specie,
             '({})'.format(
@@ -64,7 +74,7 @@ class Atom:
             self.flags
         )
 
-    def __format__(self, fmt):
+    def __format__(self, fmt: str) -> str:
         if fmt == 'xyz':
             return f'{self.specie:>2} {vector2str(self.coord)}'
         if fmt == 'aims':
@@ -76,32 +86,30 @@ class Atom:
             for c in self.flags.get('constrained', []):
                 s += f'\nconstrain_relaxation {c}'
             return s
-        super().__format__(fmt)
+        return super().__format__(fmt)
 
-    def prop(self, name):
+    def prop(self, name: str) -> Any:
         return Atom.data[self.specie][name]
 
     @property
-    def mass(self):
-        return self.prop('mass')
+    def mass(self) -> float:
+        return cast(float, self.prop('mass'))
 
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Atom):
+            return NotImplemented  # type:ignore
         if self.specie != self.specie:
             return False
         return cmp3d(self.coord, other.coord) == 0
 
-    def copy(self):
+    def copy(self) -> 'Atom':
         return Atom(self.specie, self.coord.copy(), self.flags.copy())
 
-    def dist(self, other):
-        try:
+    def dist(self, other: Union['Atom', np.ndarray, Iterable['Atom']]) -> float:
+        if isinstance(other, Atom):
             return self.dist(other.coord)
-        except:
-            pass
         try:
-            return np.linalg.norm(self.coord-np.array(other))
+            return cast(float, np.linalg.norm(self.coord-np.array(other)))
         except:
             pass
         try:
@@ -111,7 +119,7 @@ class Atom:
         raise TypeError(f'Cannot calculate distance to {other.__class__.__name__!r} object')
 
     @property
-    def group(self):
+    def group(self) -> int:
         n = self.number
         if n <= 2:
             return 1 if n == 1 else 8
@@ -129,63 +137,66 @@ class Atom:
                 return n
             if n-24 >= 3:
                 return n-24
+        raise RuntimeError('Elements above 118 not supported')
 
 
-class Molecule:
-    def __init__(self, atoms, flags=None):
+class Molecule(Iterable, Sized):
+    def __init__(self, atoms: List[Atom], flags: Dict[str, Any] = None) -> None:
         self.atoms = atoms
         self.flags = flags or {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{self.__class__.__name__} {self.formula!r}>'
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Atom]:
         yield from self.atoms
 
-    def __format__(self, fmt):
+    def __format__(self, fmt: str) -> str:
         fp = StringIO()
         self.dump(fp, fmt)
         return fp.getvalue()
 
-    def __contains__(self, item):
-        if isinstance(item, str):
-            return any(item == a.specie for a in self)
+    def __contains__(self, item: object) -> bool:
+        if not isinstance(item, str):
+            return NotImplemented  # type: ignore
+        return any(item == a.specie for a in self)
 
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        key = cmp_to_key(lambda a, b: cmp3d(a.coord, b.coord))
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Molecule):
+            return NotImplemented  # type:ignore
+        cmp = lambda a, b: cmp3d(a.coord, b.coord)
+        key = cmp_to_key(cmp)
         return all(a == b for a, b in zip(
             sorted(list(self), key=key),
             sorted(list(other), key=key)
         ))
 
-    def __add__(self, other):
+    def __add__(self, other: object) -> 'Molecule':
+        if not isinstance(other, Molecule):
+            return NotImplemented  # type:ignore
         return Molecule(self.atoms + other.atoms)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.atoms)
 
-    def __getitem__(self, idx):
-        try:
+    def __getitem__(self, idx: Union[str, int]) -> Any:
+        if isinstance(idx, int):
             return self.atoms[idx]
-        except TypeError:
-            pass
         return self.flags[idx]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         self.flags[key] = value
 
-    def copy(self):
+    def copy(self) -> 'Molecule':
         return Molecule([atom.copy() for atom in self], self.flags.copy())
 
-    def items(self):
+    def items(self) -> Iterator[Tuple[str, Coord]]:
         for atom in self:
-            yield atom.specie, tuple(atom.coord)
+            yield atom.specie, cast(Coord, tuple(atom.coord))
 
     dumps = __format__
 
-    def dump(self, fp, fmt):
+    def dump(self, fp: IO[str], fmt: str) -> None:
         if fmt == 'xyz':
             fp.write(f'{len(self)}\n')
             json.dump({'formula': self.formula, **self.flags}, fp)
@@ -196,23 +207,25 @@ class Molecule:
             for atom in self:
                 fp.write(f'{atom:aims}\n')
         elif fmt == 'json':
-            json.dump({'atoms': [[a.specie, list(a.xyz)] for a in self]}, fp)
+            json.dump({'atoms': [[a.specie, list(a.coord)] for a in self]}, fp)
         else:
             raise ValueError(f'Unknown format: {fmt!r}')
 
-    def write(self, path, fmt=None):
+    def write(self, path: os.PathLike, fmt: str = None) -> None:
         path = Path(path)
         if not fmt:
             fmt = geom_formats.get(path.suffix[1:])
         if not fmt:
             if path.name.endswith('geometry.in'):
                 fmt = 'aims'
+            else:
+                raise ValueError(f'Unknown format: {fmt!r}')
         with path.open('w') as f:
             self.dump(f, fmt)
 
     @property
-    def formula(self):
-        counter = defaultdict(int)
+    def formula(self) -> str:
+        counter = DefaultDict[str, int](int)
         for specie in self.species:
             counter[specie] += 1
         return ''.join(
@@ -220,33 +233,33 @@ class Molecule:
         )
 
     @property
-    def coords(self):
+    def coords(self) -> np.ndarray:
         return np.array([a.coord for a in self])
 
     @property
-    def species(self):
+    def species(self) -> List[str]:
         return [a.specie for a in self]
 
     @property
-    def mass(self):
+    def mass(self) -> float:
         return sum(atom.mass for atom in self)
 
     @property
-    def cms(self):
+    def cms(self) -> np.ndarray:
         return sum(atom.mass*atom.coord for atom in self)/self.mass
 
     @property
-    def bounding_box(self):
+    def bounding_box(self) -> Tuple[np.ndarray, np.ndarray]:
         coords = self.coords
         return coords.min(0), coords.max(0)
 
     @property
-    def dimensions(self):
+    def dimensions(self) -> np.ndarray:
         bb = self.bounding_box
         return bb[1]-bb[0]
 
     @property
-    def inertia(self):
+    def inertia(self) -> np.ndarray:
         masses = np.array([atom.mass for atom in self])
         coords_w = np.sqrt(masses)[:, None]*self.shifted(-self.cms).coords
         A = np.array([np.diag(np.full(3, r)) for r in np.sum(coords_w**2, 1)])
@@ -254,29 +267,36 @@ class Molecule:
         return np.sum(A-B, 0)
 
     @property
-    def moments(self):
+    def moments(self) -> List[float]:
         return sorted(np.linalg.eigvals(self.inertia))
 
-    def shifted(self, delta):
+    def shifted(self, delta: Union[Coord, np.ndarray]) -> 'Molecule':
         m = self.copy()
         for atom in m:
             atom.coord += delta
         return m
 
-    def part(self, idxs):
+    def part(self, idxs: List[int]) -> 'Molecule':
         return Molecule([self[idx-1].copy() for idx in idxs])
 
-    def rotated(self, axis=None, phi=None, center=None, rotmat=None):
+    def rotated(
+            self,
+            axis: Union[str, int] = None,
+            phi: float = None,
+            center: Union[np.ndarray, Coord] = None,
+            rotmat: np.ndarray = None
+    ) -> 'Molecule':
         if rotmat is None:
+            assert axis and phi
             phi = phi*np.pi/180
             rotmat = np.array(
                 [1, 0, 0,
                  0, cos(phi), -sin(phi),
                  0, sin(phi), cos(phi)]
             ).reshape(3, 3)
-            try:
+            if isinstance(axis, str):
                 shift = {'x': 0, 'y': 1, 'z': 2}[axis]
-            except KeyError:
+            else:
                 shift = axis
             for i in [0, 1]:
                 rotmat = np.roll(rotmat, shift, i)
@@ -286,17 +306,17 @@ class Molecule:
             atom.coord = center+rotmat.dot(atom.coord-center)
         return m
 
-    def bondmatrix(self, scale):
+    def bondmatrix(self, scale: float) -> np.ndarray:
         coords = self.coords
         Rs = np.array([atom.prop('covalent radius') for atom in self])
         dmatrix = np.sqrt(np.sum((coords[None, :]-coords[:, None])**2, 2))
         thrmatrix = scale*(Rs[None, :]+Rs[:, None])
         return dmatrix < thrmatrix
 
-    def draw(self, method='imolecule', **kwargs):
+    def draw(self, method: str = 'imolecule', **kwargs: Any) -> None:
         bond = self.bondmatrix(1.3)
         if method == 'imolecule':
-            import imolecule
+            import imolecule  # type: ignore
             obj = {
                 'atoms': [
                     {'element': atom.specie, 'location': atom.coord.tolist()}
@@ -311,20 +331,20 @@ class Molecule:
             }
             imolecule.draw(obj, 'json', **kwargs)
 
-    def dist(self, obj):
+    def dist(self, obj: Union[Atom, np.ndarray, Iterable[Atom]]) -> float:
         return min(atom.dist(obj) for atom in self)
 
-    def get_fragments(self, scale=1.3):
+    def get_fragments(self, scale: float = 1.3) -> List['Molecule']:
         bond = self.bondmatrix(scale)
-        fragments = getfragments(bond)
+        ifragments = getfragments(bond)
         fragments = [
             Molecule([self[i].copy() for i in fragment])
-            for fragment in fragments
+            for fragment in ifragments
         ]
         return fragments
 
 
-def getfragments(C):
+def getfragments(C: np.ndarray) -> List[List[int]]:
     """Find fragments within a set of sparsely connected elements.
 
     Given square matrix C where C_ij = 1 if i and j are connected
@@ -360,19 +380,26 @@ def getfragments(C):
 
 
 class Crystal(Molecule):
-    def __init__(self, atoms, lattice, flags=None):
+    def __init__(
+            self,
+            atoms: List[Atom],
+            lattice: np.ndarray,
+            flags: Dict[str, Any] = None
+    ) -> None:
         super().__init__(atoms, flags)
         self.lattice = np.array(lattice)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Crystal):
+            return NotImplemented  # type:ignore
         return np.linalg.norm(self.lattice-other.lattice) < settings['real_eq'] and \
             super().__eq__(other)
 
-    def copy(self):
+    def copy(self) -> 'Crystal':
         return Crystal([a.copy() for a in self], self.lattice.copy(), self.flags.copy())
 
     @classmethod
-    def from_molecule(cls, mol, padding=3.):
+    def from_molecule(cls, mol: Molecule, padding: float = 3.) -> 'Crystal':
         bb = mol.bounding_box
         X1 = bb[0]-padding
         X2 = bb[1]+padding
@@ -380,7 +407,7 @@ class Crystal(Molecule):
         mol = mol.shifted(-X1)
         return cls(np.diag(dims), mol.atoms)
 
-    def supercell(self, ns):
+    def supercell(self, ns: Tuple[int, int, int]) -> 'Crystal':
         atoms = []
         for shift in product(*[range(n) for n in ns]):
             for atom in self:
@@ -390,14 +417,15 @@ class Crystal(Molecule):
                 atoms.append(atom)
         return Crystal(atoms, np.array(ns)[:, None]*self.lattice, self.flags.copy())
 
-    def get_kgrid(self, density=0.06):
+    def get_kgrid(self, density: float = 0.06) -> Tuple[int, int, int]:
         rec_lattice = 2*np.pi*np.linalg.inv(self.lattice.T)
         rec_lens = np.sqrt((rec_lattice**2).sum(1))
-        return tuple(int(x) for x in np.ceil(rec_lens/(density*bohr)))
+        nkpts = np.ceil(rec_lens/(density*bohr))
+        return int(nkpts[0]), int(nkpts[1]), int(nkpts[2])
 
-    def complete_molecules(self):
-        def key(x):
-            return x.flags['cell']
+    def complete_molecules(self) -> 'Crystal':
+        def key(x: Atom) -> Tuple[int, int, int]:
+            return x.flags['cell']  # type: ignore
         central = []
         for frag in self.supercell((3, 3, 3)).get_fragments():
             atoms = sorted(frag.atoms, key=key)
@@ -412,7 +440,7 @@ class Crystal(Molecule):
             self.flags
         )
 
-    def dump(self, fp, fmt):
+    def dump(self, fp: IO[str], fmt: str) -> None:
         if fmt == 'aims':
             for i, l in enumerate(self.lattice):
                 fp.write(f'lattice_vector {vector2str(l)}\n')
@@ -425,7 +453,7 @@ class Crystal(Molecule):
             fp.write(scalar2str(1) + '\n')
             for l in self.lattice:
                 fp.write(vector2str(l) + '\n')
-            species = OrderedDict((sp, []) for sp in set(self.species))
+            species: Dict[str, List[Atom]] = OrderedDict((sp, []) for sp in set(self.species))
             fp.write(' '.join(species.keys()) + '\n')
             for atom in self:
                 species[atom.specie].append(atom)
@@ -442,11 +470,11 @@ class Crystal(Molecule):
             raise ValueError(f'Unknown format: {fmt!r}')
 
 
-def concat(objs):
+def concat(objs: Iterable[Molecule]) -> Molecule:
     return sum(objs, Molecule([]))
 
 
-def load(fp, fmt):
+def load(fp: IO[str], fmt: str) -> Molecule:
     if fmt == 'xyz':
         n = int(fp.readline())
         comment = fp.readline().strip()
@@ -456,13 +484,13 @@ def load(fp, fmt):
             flags = {'comment': comment} if comment else {}
         atoms = []
         for _ in range(n):
-            l = fp.readline().split()
-            atoms.append(Atom(l[0], [float(x) for x in l[1:4]]))
+            ws = fp.readline().split()
+            atoms.append(Atom(ws[0], tuple(float(x) for x in ws[1:4])))
         return Molecule(atoms, flags=flags)
     elif fmt == 'aims':
         atoms = []
         atoms_frac = []
-        lattice = []
+        lattice_vecs = []
         while True:
             l = fp.readline()
             if not l:
@@ -470,17 +498,17 @@ def load(fp, fmt):
             l = l.strip()
             if not l or l.startswith('#'):
                 continue
-            l = l.split()
-            what = l[0]
+            ws = l.split()
+            what = ws[0]
             if what == 'atom':
-                atoms.append(Atom(l[4], [float(x) for x in l[1:4]]))
+                atoms.append(Atom(ws[4], [float(x) for x in ws[1:4]]))
             elif what == 'atom_frac':
-                atoms_frac.append((l[4], [float(x) for x in l[1:4]]))
+                atoms_frac.append((ws[4], [float(x) for x in ws[1:4]]))
             elif what == 'lattice_vector':
-                lattice.append([float(x) for x in l[1:4]])
-        if lattice:
-            assert len(lattice) == 3
-            lattice = np.array(lattice)
+                lattice_vecs.append([float(x) for x in ws[1:4]])
+        if lattice_vecs:
+            assert len(lattice_vecs) == 3
+            lattice = np.array(lattice_vecs)
             for sp, coord in atoms_frac:
                 atoms.append(Atom(sp, lattice.dot(coord)))
             return Crystal(atoms, lattice)
@@ -503,7 +531,7 @@ def load(fp, fmt):
         atoms = []
         for sp, n in zip(species, nspecies):
             for _ in range(n):
-                xyz = [float(x) for x in fp.readline().split()[:3]]
+                xyz = np.array([float(x) for x in fp.readline().split()[:3]])
                 if coordtype == 'd':
                     xyz = xyz.dot(lattice)
                 atoms.append(Atom(sp, xyz))
@@ -515,11 +543,11 @@ def load(fp, fmt):
             for _ in range(3)])
         atoms = []
         for _ in range(n):
-            l = fp.readline().split()
-            atoms.append(Atom(l[0], [float(x) for x in l[1:4]]))
+            ws = fp.readline().split()
+            atoms.append(Atom(ws[0], [float(x) for x in ws[1:4]]))
         return Crystal(atoms, lattice)
     elif fmt == 'smi':
-        import pybel
+        import pybel  # type: ignore
         smi = fp.read().strip()
         mol = pybel.readstring('smi', smi)
         mol.addh()
@@ -529,25 +557,28 @@ def load(fp, fmt):
         raise ValueError(f'Unknown format: {fmt!r}')
 
 
-def loads(s, fmt):
+def loads(s: str, fmt: str) -> Molecule:
     fp = StringIO(s)
     return load(fp, fmt)
 
 
-def readfile(path, fmt=None):
+def readfile(path: os.PathLike, fmt: str = None) -> Molecule:
     path = Path(path)
     if not fmt:
         fmt = geom_formats.get(path.suffix[1:])
     if not fmt:
         if path.name.endswith('geometry.in'):
             fmt = 'aims'
+        else:
+            raise ValueError(f'Unknown format: {fmt!r}')
     with path.open() as f:
         return load(f, fmt)
 
 
 Atom.data = OrderedDict(
     (r['symbol'], {**r, 'number': int(r['number'])})
-    for r in csv.DictReader(quoting=csv.QUOTE_NONNUMERIC, f=StringIO("""\
+    for r in csv.DictReader(quoting=csv.QUOTE_NONNUMERIC, f=StringIO(  # type: ignore
+            """\
 "number","symbol","name","vdw radius","covalent radius","mass","ionization energy"
 1,"H","hydrogen",1.2,0.38,1.0079,13.5984
 2,"He","helium",1.4,0.32,4.0026,24.5874

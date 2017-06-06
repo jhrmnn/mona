@@ -5,20 +5,22 @@ import subprocess as sp
 import os
 import json
 
-
 from caflib.Logging import info, error
+
+from typing import List, Optional, cast, Dict, Iterable, Any, Callable
+from caflib.Cellar import Hash, TPath
 
 
 class Remote:
-    def __init__(self, host, path, top):
+    def __init__(self, host: str, path: str, top: str) -> None:
         self.host = host
         self.path = path
         self.top = top
 
-    def update(self, delete=False):
+    def update(self, delete: bool = False) -> None:
         info(f'Updating {self.host}...')
         sp.run(['ssh', self.host, f'mkdir -p {self.path}'], check=True)
-        exclude = []
+        exclude: List[str] = []
         for file in ['.cafignore', os.path.expanduser('~/.config/caf/ignore')]:
             if os.path.exists(file):
                 with open(file) as f:
@@ -37,29 +39,34 @@ class Remote:
         cmd.append(f'{self.host}:{self.path}')
         sp.run(cmd, check=True)
 
-    def command(self, cmd, get_output=False, inp=None):
-        if not get_output:
+    def command(self, cmd: str, inp: str = None, _get_output: bool = False) -> Optional[str]:
+        if not _get_output:
             info(f'Running `./caf {cmd}` on {self.host}...')
         if inp:
-            inp = inp.encode()
+            inp_bytes = inp.encode()
         try:
             output = sp.run([
                 'ssh',
                 self.host,
                 f'sh -c "cd {self.path} && exec python3 -u caf {cmd}"'
-            ], check=True, input=inp, stdout=sp.PIPE if get_output else None)
+            ], check=True, input=inp_bytes, stdout=sp.PIPE if _get_output else None)
         except sp.CalledProcessError:
             error(f'Command `{cmd}` on {self.host} ended with error')
-        if get_output:
-            return output.stdout.decode()
+        if _get_output:
+            return cast(str, output.stdout.decode())
+        return None
 
-    def check(self, hashes):
+    def command_output(self, cmd: str, inp: str = None) -> str:
+        output = self.command(cmd, inp, _get_output=True)
+        assert output
+        return output
+
+    def check(self, hashes: Dict[TPath, Hash]) -> None:
         info(f'Checking {self.host}...')
-        remote_hashes = dict(
-            reversed(l.split()[:2]) for l in self.command(
-                'list tasks --no-color', get_output=True
-            ).strip().split('\n')
-        )
+        remote_hashes: Dict[TPath, Hash] = {}
+        output = self.command_output('list tasks --no-color')
+        for hashid, path, *_ in output.strip().split('\n'):
+            remote_hashes[TPath(path)] = Hash(hashid)
         is_ok = True
         for path, hashid in hashes.items():
             if path not in remote_hashes:
@@ -77,10 +84,11 @@ class Remote:
         else:
             error('Local tasks are not on remote')
 
-    def fetch(self, hashes, files=True):
+    def fetch(self, hashes: List[Hash], files: bool = True) \
+            -> Dict[Hash, Dict[str, Any]]:
         info(f'Fetching from {self.host}...')
-        tasks = {hashid: task for hashid, task in json.loads(self.command(
-            'checkout --json', get_output=True, inp='\n'.join(hashes)
+        tasks = {hashid: task for hashid, task in json.loads(self.command_output(
+            'checkout --json', inp='\n'.join(hashes)
         )).items() if 'outputs' in task}
         if not files:
             info(f'Fetched {len(tasks)}/{len(hashes)} task metadata')
@@ -122,35 +130,36 @@ class Remote:
     #     p = sp.Popen(filter_cmd(cmd), stdin=sp.PIPE)
     #     p.communicate('\n'.join(paths).encode())
 
-    def go(self):
+    def go(self) -> None:
         sp.call(['ssh', '-t', self.host, f'cd {self.path} && exec $SHELL'])
 
 
 class Local:
-    def __init__(self):
+    def __init__(self) -> None:
         self.host = 'local'
 
-    def update(self, delete=False):
+    def update(self, delete: bool = False) -> None:
         pass
 
-    def command(self, cmd, get_output=False):
-        if not get_output:
+    def command(self, cmd: str, _get_output: bool = False) -> Optional[str]:
+        if not _get_output:
             info(f'Running `./caf {cmd}` on {self.host}...')
-        caller = sp.check_output if get_output else sp.check_call
+        cmd = f'sh -c "python3 -u caf {cmd}"'
         try:
-            output = caller(f'sh -c "python3 -u caf {cmd}"', shell=True)
+            if _get_output:
+                output = sp.check_output(cmd, shell=True)
+            else:
+                sp.check_call(cmd, shell=True)
         except sp.CalledProcessError:
             error(f'Command `{cmd}` on {self.host} ended with error')
-        return output.strip() if get_output else None
+        return cast(str, output.strip()) if _get_output else None
 
-    def check(self, root):
+    def check(self, hashes: Dict[TPath, Hash]) -> None:
         pass
 
-    def fetch(self, targets, cache, root, dry=False, get_all=False, follow=False):
+    def fetch(self, hashes: List[Hash], files: bool = True) \
+            -> Dict[Hash, Dict[str, Any]]:
         pass
 
-    def push(self, targets, cache, root, dry=False):
-        pass
-
-    def go(self):
+    def go(self) -> None:
         pass

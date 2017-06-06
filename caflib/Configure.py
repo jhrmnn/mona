@@ -12,7 +12,7 @@ from caflib.Cellar import get_hash, State, TaskObject, Cellar
 
 from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
-    NewType, Type
+    NewType, Type, Sequence
 )
 from caflib.Cellar import Hash, TPath  # noqa
 
@@ -59,37 +59,36 @@ class MalformedTask(Exception):
     pass
 
 
-InputTarget = Union[str, Tuple[str], Tuple[str, 'VirtualFile']]
+InputTarget = Union[Path, Contents, Tuple[str, 'VirtualFile']]
 Input = Union[str, Tuple[str, InputTarget]]
 
 
 class Task:
     tasks: Dict[Hash, 'Task'] = {}
 
-    def __init__(self, *, command: str, inputs: List[Input] = None, ctx: 'Context') -> None:
-        self.obj = TaskObject(command, {}, {}, {}, {}, None)
-        file: Union[str, Tuple[str], Tuple[str, 'VirtualFile']]
+    def __init__(self, *, command: str, inputs: Sequence[Input] = None, ctx: 'Context') -> None:
+        self.obj = TaskObject(command, {}, {}, {}, {})
+        file: InputTarget
         if inputs:
             for item in inputs:
                 if isinstance(item, str):
-                    path, file = item, item
+                    path, file = item, Path(item)
                 elif isinstance(item, tuple) and len(item) == 2:
                     path, file = item
                 else:
                     raise UnknownInputType(item)
-                if isinstance(file, str):
-                    self.obj.inputs[path] = ctx.get_source(Path(file))
-                elif isinstance(file, tuple) and len(file) == 1:
-                    self.obj.inputs[path] = ctx.store_text(file[0])
-                elif isinstance(file, tuple) and len(file) == 2:
-                    childname, vfile = cast(Tuple[str, VirtualFile], file)
+                if isinstance(file, Path):
+                    self.obj.inputs[path] = ctx.get_source(file)
+                elif isinstance(file, str):
+                    self.obj.inputs[path] = ctx.store_text(file)
+                elif isinstance(file, tuple):
+                    childname, vfile = file
                     self.obj.children[childname] = vfile.task.hashid
                     self.obj.childlinks[path] = (childname, vfile.name)
                     vfile.task.parents.append(self)
                 else:
                     raise UnknownInputType(item)
-        blob = json.dumps(self.obj.to_obj(), sort_keys=True)
-        self.hashid: Hash = get_hash(blob)
+        self.hashid: Hash = get_hash(self.obj.data)
         Task.tasks[self.hashid] = self
         self.parents: List[Union[Target, Task]] = []
         self.ctx = ctx
@@ -203,7 +202,7 @@ result = {func.__name__}({arglist})
 with open('_result.pickle', 'bw') as f:
     pickle.dump(result, f)"""
         inputs = list(zip(positional, args))
-        inputs.append(('_exec.py', (task_code,)))
+        inputs.append(('_exec.py', Contents(task_code)))
         return ctx(
             command='python3 _exec.py',
             inputs=inputs,
@@ -213,9 +212,10 @@ with open('_result.pickle', 'bw') as f:
     return task_gen
 
 
-def get_configuration(tasks: List[Task], targets: List[Target]) -> Dict[str, Dict]:
+def get_configuration(tasks: List[Task], targets: List[Target]) \
+        -> Dict[str, Union[Dict[Hash, TaskObject], Dict[str, Hash], Dict[Hash, str]]]:
     return {
-        'tasks': {task.hashid: task.obj.to_obj() for task in tasks},
+        'tasks': {task.hashid: task.obj for task in tasks},
         'targets': {str(target.path): target.task.hashid for target in targets},
         'labels': {task.hashid: str(task) for task in tasks}
     }
