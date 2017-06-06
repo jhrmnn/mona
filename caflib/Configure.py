@@ -8,7 +8,7 @@ import pickle
 
 from caflib.Utils import slugify
 from caflib.Logging import error
-from caflib.Cellar import get_hash, State, TaskObject, Cellar
+from caflib.Cellar import get_hash, State, TaskObject, Cellar, get_hash_bytes
 
 from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
@@ -66,7 +66,13 @@ Input = Union[str, Path, Tuple[str, InputTarget]]
 class Task:
     tasks: Dict[Hash, 'Task'] = {}
 
-    def __init__(self, *, command: str, inputs: Sequence[Input] = None, ctx: 'Context') -> None:
+    def __init__(
+            self, *,
+            command: str,
+            inputs: Sequence[Input] = None,
+            symlinks: Sequence[Tuple[str, str]] = None,
+            ctx: 'Context'
+    ) -> None:
         self.obj = TaskObject(command, {}, {}, {}, {}, {})
         file: InputTarget
         if inputs:
@@ -90,6 +96,9 @@ class Task:
                     vfile.task.parents.append(self)
                 else:
                     raise UnknownInputType(item)
+        if symlinks:
+            for target, source in symlinks:
+                self.obj.symlinks[target] = source
         self.hashid: Hash = get_hash(json.dumps(self.obj.asdict(), sort_keys=True))
         Task.tasks[self.hashid] = self
         self.parents: List[Union[Target, Task]] = []
@@ -232,7 +241,7 @@ class Context:
         self.cellar = cellar
         self.tasks: List[Task] = []
         self.targets: List[Target] = []
-        self.inputs: Dict[Hash, Contents] = {}
+        self.inputs: Dict[Hash, Union[str, bytes]] = {}
         self._sources: Dict[Path, Hash] = {}
 
     def __call__(
@@ -252,13 +261,23 @@ class Context:
     def get_source(self, path: Path) -> Hash:
         if path in self._sources:
             return self._sources[path]
-        content = Contents(path.read_text())
-        hashid = self.store_text(content)
+        try:
+            content = Contents(path.read_text())
+            hashid = self.store_text(content)
+        except UnicodeDecodeError:
+            content_bytes = path.read_bytes()
+            hashid = self.store_bytes(content_bytes)
         self._sources[path] = hashid
         return hashid
 
     def store_text(self, content: Contents) -> Hash:
         hashid = get_hash(content)
+        if hashid not in self.inputs:
+            self.inputs[hashid] = content
+        return hashid
+
+    def store_bytes(self, content: bytes) -> Hash:
+        hashid = get_hash_bytes(content)
         if hashid not in self.inputs:
             self.inputs[hashid] = content
         return hashid

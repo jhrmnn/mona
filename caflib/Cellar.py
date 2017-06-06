@@ -174,7 +174,8 @@ class Cellar:
             return State.ERROR
         return State(res[0])
 
-    def store(self, hashid: Hash, text: str = None, file: Path = None) -> bool:
+    def store(self, hashid: Hash, text: str = None, file: Path = None, data: bytes = None) \
+            -> bool:
         if hashid in self.objectdb:
             return False
         self.objectdb.add(hashid)
@@ -184,6 +185,8 @@ class Cellar:
         path.parent.mkdir(parents=True, exist_ok=True)
         if text is not None:
             path.write_text(text)
+        elif data is not None:
+            path.write_bytes(data)
         elif file is not None:
             file.rename(path)
         make_nonwritable(path)
@@ -221,6 +224,9 @@ class Cellar:
 
     def store_text(self, hashid: Hash, text: str) -> bool:
         return self.store(hashid, text=text)
+
+    def store_bytes(self, hashid: Hash, data: bytes) -> bool:
+        return self.store(hashid, data=data)
 
     def store_file(self, hashid: Hash, file: Path) -> bool:
         return self.store(hashid, file=file)
@@ -277,7 +283,7 @@ class Cellar:
             self,
             tasks: Dict[Hash, TaskObject],
             targets: Dict[TPath, Hash],
-            inputs: Dict[Hash, str],
+            inputs: Dict[Hash, Union[str, bytes]],
             labels: Dict[Hash, TPath]
     ) -> Iterable[Tuple[Hash, State]]:
         self.execute('drop table if exists current_tasks')
@@ -314,7 +320,10 @@ class Cellar:
             (hashid, buildid, path) for path, hashid in targets.items()
         ))
         for hashid, text in inputs.items():
-            self.store_text(hashid, text)
+            if isinstance(text, str):
+                self.store_text(hashid, text)
+            else:
+                self.store_bytes(hashid, text)
         self.commit()
         return self.execute(
             'select tasks.hash, state as "[state]" from tasks join current_tasks '
@@ -362,6 +371,8 @@ class Cellar:
         for target, filehash in task.inputs.items():
             copier(self.get_file(filehash), path/target)
             all_files.append(target)
+        for target, source in task.symlinks.items():
+            Path(path/target).symlink_to(source)
         for target, (child, source) in task.childlinks.items():
             if resolve:
                 childtask = children[task.children[child]]
