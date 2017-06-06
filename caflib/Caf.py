@@ -319,7 +319,10 @@ def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json',
         )
     else:
         hashes = [l.strip() for l in sys.stdin.readlines()]
-        json.dump(cellar.get_tasks(hashes), sys.stdout)
+        json.dump({
+            hashid: task.asdict() for hashid, task in
+            cellar.get_tasks(hashes).items()
+        }, sys.stdout)
 
 
 @Caf.command()

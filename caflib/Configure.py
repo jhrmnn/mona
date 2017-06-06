@@ -67,7 +67,7 @@ class Task:
     tasks: Dict[Hash, 'Task'] = {}
 
     def __init__(self, *, command: str, inputs: Sequence[Input] = None, ctx: 'Context') -> None:
-        self.obj = TaskObject(command, {}, {}, {}, {})
+        self.obj = TaskObject(command, {}, {}, {}, {}, {})
         file: InputTarget
         if inputs:
             for item in inputs:
@@ -90,7 +90,7 @@ class Task:
                     vfile.task.parents.append(self)
                 else:
                     raise UnknownInputType(item)
-        self.hashid: Hash = get_hash(self.obj.data)
+        self.hashid: Hash = get_hash(json.dumps(self.obj.asdict(), sort_keys=True))
         Task.tasks[self.hashid] = self
         self.parents: List[Union[Target, Task]] = []
         self.ctx = ctx
@@ -132,11 +132,13 @@ class Task:
 
     @property
     def outputs(self) -> Union[Dict[str, 'StoredFile'], 'FakeOutputs']:
-        if self.obj.outputs is not None:
-            return {
-                name: StoredFile(name, self) for name in self.obj.outputs
-            }
-        return FakeOutputs(self)
+        taskobj = self.ctx.cellar.get_task(self.hashid)
+        if not taskobj or not taskobj.outputs:
+            return FakeOutputs(self)
+        return {
+            name: StoredFile(hashid, name, self)
+            for name, hashid in taskobj.outputs.items()
+        }
 
 
 class VirtualFile:
@@ -150,10 +152,9 @@ class VirtualFile:
 
 
 class StoredFile(VirtualFile):
-    @property
-    def hashid(self) -> Hash:
-        assert self.task.obj.outputs is not None
-        return self.task.obj.outputs[self.name]
+    def __init__(self, hashid: Hash, name: str, task: Task) -> None:
+        super().__init__(name, task)
+        self.hashid = hashid
 
     @property
     def path(self) -> Path:

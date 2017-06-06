@@ -67,18 +67,22 @@ class TaskObject(NamedTuple):
     symlinks: Dict[str, str]
     children: Dict[str, Hash]
     childlinks: Dict[str, Tuple[str, str]]
-    outputs: Optional[Dict[str, Hash]] = None
+    outputs: Dict[str, Hash]
+
+    def asdict(self) -> Dict[str, Any]:
+        obj = self._asdict()
+        if not self.outputs:
+            del obj['outputs']
+        return obj
 
     @property
     def data(self) -> str:
-        obj: Dict[str, Any] = self._asdict()
-        if self.outputs is None:
-            del obj['outputs']
-        return json.dumps(obj, sort_keys=True)
+        return json.dumps(self.asdict())
 
     @classmethod
     def from_data(cls, data: bytes) -> 'TaskObject':
         obj: Dict[str, Any] = json.loads(data)
+        obj.setdefault('outputs', {})
         return cls(**obj)
 
 
@@ -194,9 +198,8 @@ class Cellar:
         for task in tree.objects.values():
             for filehash in task.inputs.values():
                 self.execute('insert into retain values (?)', (filehash,))
-            if task.outputs is not None:
-                for filehash in task.outputs.values():
-                    self.execute('insert into retain values (?)', (filehash,))
+            for filehash in task.outputs.values():
+                self.execute('insert into retain values (?)', (filehash,))
         retain: Set[Hash] = set(
             hashid for hashid, in self.db.execute('select hash from retain')
         )
@@ -239,18 +242,8 @@ class Cellar:
     ) -> None:
         task = self.get_task(hashid)
         assert task
-        if task.outputs is not None:
-            task.outputs.clear()
-            task.outputs.update(outputs)
-        else:
-            task = TaskObject(
-                task.command,
-                task.inputs,
-                task.symlinks,
-                task.children,
-                task.childlinks,
-                outputs
-            )
+        task.outputs.clear()
+        task.outputs.update(outputs)
         self.execute(
             'update tasks set task = ?, state = ? where hash = ?',
             (task, state, hashid)
@@ -381,10 +374,9 @@ class Cellar:
             else:
                 symlink_to(Path(child)/source, path/target)
             all_files.append(target)
-        if task.outputs is not None:
-            for target, filehash in task.outputs.items():
-                copier(self.get_file(filehash), path/target)
-                all_files.append(target)
+        for target, filehash in task.outputs.items():
+            copier(self.get_file(filehash), path/target)
+            all_files.append(target)
         return all_files
 
     def get_build(self, nth: int = 0) \
