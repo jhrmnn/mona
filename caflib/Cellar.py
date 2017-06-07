@@ -262,7 +262,7 @@ class Cellar:
             outputs: Dict[str, Path] = None,
             hashed_outputs: Dict[str, Hash] = None
     ) -> None:
-        if outputs:
+        if outputs is not None:
             hashed_outputs = {}
             for name, path in outputs.items():
                 try:
@@ -273,7 +273,7 @@ class Cellar:
                         filehash = get_hash_bytes(f.read())
                 self.store_file(filehash, path)
                 hashed_outputs[name] = filehash
-        assert hashed_outputs
+        assert hashed_outputs is not None
         self._update_outputs(hashid, State.DONE, hashed_outputs)
 
     def reset_task(self, hashid: Hash) -> None:
@@ -377,6 +377,7 @@ class Cellar:
             fulltarget = path/target
             fulltarget.parent.mkdir(parents=True, exist_ok=True)
             fulltarget.symlink_to(source)
+            all_files.append(target)
         for target, (child, source) in task.childlinks.items():
             if resolve:
                 childtask = children[task.children[child]]

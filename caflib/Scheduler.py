@@ -215,7 +215,7 @@ class Scheduler:
                     with timing('collect output'):
                         for filepath in tmppath.glob('**/*'):
                             rel_path = filepath.relative_to(tmppath)
-                            if str(rel_path) not in inputs:
+                            if str(rel_path) not in inputs and filepath.is_file():
                                 outputs[str(rel_path)] = filepath
                     with timing('seal task'):
                         self.cellar.seal_task(hashid, outputs)

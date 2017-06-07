@@ -55,6 +55,10 @@ class UnknownInputType(Exception):
     pass
 
 
+class UnknownSymlinkType(Exception):
+    pass
+
+
 class MalformedTask(Exception):
     pass
 
@@ -81,15 +85,19 @@ class Task:
                     path, file = item, Path(item)
                 elif isinstance(item, Path):
                     path, file = str(item), item
-                elif isinstance(item, tuple) and len(item) == 2:
+                elif isinstance(item, tuple) and len(item) == 2 \
+                    and isinstance(item[0], str):
                     path, file = item
                 else:
                     raise UnknownInputType(item)
+                path = str(Path(path))  # normalize
                 if isinstance(file, Path):
                     self.obj.inputs[path] = ctx.get_source(file)
                 elif isinstance(file, str):
                     self.obj.inputs[path] = ctx.store_text(file)
-                elif isinstance(file, tuple):
+                elif isinstance(file, tuple) and len(file) == 2 \
+                    and isinstance(file[0], str) \
+                    and isinstance(file[1], VirtualFile):
                     childname, vfile = file
                     self.obj.children[childname] = vfile.task.hashid
                     self.obj.childlinks[path] = (childname, vfile.name)
@@ -98,7 +106,9 @@ class Task:
                     raise UnknownInputType(item)
         if symlinks:
             for target, source in symlinks:
-                self.obj.symlinks[target] = source
+                if not isinstance(target, str) and not isinstance(source, str):
+                    raise UnknownSymlinkType((target, source))
+                self.obj.symlinks[str(Path(target))] = str(Path(source))
         self.hashid: Hash = get_hash(json.dumps(self.obj.asdict(), sort_keys=True))
         Task.tasks[self.hashid] = self
         self.parents: List[Union[Target, Task]] = []

@@ -42,10 +42,9 @@ class Remote:
     def command(self, cmd: str, inp: str = None, _get_output: bool = False) -> Optional[str]:
         if not _get_output:
             info(f'Running `./caf {cmd}` on {self.host}...')
-        if inp:
-            inp_bytes = inp.encode()
+        inp_bytes = inp.encode() if inp else None
         try:
-            output = sp.run([
+            output = sp.run([  # type: ignore
                 'ssh',
                 self.host,
                 f'sh -c "cd {self.path} && exec python3 -u caf {cmd}"'
@@ -65,7 +64,7 @@ class Remote:
         info(f'Checking {self.host}...')
         remote_hashes: Dict[TPath, Hash] = {}
         output = self.command_output('list tasks --no-color')
-        for hashid, path, *_ in output.strip().split('\n'):
+        for hashid, path, *_ in (l.split() for l in output.strip().split('\n')):
             remote_hashes[TPath(path)] = Hash(hashid)
         is_ok = True
         for path, hashid in hashes.items():
