@@ -11,7 +11,6 @@ from caflib.Cellar import Cellar, State
 from caflib.Logging import error, debug, no_cafdir
 from caflib.Utils import get_timestamp, sample
 from caflib.Announcer import Announcer
-from caflib.Timing import timing
 
 from typing import (  # noqa
     cast, Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any
@@ -172,21 +171,20 @@ class Scheduler:
                 if dry:
                     self.skip_task(hashid)
                     continue
-                with timing('lock task'):
-                    with self.db_lock():
-                        state, = self.execute(
-                            'select state as "[state]" from queue where taskhash = ? and active = 1',
-                            (hashid,)
-                        ).fetchone()
-                        if state != State.CLEAN:
-                            print(f'{label} already locked!')
-                            will_continue = True
-                            break
-                        self.execute(
-                            'update queue set state = ?, changed = ? '
-                            'where taskhash = ?',
-                            (State.RUNNING, get_timestamp(), hashid)
-                        )
+                with self.db_lock():
+                    state, = self.execute(
+                        'select state as "[state]" from queue where taskhash = ? and active = 1',
+                        (hashid,)
+                    ).fetchone()
+                    if state != State.CLEAN:
+                        print(f'{label} already locked!')
+                        will_continue = True
+                        break
+                    self.execute(
+                        'update queue set state = ?, changed = ? '
+                        'where taskhash = ?',
+                        (State.RUNNING, get_timestamp(), hashid)
+                    )
                 if not task.command:
                     self.cellar.seal_task(hashid, {})
                     self.task_done(hashid)
@@ -196,13 +194,11 @@ class Scheduler:
                     prefix='caftsk_', dir=self.tmpdir
                 ))
                 debug(f'Executing {label} in {tmppath}')
-                with timing('note temp'):
-                    self.execute(
-                        'update queue set path = ? where taskhash = ?',
-                        (str(tmppath), hashid)
-                    )
-                with timing('checkout'):
-                    inputs = self.cellar.checkout_task(task, tmppath)
+                self.execute(
+                    'update queue set path = ? where taskhash = ?',
+                    (str(tmppath), hashid)
+                )
+                inputs = self.cellar.checkout_task(task, tmppath)
                 queue_task = Task(task.command, str(tmppath))
                 yield queue_task
                 if queue_task.state[0] == State.INTERRUPTED:
@@ -212,18 +208,14 @@ class Scheduler:
                     break
                 elif queue_task.state[0] == State.DONE:
                     outputs = {}
-                    with timing('collect output'):
-                        for filepath in tmppath.glob('**/*'):
-                            rel_path = filepath.relative_to(tmppath)
-                            if str(rel_path) not in inputs and filepath.is_file():
-                                outputs[str(rel_path)] = filepath
-                    with timing('seal task'):
-                        self.cellar.seal_task(hashid, outputs)
-                    with timing('clean up'):
-                        shutil.rmtree(tmppath)
+                    for filepath in tmppath.glob('**/*'):
+                        rel_path = filepath.relative_to(tmppath)
+                        if str(rel_path) not in inputs and filepath.is_file():
+                            outputs[str(rel_path)] = filepath
+                    self.cellar.seal_task(hashid, outputs)
+                    shutil.rmtree(tmppath)
                     nerror = 0
-                    with timing('announce done'):
-                        self.task_done(hashid)
+                    self.task_done(hashid)
                     print(f'{get_timestamp()}: {label} finished successfully')
                 elif queue_task.state[0] == State.ERROR:
                     print(queue_task.state[1])

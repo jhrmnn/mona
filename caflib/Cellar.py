@@ -14,7 +14,6 @@ from enum import IntEnum
 
 from caflib.Logging import info, no_cafdir
 from caflib.Utils import make_nonwritable
-from caflib.Timing import timing
 from caflib.Glob import match_glob
 
 from typing import (  # noqa
@@ -232,13 +231,12 @@ class Cellar:
         return self.store(hashid, file=file)
 
     def get_task(self, hashid: Hash) -> Optional[TaskObject]:
-        with timing('get_task'):
-            row: Optional[Tuple[TaskObject]] = self.execute(
-                'select task as "[task]" from tasks where hash = ?', (hashid,)
-            ).fetchone()
-            if not row:
-                return None
-            return row[0]
+        row: Optional[Tuple[TaskObject]] = self.execute(
+            'select task as "[task]" from tasks where hash = ?', (hashid,)
+        ).fetchone()
+        if not row:
+            return None
+        return row[0]
 
     def _update_outputs(
             self,
@@ -297,7 +295,7 @@ class Cellar:
         )]
         nnew = len(tasks)-len(existing)
         info(f'Will store {nnew} new tasks.')
-        if nnew > 0 and 'TIMING' not in os.environ:
+        if nnew > 0:
             while True:
                 answer = input('Continue? ["y" to confirm, "l" to list]: ')
                 if answer == 'y':
@@ -452,10 +450,9 @@ class Cellar:
         while targets:
             hashid, path = targets.pop()
             if hashid not in tasks:
-                with timing('sql'):
-                    task = self.get_task(hashid)
-                    assert task
-                    tasks[hashid] = task
+                task = self.get_task(hashid)
+                assert task
+                tasks[hashid] = task
             for name, childhash in tasks[hashid].children.items():
                 childpath = path/name
                 targets.append((childhash, childpath))
@@ -465,18 +462,15 @@ class Cellar:
                 continue
             rootpath = root/path
             if hashid in paths:
-                with timing('bones'):
-                    rootpath.parent.mkdir(parents=True, exist_ok=True)
-                    if not rootpath.exists():
-                        rootpath.symlink_to(paths[hashid])
-                        nsymlinks += 1
+                rootpath.parent.mkdir(parents=True, exist_ok=True)
+                if not rootpath.exists():
+                    rootpath.symlink_to(paths[hashid])
+                    nsymlinks += 1
             else:
-                with timing('bones'):
-                    rootpath.mkdir(parents=True)
-                with timing('checkout'):
-                    nsymlinks += len(self.checkout_task(
-                        tasks[hashid], rootpath, resolve=False, nolink=nolink
-                    ))
-                    ntasks += 1
+                rootpath.mkdir(parents=True)
+                nsymlinks += len(self.checkout_task(
+                    tasks[hashid], rootpath, resolve=False, nolink=nolink
+                ))
+                ntasks += 1
                 paths[hashid] = rootpath
         info(f'Checked out {ntasks} tasks: {nsymlinks} {"files" if nolink else "symlinks"}')

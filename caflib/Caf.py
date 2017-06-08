@@ -18,7 +18,6 @@ import json
 import importlib.util
 
 from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
-from caflib.Timing import timing
 from caflib.Logging import error, info, Table, colstr, warn, no_cafdir, \
     handle_broken_pipe
 import caflib.Logging as Logging
@@ -56,8 +55,7 @@ class Caf(CLI):
             self.cafdir/'config.ini',
             os.path.expanduser('~/.config/caf/config.ini')
         ])
-        with timing('read cscript'):
-            self.cscript = import_cscript()
+        self.cscript = import_cscript()
         self.out = Path(getattr(self.cscript, 'out', 'build'))
         self.top = Path(getattr(self.cscript, 'top', '.'))
         self.paths = listify(getattr(self.cscript, 'paths', []))
@@ -181,17 +179,14 @@ def conf(caf: Caf) -> None:
             (caf.cafdir/'objects').mkdir()
     cellar = Cellar(caf.cafdir)
     ctx = Context(caf.top, cellar)
-    with timing('evaluate cscript'):
-        try:
-            caf.cscript.run(ctx)  # type: ignore
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            error('There was an error when executing run()')
-    with timing('get configuration'):
-        conf = get_configuration(ctx.tasks, ctx.targets)
-    with timing('store build'):
-        tasks = dict(cellar.store_build(conf.tasks, conf.targets, ctx.inputs, conf.labels))
+    try:
+        caf.cscript.run(ctx)  # type: ignore
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        error('There was an error when executing run()')
+    conf = get_configuration(ctx.tasks, ctx.targets)
+    tasks = dict(cellar.store_build(conf.tasks, conf.targets, ctx.inputs, conf.labels))
     labels: Dict[Hash, Optional[TPath]] = {hashid: None for hashid in tasks}
     for tpath, hashid in cellar.get_tree(hashes=tasks.keys()).items():
         if not labels[hashid]:
@@ -294,14 +289,13 @@ def make(caf: Caf,
         with cd(task.path):
             with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
                 try:
-                    with timing('task exec'):
-                        sp.run(
-                            task.command,
-                            shell=True,
-                            stdout=stdout,
-                            stderr=stderr,
-                            check=True
-                        )
+                    sp.run(
+                        task.command,
+                        shell=True,
+                        stdout=stdout,
+                        stderr=stderr,
+                        check=True
+                    )
                 except sp.CalledProcessError as exc:
                     task.error(str(exc))
                 except KeyboardInterrupt:
@@ -554,12 +548,9 @@ def status(caf: Caf, patterns: List[str], incomplete: bool) -> None:
             colors
         )
     )))
-    with timing('get_states'):
-        states = scheduler.get_states()
-    with timing('get tree'):
-        tree = cellar.get_tree(hashes=states.keys())
-    with timing('glob'):
-        groups = tree.dglob(*patterns)
+    states = scheduler.get_states()
+    tree = cellar.get_tree(hashes=states.keys())
+    groups = tree.dglob(*patterns)
     queue = scheduler.get_queue()
     groups['ALL'] = [(hashid, label) for hashid, (_, label, *__) in queue.items()]
     table = Table(
