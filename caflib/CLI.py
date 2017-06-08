@@ -81,8 +81,8 @@ class CLIMeta(type):
         return cls
 
 
-def bind_function(obj, func, name=None, triggers=None):
-    command = Command(func, name=name)
+def bind_function(obj, func, name=None, triggers=None, mapping=None):
+    command = Command(func, name=name, mapping=mapping)
     obj.commands[(command.name.strip('_'),)] = command
     for trigger in triggers or []:
         obj.commands[tuple(trigger.split())] = command

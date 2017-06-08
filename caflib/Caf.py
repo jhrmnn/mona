@@ -197,11 +197,11 @@ def sig_handler(sig, frame):
     raise KeyboardInterrupt
 
 
-@Caf.command()
-def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
-         limit: ('--limit', int), url: '--queue', dry: '--dry',
-         verbose: '--verbose', _: '--last', maxerror: ('--maxerror', int),
-         randomize: '--random'):
+@Caf.command(mapping=dict(
+    profile='--profile', n=('-j', int), patterns='PATH', limit=('--limit', int),
+    url='--queue', dry='--dry', verbose='--verbose', _='--last',
+    maxerror=('--maxerror', int), randomize='--random'))
+def make(caf, profile, n, patterns, limit, url, dry, verbose, _, maxerror, randomize):
     """
     Execute build tasks.
 
@@ -288,10 +288,10 @@ def make(caf, profile: '--profile', n: ('-j', int), patterns: 'PATH',
                     task.done()
 
 
-@Caf.command()
-def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json',
-             force: '--force', nth: ('-n', int), finished: '--finished',
-             nolink: '--no-link'):
+@Caf.command(mapping=dict(
+    path=('--path', Path), patterns='PATH', do_json='--json', force='--force',
+    nth=('-n', int), finished='--finished', nolink='--no-link'))
+def checkout(caf, path, patterns, do_json, force, nth, finished, nolink):
     """
     Create the dependecy tree physically on a file system.
 
@@ -325,8 +325,8 @@ def checkout(caf, path: ('--path', Path), patterns: 'PATH', do_json: '--json',
         }, sys.stdout)
 
 
-@Caf.command()
-def submit(caf, patterns: 'PATH', url: 'URL', append: '--append'):
+@Caf.command(mapping=dict(patterns='PATH', url='URL', append='--append'))
+def submit(caf, patterns, url, append):
     """
     Submit the list of prepared tasks to a queue server.
 
@@ -358,8 +358,8 @@ def submit(caf, patterns: 'PATH', url: 'URL', append: '--append'):
             f.write(queue_url)
 
 
-@Caf.command()
-def reset(caf, patterns: 'PATH', hard: '--hard', running: '--running'):
+@Caf.command(mapping=dict(patterns='PATH', hard='--hard', running='--running'))
+def reset(caf, patterns, hard, running):
     """
     Remove all temporary checkouts and set tasks to clean.
 
@@ -439,11 +439,12 @@ def list_builds(caf, _):
     print(table)
 
 
-@caf_list.add_command(name='tasks')
-def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
-               do_error: '--error', do_unfinished: '--unfinished',
-               disp_hash: '--hash', disp_path: '--path',
-               patterns: 'PATH', disp_tmp: '--tmp', no_color: '--no-color'):
+@caf_list.add_command(name='tasks', mapping=dict(
+    do_finished='--finished', do_running='--running', do_error='--error',
+    do_unfinished='--unfinished', disp_hash='--hash', disp_path='--path',
+    patterns='PATH', disp_tmp='--tmp', no_color='--no-color'))
+def list_tasks(caf, _, do_finished, do_running, do_error, do_unfinished, disp_hash,
+               disp_path, patterns, disp_tmp, no_color):
     """
     List tasks.
 
@@ -501,8 +502,8 @@ def list_tasks(caf, _, do_finished: '--finished', do_running: '--running',
             break
 
 
-@Caf.command()
-def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
+@Caf.command(mapping=dict(patterns='PATH', incomplete='--incomplete'))
+def status(caf, patterns, incomplete):
     """
     Print number of initialized, running and finished tasks.
 
@@ -566,8 +567,8 @@ def status(caf, patterns: 'PATH', incomplete: '--incomplete'):
     print(table)
 
 
-@Caf.command()
-def gc(caf, gc_all: '--all'):
+@Caf.command(mapping=dict(gc_all='--all'))
+def gc(caf, gc_all):
     """
     Discard running and error tasks.
 
@@ -585,8 +586,8 @@ def gc(caf, gc_all: '--all'):
         cellar.gc()
 
 
-@Caf.command()
-def cmd(caf, cmd: 'CMD'):
+@Caf.command(mapping=dict(cmd='CMD'))
+def cmd(caf, cmd):
     """
     Execute any shell command.
 
@@ -602,8 +603,8 @@ caf_remote = CLI('remote', header='Manage remotes.')
 Caf.commands[('remote',)] = caf_remote
 
 
-@caf_remote.add_command(name='add')
-def remote_add(caf, _, url: 'URL', name: 'NAME'):
+@caf_remote.add_command(name='add', mapping=dict(url='URL', name='NAME'))
+def remote_add(caf, _, url, name):
     """
     Add a remote.
 
@@ -622,8 +623,8 @@ def remote_add(caf, _, url: 'URL', name: 'NAME'):
         no_cafdir()
 
 
-@caf_remote.add_command(name='path')
-def remote_path(caf, _, name: 'NAME'):
+@caf_remote.add_command(name='path', mapping=dict(name='NAME'))
+def remote_path(caf, _, name):
     """
     Print a remote path in the form HOST:PATH.
 
@@ -633,8 +634,8 @@ def remote_path(caf, _, name: 'NAME'):
     print('{0[host]}:{0[path]}'.format(caf.config[f'remote "{name}"']))
 
 
-@Caf.command()
-def update(caf, delete: '--delete', remotes: ('REMOTE', 'proc_remote')):
+@Caf.command(mapping=dict(delete='--delete', remotes=('REMOTE', 'proc_remote')))
+def update(caf, delete, remotes):
     """
     Update a remote.
 
@@ -648,8 +649,8 @@ def update(caf, delete: '--delete', remotes: ('REMOTE', 'proc_remote')):
         remote.update(delete=delete)
 
 
-@Caf.command()
-def check(caf, remotes: ('REMOTE', 'proc_remote')):
+@Caf.command(mapping=dict(remotes=('REMOTE', 'proc_remote')))
+def check(caf, remotes):
     """
     Verify that hashes of the local and remote tasks match.
 
@@ -664,9 +665,9 @@ def check(caf, remotes: ('REMOTE', 'proc_remote')):
         remote.check(hashes)
 
 
-@Caf.command()
-def fetch(caf, patterns: 'PATH', remotes: ('REMOTE', 'proc_remote'),
-          nofiles: '--no-files'):
+@Caf.command(mapping=dict(
+    patterns='PATH', remotes=('REMOTE', 'proc_remote'), nofiles='--no-files'))
+def fetch(caf, patterns, remotes, nofiles):
     """
     Fetch targets from remote.
 
@@ -700,8 +701,8 @@ caf_archive = CLI('archive', header='Cellar archiving.')
 Caf.commands[('archive',)] = caf_archive
 
 
-@caf_archive.add_command(name='store')
-def archive_store(caf, _, filename: 'FILE', patterns: 'PATH'):
+@caf_archive.add_command(name='store', mapping=dict(filename='FILE', patterns='PATH'))
+def archive_store(caf, _, filename, patterns):
     """
     Archives files accessible from the given tasks as tar.gz.
 
@@ -733,8 +734,8 @@ def archive_store(caf, _, filename: 'FILE', patterns: 'PATH'):
 #         remote.push(targets, caf.cache, caf.out, dry=dry)
 
 
-@Caf.command()
-def go(caf, remotes: ('REMOTE', 'proc_remote')):
+@Caf.command(mapping=dict(remotes=('REMOTE', 'proc_remote')))
+def go(caf, remotes):
     """
     SSH into the remote caf repository.
 
