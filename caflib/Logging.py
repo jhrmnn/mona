@@ -30,13 +30,13 @@ class colstr(str):
         'normal': '\x1b[0m'
     }
 
-    def __new__(cls, s: str, color: str) -> str:
+    def __new__(cls, s: Any, color: str) -> str:
         return str.__new__(  # type: ignore
             cls,
             colstr.colors[color] + str(s) + colstr.colors['normal']
         )
 
-    def __init__(self, s: str, color: str) -> None:
+    def __init__(self, s: Any, color: str) -> None:
         self.len = len(str(s))
         self.orig = str(s)
 

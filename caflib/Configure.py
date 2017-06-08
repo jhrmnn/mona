@@ -86,7 +86,7 @@ class Task:
                 elif isinstance(item, Path):
                     path, file = str(item), item
                 elif isinstance(item, tuple) and len(item) == 2 \
-                    and isinstance(item[0], str):
+                        and isinstance(item[0], str):
                     path, file = item
                 else:
                     raise UnknownInputType(item)
@@ -96,8 +96,8 @@ class Task:
                 elif isinstance(file, str):
                     self.obj.inputs[path] = ctx.store_text(file)
                 elif isinstance(file, tuple) and len(file) == 2 \
-                    and isinstance(file[0], str) \
-                    and isinstance(file[1], VirtualFile):
+                        and isinstance(file[0], str) \
+                        and isinstance(file[1], VirtualFile):
                     childname, vfile = file
                     self.obj.children[childname] = vfile.task.hashid
                     self.obj.childlinks[path] = (childname, vfile.name)
@@ -234,20 +234,25 @@ with open('_result.pickle', 'bw') as f:
     return task_gen
 
 
-def get_configuration(tasks: List[Task], targets: List[Target]) \
-        -> Dict[str, Union[Dict[Hash, TaskObject], Dict[str, Hash], Dict[Hash, str]]]:
-    return {
-        'tasks': {task.hashid: task.obj for task in tasks},
-        'targets': {str(target.path): target.task.hashid for target in targets},
-        'labels': {task.hashid: str(task) for task in tasks}
-    }
+class Configuration(NamedTuple):
+    tasks: Dict[Hash, TaskObject]
+    targets: Dict[TPath, Hash]
+    labels: Dict[Hash, TPath]
+
+
+def get_configuration(tasks: List[Task], targets: List[Target]) -> Configuration:
+    return Configuration(
+        {task.hashid: task.obj for task in tasks},
+        {TPath(str(target.path)): target.task.hashid for target in targets},
+        {task.hashid: TPath(str(task)) for task in tasks}
+    )
 
 
 class Context:
     """Represent a build configuration: tasks and targets."""
 
-    def __init__(self, top: str, cellar: Cellar) -> None:
-        self.top = Path(top)
+    def __init__(self, top: Path, cellar: Cellar) -> None:
+        self.top = top
         self.cellar = cellar
         self.tasks: List[Task] = []
         self.targets: List[Target] = []

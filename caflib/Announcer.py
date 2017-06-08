@@ -9,7 +9,7 @@ import socket
 from caflib.Logging import error
 
 from typing import Optional, Dict  # noqa
-from caflib.Cellar import Hash  # noqa
+from caflib.Cellar import Hash, TPath  # noqa
 
 
 class Announcer:
@@ -61,7 +61,7 @@ class Announcer:
     def task_error(self, hashid: Hash) -> None:
         self.call_url(f'/change_state/{hashid}?state=Error')
 
-    def submit(self, hashes: Dict[Hash, str], append: bool = False) -> Optional[str]:
+    def submit(self, hashes: Dict[Hash, TPath], append: bool = False) -> Optional[str]:
         data = '\n'.join(reversed(
             [f'{label} {hashid}' for hashid, label in hashes.items()]
         )).encode()

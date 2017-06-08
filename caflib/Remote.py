@@ -4,15 +4,16 @@
 import subprocess as sp
 import os
 import json
+from pathlib import Path
 
 from caflib.Logging import info, error
 
-from typing import List, Optional, cast, Dict, Iterable, Any, Callable
+from typing import List, Optional, cast, Dict, Iterable, Any, Callable  # noqa
 from caflib.Cellar import Hash, TPath
 
 
 class Remote:
-    def __init__(self, host: str, path: str, top: str) -> None:
+    def __init__(self, host: str, path: str, top: Path) -> None:
         self.host = host
         self.path = path
         self.top = top

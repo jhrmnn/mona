@@ -8,17 +8,18 @@ from datetime import datetime
 from itertools import groupby as groupby_
 import stat
 import random
+from configparser import ConfigParser
 
-from typing import (
-    Dict, Any, Iterator, Tuple, Iterable, TypeVar, List, Callable
+from typing import (  # noqa
+    Dict, Any, Iterator, Tuple, Iterable, TypeVar, List, Callable, Mapping
 )
 
 _T = TypeVar('_T')
 _V = TypeVar('_V')
 
 
-def config_items(config: Dict[str, Any], group: str = None) \
-        -> Iterator[Tuple[str, Any]]:
+def config_items(config: ConfigParser, group: str = None) \
+        -> Iterator[Tuple[str, Mapping[str, Any]]]:
     if not group:
         yield from config.items()
     else:

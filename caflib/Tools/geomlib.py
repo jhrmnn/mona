@@ -3,7 +3,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict
 from itertools import chain, product, groupby
 from functools import cmp_to_key
 import json
@@ -164,7 +164,9 @@ class Molecule(Iterable, Sized):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Molecule):
             return NotImplemented  # type:ignore
-        cmp = lambda a, b: cmp3d(a.coord, b.coord)
+
+        def cmp(a: Atom, b: Atom) -> int:
+            return cmp3d(a.coord, b.coord)
         key = cmp_to_key(cmp)
         return all(a == b for a, b in zip(
             sorted(list(self), key=key),
@@ -578,7 +580,7 @@ def readfile(path: os.PathLike, fmt: str = None) -> Molecule:
 Atom.data = OrderedDict(
     (r['symbol'], {**r, 'number': int(r['number'])})
     for r in csv.DictReader(quoting=csv.QUOTE_NONNUMERIC, f=StringIO(  # type: ignore
-            """\
+        """\
 "number","symbol","name","vdw radius","covalent radius","mass","ionization energy"
 1,"H","hydrogen",1.2,0.38,1.0079,13.5984
 2,"He","helium",1.4,0.32,4.0026,24.5874

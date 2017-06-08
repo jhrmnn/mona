@@ -81,8 +81,6 @@ class AimsTask(Task):
             else:
                 basis_def = species_db[basis, specie]
             lines.extend(['', basis_def])
-        from typing import List, Union
-        from caflib.Configure import VirtualFile
         inputs = [
             ('geometry.in', Contents(geom.dumps('aims'))),
             ('control.in', Contents('\n'.join(lines)))

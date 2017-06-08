@@ -6,8 +6,10 @@ import sys
 from pathlib import Path
 import os
 
+from typing import Any, Optional
 
-def unpack(caf, path: ('--path', Path), cache: '--cache'):
+
+def unpack(_: Any, path: Optional[Path], cache: Optional[bool]) -> Optional[str]:
     """
     Unpack caflib from the caf executable.
 
@@ -47,7 +49,7 @@ def unpack(caf, path: ('--path', Path), cache: '--cache'):
         linktarget = str(target)
         if link.is_symlink():
             if os.readlink(str(link)) == linktarget:
-                return
+                return None
             else:
                 link.unlink()
         if not link.parent.is_dir():
@@ -56,18 +58,19 @@ def unpack(caf, path: ('--path', Path), cache: '--cache'):
     return str(caflibpath)
 
 
-def init_caflib():
+def init_caflib() -> None:
     if Path('caflib').is_dir():
         from caflib.Caf import Caf
     else:
         caflibpath = unpack(None, path=None, cache=True)
+        assert caflibpath
         sys.path.insert(0, caflibpath)
         try:
-            from caflib.Caf import Caf
+            from caflib.Caf import Caf  # type: ignore
         except ImportError:
             unpack(None, path=None, cache=False)
-            from caflib.Caf import Caf
-    Caf.command()(unpack)
+            from caflib.Caf import Caf  # type: ignore
+    Caf.command(mapping=dict(path=('--path', Path), cache='--cache'))(unpack)
 
 
 init_caflib()

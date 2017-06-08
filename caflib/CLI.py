@@ -5,31 +5,46 @@ from textwrap import dedent
 from collections import OrderedDict
 import sys
 
+from typing import (  # noqa
+    Callable, Type, Union, Tuple, Dict, List, Any, cast, Optional, Iterable,
+    TYPE_CHECKING
+)
+if TYPE_CHECKING:
+    from mypy_extensions import NoReturn
+else:
+    NoReturn = None
+
 try:
     from docopt import docopt
 except ImportError:
     print('Error: Cannot import docopt')
     sys.exit(1)
 
+ArgSpec = Union[str, Tuple[str, Type]]
+Trigger = Tuple[str, ...]
+
 
 class Command:
-    def __init__(self, func, name=None, mapping=None, doc=None):
+    def __init__(self, func: Callable, mapping: Dict[str, ArgSpec],
+                 name: str = None, doc: str = None) -> None:
         self.name = name or func.__name__
         self._func = func
-        self._mapping = mapping or func.__annotations__
-        self._doc = doc or func.__doc__
+        self._mapping = mapping
+        doc = doc or func.__doc__
+        assert doc
+        self._doc = doc
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Command "{self.name}">'
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = dedent(self._doc).rstrip()
         firstline, s = s.split('\n', 1)
         if firstline:
             s = firstline + '\n' + s
         return s
 
-    def __format__(self, fmt):
+    def __format__(self, fmt: str) -> str:
         if not fmt:
             return str(self)
         elif fmt == 'header':
@@ -37,12 +52,12 @@ class Command:
         else:
             raise ValueError('Invalid format specifier')
 
-    def parse(self, argv, *clis):
+    def parse(self, argv: List[str], *clis: 'CLI') -> Dict[str, Any]:
         command = ' '.join(cli.name for cli in clis) + ' ' + self.name
         doc = str(self).replace('<command>', command)
         return docopt(doc, argv=argv[1:])
 
-    def __call__(self, argv, *clis):
+    def __call__(self, argv: List[str], *clis: 'CLI') -> Any:
         args = self.parse(argv, *clis)
         kwargs = {}
         for key, name in self._mapping.items():
@@ -72,17 +87,19 @@ class CLIExit(SystemExit):
 
 
 class CLIMeta(type):
-    def __new__(cls, name, bases, namespace):
+    def __new__(cls, name: str, bases: Tuple[Type], namespace: Dict[str, Any]) -> Any:
         cls = type.__new__(cls, name, bases, namespace)
         if cls.__base__ == object:
-            cls.commands = OrderedDict()
+            cls.commands: Dict[Trigger, Command] = OrderedDict()
         else:
             cls.commands = cls.__base__.commands.copy()
         return cls
 
 
-def bind_function(obj, func, name=None, triggers=None, mapping=None):
-    command = Command(func, name=name, mapping=mapping)
+def bind_function(obj: Union['CLI', Type['CLI']], func: Callable,
+                  name: str = None, triggers: List[str] = None,
+                  mapping: Dict[str, ArgSpec] = None) -> Command:
+    command = Command(func, mapping or {}, name=name)
     obj.commands[(command.name.strip('_'),)] = command
     for trigger in triggers or []:
         obj.commands[tuple(trigger.split())] = command
@@ -91,15 +108,16 @@ def bind_function(obj, func, name=None, triggers=None, mapping=None):
 
 class CLI(metaclass=CLIMeta):
 
-    def __init__(self, name, header=None):
+    def __init__(self, name: str, header: str = None) -> None:
         self.name = name
         self.header = header
-        self.commands = self.__class__.commands.copy()
+        self.commands: Dict[Tuple[str, ...], Union[Command, 'CLI']] \
+            = self.__class__.commands.copy()  # type: ignore
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<CLI "{self.name}">'
 
-    def __str__(self):
+    def __str__(self) -> str:
         parts = []
         for part in ['header', 'usage', 'options', 'commands']:
             try:
@@ -108,7 +126,7 @@ class CLI(metaclass=CLIMeta):
                 pass
         return '\n\n'.join(parts)
 
-    def __format__(self, fmt):
+    def __format__(self, fmt: str) -> str:
         if not fmt:
             return str(self)
         elif fmt == 'header':
@@ -135,7 +153,7 @@ class CLI(metaclass=CLIMeta):
         else:
             raise ValueError('Invalid format specifier')
 
-    def find_command(self, argv, *clis):
+    def find_command(self, argv: List[str], *clis: 'CLI') -> Optional[Trigger]:
         offset = len(clis)+1
         nargv = len(argv)-offset
         maxlen = min(max(map(len, self.commands.keys())), nargv)
@@ -150,38 +168,38 @@ class CLI(metaclass=CLIMeta):
                 break
         return trigger
 
-    def parse(self, argv, *clis):
+    def parse(self, argv: List[str], *clis: 'CLI') -> Dict[str, Any]:
         trigger = self.find_command(argv, *clis)
         if not trigger:
             self.exit(clis)
         clis += (self,)
         return self.commands[trigger].parse(argv, *clis)
 
-    def __call__(self, argv, *clis):
+    def __call__(self, argv: List[str], *clis: 'CLI') -> Any:
         trigger = self.find_command(argv, *clis)
         if not trigger:
             self.exit(clis)
         clis += (self,)
         return self.commands[trigger](argv, *clis)
 
-    def exit(self, clis):
+    def exit(self, clis: Tuple['CLI', ...]) -> NoReturn:
         clinames = ' '.join(cli.name for cli in clis + (self,))
         raise CLIExit(format(self, 'short').replace('<command>', clinames))
 
-    def add_command(self, **kwargs):
-        def decorator(func):
+    def add_command(self, **kwargs: Any) -> Callable[[Callable], Command]:
+        def decorator(func: Callable) -> Command:
             return bind_function(self, func, **kwargs)
         return decorator
 
     @classmethod
-    def command(cls, **kwargs):
-        def decorator(func):
+    def command(cls, **kwargs: Any) -> Callable[[Callable], Command]:
+        def decorator(func: Callable) -> Command:
             return bind_function(cls, func, **kwargs)
         return decorator
 
 
-@CLI.command()
-def help(*clis, command: 'COMMAND'):
+@CLI.command(mapping=dict(command='COMMAND'))
+def help(*clis: CLI, command: str) -> None:
     """
     Print help for individual commands.
 
@@ -193,9 +211,9 @@ def help(*clis, command: 'COMMAND'):
     if command:
         trigger = (command,)
         if trigger in cli.commands:
-            command = cli.commands[trigger]
-            print(str(command).replace('<command>', clinames + ' ' + command.name))
+            cmd = cli.commands[trigger]
+            print(str(cmd).replace('<command>', clinames + ' ' + cmd.name))
         else:
-            cli.exit()
+            cli.exit(clis)
     else:
         print(str(cli).replace('<command>', clinames))

@@ -23,7 +23,7 @@ from caflib.Logging import error, info, Table, colstr, warn, no_cafdir, \
     handle_broken_pipe
 import caflib.Logging as Logging
 from caflib.CLI import CLI, CLIExit
-from caflib.Cellar import Cellar, State
+from caflib.Cellar import Cellar, State, Hash, TPath
 from caflib.Remote import Remote, Local
 from caflib.Configure import Context, get_configuration
 from caflib.Scheduler import RemoteScheduler, Scheduler
@@ -31,38 +31,43 @@ from caflib.Announcer import Announcer
 
 from docopt import docopt, DocoptExit
 
+from typing import (  # noqa
+    Any, Union, Dict, List, Optional, Set
+)
+from types import ModuleType
 
-def import_cscript(unpack):
+
+def import_cscript() -> Union[ModuleType, object]:
     spec = importlib.util.spec_from_file_location('cscript', 'cscript.py')
     cscript = importlib.util.module_from_spec(spec)
     try:
-        spec.loader.exec_module(cscript)
+        spec.loader.exec_module(cscript)  # type: ignore
     except FileNotFoundError:
         return object()
     return cscript
 
 
 class Caf(CLI):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__('caf')
         self.cafdir = Path('.caf')
         self.config = ConfigParser()
-        self.config.read([
+        self.config.read([  # type: ignore
             self.cafdir/'config.ini',
             os.path.expanduser('~/.config/caf/config.ini')
         ])
         with timing('read cscript'):
-            self.cscript = import_cscript(self.commands[('unpack',)]._func)
+            self.cscript = import_cscript()
         self.out = Path(getattr(self.cscript, 'out', 'build'))
         self.top = Path(getattr(self.cscript, 'top', '.'))
         self.paths = listify(getattr(self.cscript, 'paths', []))
-        self.remotes = {
+        self.remotes: Dict[str, Union[Local, Remote]] = {
             name: Remote(r['host'], r['path'], self.top)
             for name, r in config_items(self.config, 'remote')
         }
         self.remotes['local'] = Local()
 
-    def __call__(self, argv):
+    def __call__(self, argv: List[str], *_: CLI) -> None:
         if self.cafdir.exists():
             with (self.cafdir/'log').open('a') as f:
                 f.write(f'{get_timestamp()}: {" ".join(argv)}\n')
@@ -80,7 +85,7 @@ class Caf(CLI):
             args = docopt(usage, argv=argv[1:], options_first=True, help=False)
         except DocoptExit:  # remote CLI failed too, reraise CLIExit
             raise cliexit
-        rargv = [argv[0], args['COMMAND']] + args['ARGS']  # remote argv
+        rargv: List[str] = [argv[0], args['COMMAND']] + args['ARGS']  # remote argv
         try:  # try CLI as will be seen on remote
             rargs = self.parse(rargv)
         except DocoptExit:  # remote CLI failed too, reraise CLIExit
@@ -104,13 +109,13 @@ class Caf(CLI):
                 remote.update()
         if 'make' in rargs:
             for remote in remotes:
-                self.commands[('check',)]._func(self, remotes)
+                self.commands[('check',)]._func(self, remotes)  # type: ignore
         for remote in remotes:
             remote.command(' '.join(
                 arg if ' ' not in arg else repr(arg) for arg in rargv[1:]
             ))
 
-    def __format__(self, fmt):
+    def __format__(self, fmt: str) -> str:
         if fmt == 'header':
             return 'Caf -- Calculation framework.'
         if fmt == 'usage':
@@ -122,24 +127,28 @@ class Caf(CLI):
             return dedent(s)
         return super().__format__(fmt)
 
-    def proc_remote(self, remotes):
+    def proc_remote(self, remotes: str) -> List[Union[Remote, Local]]:
         if remotes == 'all':
-            remotes = [
+            rems: List[Union[Remote, Local]] = [
                 r for r in self.remotes.values() if not isinstance(r, Local)
             ]
         else:
             try:
-                remotes = [self.remotes[r] for r in remotes.split(',')]
+                rems = [self.remotes[r] for r in remotes.split(',')]
             except KeyError as e:
                 error(f'Remote "{e.args[0]}" is not defined')
-        return remotes
+        return rems
 
-    def get_queue_url(self, queue):
-        queue_name, num = queue.rsplit(':', 1) if ':' in queue else (queue, None)
-        queue_conf = f'queue "{queue_name}"'
-        if not self.config.has_section(queue_conf):
+    def get_queue_url(self, queue: str) -> str:
+        num: Optional[str]
+        if ':' in queue:
+            queue_name, num = queue.rsplit(':', 1)
+        else:
+            queue_name, num = queue, None
+        queue_sec = f'queue "{queue_name}"'
+        if not self.config.has_section(queue_sec):
             return queue
-        queue_conf = self.config[queue_conf]
+        queue_conf = self.config[queue_sec]
         host = queue_conf['host']
         token = queue_conf['token']
         queue = f'{host}/token/{token}'
@@ -149,14 +158,16 @@ class Caf(CLI):
 
 
 @Caf.command()
-def conf(caf):
+def conf(caf: Caf) -> None:
     """
     Prepare tasks -- process cscript.py and store tasks in cellar.
 
     Usage:
         caf conf
     """
-    if not hasattr(caf.cscript, 'run'):
+    try:
+        caf.cscript.run  # type: ignore
+    except AttributeError:
         error('cscript has to contain function run()')
     if not caf.cafdir.is_dir():
         caf.cafdir.mkdir()
@@ -172,7 +183,7 @@ def conf(caf):
     ctx = Context(caf.top, cellar)
     with timing('evaluate cscript'):
         try:
-            caf.cscript.run(ctx)
+            caf.cscript.run(ctx)  # type: ignore
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -180,19 +191,19 @@ def conf(caf):
     with timing('get configuration'):
         conf = get_configuration(ctx.tasks, ctx.targets)
     with timing('store build'):
-        tasks = dict(cellar.store_build(conf['tasks'], conf['targets'], ctx.inputs, conf['labels']))
-    labels = {hashid: None for hashid in tasks}
-    for path, hashid in cellar.get_tree(hashes=tasks.keys()).items():
+        tasks = dict(cellar.store_build(conf.tasks, conf.targets, ctx.inputs, conf.labels))
+    labels: Dict[Hash, Optional[TPath]] = {hashid: None for hashid in tasks}
+    for tpath, hashid in cellar.get_tree(hashes=tasks.keys()).items():
         if not labels[hashid]:
-            labels[hashid] = path
+            labels[hashid] = tpath
     if any(label is None for label in labels.values()):
         warn('Some tasks are not accessible.')
-    tasks = [(hashid, state, labels[hashid]) for hashid, state in tasks.items()]
+    taskdefs = [(hashid, state, labels[hashid] or '?') for hashid, state in tasks.items()]
     scheduler = Scheduler(caf.cafdir)
-    scheduler.submit(tasks)
+    scheduler.submit(taskdefs)
 
 
-def sig_handler(sig, frame):
+def sig_handler(sig: Any, frame: Any) -> Any:
     print(f'Received signal {signal.Signals(sig).name}')
     raise KeyboardInterrupt
 
@@ -201,7 +212,17 @@ def sig_handler(sig, frame):
     profile='--profile', n=('-j', int), patterns='PATH', limit=('--limit', int),
     url='--queue', dry='--dry', verbose='--verbose', _='--last',
     maxerror=('--maxerror', int), randomize='--random'))
-def make(caf, profile, n, patterns, limit, url, dry, verbose, _, maxerror, randomize):
+def make(caf: Caf,
+         profile: str,
+         n: int,
+         patterns: List[str],
+         limit: int,
+         url: str,
+         dry: bool,
+         verbose: bool,
+         _: Any,
+         maxerror: int,
+         randomize: bool) -> None:
     """
     Execute build tasks.
 
@@ -245,20 +266,21 @@ def make(caf, profile, n, patterns, limit, url, dry, verbose, _, maxerror, rando
         Logging.DEBUG = True
     if url:
         url = caf.get_queue_url(url)
-        scheduler = RemoteScheduler(
+        scheduler: Scheduler = RemoteScheduler(
             url,
-            caf.config.get('core', 'curl', fallback=None),
+            caf.config.get('core', 'curl', fallback='') or None,
             caf.cafdir,
-            tmpdir=caf.config.get('core', 'tmpdir', fallback=None),
+            tmpdir=caf.config.get('core', 'tmpdir', fallback='') or None,
         )
     else:
         scheduler = Scheduler(
             caf.cafdir,
-            tmpdir=caf.config.get('core', 'tmpdir', fallback=None),
+            tmpdir=caf.config.get('core', 'tmpdir', fallback='') or None,
         )
     if patterns:
         cellar = Cellar(caf.cafdir)
-        hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
+        hashes: Optional[Set[Hash]] = \
+            set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
         if not hashes:
             return
     else:
@@ -281,7 +303,7 @@ def make(caf, profile, n, patterns, limit, url, dry, verbose, _, maxerror, rando
                             check=True
                         )
                 except sp.CalledProcessError as exc:
-                    task.error(exc)
+                    task.error(str(exc))
                 except KeyboardInterrupt:
                     task.interrupt()
                 else:
@@ -291,7 +313,14 @@ def make(caf, profile, n, patterns, limit, url, dry, verbose, _, maxerror, rando
 @Caf.command(mapping=dict(
     path=('--path', Path), patterns='PATH', do_json='--json', force='--force',
     nth=('-n', int), finished='--finished', nolink='--no-link'))
-def checkout(caf, path, patterns, do_json, force, nth, finished, nolink):
+def checkout(caf: Caf,
+             path: Path,
+             patterns: List[str],
+             do_json: bool,
+             force: bool,
+             nth: int,
+             finished: bool,
+             nolink: bool) -> None:
     """
     Create the dependecy tree physically on a file system.
 
@@ -318,7 +347,7 @@ def checkout(caf, path, patterns, do_json, force, nth, finished, nolink):
             nolink=nolink
         )
     else:
-        hashes = [l.strip() for l in sys.stdin.readlines()]
+        hashes = [Hash(l.strip()) for l in sys.stdin.readlines()]
         json.dump({
             hashid: task.asdict() for hashid, task in
             cellar.get_tasks(hashes).items()
@@ -326,7 +355,7 @@ def checkout(caf, path, patterns, do_json, force, nth, finished, nolink):
 
 
 @Caf.command(mapping=dict(patterns='PATH', url='URL', append='--append'))
-def submit(caf, patterns, url, append):
+def submit(caf: Caf, patterns: List[str], url: str, append: bool) -> None:
     """
     Submit the list of prepared tasks to a queue server.
 
@@ -337,14 +366,14 @@ def submit(caf, patterns, url, append):
         -a, --append        Append to an existing queue.
     """
     url = caf.get_queue_url(url)
-    announcer = Announcer(url, caf.config.get('core', 'curl', fallback=None))
+    announcer = Announcer(url, caf.config.get('core', 'curl', fallback='') or None)
     scheduler = Scheduler(caf.cafdir)
     queue = scheduler.get_queue()
     if patterns:
         cellar = Cellar(caf.cafdir)
         hashes = dict(cellar.get_tree().glob(*patterns))
     else:
-        hashes = {hashid: label for hashid, (state, label, *_) in queue.items()}
+        hashes = {hashid: TPath(label) for hashid, (state, label, *_) in queue.items()}
     hashes = {
         hashid: label for hashid, label in hashes.items()
         if queue[hashid][0] == State.CLEAN
@@ -359,7 +388,7 @@ def submit(caf, patterns, url, append):
 
 
 @Caf.command(mapping=dict(patterns='PATH', hard='--hard', running='--running'))
-def reset(caf, patterns, hard, running):
+def reset(caf: Caf, patterns: List[str], hard: bool, running: bool) -> None:
     """
     Remove all temporary checkouts and set tasks to clean.
 
@@ -384,7 +413,7 @@ def reset(caf, patterns, hard, running):
             in cellar.get_tree(hashes=states.keys()).glob(*patterns)
         )
     else:
-        hashes = queue.keys()
+        hashes = set(queue)
     for hashid in hashes:
         if states[hashid] in (State.ERROR, State.INTERRUPTED) \
                 or running and states[hashid] == State.RUNNING:
@@ -400,7 +429,7 @@ Caf.commands[('list',)] = caf_list
 
 
 @caf_list.add_command(name='profiles')
-def list_profiles(caf, _):
+def list_profiles(caf: Caf, _: Any) -> None:
     """
     List profiles.
 
@@ -412,7 +441,7 @@ def list_profiles(caf, _):
 
 
 @caf_list.add_command(name='remotes')
-def list_remotes(caf, _):
+def list_remotes(caf: Caf, _: Any) -> None:
     """
     List remotes.
 
@@ -425,7 +454,7 @@ def list_remotes(caf, _):
 
 
 @caf_list.add_command(name='builds')
-def list_builds(caf, _):
+def list_builds(caf: Caf, _: Any) -> None:
     """
     List builds.
 
@@ -443,8 +472,10 @@ def list_builds(caf, _):
     do_finished='--finished', do_running='--running', do_error='--error',
     do_unfinished='--unfinished', disp_hash='--hash', disp_path='--path',
     patterns='PATH', disp_tmp='--tmp', no_color='--no-color'))
-def list_tasks(caf, _, do_finished, do_running, do_error, do_unfinished, disp_hash,
-               disp_path, patterns, disp_tmp, no_color):
+def list_tasks(caf: Caf, _: Any, do_finished: bool, do_running: bool,
+               do_error: bool, do_unfinished: bool, disp_hash: bool,
+               disp_path: bool, patterns: List[str], disp_tmp: bool,
+               no_color: bool) -> None:
     """
     List tasks.
 
@@ -469,7 +500,7 @@ def list_tasks(caf, _, do_finished, do_running, do_error, do_unfinished, disp_ha
         hashes_paths = cellar.get_tree(hashes=states.keys()).glob(*patterns)
     else:
         hashes_paths = (
-            (hashid, label) for hashid, (_, label, *_) in sorted(
+            (hashid, label) for hashid, (_, label, *__) in sorted(
                 queue.items(), key=lambda r: r[1]
             )
         )
@@ -483,18 +514,18 @@ def list_tasks(caf, _, do_finished, do_running, do_error, do_unfinished, disp_ha
         if do_running and states[hashid] != State.RUNNING:
             continue
         if not no_color:
-            path = colstr(path, states[hashid].color)
+            pathstr = colstr(path, states[hashid].color)
         if disp_hash:
-            line = hashid
+            line: str = hashid
         elif disp_tmp:
             if queue[hashid][2]:
                 line = queue[hashid][2]
             else:
                 continue
         elif disp_path:
-            line = path
+            line = pathstr
         else:
-            line = f'{hashid} {path} {queue[hashid][2] or ""}'
+            line = f'{hashid} {pathstr} {queue[hashid][2] or ""}'
         try:
             sys.stdout.write(line + '\n')
         except BrokenPipeError:
@@ -503,7 +534,7 @@ def list_tasks(caf, _, do_finished, do_running, do_error, do_unfinished, disp_ha
 
 
 @Caf.command(mapping=dict(patterns='PATH', incomplete='--incomplete'))
-def status(caf, patterns, incomplete):
+def status(caf: Caf, patterns: List[str], incomplete: bool) -> None:
     """
     Print number of initialized, running and finished tasks.
 
@@ -530,7 +561,7 @@ def status(caf, patterns, incomplete):
     with timing('glob'):
         groups = tree.dglob(*patterns)
     queue = scheduler.get_queue()
-    groups['ALL'] = [(hashid, label) for hashid, (_, label, *_) in queue.items()]
+    groups['ALL'] = [(hashid, label) for hashid, (_, label, *__) in queue.items()]
     table = Table(
         align=['<', *len(colors)*['>']],
         sep=['   ', *(len(colors)-1)*['/']]
@@ -542,7 +573,7 @@ def status(caf, patterns, incomplete):
             state: subgroup for state, subgroup
             in groupby(hashes_paths, key=lambda x: states[x[0]])
         }
-        stats = [len(grouped.get(state, [])) for state in (
+        stats: List[Any] = [len(grouped.get(state, [])) for state in (
             State.RUNNING,
             State.DONE,
             State.DONEREMOTE,
@@ -568,7 +599,7 @@ def status(caf, patterns, incomplete):
 
 
 @Caf.command(mapping=dict(gc_all='--all'))
-def gc(caf, gc_all):
+def gc(caf: Caf, gc_all: bool) -> None:
     """
     Discard running and error tasks.
 
@@ -587,7 +618,7 @@ def gc(caf, gc_all):
 
 
 @Caf.command(mapping=dict(cmd='CMD'))
-def cmd(caf, cmd):
+def cmd(caf: Caf, cmd: str) -> None:
     """
     Execute any shell command.
 
@@ -604,7 +635,7 @@ Caf.commands[('remote',)] = caf_remote
 
 
 @caf_remote.add_command(name='add', mapping=dict(url='URL', name='NAME'))
-def remote_add(caf, _, url, name):
+def remote_add(caf: Caf, _: Any, url: str, name: str) -> None:
     """
     Add a remote.
 
@@ -612,7 +643,7 @@ def remote_add(caf, _, url, name):
         caf remote add URL [NAME]
     """
     config = ConfigParser(interpolation=None)
-    config.read([caf.cafdir/'config.ini'])
+    config.read([caf.cafdir/'config.ini'])  # type: ignore
     host, path = url.split(':')
     name = name or host
     config[f'remote "{name}"'] = {'host': host, 'path': path}
@@ -624,7 +655,7 @@ def remote_add(caf, _, url, name):
 
 
 @caf_remote.add_command(name='path', mapping=dict(name='NAME'))
-def remote_path(caf, _, name):
+def remote_path(caf: Caf, _: Any, name: str) -> None:
     """
     Print a remote path in the form HOST:PATH.
 
@@ -635,7 +666,7 @@ def remote_path(caf, _, name):
 
 
 @Caf.command(mapping=dict(delete='--delete', remotes=('REMOTE', 'proc_remote')))
-def update(caf, delete, remotes):
+def update(caf: Caf, delete: bool, remotes: List[Union[Remote, Local]]) -> None:
     """
     Update a remote.
 
@@ -650,7 +681,7 @@ def update(caf, delete, remotes):
 
 
 @Caf.command(mapping=dict(remotes=('REMOTE', 'proc_remote')))
-def check(caf, remotes):
+def check(caf: Caf, remotes: List[Union[Remote, Local]]) -> None:
     """
     Verify that hashes of the local and remote tasks match.
 
@@ -659,7 +690,7 @@ def check(caf, remotes):
     """
     scheduler = Scheduler(caf.cafdir)
     hashes = {
-        label: hashid for hashid, (_, label, *_) in scheduler.get_queue().items()
+        label: hashid for hashid, (_, label, *__) in scheduler.get_queue().items()
     }
     for remote in remotes:
         remote.check(hashes)
@@ -667,7 +698,8 @@ def check(caf, remotes):
 
 @Caf.command(mapping=dict(
     patterns='PATH', remotes=('REMOTE', 'proc_remote'), nofiles='--no-files'))
-def fetch(caf, patterns, remotes, nofiles):
+def fetch(caf: Caf, patterns: List[str], remotes: List[Union[Remote, Local]],
+          nofiles: bool) -> None:
     """
     Fetch targets from remote.
 
@@ -683,7 +715,7 @@ def fetch(caf, patterns, remotes, nofiles):
     if patterns:
         hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
     else:
-        hashes = states.keys()
+        hashes = set(states)
     for remote in remotes:
         tasks = remote.fetch([
             hashid for hashid in hashes if states[hashid] == State.CLEAN
@@ -702,7 +734,7 @@ Caf.commands[('archive',)] = caf_archive
 
 
 @caf_archive.add_command(name='store', mapping=dict(filename='FILE', patterns='PATH'))
-def archive_store(caf, _, filename, patterns):
+def archive_store(caf: Caf, _: Any, filename: str, patterns: List[str]) -> None:
     """
     Archives files accessible from the given tasks as tar.gz.
 
@@ -715,8 +747,8 @@ def archive_store(caf, _, filename, patterns):
     if patterns:
         hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
     else:
-        hashes = states.keys()
-    cellar.archive(hashes, filename)
+        hashes = set(states)
+    cellar.archive(hashes, filename)  # type: ignore  # TODO
 
 
 # @Caf.command()
@@ -735,7 +767,7 @@ def archive_store(caf, _, filename, patterns):
 
 
 @Caf.command(mapping=dict(remotes=('REMOTE', 'proc_remote')))
-def go(caf, remotes):
+def go(caf: Caf, remotes: List[Union[Local, Remote]]) -> None:
     """
     SSH into the remote caf repository.
 
@@ -747,7 +779,7 @@ def go(caf, remotes):
 
 
 @Caf.command()
-def strip(caf):
+def strip(caf: Caf) -> None:
     """
     Strip packed caflib from the caf executable.
 
@@ -762,7 +794,7 @@ def strip(caf):
 
 
 @Caf.command()
-def pack(caf):
+def pack(caf: Caf) -> None:
     """
     Pack caflib into the caf executable.
 
@@ -778,10 +810,11 @@ def pack(caf):
             with path.open('rb') as f:
                 h.update(f.read())
         archive.close()
-        archive = ftar.getvalue()
+        archive = ftar.getvalue()  # type: ignore
     version = h.hexdigest()
+    tar_string = b64encode(archive).decode()  # type: ignore
     with open('caf', 'a') as f:
         f.write('# ==>\n')
         f.write(f'# version: {version}\n')
-        f.write(f'# archive: {b64encode(archive).decode()}\n')
+        f.write(f'# archive: {tar_string}\n')
         f.write('# <==\n')

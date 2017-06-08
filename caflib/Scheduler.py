@@ -250,7 +250,7 @@ class Scheduler:
         except sqlite3.OperationalError:
             error('There is no queue.')
 
-    def get_queue(self) -> Dict[Hash, Tuple[State, str, TPath, str]]:
+    def get_queue(self) -> Dict[Hash, Tuple[State, TPath, str, str]]:
         try:
             return {
                 hashid: row for hashid, *row
@@ -308,7 +308,7 @@ class Scheduler:
         )
         self.commit()
 
-    def task_done(self, hashid: Hash, remote: bool = None) -> None:
+    def task_done(self, hashid: Hash, remote: str = None) -> None:
         self.execute(
             'update queue set state = ?, changed = ?, path = ? '
             'where taskhash = ?', (
@@ -330,7 +330,7 @@ class Scheduler:
 
 
 class RemoteScheduler(Scheduler):
-    def __init__(self, url: str, curl: str, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, url: str, curl: str = None, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.announcer = Announcer(url, curl)
 
@@ -362,7 +362,7 @@ class RemoteScheduler(Scheduler):
         super().task_error(hashid)
         self.announcer.task_error(hashid)
 
-    def task_done(self, hashid: Hash, remote: bool = None) -> None:
+    def task_done(self, hashid: Hash, remote: str = None) -> None:
         super().task_done(hashid)
         self.announcer.task_done(hashid)
 
