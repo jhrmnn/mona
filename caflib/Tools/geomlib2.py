@@ -4,13 +4,12 @@
 from itertools import chain, product, repeat
 import os
 from io import StringIO
-from math import pi
 from collections import defaultdict
 import numpy as np  # type: ignore
-from numpy.linalg import norm, inv  # type: ignore
 
 from typing import (  # noqa
-    List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, Union, Dict, Any
+    List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, Union, Dict, Any,
+    Optional
 )
 
 from caflib.Tools import geomlib
@@ -20,14 +19,17 @@ specie_data = geomlib.Atom.data
 bohr = geomlib.bohr
 
 
-_string_cache: Dict[Tuple[str, Tuple[float, float, float], str], str] = {}
+Vec = Tuple[float, float, float]
+
+
+_string_cache: Dict[Tuple[str, Vec, str], str] = {}
 
 
 class Molecule(Sized, Iterable):
-    def __init__(self, species: List[str], coords: np.ndarray,
+    def __init__(self, species: List[str], coords: List[Vec],
                  constrains: Dict[Union[int, str], List[str]] = None) -> None:
         self.species = species
-        self.coords = np.array(coords)
+        self.coords = coords
         self.numbers: List[int] = [int(specie_data[sp]['number']) for sp in species]
         self.constrains: Dict[Union[str, int], List[str]] = defaultdict(list)
         if constrains:
@@ -35,6 +37,10 @@ class Molecule(Sized, Iterable):
 
     def __repr__(self) -> str:
         return "<{} '{}'>".format(self.__class__.__name__, self.formula)
+
+    @property
+    def xyz(self) -> np.ndarray:
+        return np.array(self.coords)
 
     @property
     def formula(self) -> str:
@@ -69,12 +75,13 @@ class Molecule(Sized, Iterable):
                     specie, ' '.join('{:15.8}'.format(x) for x in coord)
                 ))
         elif fmt == 'aims':
-            for i, (specie, (x, y, z)) in enumerate(self):
-                key = specie, (x, y, z), fmt
+            for i, atom in enumerate(self):
+                specie, r = atom
+                key = atom + (fmt,)
                 try:
                     f.write(_string_cache[key])
                 except KeyError:
-                    s = f'atom {x:15.8f} {y:15.8f} {z:15.8f} {specie:>2}\n'
+                    s = f'atom {r[0]:15.8f} {r[1]:15.8f} {r[2]:15.8f} {specie:>2}\n'
                     f.write(s)
                     _string_cache[key] = s
                 if self.constrains:
@@ -125,13 +132,6 @@ class Crystal(Molecule):
     def copy(self) -> 'Crystal':
         return Crystal(self.species.copy(), self.coords.copy(), self.lattice.copy())
 
-    def super_circum(self, radius: float) -> np.ndarray:
-        rec_lattice = 2*pi*inv(self.lattice.T)
-        layer_sep = np.array(
-            [sum(vec*rvec/norm(rvec)) for vec, rvec in zip(self.lattice, rec_lattice)]
-        )
-        return np.array(np.ceil(radius/layer_sep+0.5), dtype=int)
-
     def get_kgrid(self, density: float = 0.06) -> Tuple[int, int, int]:
         rec_lattice = 2*np.pi*np.linalg.inv(self.lattice.T)
         rec_lens = np.sqrt((rec_lattice**2).sum(1))
@@ -144,7 +144,10 @@ class Crystal(Molecule):
             for shift in product(*map(range, ns))
         ])
         species = list(chain.from_iterable(repeat(self.species, len(latt_vectors))))
-        coords = (self.coords[None, :, :]+latt_vectors[:, None, :]).reshape((-1, 3))
+        coords = [
+            tuple(vec) for vec in
+            (self.xyz[None, :, :]+latt_vectors[:, None, :]).reshape((-1, 3))
+        ]
         lattice = self.lattice*np.array(ns)[:, None]
         if self.constrains:
             constrains = DefaultDict[Union[str, int], List[str]](list)
@@ -161,6 +164,10 @@ class Crystal(Molecule):
         return Crystal(species, coords, lattice, constrains=constrains)
 
 
+def get_vec(ws: List[str]) -> Vec:
+    return float(ws[0]), float(ws[1]), float(ws[2])
+
+
 def load(fp: IO[str], fmt: str) -> Molecule:
     if fmt == 'xyz':
         n = int(fp.readline())
@@ -170,7 +177,7 @@ def load(fp: IO[str], fmt: str) -> Molecule:
         for _ in range(n):
             ws = fp.readline().split()
             species.append(ws[0])
-            coords.append([float(x) for x in ws[1:4]])
+            coords.append(get_vec(ws[1:4]))
         return Molecule(species, coords)
     if fmt == 'aims':
         species = []
@@ -187,9 +194,9 @@ def load(fp: IO[str], fmt: str) -> Molecule:
             what = ws[0]
             if what == 'atom':
                 species.append(ws[4])
-                coords.append([float(x) for x in ws[1:4]])
+                coords.append(get_vec(ws[1:4]))
             elif what == 'lattice_vector':
-                lattice.append([float(x) for x in ws[1:4]])
+                lattice.append(get_vec(ws[1:4]))
         if lattice:
             assert len(lattice) == 3
             return Crystal(species, coords, lattice)
