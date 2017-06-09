@@ -3,17 +3,18 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import sys
 import os
-from io import StringIO
-from itertools import chain
+from itertools import chain, starmap
 
-from typing import Callable, Any, List, Tuple, TYPE_CHECKING  # noqa
+from typing import (  # noqa
+    Callable, Any, List, Tuple, TYPE_CHECKING, Union
+)
 if TYPE_CHECKING:
     from mypy_extensions import NoReturn
 else:
     NoReturn = None
 
 
-DEBUG = 'DEBUG' in os.environ
+DEBUG = bool(os.environ.get('DEBUG'))
 
 
 class colstr(str):
@@ -84,7 +85,7 @@ def report(f: Callable) -> Callable:
     Example:
 
         @report
-        def my_report(...
+        def my_report(): ...
     """
     _reports.append(f)
     return f
@@ -103,60 +104,61 @@ def handle_broken_pipe() -> None:
                 sys.stderr.close()
 
 
-class TableException(Exception):
-    pass
-
-
 def alignize(s: str, align: str, width: int) -> str:
     l = len(s)
-    if l < width:
-        if align == '<':
-            s = s + (width-l)*' '
-        elif align == '>':
-            s = (width-l)*' ' + s
-        elif align == '|':
-            s = (-(l-width)//2)*' ' + s + ((width-l)//2)*' '
+    if l >= width:
+        return s
+    if align == '<':
+        s = s + (width-l)*' '
+    elif align == '>':
+        s = (width-l)*' ' + s
+    elif align == '|':
+        s = (-(l-width)//2)*' ' + s + ((width-l)//2)*' '
     return s
 
 
 class Table:
     def __init__(self, **kwargs: Any) -> None:
-        self.rows: List[Tuple[bool, Tuple[Any, ...]]] = []
+        self.rows: List[Tuple[bool, Tuple[str, ...]]] = []
         self.set_format(**kwargs)
 
-    def add_row(self, *row: Any, free: bool = False) -> None:
+    def add_row(self, *row: str, free: bool = False) -> None:
         self.rows.append((free, row))
 
-    def set_format(self, sep: str = ' ', align: str = '>', indent: str = '') -> None:
+    def set_format(self,
+                   sep: Union[str, List[str]]= ' ',
+                   align: Union[str, List[str]] = '>',
+                   indent: str = '') -> None:
         self.sep = sep
         self.align = align
         self.indent = indent
 
-    def sort(self, key: Callable[[Any], Any] = lambda x: x[0]) -> None:
-        self.rows.sort(key=lambda x: key(x[1]), reverse=True)
+    def sort(self, key: Callable = lambda x: x[0], **kwargs: Any) -> None:
+        self.rows.sort(key=lambda x: key(x[1]), **kwargs)
 
     def __str__(self) -> str:
         col_nums = [len(row) for free, row in self.rows if not free]
         if len(set(col_nums)) != 1:
-            raise TableException(f'Unequal column lengths: {col_nums}')
+            raise ValueError(f'Unequal column lengths: {col_nums}')
         col_num = col_nums[0]
-        cell_widths = [[len(cell) for cell in row]
-                       for free, row in self.rows if not free]
-        col_widths = [max(col) for col in zip(*cell_widths)]
-        seps = (col_num-1)*[self.sep] if not isinstance(self.sep, list) \
-            else self.sep
+        cells_widths = [
+            [len(cell) for cell in row] for free, row in self.rows if not free
+        ]
+        col_widths = [max(cws) for cws in zip(*cells_widths)]
+        if isinstance(self.sep, list):
+            seps = self.sep
+        else:
+            seps = (col_num-1)*[self.sep]
         seps += ['\n']
-        aligns = col_num*[self.align] if not isinstance(self.align, list) \
-            else self.align
-        f = StringIO()
+        if isinstance(self.align, list):
+            aligns = self.align
+        else:
+            aligns = col_num*[self.align]
+        s = ''
         for free, row in self.rows:
             if free:
-                f.write(f'{row[0]}\n')
+                s += f'{row[0]}\n'
             else:
-                cells = (alignize(cell, align, width)
-                         for cell, align, width
-                         in zip(row, aligns, col_widths))
-                f.write(
-                    self.indent + ''.join(chain.from_iterable(zip(cells, seps)))
-                )
-        return f.getvalue()[:-1]
+                cells = starmap(alignize, zip(row, aligns, col_widths))
+                s += self.indent + ''.join(chain.from_iterable(zip(cells, seps)))
+        return s
