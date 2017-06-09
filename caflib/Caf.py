@@ -182,7 +182,7 @@ def conf(caf: Caf) -> None:
         import traceback
         traceback.print_exc()
         error('There was an error when executing run()')
-    conf = get_configuration(ctx.tasks, ctx.targets)
+    conf = get_configuration(ctx.tasks, ctx.targets.values())
     tasks = dict(cellar.store_build(conf.tasks, conf.targets, ctx.inputs, conf.labels))
     labels: Dict[Hash, Optional[TPath]] = {hashid: None for hashid in tasks}
     for tpath, hashid in cellar.get_tree(hashes=tasks.keys()).items():

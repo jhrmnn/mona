@@ -6,13 +6,12 @@ import json
 import inspect
 import pickle
 
-from caflib.Utils import slugify
 from caflib.Logging import error
 from caflib.Cellar import get_hash, State, TaskObject, Cellar, get_hash_bytes
 
 from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
-    NewType, Type, Sequence
+    NewType, Type, Sequence, Iterable
 )
 from caflib.Cellar import Hash, TPath  # noqa
 
@@ -23,32 +22,20 @@ Contents = NewType('Contents', str)
 class Target:
     all_targets: Set[Path] = set()
 
-    def __init__(self) -> None:
-        self.path: Optional[Path] = None
+    def __init__(self, path: Path, task: 'Task') -> None:
+        self.path = path
+        self.task = task
+        task.parents.append(self)
 
     @property
     def children(self) -> Dict[str, 'Task']:
-        assert self.path and self.task
         return {self.path.name: self.task}
 
     def __repr__(self) -> str:
         return f"<Target '{self.path}'>"
 
     def __str__(self) -> str:
-        assert self.path
         return str(self.path.parent) if len(self.path.parts) > 1 else ''
-
-    def set_task(self, task: 'Task', path: TPath) -> None:
-        try:
-            self.path = Path(slugify(path, path=True))
-        except TypeError:
-            error(f'Target path {path!r} is not a string')
-        if self.path in Target.all_targets:
-            error(f'Multiple definitions of target "{self.path}"')
-        assert self.path
-        Target.all_targets.add(self.path)
-        self.task = task
-        task.parents.append(self)
 
 
 class UnknownInputType(Exception):
@@ -240,7 +227,7 @@ class Configuration(NamedTuple):
     labels: Dict[Hash, TPath]
 
 
-def get_configuration(tasks: List[Task], targets: List[Target]) -> Configuration:
+def get_configuration(tasks: List[Task], targets: Iterable[Target]) -> Configuration:
     return Configuration(
         {task.hashid: task.obj for task in tasks},
         {TPath(str(target.path)): target.task.hashid for target in targets},
@@ -255,7 +242,7 @@ class Context:
         self.top = top
         self.cellar = cellar
         self.tasks: List[Task] = []
-        self.targets: List[Target] = []
+        self.targets: Dict[Path, Target] = {}
         self.inputs: Dict[Hash, Union[str, bytes]] = {}
         self._sources: Dict[Path, Hash] = {}
         self.conf_only = conf_only
@@ -268,9 +255,11 @@ class Context:
     ) -> Task:
         task = klass(ctx=self, **kwargs)
         if target:
-            targetnode = Target()
-            self.targets.append(targetnode)
-            targetnode.set_task(task, TPath(target))
+            path = Path(target)
+            if path in self.targets:
+                error(f'Multiple definitions of target {target!r}')
+            targetnode = Target(path, task)
+            self.targets[path] = targetnode
         self.tasks.append(task)
         return task
 
