@@ -6,12 +6,12 @@ import re
 from typing import Dict, Pattern, Optional
 
 
-regexes: Dict[str, Pattern] = {}
+_regexes: Dict[str, Pattern] = {}
 
 
 def match_glob(path: str, pattern: str) -> Optional[str]:
-    if pattern in regexes:
-        regex = regexes[pattern]
+    if pattern in _regexes:
+        regex = _regexes[pattern]
     else:
         regex = re.compile(
             pattern
@@ -28,7 +28,7 @@ def match_glob(path: str, pattern: str) -> Optional[str]:
             .replace('*', '[^/]*')
             .replace(r'\\', '.*') + '$'
         )
-        regexes[pattern] = regex
+        _regexes[pattern] = regex
     m = regex.match(path)
     if not m:
         return None
