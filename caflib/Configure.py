@@ -6,7 +6,7 @@ import inspect
 import pickle
 
 from caflib.Logging import error
-from caflib.Cellar import get_hash, State, TaskObject, Cellar, get_hash_bytes
+from caflib.Cellar import get_hash, State, TaskObject, Cellar
 
 from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
@@ -281,7 +281,7 @@ class Context:
         return hashid
 
     def store_bytes(self, content: bytes) -> Hash:
-        hashid = get_hash_bytes(content)
+        hashid = get_hash(content)
         if hashid not in self.inputs:
             self.inputs[hashid] = content
         return hashid

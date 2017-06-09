@@ -52,11 +52,9 @@ sqlite3.register_converter('state', lambda x: State(int(x)))  # type: ignore
 sqlite3.register_adapter(State, lambda state: cast(int, state.value))
 
 
-def get_hash(text: str) -> Hash:
-    return get_hash_bytes(text.encode())
-
-
-def get_hash_bytes(text: bytes) -> Hash:
+def get_hash(text: Union[str, bytes]) -> Hash:
+    if isinstance(text, str):
+        text = text.encode()
     return Hash(hashlib.sha1(text).hexdigest())
 
 
@@ -138,12 +136,12 @@ def copy_to(src: Path, dst: Path) -> None:
 
 class Cellar:
     def __init__(self, path: os.PathLike) -> None:
-        fullpath = Path(path).resolve()
-        self.objects = fullpath/'objects'
+        path = Path(path).resolve()
+        self.objects = path/'objects'
         self.objectdb: Set[Hash] = set()
         try:
             self.db = sqlite3.connect(
-                str(fullpath/'index.db'),
+                str(path/'index.db'),
                 detect_types=sqlite3.PARSE_COLNAMES
             )
         except sqlite3.OperationalError:
@@ -279,7 +277,7 @@ class Cellar:
                         filehash = get_hash(f.read())
                 except UnicodeDecodeError:
                     with path.open('rb') as f:
-                        filehash = get_hash_bytes(f.read())
+                        filehash = get_hash(f.read())
                 self.store_file(filehash, path)
                 hashed_outputs[name] = filehash
         assert hashed_outputs is not None
