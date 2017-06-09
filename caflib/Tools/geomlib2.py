@@ -112,9 +112,9 @@ class Molecule(Sized, Iterable):
 
 
 class Crystal(Molecule):
-    def __init__(self, species: List[str], coords: np.ndarray,
-                 lattice: np.ndarray, **kwargs: Any) -> None:
-        self.lattice = np.array(lattice)
+    def __init__(self, species: List[str], coords: List[Vec],
+                 lattice: List[Vec], **kwargs: Any) -> None:
+        self.lattice = lattice
         Molecule.__init__(self, species, coords, **kwargs)
 
     def dump(self, f: IO[str], fmt: str) -> None:
@@ -132,23 +132,28 @@ class Crystal(Molecule):
     def copy(self) -> 'Crystal':
         return Crystal(self.species.copy(), self.coords.copy(), self.lattice.copy())
 
+    @property
+    def abc(self) -> np.ndarray:
+        return np.array(self.lattice)
+
     def get_kgrid(self, density: float = 0.06) -> Tuple[int, int, int]:
-        rec_lattice = 2*np.pi*np.linalg.inv(self.lattice.T)
+        rec_lattice = 2*np.pi*np.linalg.inv(self.abc.T)
         rec_lens = np.sqrt((rec_lattice**2).sum(1))
         nkpts = np.ceil(rec_lens/(density*bohr))
         return int(nkpts[0]), int(nkpts[1]), int(nkpts[2])
 
     def supercell(self, ns: Tuple[int, int, int]) -> 'Crystal':
+        abc = self.abc
         latt_vectors = np.array([
-            sum(s*vec for s, vec in zip(shift, self.lattice))
+            sum(s*vec for s, vec in zip(shift, abc))
             for shift in product(*map(range, ns))
         ])
         species = list(chain.from_iterable(repeat(self.species, len(latt_vectors))))
         coords = [
-            tuple(vec) for vec in
+            (x, y, z) for x, y, z in
             (self.xyz[None, :, :]+latt_vectors[:, None, :]).reshape((-1, 3))
         ]
-        lattice = self.lattice*np.array(ns)[:, None]
+        lattice = [(x, y, z) for x, y, z in abc*np.array(ns)[:, None]]
         if self.constrains:
             constrains = DefaultDict[Union[str, int], List[str]](list)
             for i in range(len(species)):
