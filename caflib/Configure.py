@@ -251,13 +251,14 @@ def get_configuration(tasks: List[Task], targets: List[Target]) -> Configuration
 class Context:
     """Represent a build configuration: tasks and targets."""
 
-    def __init__(self, top: Path, cellar: Cellar) -> None:
+    def __init__(self, top: Path, cellar: Cellar, conf_only: bool = False) -> None:
         self.top = top
         self.cellar = cellar
         self.tasks: List[Task] = []
         self.targets: List[Target] = []
         self.inputs: Dict[Hash, Union[str, bytes]] = {}
         self._sources: Dict[Path, Hash] = {}
+        self.conf_only = conf_only
 
     def __call__(
             self, *,

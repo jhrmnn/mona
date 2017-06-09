@@ -178,7 +178,7 @@ def conf(caf: Caf) -> None:
         else:
             (caf.cafdir/'objects').mkdir()
     cellar = Cellar(caf.cafdir)
-    ctx = Context(caf.top, cellar)
+    ctx = Context(caf.top, cellar, conf_only=True)
     try:
         caf.cscript.run(ctx)  # type: ignore
     except Exception as e:
