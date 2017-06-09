@@ -15,7 +15,6 @@ import subprocess as sp
 from configparser import ConfigParser
 import signal
 import json
-import importlib.util
 
 from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
 from caflib.Logging import error, info, Table, colstr, warn, no_cafdir, \
@@ -37,11 +36,9 @@ from types import ModuleType
 
 
 def import_cscript() -> Union[ModuleType, object]:
-    spec = importlib.util.spec_from_file_location('cscript', 'cscript.py')
-    cscript = importlib.util.module_from_spec(spec)
     try:
-        spec.loader.exec_module(cscript)  # type: ignore
-    except FileNotFoundError:
+        import cscript
+    except ModuleNotFoundError:
         return object()
     return cscript
 
