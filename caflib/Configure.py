@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from pathlib import Path
-import json
 import inspect
 import pickle
 
@@ -64,7 +63,7 @@ class Task:
             symlinks: Sequence[Tuple[str, str]] = None,
             ctx: 'Context'
     ) -> None:
-        self.obj = TaskObject(command, {}, {}, {}, {}, {})
+        self.obj = TaskObject(command)
         file: InputTarget
         if inputs:
             for item in inputs:
@@ -96,7 +95,7 @@ class Task:
                 if not isinstance(target, str) and not isinstance(source, str):
                     raise UnknownSymlinkType((target, source))
                 self.obj.symlinks[str(Path(target))] = str(Path(source))
-        self.hashid: Hash = get_hash(json.dumps(self.obj.asdict(), sort_keys=True))
+        self.hashid: Hash = self.obj.hashid
         Task.tasks[self.hashid] = self
         self.parents: List[Union[Target, Task]] = []
         self.ctx = ctx

@@ -60,29 +60,39 @@ def get_hash_bytes(text: bytes) -> Hash:
     return Hash(hashlib.sha1(text).hexdigest())
 
 
-class TaskObject(NamedTuple):
-    command: str
-    inputs: Dict[str, Hash]
-    symlinks: Dict[str, str]
-    children: Dict[str, Hash]
-    childlinks: Dict[str, Tuple[str, str]]
-    outputs: Dict[str, Hash]
+class TaskObject:
+    def __init__(self,
+                 command: str,
+                 inputs: Dict[str, Hash] = None,
+                 symlinks: Dict[str, str] = None,
+                 children: Dict[str, Hash] = None,
+                 childlinks: Dict[str, Tuple[str, str]] = None,
+                 outputs: Optional[Dict[str, Hash]] = None) -> None:
+        self.command = command
+        self.inputs = inputs or {}
+        self.symlinks = symlinks or {}
+        self.children = children or {}
+        self.childlinks = childlinks or {}
+        self.outputs = outputs
 
     def asdict(self) -> Dict[str, Any]:
-        obj = self._asdict()
-        if not self.outputs:
-            del obj['outputs']
-        return obj
+        dct = vars(self).copy()
+        if self.outputs is None:
+            del dct['outputs']
+        return dct
 
     @property
     def data(self) -> str:
         return json.dumps(self.asdict())
 
+    @property
+    def hashid(self) -> Hash:
+        return get_hash(json.dumps(self.asdict(), sort_keys=True))
+
     @classmethod
     def from_data(cls, data: bytes) -> 'TaskObject':
-        obj: Dict[str, Any] = json.loads(data)
-        obj.setdefault('outputs', {})
-        return cls(**obj)
+        dct: Dict[str, Any] = json.loads(data)
+        return cls(**dct)
 
 
 sqlite3.register_converter('task', TaskObject.from_data)  # type: ignore
@@ -200,7 +210,7 @@ class Cellar:
         for task in tree.objects.values():
             for filehash in task.inputs.values():
                 self.execute('insert into retain values (?)', (filehash,))
-            for filehash in task.outputs.values():
+            for filehash in (task.outputs or {}).values():
                 self.execute('insert into retain values (?)', (filehash,))
         retain: Set[Hash] = set(
             hashid for hashid, in self.db.execute('select hash from retain')
@@ -246,8 +256,9 @@ class Cellar:
     ) -> None:
         task = self.get_task(hashid)
         assert task
-        task.outputs.clear()
-        task.outputs.update(outputs)
+        if task.outputs:
+            task.outputs.clear()
+            task.outputs.update(outputs)
         self.execute(
             'update tasks set task = ?, state = ? where hash = ?',
             (task, state, hashid)
@@ -388,7 +399,7 @@ class Cellar:
             else:
                 symlink_to(Path(child)/source, path/target)
             all_files.append(target)
-        for target, filehash in task.outputs.items():
+        for target, filehash in (task.outputs or {}).items():
             copier(self.get_file(filehash), path/target)
             all_files.append(target)
         return all_files
@@ -458,7 +469,7 @@ class Cellar:
                 targets.append((childhash, childpath))
             if not any(match_glob(str(path), patt) for patt in patterns):
                 continue
-            if finished and 'outputs' not in tasks[hashid]:
+            if finished and tasks[hashid].outputs is None:
                 continue
             rootpath = root/path
             if hashid in paths:
