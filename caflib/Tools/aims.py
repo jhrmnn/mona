@@ -8,7 +8,7 @@ from pathlib import Path
 import shutil
 
 from typing import Callable, Dict, Tuple, Any
-from caflib.Tools import geomlib  # noqa
+from caflib.Tools import geomlib2  # noqa
 from caflib.Configure import Contents
 
 _reported: Dict[str, Tuple[Callable[[str], None], str]] = {}
@@ -48,7 +48,7 @@ class AimsTask(Task):
             self, *,
             aims: str,
             basis: str,
-            geom: geomlib.Molecule,
+            geom: geomlib2.Molecule,
             tags: Dict[str, Any],
             check: bool = True,
             **kwargs: Any
@@ -72,7 +72,7 @@ class AimsTask(Task):
                     lines.append('override_warning_libxc')
                 lines.append(f'{tag}  {p2f(value)}')
         basis_root = aims_path.parents[1]/'aimsfiles/species_defaults'/basis
-        species = sorted(set((a.number, a.specie) for a in geom))
+        species = set(zip(geom.numbers, geom.species))
         for number, specie in species:
             if (basis, specie) not in species_db:
                 with (basis_root/f'{number:02d}_{specie}_default').open() as f:
