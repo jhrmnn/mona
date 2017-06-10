@@ -181,7 +181,8 @@ class PickledTask(Task):
     def result(self) -> Any:
         taskobj = self.ctx.cellar.get_task(self.hashid)
         assert taskobj
-        assert taskobj.outputs
+        if taskobj.outputs is None:
+            raise RuntimeError(f'{self!r} has no outputs')
         filehash = taskobj.outputs['_result.pickle']
         with open(self.ctx.cellar.get_file(filehash), 'rb') as f:
             return pickle.load(f)

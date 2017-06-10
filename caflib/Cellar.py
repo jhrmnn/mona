@@ -261,9 +261,7 @@ class Cellar:
     ) -> None:
         task = self.get_task(hashid)
         assert task
-        if task.outputs:
-            task.outputs.clear()
-            task.outputs.update(outputs)
+        task.outputs = outputs
         self.execute(
             'update tasks set task = ?, state = ? where hash = ?',
             (task, state, hashid)
