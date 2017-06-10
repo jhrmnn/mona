@@ -43,7 +43,7 @@ class Remote:
     def command(self, cmd: str, inp: str = None, _get_output: bool = False) -> Optional[str]:
         if not _get_output:
             info(f'Running `./caf {cmd}` on {self.host}...')
-        inp_bytes = inp.encode() if inp else None
+        inp_bytes = inp.encode() if inp is not None else None
         try:
             output = sp.run([  # type: ignore
                 'ssh',
