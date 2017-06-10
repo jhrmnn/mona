@@ -73,6 +73,13 @@ class TaskObject:
         self.childlinks = childlinks or {}
         self.outputs = outputs
 
+    def __repr__(self) -> str:
+        return (
+            f'<TaskObj command={self.command!r} inputs={self.inputs!r} '
+            f'symlinks={self.symlinks!r} children={self.children!r} '
+            f'childlinks={self.childlinks!r} outputs={self.outputs!r}>'
+        )
+
     def asdict(self) -> Dict[str, Any]:
         dct = vars(self).copy()
         if self.outputs is None:
