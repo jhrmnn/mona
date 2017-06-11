@@ -5,7 +5,6 @@ from pathlib import Path
 import os
 import shutil
 import sys
-from textwrap import dedent
 import subprocess as sp
 from configparser import ConfigParser
 import signal
@@ -15,18 +14,15 @@ from .Utils import get_timestamp, cd, config_items, groupby, listify
 from .Logging import error, info, Table, colstr, warn, no_cafdir, \
     handle_broken_pipe
 from . import Logging
-from .CLI import CLI, CLIExit
-from .CLI2 import Arg, define_cli, CLI as CLI2
+from .CLI import Arg, define_cli, CLI
 from .Cellar import Cellar, State, Hash, TPath
 from .Remote import Remote, Local
 from .Configure import Context, get_configuration
 from .Scheduler import RemoteScheduler, Scheduler
 from .Announcer import Announcer
 
-from docopt import docopt, DocoptExit
-
 from typing import (  # noqa
-    Any, Union, Dict, List, Optional, Set, Iterable
+    Any, Union, Dict, List, Optional, Set, Iterable, Sequence
 )
 from types import ModuleType
 
@@ -39,9 +35,8 @@ def import_cscript() -> Union[ModuleType, object]:
     return cscript
 
 
-class Caf(CLI):
+class Caf:
     def __init__(self) -> None:
-        super().__init__('caf')
         self.cafdir = Path('.caf')
         self.config = ConfigParser()
         self.config.read([  # type: ignore
@@ -57,80 +52,65 @@ class Caf(CLI):
             for name, r in config_items(self.config, 'remote')
         }
         self.remotes['local'] = Local()
+        self.cli = CLI([
+            ('conf', conf),
+            ('make', make),
+            ('checkout', checkout),
+            ('submit', submit),
+            ('reset', reset),
+            ('list', [
+                ('profiles', list_profiles),
+                ('remotes', list_remotes),
+                ('builds', list_builds),
+                ('task', list_tasks),
+            ]),
+            ('status', status),
+            ('gc', gc),
+            ('cmd', cmd),
+            ('remote', [
+                ('add', remote_add),
+                ('path', remote_path),
+                ('list', list_remotes),
+            ]),
+            ('update', update),
+            ('check', check),
+            ('fetch', fetch),
+            ('archive', [
+                ('save', archive_store),
+            ]),
+            ('go', go),
+        ], args=(self,))
 
-    def __call__(self, argv: List[str], *_: CLI) -> None:
+    def __call__(self, args: List[str] = sys.argv[1:]) -> None:
         if self.cafdir.exists():
             with (self.cafdir/'log').open('a') as f:
-                f.write(f'{get_timestamp()}: {" ".join(argv)}\n')
-        try:
-            if set([
-                    'checkout', 'remote', '--help', 'conf', 'make'
-            ]) & set(argv):
-                cli2 = CLI2([
-                    ('conf', conf),
-                    ('make', make),
-                    ('checkout', checkout),
-                    ('remote', [
-                        ('add', remote_add),
-                        ('path', remote_path),
-                    ]),
-                ], args=(self,))
-                cli2.parse(sys.argv[1:])
-            else:
-                super().__call__(argv)  # try CLI as if local
-        except CLIExit as e:  # store exception for reraise if remote fails too
-            cliexit = e
-        else:
+                f.write(f'{get_timestamp()}: {" ".join(args)}\n')
+        if '--last' in args:
+            with (self.cafdir/'LAST_QUEUE').open() as f:
+                queue_url = f.read().strip()
+            last_index = args.index('--last')
+            args = args[:last_index] + ['--queue', queue_url] \
+                + args[last_index+1:]
+        if args[0] not in self.remotes:
+            self.cli.run(args)
             return
-        # the local CLI above did not succeed, make a usage without local CLI
-        usage = '\n'.join(
-            l for l in str(self).splitlines() if 'caf COMMAND' not in l
-        )
-        try:  # parse local
-            args = docopt(usage, argv=argv[1:], options_first=True, help=False)
-        except DocoptExit:  # remote CLI failed too, reraise CLIExit
-            raise cliexit
-        rargv: List[str] = [argv[0], args['COMMAND']] + args['ARGS']  # remote argv
-        try:  # try CLI as will be seen on remote
-            rargs = self.parse(rargv)
-        except DocoptExit:  # remote CLI failed too, reraise CLIExit
-            raise cliexit
-        if 'make' in rargs:
-            # this substitues only locally known values
-            if rargs['--queue']:  # substitute URL
-                queue = self.get_queue_url(rargs['--queue'])
-                rargv = [
-                    arg if arg != rargs['--queue'] else queue for arg in rargv
-                ]
-            elif rargs['--last']:
-                with (self.cafdir/'LAST_QUEUE').open() as f:
-                    queue_url = f.read().strip()
-                last_index = rargv.index('--last')
-                rargv = rargv[:last_index] + ['--queue', queue_url] \
-                    + rargv[last_index+1:]
-        remotes = self.proc_remote(args['REMOTE'])  # get Remote objects
-        if args['COMMAND'] in ['conf', 'make']:
+        remote_spec, *args = args
+        kwargs = self.cli.parse(args)
+        if 'make' in args and 'url' in kwargs:
+            queue = self.get_queue_url(kwargs['url'])
+            args = [
+                arg if arg != kwargs['url'] else queue for arg in args
+            ]
+        remotes = self.proc_remote(remote_spec)
+        if args[0] in ['conf', 'make']:
             for remote in remotes:
                 remote.update()
-        if 'make' in rargs:
-            for remote in remotes:
-                self.commands[('check',)]._func(self, remotes)  # type: ignore
+        if args[0] == 'make':
+            check(self, remote_spec)
         for remote in remotes:
             remote.command(' '.join(
-                arg if ' ' not in arg else repr(arg) for arg in rargv[1:]
+                arg if ' ' not in arg else repr(arg) for arg in args
             ))
-
-    def __format__(self, fmt: str) -> str:
-        if fmt == 'header':
-            return 'Caf -- Calculation framework.'
-        if fmt == 'usage':
-            s = """\
-            Usage:
-                caf COMMAND [ARGS...]
-                caf REMOTE COMMAND [ARGS...]
-            """.rstrip()
-            return dedent(s)
-        return super().__format__(fmt)
 
     def proc_remote(self, remotes: str) -> List[Union[Remote, Local]]:
         if remotes == 'all':
@@ -214,7 +194,7 @@ def sig_handler(sig: Any, frame: Any) -> Any:
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be built'),
     Arg('-l', '--limit', type=int, help='Limit number of tasks to N'),
     Arg('-p', '--profile', help='Run worker via ~/.config/caf/worker_PROFILE'),
-    Arg('-j', dest='n', help='Number of launched workers [default: 1]'),
+    Arg('-j', dest='n', type=int, help='Number of launched workers [default: 1]'),
     Arg('-q', '--queue', dest='url', help='Take tasks from web queue'),
     Arg('-v', '--verbose', action='store_true'),
     Arg('--maxerror', type=int, help='Number of errors in row to quit [default: 5]'),
@@ -369,8 +349,12 @@ def checkout(caf: Caf,
         }, sys.stdout)
 
 
-@Caf.command(mapping=dict(patterns='PATH', url='URL', append='--append'))
-def submit(caf: Caf, patterns: List[str], url: str, append: bool) -> None:
+@define_cli([
+    Arg('url', metavar='URL'),
+    Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be submitted'),
+    Arg('-a', '--append', action='store_true', help='Append to an existing queue'),
+])
+def submit(caf: Caf, patterns: List[str], url: str, append: bool = False) -> None:
     """
     Submit the list of prepared tasks to a queue server.
 
@@ -402,7 +386,12 @@ def submit(caf: Caf, patterns: List[str], url: str, append: bool) -> None:
             f.write(queue_url)
 
 
-@Caf.command(mapping=dict(patterns='PATH', hard='--hard', running='--running'))
+@define_cli([
+    Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be reset'),
+    Arg('--running', action='store_true', help='Also reset running tasks'),
+    Arg('--hard', action='store_true',
+        help='Also reset finished tasks and remove outputs'),
+])
 def reset(caf: Caf, patterns: List[str], hard: bool, running: bool) -> None:
     """
     Remove all temporary checkouts and set tasks to clean.
@@ -439,12 +428,8 @@ def reset(caf: Caf, patterns: List[str], hard: bool, running: bool) -> None:
                 cellar.reset_task(hashid)
 
 
-caf_list = CLI('list', header='List various entities.')
-Caf.commands[('list',)] = caf_list
-
-
-@caf_list.add_command(name='profiles')
-def list_profiles(caf: Caf, _: Any) -> None:
+@define_cli()
+def list_profiles(caf: Caf) -> None:
     """
     List profiles.
 
@@ -455,8 +440,8 @@ def list_profiles(caf: Caf, _: Any) -> None:
         print(p.name)
 
 
-@caf_list.add_command(name='remotes')
-def list_remotes(caf: Caf, _: Any) -> None:
+@define_cli()
+def list_remotes(caf: Caf) -> None:
     """
     List remotes.
 
@@ -468,8 +453,8 @@ def list_remotes(caf: Caf, _: Any) -> None:
         print(f'\t{remote["host"]}:{remote["path"]}')
 
 
-@caf_list.add_command(name='builds')
-def list_builds(caf: Caf, _: Any) -> None:
+@define_cli()
+def list_builds(caf: Caf) -> None:
     """
     List builds.
 
@@ -483,14 +468,35 @@ def list_builds(caf: Caf, _: Any) -> None:
     print(table)
 
 
-@caf_list.add_command(name='tasks', mapping=dict(
-    do_finished='--finished', do_running='--running', do_error='--error',
-    do_unfinished='--unfinished', disp_hash='--hash', disp_path='--path',
-    patterns='PATH', disp_tmp='--tmp', no_color='--no-color'))
-def list_tasks(caf: Caf, _: Any, do_finished: bool, do_running: bool,
-               do_error: bool, do_unfinished: bool, disp_hash: bool,
-               disp_path: bool, patterns: List[str], disp_tmp: bool,
-               no_color: bool) -> None:
+@define_cli([
+    Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be listed'),
+    Arg('--finished', dest='do_finished', action='store_true',
+        help='List finished tasks'),
+    Arg('--unfinished', dest='do_unfinished', action='store_true',
+        help='List unfinished tasks'),
+    Arg('--running', dest='do_running', action='store_true',
+        help='List running tasks'),
+    Arg('--error', dest='do_error', action='store_true',
+        help='List tasks in error'),
+    Arg('--hash', dest='disp_hash', action='store_true',
+        help='Display task hash'),
+    Arg('--path', dest='disp_path', action='store_true',
+        help='Display task virtual path'),
+    Arg('--tmp', dest='disp_tmp', action='store_true',
+        help='Display temporary path'),
+    Arg('--no-color', dest='no_color', action='store_true',
+        help='Do not color paths')
+])
+def list_tasks(caf: Caf,
+               patterns: List[str],
+               do_finished: bool = False,
+               do_unfinished: bool = False,
+               do_running: bool = False,
+               do_error: bool = False,
+               disp_hash: bool = False,
+               disp_path: bool = False,
+               disp_tmp: bool = False,
+               no_color: bool = False) -> None:
     """
     List tasks.
 
@@ -548,8 +554,12 @@ def list_tasks(caf: Caf, _: Any, do_finished: bool, do_running: bool,
             break
 
 
-@Caf.command(mapping=dict(patterns='PATH', incomplete='--incomplete'))
-def status(caf: Caf, patterns: List[str], incomplete: bool) -> None:
+@define_cli([
+    Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be reset'),
+    Arg('-i', '--incomplete', action='store_true',
+        help='Print only incomplete patterns'),
+])
+def status(caf: Caf, patterns: List[str], incomplete: bool = False) -> None:
     """
     Print number of initialized, running and finished tasks.
 
@@ -610,8 +620,10 @@ def status(caf: Caf, patterns: List[str], incomplete: bool) -> None:
     print(table)
 
 
-@Caf.command(mapping=dict(gc_all='--all'))
-def gc(caf: Caf, gc_all: bool) -> None:
+@define_cli([
+    Arg('-a', '--all', action='store_true', help='Discard all nonactive tasks'),
+])
+def gc(caf: Caf, gc_all: bool = False) -> None:
     """
     Discard running and error tasks.
 
@@ -629,7 +641,10 @@ def gc(caf: Caf, gc_all: bool) -> None:
         cellar.gc()
 
 
-@Caf.command(mapping=dict(cmd='CMD'))
+@define_cli([
+    Arg('cmd', metavar='CMD',
+        help='This is a simple convenience alias for running commands remotely'),
+])
 def cmd(caf: Caf, cmd: str) -> None:
     """
     Execute any shell command.
@@ -646,7 +661,7 @@ def cmd(caf: Caf, cmd: str) -> None:
     Arg('url', metavar='URL'),
     Arg('name', metavar='NAME', nargs='?')
 ])
-def remote_add(caf: Caf, url: str, name: str) -> None:
+def remote_add(caf: Caf, url: str, name: str = None) -> None:
     """
     Add a remote.
 
@@ -678,8 +693,11 @@ def remote_path(caf: Caf, _: Any, name: str) -> None:
     print('{0[host]}:{0[path]}'.format(caf.config[f'remote "{name}"']))
 
 
-@Caf.command(mapping=dict(delete='--delete', remotes=('REMOTE', 'proc_remote')))
-def update(caf: Caf, delete: bool, remotes: List[Union[Remote, Local]]) -> None:
+@define_cli([
+    Arg('remotes', metavar='REMOTE'),
+    Arg('--delete', action='store_true', help='Delete files when syncing'),
+])
+def update(caf: Caf, remotes: str, delete: bool = False) -> None:
     """
     Update a remote.
 
@@ -689,12 +707,14 @@ def update(caf: Caf, delete: bool, remotes: List[Union[Remote, Local]]) -> None:
     Options:
         --delete                   Delete files when syncing.
     """
-    for remote in remotes:
+    for remote in caf.proc_remote(remotes):
         remote.update(delete=delete)
 
 
-@Caf.command(mapping=dict(remotes=('REMOTE', 'proc_remote')))
-def check(caf: Caf, remotes: List[Union[Remote, Local]]) -> None:
+@define_cli([
+    Arg('remotes', metavar='REMOTE'),
+])
+def check(caf: Caf, remotes: str) -> None:
     """
     Verify that hashes of the local and remote tasks match.
 
@@ -705,14 +725,19 @@ def check(caf: Caf, remotes: List[Union[Remote, Local]]) -> None:
     hashes = {
         label: hashid for hashid, (_, label, *__) in scheduler.get_queue().items()
     }
-    for remote in remotes:
+    for remote in caf.proc_remote(remotes):
         remote.check(hashes)
 
 
-@Caf.command(mapping=dict(
-    patterns='PATH', remotes=('REMOTE', 'proc_remote'), nofiles='--no-files'))
-def fetch(caf: Caf, patterns: List[str], remotes: List[Union[Remote, Local]],
-          nofiles: bool) -> None:
+@define_cli([
+    Arg('remotes', metavar='REMOTE'),
+    Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to fetch'),
+    Arg('--no-files', action='store_true', help='Fetch task metadata, but not files'),
+])
+def fetch(caf: Caf,
+          patterns: List[str],
+          remotes: str,
+          no_files: bool = False) -> None:
     """
     Fetch targets from remote.
 
@@ -729,25 +754,24 @@ def fetch(caf: Caf, patterns: List[str], remotes: List[Union[Remote, Local]],
         hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
     else:
         hashes = set(states)
-    for remote in remotes:
+    for remote in caf.proc_remote(remotes):
         tasks = remote.fetch([
             hashid for hashid in hashes if states[hashid] == State.CLEAN
-        ] if nofiles else [
+        ] if no_files else [
             hashid for hashid in hashes
             if states[hashid] in (State.CLEAN, State.DONEREMOTE)
-        ], files=not nofiles)
+        ], files=not no_files)
         for hashid, task in tasks.items():
-            if not nofiles:
+            if not no_files:
                 cellar.seal_task(hashid, hashed_outputs=task['outputs'])
-            scheduler.task_done(hashid, remote=remote.host if nofiles else None)
+            scheduler.task_done(hashid, remote=remote.host if no_files else None)
 
 
-caf_archive = CLI('archive', header='Cellar archiving.')
-Caf.commands[('archive',)] = caf_archive
-
-
-@caf_archive.add_command(name='store', mapping=dict(filename='FILE', patterns='PATH'))
-def archive_store(caf: Caf, _: Any, filename: str, patterns: List[str]) -> None:
+@define_cli([
+    Arg('filename', metavar='FILE'),
+    Arg('patterns', metavar='PATTERN', nargs='*'),
+])
+def archive_store(caf: Caf, filename: str, patterns: List[str]) -> None:
     """
     Archives files accessible from the given tasks as tar.gz.
 
@@ -779,13 +803,15 @@ def archive_store(caf: Caf, _: Any, filename: str, patterns: List[str]) -> None:
 #         remote.push(targets, caf.cache, caf.out, dry=dry)
 
 
-@Caf.command(mapping=dict(remotes=('REMOTE', 'proc_remote')))
-def go(caf: Caf, remotes: List[Union[Local, Remote]]) -> None:
+@define_cli([
+    Arg('remotes', metavar='REMOTE'),
+])
+def go(caf: Caf, remotes: str) -> None:
     """
     SSH into the remote caf repository.
 
     Usage:
         caf go REMOTE
     """
-    for remote in remotes:
+    for remote in caf.proc_remote(remotes):
         remote.go()
