@@ -16,6 +16,7 @@ from .Logging import error, info, Table, colstr, warn, no_cafdir, \
     handle_broken_pipe
 from . import Logging
 from .CLI import CLI, CLIExit
+from .CLI2 import Arg, define_cli
 from .Cellar import Cellar, State, Hash, TPath
 from .Remote import Remote, Local
 from .Configure import Context, get_configuration
@@ -297,8 +298,21 @@ def make(caf: Caf,
 
 
 @Caf.command(mapping=dict(
-    path=('--path', Path), patterns='PATH', do_json='--json', force='--force',
-    nth=('-n', int), finished='--finished', nolink='--no-link'))
+    blddir=('--blddir', Path), patterns='PATH', do_json='--json', force='--force',
+    nth=('-n', int), finished='--finished', no_link='--no-link'))
+@define_cli([
+    Arg('patterns', metavar='PATTERN', nargs='*',
+        help='Tasks to be checked out'),
+    Arg('-b', '--blddir', type=Path, default='blddir',
+        help=f'Where to checkout [default: blddir]'),
+    Arg('--json', dest='do_json', action='store_true',
+        help='Do not checkout, print JSONs of hashes from STDIN.'),
+    Arg('-f', '--force', action='store_true', help='Remove PATH if exists'),
+    Arg('-n', dest='nth', type=int, help='Nth build to the past'),
+    Arg('--finished', action='store_true', help='Check out only finished tasks'),
+    Arg('-L', '--no-link', action='store_true',
+        help='Do not create links to cellar, but copy'),
+])
 def checkout(caf: Caf,
              blddir: Path,
              patterns: Iterable[str] = None,
