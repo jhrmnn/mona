@@ -10,4 +10,4 @@ if __name__ == '__main__':
     try:
         caf()
     except KeyboardInterrupt:
-        pass
+        raise SystemExit(2)
