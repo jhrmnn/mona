@@ -12,9 +12,9 @@ import os
 import shutil
 from enum import IntEnum
 
-from caflib.Logging import info, no_cafdir
-from caflib.Utils import make_nonwritable
-from caflib.Glob import match_glob
+from .Logging import info, no_cafdir
+from .Utils import make_nonwritable
+from .Glob import match_glob
 
 from typing import (  # noqa
     NewType, NamedTuple, Dict, Tuple, Any, List, DefaultDict, Iterable,

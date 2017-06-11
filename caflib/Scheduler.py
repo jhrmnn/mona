@@ -7,15 +7,15 @@ from contextlib import contextmanager
 import tempfile
 import shutil
 
-from caflib.Cellar import Cellar, State
-from caflib.Logging import error, debug, no_cafdir
-from caflib.Utils import get_timestamp, sample
-from caflib.Announcer import Announcer
+from .Cellar import Cellar, State
+from .Logging import error, debug, no_cafdir
+from .Utils import get_timestamp, sample
+from .Announcer import Announcer
 
 from typing import (  # noqa
     cast, Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any
 )
-from caflib.Cellar import Hash, TPath  # noqa
+from .Cellar import Hash, TPath  # noqa
 
 
 class Task:

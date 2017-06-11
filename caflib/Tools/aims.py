@@ -1,15 +1,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from caflib.Tools.convert import p2f
-from caflib.Configure import Task
-from caflib.Logging import info, report
+from .convert import p2f
+from ..Configure import Task
+from ..Logging import info, report
 from pathlib import Path
 import shutil
 
 from typing import Callable, Dict, Tuple, Any
-from caflib.Tools import geomlib2  # noqa
-from caflib.Configure import Contents
+from . import geomlib2  # noqa
+from ..Configure import Contents
 
 _reported: Dict[str, Tuple[Callable[[str], None], str]] = {}
 

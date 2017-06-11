@@ -6,10 +6,10 @@ from urllib.request import urlopen
 from urllib.error import HTTPError, URLError
 import socket
 
-from caflib.Logging import error
+from .Logging import error
 
 from typing import Optional, Dict  # noqa
-from caflib.Cellar import Hash, TPath  # noqa
+from .Cellar import Hash, TPath  # noqa
 
 
 class Announcer:

@@ -11,21 +11,21 @@ from configparser import ConfigParser
 import signal
 import json
 
-from caflib.Utils import get_timestamp, cd, config_items, groupby, listify
-from caflib.Logging import error, info, Table, colstr, warn, no_cafdir, \
+from .Utils import get_timestamp, cd, config_items, groupby, listify
+from .Logging import error, info, Table, colstr, warn, no_cafdir, \
     handle_broken_pipe
-import caflib.Logging as Logging
-from caflib.CLI import CLI, CLIExit
-from caflib.Cellar import Cellar, State, Hash, TPath
-from caflib.Remote import Remote, Local
-from caflib.Configure import Context, get_configuration
-from caflib.Scheduler import RemoteScheduler, Scheduler
-from caflib.Announcer import Announcer
+from . import Logging
+from .CLI import CLI, CLIExit
+from .Cellar import Cellar, State, Hash, TPath
+from .Remote import Remote, Local
+from .Configure import Context, get_configuration
+from .Scheduler import RemoteScheduler, Scheduler
+from .Announcer import Announcer
 
 from docopt import docopt, DocoptExit
 
 from typing import (  # noqa
-    Any, Union, Dict, List, Optional, Set
+    Any, Union, Dict, List, Optional, Set, Iterable
 )
 from types import ModuleType
 
@@ -300,21 +300,21 @@ def make(caf: Caf,
     path=('--path', Path), patterns='PATH', do_json='--json', force='--force',
     nth=('-n', int), finished='--finished', nolink='--no-link'))
 def checkout(caf: Caf,
-             path: Path,
-             patterns: List[str],
-             do_json: bool,
-             force: bool,
-             nth: int,
-             finished: bool,
-             nolink: bool) -> None:
+             blddir: Path,
+             patterns: Iterable[str] = None,
+             do_json: bool = False,
+             force: bool = False,
+             nth: int = 0,
+             finished: bool = False,
+             no_link: bool = False) -> None:
     """
     Create the dependecy tree physically on a file system.
 
     Usage:
-        caf checkout [-p PATH | --json] [--no-link] [PATH...] [-f] [-n N] [--finished]
+        caf checkout [-b PATH | --json] [--no-link] [PATH...] [-f] [-n N] [--finished]
 
     Options:
-        -p, --path PATH     Where to checkout [default: build].
+        -b --blddir PATH     Where to checkout [default: build].
         --json              Do not checkout, print JSONs of hashes from STDIN.
         -f, --force         Remove PATH if exists.
         -n N                Nth build to the past [default: 0].
@@ -323,14 +323,14 @@ def checkout(caf: Caf,
     """
     cellar = Cellar(caf.cafdir)
     if not do_json:
-        if path.exists():
+        if blddir.exists():
             if force:
-                shutil.rmtree(path)
+                shutil.rmtree(blddir)
             else:
-                error(f'Cannot checkout to existing path: {path}')
+                error(f'Cannot checkout to existing path: {blddir}')
         cellar.checkout(
-            path, patterns=patterns or ['**'], nth=nth, finished=finished,
-            nolink=nolink
+            blddir, patterns=patterns or ['**'], nth=nth, finished=finished,
+            nolink=no_link
         )
     else:
         hashes = [Hash(l.strip()) for l in sys.stdin.readlines()]

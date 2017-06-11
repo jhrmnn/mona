@@ -6,10 +6,10 @@ import os
 import json
 from pathlib import Path
 
-from caflib.Logging import info, error
+from .Logging import info, error
 
 from typing import List, Optional, cast, Dict, Iterable, Any, Callable  # noqa
-from caflib.Cellar import Hash, TPath
+from .Cellar import Hash, TPath
 
 
 class Remote:

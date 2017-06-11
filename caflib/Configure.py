@@ -5,14 +5,14 @@ from pathlib import Path
 import inspect
 import pickle
 
-from caflib.Logging import error
-from caflib.Cellar import get_hash, State, TaskObject, Cellar
+from .Logging import error
+from .Cellar import get_hash, State, TaskObject, Cellar
 
 from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
     NewType, Type, Sequence, Iterable
 )
-from caflib.Cellar import Hash, TPath  # noqa
+from .Cellar import Hash, TPath  # noqa
 
 
 Contents = NewType('Contents', str)

@@ -12,7 +12,7 @@ from typing import (  # noqa
     Optional
 )
 
-from caflib.Tools import geomlib
+from . import geomlib
 
 
 specie_data = geomlib.Atom.data
