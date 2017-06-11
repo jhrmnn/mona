@@ -199,16 +199,14 @@ def conf(caf: Caf) -> None:
         traceback.print_exc()
         error('There was an error when executing run()')
     conf = ctx.get_configuration()
-    tasks = dict(cellar.store_build(conf))
-    labels: Dict[Hash, Optional[TPath]] = {hashid: None for hashid in tasks}
-    for tpath, hashid in cellar.get_tree(hashes=tasks.keys()).items():
-        if not labels[hashid]:
-            labels[hashid] = tpath
-    if any(label is None for label in labels.values()):
+    states = cellar.store_build(conf)
+    if any(label[0] == '?' for label in conf.labels.values()):
         warn('Some tasks are not accessible.')
-    taskdefs = [(hashid, state, labels[hashid] or '?') for hashid, state in tasks.items()]
+    tasks = [
+        (hashid, state, conf.labels[hashid]) for hashid, state in states.items()
+    ]
     scheduler = Scheduler(caf.cafdir)
-    scheduler.submit(taskdefs)
+    scheduler.submit(tasks)
 
 
 def sig_handler(sig: Any, frame: Any) -> Any:

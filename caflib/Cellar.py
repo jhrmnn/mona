@@ -297,7 +297,7 @@ class Cellar:
     def reset_task(self, hashid: Hash) -> None:
         self._update_outputs(hashid, State.CLEAN, {})
 
-    def store_build(self, conf: Configuration) -> Iterable[Tuple[Hash, State]]:
+    def store_build(self, conf: Configuration) -> Dict[Hash, State]:
         self.execute('drop table if exists current_tasks')
         self.execute('create temporary table current_tasks(hash text)')
         self.executemany('insert into current_tasks values (?)', (
@@ -337,10 +337,10 @@ class Cellar:
             else:
                 self.store_bytes(hashid, text)
         self.commit()
-        return self.execute(
+        return dict(self.execute(
             'select tasks.hash, state as "[state]" from tasks join current_tasks '
             'on tasks.hash = current_tasks.hash',
-        ).fetchall()
+        ).fetchall())
 
     def get_tasks(self, hashes: Iterable[Hash]) -> Dict[Hash, TaskObject]:
         hashes = list(hashes)

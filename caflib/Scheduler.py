@@ -62,7 +62,7 @@ class Scheduler:
         if self.db.isolation_level is not None:
             self.db.commit()
 
-    def submit(self, tasks: List[Tuple[Hash, State, str]]) -> None:
+    def submit(self, tasks: List[Tuple[Hash, State, TPath]]) -> None:
         self.execute('drop table if exists current_tasks')
         self.execute('create temporary table current_tasks(hash text)')
         self.executemany('insert into current_tasks values (?)', (
