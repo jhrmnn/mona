@@ -3,14 +3,9 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from pathlib import Path
 import os
-import io
-import tarfile
-from base64 import b64encode
-from itertools import takewhile
 import shutil
 import sys
 from textwrap import dedent
-import hashlib
 import subprocess as sp
 from configparser import ConfigParser
 import signal
@@ -764,45 +759,3 @@ def go(caf: Caf, remotes: List[Union[Local, Remote]]) -> None:
     """
     for remote in remotes:
         remote.go()
-
-
-@Caf.command()
-def strip(caf: Caf) -> None:
-    """
-    Strip packed caflib from the caf executable.
-
-    Usage:
-        caf strip
-    """
-    with open('caf') as f:
-        lines = takewhile(lambda l: l != '# ==>\n', f.readlines())
-    with open('caf', 'w') as f:
-        for line in lines:
-            f.write(line)
-
-
-@Caf.command()
-def pack(caf: Caf) -> None:
-    """
-    Pack caflib into the caf executable.
-
-    Usage:
-        caf pack
-    """
-    strip(['caf', 'strip'], caf)
-    h = hashlib.new('md5')
-    with io.BytesIO() as ftar:
-        archive = tarfile.open(mode='w|gz', fileobj=ftar)
-        for path in sorted(Path('caflib').glob('**/*.py')):
-            archive.add(str(path))
-            with path.open('rb') as f:
-                h.update(f.read())
-        archive.close()
-        archive = ftar.getvalue()  # type: ignore
-    version = h.hexdigest()
-    tar_string = b64encode(archive).decode()  # type: ignore
-    with open('caf', 'a') as f:
-        f.write('# ==>\n')
-        f.write(f'# version: {version}\n')
-        f.write(f'# archive: {tar_string}\n')
-        f.write('# <==\n')

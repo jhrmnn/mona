@@ -3,80 +3,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import sys
-from pathlib import Path
-import os
 
-from typing import Any, Optional
+from caflib.Caf import Caf
 
-
-def unpack(_: Any, path: Optional[Path], cache: Optional[bool]) -> Optional[str]:
-    """
-    Unpack caflib from the caf executable.
-
-    Usage:
-        caf unpack [--cache] [--path PATH]
-
-    Options:
-        --path PATH        Path to which symlink caflib [default: .caf]
-        --cache            Use cache.
-    """
-    from base64 import b64decode
-    import tarfile
-    import io
-    from tempfile import gettempdir
-    import shutil
-    tmpdir = Path(gettempdir())/('caf_' + os.environ['USER'])
-    if not tmpdir.is_dir():
-        tmpdir.mkdir()
-    with open(__file__) as f:
-        for line in f:
-            if line == '# ==>\n':
-                break
-        else:
-            raise RuntimeError('No packed caflib')
-        version = next(f)[:-1].split(maxsplit=2)[-1]
-        caflibpath = tmpdir/version
-        if caflibpath.is_dir() and not cache:
-            shutil.rmtree(str(caflibpath))
-        if not caflibpath.is_dir():
-            archive = b64decode(next(f)[:-1].split(maxsplit=2)[-1])
-            with io.BytesIO(archive) as ftar:
-                tar = tarfile.open(mode='r|gz', fileobj=ftar)
-                tar.extractall(str(caflibpath))
-    if path:
-        link = path/'caflib'
-        target = caflibpath/'caflib'
-        linktarget = str(target)
-        if link.is_symlink():
-            if os.readlink(str(link)) == linktarget:
-                return None
-            else:
-                link.unlink()
-        if not link.parent.is_dir():
-            link.parent.mkdir()
-        link.symlink_to(linktarget)
-    return str(caflibpath)
-
-
-def init_caflib() -> None:
-    if Path('caflib').is_dir():
-        from caflib.Caf import Caf
-    else:
-        caflibpath = unpack(None, path=None, cache=True)
-        assert caflibpath
-        sys.path.insert(0, caflibpath)
-        try:
-            from caflib.Caf import Caf  # type: ignore
-        except ImportError:
-            unpack(None, path=None, cache=False)
-            from caflib.Caf import Caf  # type: ignore
-    Caf.command(mapping=dict(path=('--path', Path), cache='--cache'))(unpack)
-
-
-init_caflib()
 
 if __name__ == '__main__':
-    from caflib.Caf import Caf
     caf = Caf()
     try:
         caf(sys.argv)

@@ -9,6 +9,8 @@ setup(
     author='Jan Hermann',
     author_email='dev@hermann.in',
     license='MIT',
+    packages=['caflib', 'caflib.extras', 'caflib.Tools'],
+    scripts=['caf'],
     classifieres=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
@@ -22,7 +24,5 @@ setup(
         'Topic :: Software Development :: Build Tools',
         'Topic :: Utilities',
     ],
-    packages=find_packages(),
     install_requires=['docopt'],
-    scripts=['caf'],
 )
