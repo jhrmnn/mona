@@ -144,12 +144,7 @@ class Caf:
 
 @define_cli()
 def conf(caf: Caf) -> None:
-    """
-    Prepare tasks -- process cscript.py and store tasks in cellar.
-
-    Usage:
-        caf conf
-    """
+    """Prepare tasks: process cscript.py and store tasks in cellar."""
     try:
         caf.cscript.run  # type: ignore
     except AttributeError:
@@ -210,24 +205,7 @@ def make(caf: Caf,
          verbose: bool = False,
          maxerror: int = 5,
          randomize: bool = False) -> None:
-    """
-    Execute build tasks.
-
-    Usage:
-        caf make [PATH...] [-v] [--dry] [-p PROFILE [-j N]] [-q URL | --last | -r]
-                 [-l N] [--maxerror N]
-
-    Options:
-        -l, --limit N              Limit number of tasks to N.
-        -p, --profile PROFILE      Run worker via ~/.config/caf/worker_PROFILE.
-        -j N                       Number of launched workers [default: 1].
-        -n, --dry                  Dry run (do not actually work on tasks).
-        -q, --queue URL            Take tasks from web queue.
-        --last                     As above, but use the last submitted queue.
-        -v, --verbose              Be verbose.
-        --maxerror N               Number of errors in row to quit [default: 5].
-        -r, --random               Pick tasks in random order.
-    """
+    """Execute build tasks."""
     if profile:
         cmd = [os.path.expanduser(f'~/.config/caf/worker_{profile}')]
         if verbose:
@@ -316,20 +294,7 @@ def checkout(caf: Caf,
              nth: int = 0,
              finished: bool = False,
              no_link: bool = False) -> None:
-    """
-    Create the dependecy tree physically on a file system.
-
-    Usage:
-        caf checkout [-b PATH | --json] [--no-link] [PATH...] [-f] [-n N] [--finished]
-
-    Options:
-        -b --blddir PATH     Where to checkout [default: build].
-        --json              Do not checkout, print JSONs of hashes from STDIN.
-        -f, --force         Remove PATH if exists.
-        -n N                Nth build to the past [default: 0].
-        --finished          Check out only finished tasks.
-        -L, --no-link       Do not create links to cellar, but copy.
-    """
+    """Create the dependecy tree physically on a file system."""
     cellar = Cellar(caf.cafdir)
     if not do_json:
         if blddir.exists():
@@ -355,15 +320,7 @@ def checkout(caf: Caf,
     Arg('-a', '--append', action='store_true', help='Append to an existing queue'),
 ])
 def submit(caf: Caf, patterns: List[str], url: str, append: bool = False) -> None:
-    """
-    Submit the list of prepared tasks to a queue server.
-
-    Usage:
-        caf submit URL [PATH...] [-a]
-
-    Options:
-        -a, --append        Append to an existing queue.
-    """
+    """Submit the list of prepared tasks to a queue server."""
     url = caf.get_queue_url(url)
     announcer = Announcer(url, caf.config.get('core', 'curl', fallback='') or None)
     scheduler = Scheduler(caf.cafdir)
@@ -393,16 +350,7 @@ def submit(caf: Caf, patterns: List[str], url: str, append: bool = False) -> Non
         help='Also reset finished tasks and remove outputs'),
 ])
 def reset(caf: Caf, patterns: List[str], hard: bool, running: bool) -> None:
-    """
-    Remove all temporary checkouts and set tasks to clean.
-
-    Usage:
-        caf reset [PATH...] [--running] [--hard]
-
-    Options:
-        --running       Also reset running tasks.
-        --hard          Also reset finished tasks and remove outputs.
-    """
+    """Remove all temporary checkouts and set tasks to clean."""
     if hard and input('Are you sure? ["y" to confirm] ') != 'y':
         return
     if hard:
@@ -430,24 +378,14 @@ def reset(caf: Caf, patterns: List[str], hard: bool, running: bool) -> None:
 
 @define_cli()
 def list_profiles(caf: Caf) -> None:
-    """
-    List profiles.
-
-    Usage:
-        caf list profiles
-    """
+    """List profiles."""
     for p in Path.home().glob('.config/caf/worker_*'):
         print(p.name)
 
 
 @define_cli()
 def list_remotes(caf: Caf) -> None:
-    """
-    List remotes.
-
-    Usage:
-        caf list remotes
-    """
+    """List remotes."""
     for name, remote in config_items(caf.config, 'remote'):
         print(name)
         print(f'\t{remote["host"]}:{remote["path"]}')
@@ -455,12 +393,7 @@ def list_remotes(caf: Caf) -> None:
 
 @define_cli()
 def list_builds(caf: Caf) -> None:
-    """
-    List builds.
-
-    Usage:
-        caf list builds
-    """
+    """List builds."""
     cellar = Cellar(caf.cafdir)
     table = Table(align='<<')
     for i, created in reversed(list(enumerate(cellar.get_builds()))):
@@ -497,22 +430,7 @@ def list_tasks(caf: Caf,
                disp_path: bool = False,
                disp_tmp: bool = False,
                no_color: bool = False) -> None:
-    """
-    List tasks.
-
-    Usage:
-        caf list tasks [PATH...] [--finished | --error | --unfinished | --running]
-                       [--hash | --path | --tmp] [--no-color]
-
-    Options:
-        --finished          List finished tasks.
-        --unfinished        List unfinished tasks.
-        --error             List tasks in error.
-        --hash              Display task hash.
-        --path              Display task virtual path.
-        --tmp               Display temporary path.
-        --no-color          Do not color paths.
-    """
+    """List tasks."""
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
@@ -560,15 +478,7 @@ def list_tasks(caf: Caf,
         help='Print only incomplete patterns'),
 ])
 def status(caf: Caf, patterns: List[str], incomplete: bool = False) -> None:
-    """
-    Print number of initialized, running and finished tasks.
-
-    Usage:
-        caf status [PATH...] [-i]
-
-    Options:
-        -i, --incomplete      Print only incomplete patterns.
-    """
+    """Print number of initialized, running and finished tasks."""
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     patterns = patterns or caf.paths
@@ -624,15 +534,7 @@ def status(caf: Caf, patterns: List[str], incomplete: bool = False) -> None:
     Arg('-a', '--all', action='store_true', help='Discard all nonactive tasks'),
 ])
 def gc(caf: Caf, gc_all: bool = False) -> None:
-    """
-    Discard running and error tasks.
-
-    Usage:
-        caf gc [--all]
-
-    Options:
-        -a, --all      Discard all nonactive tasks.
-    """
+    """Discard running and error tasks."""
     scheduler = Scheduler(caf.cafdir)
     scheduler.gc()
     if gc_all:
@@ -646,14 +548,7 @@ def gc(caf: Caf, gc_all: bool = False) -> None:
         help='This is a simple convenience alias for running commands remotely'),
 ])
 def cmd(caf: Caf, cmd: str) -> None:
-    """
-    Execute any shell command.
-
-    Usage:
-        caf cmd CMD
-
-    This is a simple convenience alias for running commands remotely.
-    """
+    """Execute any shell command."""
     sp.run(cmd, shell=True)
 
 
@@ -662,12 +557,7 @@ def cmd(caf: Caf, cmd: str) -> None:
     Arg('name', metavar='NAME', nargs='?')
 ])
 def remote_add(caf: Caf, url: str, name: str = None) -> None:
-    """
-    Add a remote.
-
-    Usage:
-        caf remote add URL [NAME]
-    """
+    """Add a remote."""
     config = ConfigParser(interpolation=None)
     config.read([caf.cafdir/'config.ini'])  # type: ignore
     host, path = url.split(':')
@@ -684,12 +574,7 @@ def remote_add(caf: Caf, url: str, name: str = None) -> None:
     Arg('name', metavar='NAME')
 ])
 def remote_path(caf: Caf, _: Any, name: str) -> None:
-    """
-    Print a remote path in the form HOST:PATH.
-
-    Usage:
-        caf remote path NAME
-    """
+    """Print a remote path in the form HOST:PATH."""
     print('{0[host]}:{0[path]}'.format(caf.config[f'remote "{name}"']))
 
 
@@ -698,15 +583,7 @@ def remote_path(caf: Caf, _: Any, name: str) -> None:
     Arg('--delete', action='store_true', help='Delete files when syncing'),
 ])
 def update(caf: Caf, remotes: str, delete: bool = False) -> None:
-    """
-    Update a remote.
-
-    Usage:
-        caf update REMOTE [--delete]
-
-    Options:
-        --delete                   Delete files when syncing.
-    """
+    """Update a remote."""
     for remote in caf.proc_remote(remotes):
         remote.update(delete=delete)
 
@@ -715,12 +592,7 @@ def update(caf: Caf, remotes: str, delete: bool = False) -> None:
     Arg('remotes', metavar='REMOTE'),
 ])
 def check(caf: Caf, remotes: str) -> None:
-    """
-    Verify that hashes of the local and remote tasks match.
-
-    Usage:
-        caf check REMOTE
-    """
+    """Verify that hashes of the local and remote tasks match."""
     scheduler = Scheduler(caf.cafdir)
     hashes = {
         label: hashid for hashid, (_, label, *__) in scheduler.get_queue().items()
@@ -738,15 +610,7 @@ def fetch(caf: Caf,
           patterns: List[str],
           remotes: str,
           no_files: bool = False) -> None:
-    """
-    Fetch targets from remote.
-
-    Usage:
-        caf fetch REMOTE [PATH...] [--no-files]
-
-    Options:
-        --no-files          Fetch task metadata, but not files.
-    """
+    """Fetch targets from remote."""
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
@@ -772,12 +636,7 @@ def fetch(caf: Caf,
     Arg('patterns', metavar='PATTERN', nargs='*'),
 ])
 def archive_store(caf: Caf, filename: str, patterns: List[str]) -> None:
-    """
-    Archives files accessible from the given tasks as tar.gz.
-
-    Usage:
-        caf archive save FILE [PATH...]
-    """
+    """Archives files accessible from the given tasks as tar.gz."""
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
@@ -807,11 +666,6 @@ def archive_store(caf: Caf, filename: str, patterns: List[str]) -> None:
     Arg('remotes', metavar='REMOTE'),
 ])
 def go(caf: Caf, remotes: str) -> None:
-    """
-    SSH into the remote caf repository.
-
-    Usage:
-        caf go REMOTE
-    """
+    """SSH into the remote caf repository."""
     for remote in caf.proc_remote(remotes):
         remote.go()

@@ -30,12 +30,12 @@ def define_cli(cli: List[Arg] = None) -> Callable[[_F], _F]:
 CliDef = List[Tuple[str, Union[Callable, List[Tuple[str, Any]]]]]
 
 
-def add_commands(parser: ArgumentParser, cmds: CliDef) -> None:
+def _add_commands(parser: ArgumentParser, cmds: CliDef) -> None:
     subparsers = parser.add_subparsers()
     for name, cmd in cmds:
         subparser = subparsers.add_parser(name)
         if isinstance(cmd, list):
-            add_commands(subparser, cmd)
+            _add_commands(subparser, cmd)
         else:
             for arg in cmd.__cli__:  # type: ignore
                 subparser.add_argument(*arg.args, **arg.kwargs)
@@ -46,7 +46,7 @@ class CLI:
     def __init__(self, cmds: CliDef, args: Iterable[Any] = None) -> None:
         self.parser = ArgumentParser()
         self.args = tuple(args) if args else ()
-        add_commands(self.parser, cmds)
+        _add_commands(self.parser, cmds)
 
     def parse(self, args: List[str] = None) -> Dict[str, Any]:
         return {
