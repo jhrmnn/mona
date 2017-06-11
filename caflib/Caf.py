@@ -79,7 +79,7 @@ class Caf:
                 ('save', archive_store),
             ]),
             ('go', go),
-        ], args=(self,))
+        ])
 
     def __call__(self, args: List[str] = sys.argv[1:]) -> None:
         if self.cafdir.exists():
@@ -92,7 +92,7 @@ class Caf:
             args = args[:last_index] + ['--queue', queue_url] \
                 + args[last_index+1:]
         if args[0] not in self.remotes:
-            self.cli.run(args)
+            self.cli.run(self, args)
             return
         remote_spec, *args = args
         kwargs = self.cli.parse(args)
@@ -477,7 +477,7 @@ def list_tasks(caf: Caf,
     Arg('-i', '--incomplete', action='store_true',
         help='Print only incomplete patterns'),
 ])
-def status(caf: Caf, patterns: List[str], incomplete: bool = False) -> None:
+def status(caf: Caf, patterns: List[str] = None, incomplete: bool = False) -> None:
     """Print number of initialized, running and finished tasks."""
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)

@@ -43,17 +43,16 @@ def _add_commands(parser: ArgumentParser, cmds: CliDef) -> None:
 
 
 class CLI:
-    def __init__(self, cmds: CliDef, args: Iterable[Any] = None) -> None:
+    def __init__(self, cmds: CliDef) -> None:
         self.parser = ArgumentParser()
-        self.args = tuple(args) if args else ()
         _add_commands(self.parser, cmds)
 
-    def parse(self, args: List[str] = None) -> Dict[str, Any]:
+    def parse(self, argv: List[str] = None) -> Dict[str, Any]:
         return {
-            k: v for k, v in vars(self.parser.parse_args(args)).items() if v
+            k: v for k, v in vars(self.parser.parse_args(argv)).items() if v
         }
 
-    def run(self, args: List[str] = None) -> Any:
-        kwargs = self.parse(args)
+    def run(self, *args: Any, argv: List[str] = None) -> Any:
+        kwargs = self.parse(argv)
         func = kwargs.pop('func')
-        return func(*self.args, **kwargs)
+        return func(*args, **kwargs)
