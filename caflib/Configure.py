@@ -19,16 +19,11 @@ Contents = NewType('Contents', str)
 
 
 class Target:
-    all_targets: Set[Path] = set()
-
     def __init__(self, path: Path, task: 'Task') -> None:
         self.path = path
         self.task = task
+        self.children = {path.name: task}
         task.parents.append(self)
-
-    @property
-    def children(self) -> Dict[str, 'Task']:
-        return {self.path.name: self.task}
 
     def __repr__(self) -> str:
         return f"<Target '{self.path}'>"
