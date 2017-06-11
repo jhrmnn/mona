@@ -101,7 +101,7 @@ class Caf:
             args = [
                 arg if arg != kwargs['url'] else queue for arg in args
             ]
-        remotes = self.proc_remote(remote_spec)
+        remotes = self.parse_remotes(remote_spec)
         if args[0] in ['conf', 'make']:
             for remote in remotes:
                 remote.update()
@@ -112,7 +112,7 @@ class Caf:
                 arg if ' ' not in arg else repr(arg) for arg in args
             ))
 
-    def proc_remote(self, remotes: str) -> List[Union[Remote, Local]]:
+    def parse_remotes(self, remotes: str) -> List[Union[Remote, Local]]:
         if remotes == 'all':
             rems: List[Union[Remote, Local]] = [
                 r for r in self.remotes.values() if not isinstance(r, Local)
@@ -584,7 +584,7 @@ def remote_path(caf: Caf, _: Any, name: str) -> None:
 ])
 def update(caf: Caf, remotes: str, delete: bool = False) -> None:
     """Update a remote."""
-    for remote in caf.proc_remote(remotes):
+    for remote in caf.parse_remotes(remotes):
         remote.update(delete=delete)
 
 
@@ -597,7 +597,7 @@ def check(caf: Caf, remotes: str) -> None:
     hashes = {
         label: hashid for hashid, (_, label, *__) in scheduler.get_queue().items()
     }
-    for remote in caf.proc_remote(remotes):
+    for remote in caf.parse_remotes(remotes):
         remote.check(hashes)
 
 
@@ -618,7 +618,7 @@ def fetch(caf: Caf,
         hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
     else:
         hashes = set(states)
-    for remote in caf.proc_remote(remotes):
+    for remote in caf.parse_remotes(remotes):
         tasks = remote.fetch([
             hashid for hashid in hashes if states[hashid] == State.CLEAN
         ] if no_files else [
@@ -667,5 +667,5 @@ def archive_store(caf: Caf, filename: str, patterns: List[str]) -> None:
 ])
 def go(caf: Caf, remotes: str) -> None:
     """SSH into the remote caf repository."""
-    for remote in caf.proc_remote(remotes):
+    for remote in caf.parse_remotes(remotes):
         remote.go()
