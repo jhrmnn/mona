@@ -9,6 +9,7 @@ import subprocess as sp
 from configparser import ConfigParser
 import signal
 import json
+import importlib
 
 from .Utils import get_timestamp, cd, config_group, groupby
 from .CLI import Arg, define_cli, CLI, CLIError
@@ -28,11 +29,13 @@ from typing import (  # noqa
 from types import ModuleType
 
 
-def import_cscript() -> Union[ModuleType, object]:
+def import_cscript() -> ModuleType:
+    spec = importlib.util.spec_from_file_location('cscript', 'cscript.py')
+    cscript = importlib.util.module_from_spec(spec)
     try:
-        import cscript
-    except ModuleNotFoundError:
-        return object()
+        spec.loader.exec_module(cscript)  # type: ignore
+    except FileNotFoundError:
+        pass
     return cscript
 
 
@@ -89,7 +92,7 @@ class Caf:
     def __call__(self, args: List[str] = sys.argv[1:]) -> Any:
         self.log(args)
         try:
-            return self.cli.run(args)
+            return self.cli.run(self, argv=args)
         except CLIError as e:
             clierror = e
         remote_spec, *args = args
@@ -177,7 +180,7 @@ class Caf:
 @define_cli()
 def conf(caf: Caf) -> None:
     """Prepare tasks: process cscript.py and store tasks in cellar."""
-    if isinstance(caf.cscript, object) or not hasattr(caf.cscript, 'run'):
+    if not hasattr(caf.cscript, 'run'):
         error('cscript has to contain function run()')
     if not caf.cafdir.is_dir():
         caf.cafdir.mkdir()
@@ -192,7 +195,7 @@ def conf(caf: Caf) -> None:
     cellar = Cellar(caf.cafdir)
     ctx = Context(caf.top, cellar, conf_only=True)
     try:
-        caf.cscript.run(ctx)
+        caf.cscript.run(ctx)  # type: ignore
     except Exception as e:
         import traceback
         traceback.print_exc()
