@@ -6,7 +6,7 @@ import inspect
 import pickle
 
 from .Logging import error
-from .Cellar import get_hash, State, TaskObject, Cellar
+from .Cellar import get_hash, State, TaskObject, Cellar, Configuration
 
 from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
@@ -221,20 +221,6 @@ with open('_result.pickle', 'bw') as f:
     return task_gen
 
 
-class Configuration(NamedTuple):
-    tasks: Dict[Hash, TaskObject]
-    targets: Dict[TPath, Hash]
-    labels: Dict[Hash, TPath]
-
-
-def get_configuration(tasks: List[Task], targets: Iterable[Target]) -> Configuration:
-    return Configuration(
-        {task.hashid: task.obj for task in tasks},
-        {TPath(str(target.path)): target.task.hashid for target in targets},
-        {task.hashid: TPath(str(task)) for task in tasks}
-    )
-
-
 class Context:
     """Represent a build configuration: tasks and targets."""
 
@@ -286,3 +272,14 @@ class Context:
         if hashid not in self.inputs:
             self.inputs[hashid] = content
         return hashid
+
+    def get_configuration(self) -> Configuration:
+        return Configuration(
+            {task.hashid: task.obj for task in self.tasks},
+            {
+                TPath(str(target.path)): target.task.hashid
+                for target in self.targets.values()
+            },
+            self.inputs,
+            {task.hashid: TPath(str(task)) for task in self.tasks}
+        )

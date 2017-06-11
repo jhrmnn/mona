@@ -140,6 +140,13 @@ def copy_to(src: Path, dst: Path) -> None:
     shutil.copyfile(src, dst)
 
 
+class Configuration(NamedTuple):
+    tasks: Dict[Hash, TaskObject]
+    targets: Dict[TPath, Hash]
+    inputs: Dict[Hash, Union[str, bytes]]
+    labels: Dict[Hash, TPath]
+
+
 class Cellar:
     def __init__(self, path: os.PathLike) -> None:
         path = Path(path).resolve()
@@ -290,23 +297,17 @@ class Cellar:
     def reset_task(self, hashid: Hash) -> None:
         self._update_outputs(hashid, State.CLEAN, {})
 
-    def store_build(
-            self,
-            tasks: Dict[Hash, TaskObject],
-            targets: Dict[TPath, Hash],
-            inputs: Dict[Hash, Union[str, bytes]],
-            labels: Dict[Hash, TPath]
-    ) -> Iterable[Tuple[Hash, State]]:
+    def store_build(self, conf: Configuration) -> Iterable[Tuple[Hash, State]]:
         self.execute('drop table if exists current_tasks')
         self.execute('create temporary table current_tasks(hash text)')
         self.executemany('insert into current_tasks values (?)', (
-            (key,) for key in tasks.keys()
+            (key,) for key in conf.tasks.keys()
         ))
         existing: List[Hash] = [hashid for hashid, in self.execute(
             'select tasks.hash from tasks join current_tasks '
             'on current_tasks.hash = tasks.hash'
         )]
-        nnew = len(tasks)-len(existing)
+        nnew = len(conf.tasks)-len(existing)
         info(f'Will store {nnew} new tasks.')
         if nnew > 0:
             while True:
@@ -315,22 +316,22 @@ class Cellar:
                     break
                 elif answer == 'l':
                     for label in sorted(
-                            labels[h] for h in set(tasks)-set(existing)
+                            conf.labels[h] for h in set(conf.tasks)-set(existing)
                     ):
                         print(label)
                 else:
                     sys.exit()
         now = get_timestamp()
         self.executemany('insert or ignore into tasks values (?,?,?,?)', (
-            (hashid, task, now, 0) for hashid, task in tasks.items()
+            (hashid, task, now, 0) for hashid, task in conf.tasks.items()
             # TODO sort_keys=True
         ))
         cur = self.execute('insert into builds values (?,?)', (None, now))
         buildid: int = cur.lastrowid
         self.executemany('insert into targets values (?,?,?)', (
-            (hashid, buildid, path) for path, hashid in targets.items()
+            (hashid, buildid, path) for path, hashid in conf.targets.items()
         ))
-        for hashid, text in inputs.items():
+        for hashid, text in conf.inputs.items():
             if isinstance(text, str):
                 self.store_text(hashid, text)
             else:

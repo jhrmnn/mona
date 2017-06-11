@@ -14,7 +14,7 @@ from .Utils import get_timestamp, cd, config_group, groupby
 from .CLI import Arg, define_cli, CLI, CLIError
 from .Cellar import Cellar, State, Hash, TPath
 from .Remote import Remote, Local
-from .Configure import Context, get_configuration
+from .Configure import Context
 from .Scheduler import RemoteScheduler, Scheduler
 from .Announcer import Announcer
 from . import Logging
@@ -87,15 +87,11 @@ class Caf:
         ])
 
     def __call__(self, args: List[str] = sys.argv[1:]) -> Any:
-        if self.cafdir.exists():
-            with (self.cafdir/'log').open('a') as f:
-                f.write(f'{get_timestamp()}: {" ".join(args)}\n')
+        self.log(args)
         try:
             return self.cli.run(args)
         except CLIError as e:
             clierror = e
-        else:
-            return
         remote_spec, *args = args
         try:
             kwargs = self.cli.parse(args)
@@ -121,9 +117,12 @@ class Caf:
         if args[0] == 'make':
             check(self, remote_spec)
         for remote in remotes:
-            remote.command(' '.join(
-                arg if ' ' not in arg else repr(arg) for arg in args
-            ))
+            remote.command(args)
+
+    def log(self, args: List[str]) -> None:
+        if self.cafdir.exists():
+            with (self.cafdir/'log').open('a') as f:
+                f.write(f'{get_timestamp()}: {" ".join(args)}\n')
 
     def parse_remotes(self, remotes: str) -> List[Remote]:
         if remotes == 'all':
@@ -178,9 +177,7 @@ class Caf:
 @define_cli()
 def conf(caf: Caf) -> None:
     """Prepare tasks: process cscript.py and store tasks in cellar."""
-    try:
-        caf.cscript.run  # type: ignore
-    except AttributeError:
+    if isinstance(caf.cscript, object) or not hasattr(caf.cscript, 'run'):
         error('cscript has to contain function run()')
     if not caf.cafdir.is_dir():
         caf.cafdir.mkdir()
@@ -195,13 +192,13 @@ def conf(caf: Caf) -> None:
     cellar = Cellar(caf.cafdir)
     ctx = Context(caf.top, cellar, conf_only=True)
     try:
-        caf.cscript.run(ctx)  # type: ignore
+        caf.cscript.run(ctx)
     except Exception as e:
         import traceback
         traceback.print_exc()
         error('There was an error when executing run()')
-    conf = get_configuration(ctx.tasks, ctx.targets.values())
-    tasks = dict(cellar.store_build(conf.tasks, conf.targets, ctx.inputs, conf.labels))
+    conf = ctx.get_configuration()
+    tasks = dict(cellar.store_build(conf))
     labels: Dict[Hash, Optional[TPath]] = {hashid: None for hashid in tasks}
     for tpath, hashid in cellar.get_tree(hashes=tasks.keys()).items():
         if not labels[hashid]:

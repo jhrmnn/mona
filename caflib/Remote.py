@@ -40,7 +40,9 @@ class Remote:
         cmd.append(f'{self.host}:{self.path}')
         sp.run(cmd, check=True)
 
-    def command(self, cmd: str, inp: str = None, _get_output: bool = False) -> Optional[str]:
+    def command(self, args: List[str], inp: str = None,
+                _get_output: bool = False) -> Optional[str]:
+        cmd = ' '.join(arg if ' ' not in arg else repr(arg) for arg in args)
         if not _get_output:
             info(f'Running `./caf {cmd}` on {self.host}...')
         inp_bytes = inp.encode() if inp is not None else None
@@ -56,15 +58,15 @@ class Remote:
             return cast(str, output.stdout.decode())
         return None
 
-    def command_output(self, cmd: str, inp: str = None) -> str:
-        output = self.command(cmd, inp, _get_output=True)
+    def command_output(self, args: List[str], inp: str = None) -> str:
+        output = self.command(args, inp, _get_output=True)
         assert output
         return output
 
     def check(self, hashes: Dict[TPath, Hash]) -> None:
         info(f'Checking {self.host}...')
         remote_hashes: Dict[TPath, Hash] = {}
-        output = self.command_output('list tasks --no-color')
+        output = self.command_output(['list', 'tasks', '--no-color'])
         for hashid, path, *_ in (l.split() for l in output.strip().split('\n')):
             remote_hashes[TPath(path)] = Hash(hashid)
         is_ok = True
@@ -88,7 +90,7 @@ class Remote:
             -> Dict[Hash, Dict[str, Any]]:
         info(f'Fetching from {self.host}...')
         tasks = {hashid: task for hashid, task in json.loads(self.command_output(
-            'checkout --json', inp='\n'.join(hashes)
+            ['checkout', '--json'], inp='\n'.join(hashes)
         )).items() if 'outputs' in task}
         if not files:
             info(f'Fetched {len(tasks)}/{len(hashes)} task metadata')
@@ -141,10 +143,11 @@ class Local(Remote):
     def update(self, delete: bool = False) -> None:
         pass
 
-    def command(self, cmd: str, inp: str = None, _get_output: bool = False) -> Optional[str]:
+    def command(self, args: List[str], inp: str = None, _get_output: bool = False) -> Optional[str]:
+        cmd = ' '.join(arg if ' ' not in arg else repr(arg) for arg in args)
+        cmd = f'sh -c "python3 -u caf {cmd}"'
         if not _get_output:
             info(f'Running `./caf {cmd}` on {self.host}...')
-        cmd = f'sh -c "python3 -u caf {cmd}"'
         try:
             if _get_output:
                 output = sp.check_output(cmd, shell=True)
