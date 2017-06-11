@@ -85,17 +85,12 @@ class Caf:
             ('go', go),
         ])
 
-    def __call__(self, args: List[str] = sys.argv[1:]) -> None:
+    def __call__(self, args: List[str] = sys.argv[1:]) -> Any:
         if self.cafdir.exists():
             with (self.cafdir/'log').open('a') as f:
                 f.write(f'{get_timestamp()}: {" ".join(args)}\n')
-        if '--last' in args:
-            with (self.cafdir/'LAST_QUEUE').open() as f:
-                queue_url = f.read().strip()
-            idx = args.index('--last')
-            args = args[:idx] + ['--queue', queue_url] + args[idx+1:]
         try:
-            self.cli.run(args)
+            return self.cli.run(args)
         except CLIError as e:
             clierror = e
         else:
@@ -117,11 +112,7 @@ class Caf:
         else:
             if rclierror:
                 rclierror.reraise()
-        if 'make' in args and 'url' in kwargs:
-            queue = self.get_queue_url(kwargs['url'])
-            args = [
-                arg if arg != kwargs['url'] else queue for arg in args
-            ]
+        args = self.get_remote_args(args, kwargs)
         remotes = self.parse_remotes(remote_spec)
         if args[0] in ['conf', 'make']:
             for remote in remotes:
@@ -141,6 +132,29 @@ class Caf:
         except KeyError:
             pass
         raise RemoteNotExists(remotes)
+
+    def get_remote_args(self, args: List[str], kwargs: Dict) -> List[str]:
+        args = args.copy()
+        if '--last' in args:
+            idx = args.index('--last')
+            args = args[:idx] + ['--queue', self.last_queue] + args[idx+1:]
+        if args[0] == 'make' and 'url' in kwargs:
+            queue = self.get_queue_url(kwargs['url'])
+            args = [
+                arg if arg != kwargs['url'] else queue for arg in args
+            ]
+        return args
+
+    @property
+    def last_queue(self) -> str:
+        try:
+            return (self.cafdir/'LAST_QUEUE').read_text()
+        except FileNotFoundError:
+            error('No queue was ever submitted, cannot use --last')
+
+    @last_queue.setter
+    def last_queue(self, queue: str) -> None:
+        (self.cafdir/'LAST_QUEUE').write_text(queue)
 
     def get_queue_url(self, queue: str) -> str:
         num: Optional[str]
@@ -209,6 +223,7 @@ def sig_handler(sig: Any, frame: Any) -> Any:
     Arg('-p', '--profile', help='Run worker via ~/.config/caf/worker_PROFILE'),
     Arg('-j', dest='n', type=int, help='Number of launched workers [default: 1]'),
     Arg('-q', '--queue', dest='url', help='Take tasks from web queue'),
+    Arg('--last', action='store_true', help='Use last submitted queue'),
     Arg('-v', '--verbose', action='store_true'),
     Arg('--maxerror', type=int, help='Number of errors in row to quit [default: 5]'),
     Arg('-r', '--random', action='store_true', help='Pick tasks in random order')
@@ -220,6 +235,7 @@ def make(caf: Caf,
          n: int = 1,
          url: str = None,
          dry: bool = False,
+         last: bool = False,
          verbose: bool = False,
          maxerror: int = 5,
          randomize: bool = False) -> None:
@@ -238,6 +254,8 @@ def make(caf: Caf,
             cmd.extend(('--maxerror', str(maxerror)))
         if url:
             cmd.extend(('-q', url))
+        elif last:
+            cmd.extend(('-q', caf.last_queue))
         cmd.extend(patterns)
         for _ in range(n):
             try:
@@ -357,8 +375,7 @@ def submit(caf: Caf, patterns: List[str], url: str, append: bool = False) -> Non
     queue_url = announcer.submit(hashes, append=append)
     if queue_url:
         print(f'./caf make --queue {queue_url}')
-        with (caf.cafdir/'LAST_QUEUE').open('w') as f:
-            f.write(queue_url)
+        caf.last_queue = queue_url
 
 
 @define_cli([
