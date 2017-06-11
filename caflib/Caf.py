@@ -16,7 +16,7 @@ from .Logging import error, info, Table, colstr, warn, no_cafdir, \
     handle_broken_pipe
 from . import Logging
 from .CLI import CLI, CLIExit
-from .CLI2 import Arg, define_cli
+from .CLI2 import Arg, define_cli, exec_cli
 from .Cellar import Cellar, State, Hash, TPath
 from .Remote import Remote, Local
 from .Configure import Context, get_configuration
@@ -63,7 +63,10 @@ class Caf(CLI):
             with (self.cafdir/'log').open('a') as f:
                 f.write(f'{get_timestamp()}: {" ".join(argv)}\n')
         try:
-            super().__call__(argv)  # try CLI as if local
+            if 'checkout' in argv:
+                exec_cli(checkout, self, argv=argv[1:])
+            else:
+                super().__call__(argv)  # try CLI as if local
         except CLIExit as e:  # store exception for reraise if remote fails too
             cliexit = e
         else:
@@ -297,9 +300,9 @@ def make(caf: Caf,
                     task.done()
 
 
-@Caf.command(mapping=dict(
-    blddir=('--blddir', Path), patterns='PATH', do_json='--json', force='--force',
-    nth=('-n', int), finished='--finished', no_link='--no-link'))
+# @Caf.command(mapping=dict(
+#     blddir=('--blddir', Path), patterns='PATH', do_json='--json', force='--force',
+#     nth=('-n', int), finished='--finished', no_link='--no-link'))
 @define_cli([
     Arg('patterns', metavar='PATTERN', nargs='*',
         help='Tasks to be checked out'),
