@@ -47,7 +47,7 @@ class Caf:
         self.out = Path(getattr(self.cscript, 'out', 'build'))
         self.top = Path(getattr(self.cscript, 'top', '.'))
         self.paths = listify(getattr(self.cscript, 'paths', []))
-        self.remotes: Dict[str, Union[Local, Remote]] = {
+        self.remotes: Dict[str, Remote] = {
             name: Remote(r['host'], r['path'], self.top)
             for name, r in config_items(self.config, 'remote')
         }
@@ -112,9 +112,9 @@ class Caf:
                 arg if ' ' not in arg else repr(arg) for arg in args
             ))
 
-    def parse_remotes(self, remotes: str) -> List[Union[Remote, Local]]:
+    def parse_remotes(self, remotes: str) -> List[Remote]:
         if remotes == 'all':
-            rems: List[Union[Remote, Local]] = [
+            rems = [
                 r for r in self.remotes.values() if not isinstance(r, Local)
             ]
         else:

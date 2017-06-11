@@ -134,14 +134,14 @@ class Remote:
         sp.call(['ssh', '-t', self.host, f'cd {self.path} && exec $SHELL'])
 
 
-class Local:
+class Local(Remote):
     def __init__(self) -> None:
         self.host = 'local'
 
     def update(self, delete: bool = False) -> None:
         pass
 
-    def command(self, cmd: str, _get_output: bool = False) -> Optional[str]:
+    def command(self, cmd: str, inp: str = None, _get_output: bool = False) -> Optional[str]:
         if not _get_output:
             info(f'Running `./caf {cmd}` on {self.host}...')
         cmd = f'sh -c "python3 -u caf {cmd}"'
