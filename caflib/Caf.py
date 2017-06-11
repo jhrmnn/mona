@@ -16,7 +16,7 @@ from .Logging import error, info, Table, colstr, warn, no_cafdir, \
     handle_broken_pipe
 from . import Logging
 from .CLI import CLI, CLIExit
-from .CLI2 import Arg, define_cli, exec_cli
+from .CLI2 import Arg, define_cli, CLI as CLI2
 from .Cellar import Cellar, State, Hash, TPath
 from .Remote import Remote, Local
 from .Configure import Context, get_configuration
@@ -63,8 +63,19 @@ class Caf(CLI):
             with (self.cafdir/'log').open('a') as f:
                 f.write(f'{get_timestamp()}: {" ".join(argv)}\n')
         try:
-            if 'checkout' in argv:
-                exec_cli(checkout, self, argv=argv[1:])
+            if set([
+                    'checkout', 'remote', '--help', 'conf', 'make'
+            ]) & set(argv):
+                cli2 = CLI2([
+                    ('conf', conf),
+                    ('make', make),
+                    ('checkout', checkout),
+                    ('remote', [
+                        ('add', remote_add),
+                        ('path', remote_path),
+                    ]),
+                ], args=(self,))
+                cli2.parse(sys.argv[1:])
             else:
                 super().__call__(argv)  # try CLI as if local
         except CLIExit as e:  # store exception for reraise if remote fails too
@@ -151,7 +162,7 @@ class Caf(CLI):
         return queue
 
 
-@Caf.command()
+@define_cli()
 def conf(caf: Caf) -> None:
     """
     Prepare tasks -- process cscript.py and store tasks in cellar.
@@ -199,21 +210,26 @@ def sig_handler(sig: Any, frame: Any) -> Any:
     raise KeyboardInterrupt
 
 
-@Caf.command(mapping=dict(
-    profile='--profile', n=('-j', int), patterns='PATH', limit=('--limit', int),
-    url='--queue', dry='--dry', verbose='--verbose', _='--last',
-    maxerror=('--maxerror', int), randomize='--random'))
+@define_cli([
+    Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be built'),
+    Arg('-l', '--limit', type=int, help='Limit number of tasks to N'),
+    Arg('-p', '--profile', help='Run worker via ~/.config/caf/worker_PROFILE'),
+    Arg('-j', dest='n', help='Number of launched workers [default: 1]'),
+    Arg('-q', '--queue', dest='url', help='Take tasks from web queue'),
+    Arg('-v', '--verbose', action='store_true'),
+    Arg('--maxerror', type=int, help='Number of errors in row to quit [default: 5]'),
+    Arg('-r', '--random', action='store_true', help='Pick tasks in random order')
+])
 def make(caf: Caf,
-         profile: str,
-         n: int,
          patterns: List[str],
-         limit: int,
-         url: str,
-         dry: bool,
-         verbose: bool,
-         _: Any,
-         maxerror: int,
-         randomize: bool) -> None:
+         limit: int = None,
+         profile: str = None,
+         n: int = 1,
+         url: str = None,
+         dry: bool = False,
+         verbose: bool = False,
+         maxerror: int = 5,
+         randomize: bool = False) -> None:
     """
     Execute build tasks.
 
@@ -300,14 +316,10 @@ def make(caf: Caf,
                     task.done()
 
 
-# @Caf.command(mapping=dict(
-#     blddir=('--blddir', Path), patterns='PATH', do_json='--json', force='--force',
-#     nth=('-n', int), finished='--finished', no_link='--no-link'))
 @define_cli([
     Arg('patterns', metavar='PATTERN', nargs='*',
         help='Tasks to be checked out'),
-    Arg('-b', '--blddir', type=Path, default='blddir',
-        help=f'Where to checkout [default: blddir]'),
+    Arg('-b', '--blddir', type=Path, help=f'Where to checkout [default: blddir]'),
     Arg('--json', dest='do_json', action='store_true',
         help='Do not checkout, print JSONs of hashes from STDIN.'),
     Arg('-f', '--force', action='store_true', help='Remove PATH if exists'),
@@ -317,7 +329,7 @@ def make(caf: Caf,
         help='Do not create links to cellar, but copy'),
 ])
 def checkout(caf: Caf,
-             blddir: Path,
+             blddir: Path = Path('build'),
              patterns: Iterable[str] = None,
              do_json: bool = False,
              force: bool = False,
@@ -630,12 +642,11 @@ def cmd(caf: Caf, cmd: str) -> None:
     sp.run(cmd, shell=True)
 
 
-caf_remote = CLI('remote', header='Manage remotes.')
-Caf.commands[('remote',)] = caf_remote
-
-
-@caf_remote.add_command(name='add', mapping=dict(url='URL', name='NAME'))
-def remote_add(caf: Caf, _: Any, url: str, name: str) -> None:
+@define_cli([
+    Arg('url', metavar='URL'),
+    Arg('name', metavar='NAME', nargs='?')
+])
+def remote_add(caf: Caf, url: str, name: str) -> None:
     """
     Add a remote.
 
@@ -654,7 +665,9 @@ def remote_add(caf: Caf, _: Any, url: str, name: str) -> None:
         no_cafdir()
 
 
-@caf_remote.add_command(name='path', mapping=dict(name='NAME'))
+@define_cli([
+    Arg('name', metavar='NAME')
+])
 def remote_path(caf: Caf, _: Any, name: str) -> None:
     """
     Print a remote path in the form HOST:PATH.

@@ -1,10 +1,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import sys
 from argparse import ArgumentParser
 
-from typing import Any, Callable, TypeVar, List
+from typing import (  # noqa
+    Any, Callable, TypeVar, List, NewType, Union, Dict, Tuple, Optional,
+    Iterable
+)
+from argparse import _SubParsersAction  # noqa
 
 
 _T = TypeVar('_T')
@@ -17,16 +20,37 @@ class Arg:
         self.kwargs = kwargs
 
 
-def define_cli(cli: List[Arg]) -> Callable[[_F], _F]:
+def define_cli(cli: List[Arg] = None) -> Callable[[_F], _F]:
     def decorator(func: _F) -> _F:
-        func.__cli__ = cli  # type: ignore
+        func.__cli__ = cli or []  # type: ignore
         return func
     return decorator
 
 
-def exec_cli(func: Callable[..., _T], *args: Any, argv: List[str] = sys.argv) -> _T:
-    parser = ArgumentParser()
-    for arg in func.__cli__:  # type: ignore
-        parser.add_argument(*arg.args, **arg.kwargs)
-    kwargs = {k: v for k, v in vars(parser.parse_args()).items() if v}
-    return func(*args, **kwargs)
+CliDef = List[Tuple[str, Union[Callable, List[Tuple[str, Any]]]]]
+
+
+def add_commands(parser: ArgumentParser, cmds: CliDef) -> None:
+    subparsers = parser.add_subparsers()
+    for name, cmd in cmds:
+        subparser = subparsers.add_parser(name)
+        if isinstance(cmd, list):
+            add_commands(subparser, cmd)
+        else:
+            for arg in cmd.__cli__:  # type: ignore
+                subparser.add_argument(*arg.args, **arg.kwargs)
+            subparser.set_defaults(func=cmd)
+
+
+class CLI:
+    def __init__(self, cmds: CliDef, args: Iterable[Any] = None) -> None:
+        self.parser = ArgumentParser()
+        self.args = tuple(args) if args else ()
+        add_commands(self.parser, cmds)
+
+    def parse(self, args: List[str] = None) -> Any:
+        kwargs = {
+            k: v for k, v in vars(self.parser.parse_args(args)).items() if v
+        }
+        func = kwargs.pop('func')
+        return func(*self.args, **kwargs)
