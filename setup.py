@@ -24,5 +24,4 @@ setup(
         'Topic :: Software Development :: Build Tools',
         'Topic :: Utilities',
     ],
-    install_requires=['docopt'],
 )
