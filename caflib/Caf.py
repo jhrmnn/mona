@@ -160,21 +160,19 @@ class Caf:
         (self.cafdir/'LAST_QUEUE').write_text(queue)
 
     def get_queue_url(self, queue: str) -> str:
-        num: Optional[str]
+        qid: Optional[str]
         if ':' in queue:
-            queue_name, num = queue.rsplit(':', 1)
+            name, qid = queue.rsplit(':', 1)
         else:
-            queue_name, num = queue, None
-        queue_sec = f'queue "{queue_name}"'
-        if not self.config.has_section(queue_sec):
+            name, qid = queue, None
+        section = f'queue "{name}"'
+        if not self.config.has_section(section):
             return queue
-        queue_conf = self.config[queue_sec]
-        host = queue_conf['host']
-        token = queue_conf['token']
-        queue = f'{host}/token/{token}'
-        if num:
-            queue += f'/queue/{num}'
-        return queue
+        conf = self.config[section]
+        url = f'{conf["host"]}/token/{conf["token"]}'
+        if qid:
+            url += f'/queue/{qid}'
+        return url
 
 
 @define_cli()
