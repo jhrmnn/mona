@@ -42,9 +42,23 @@ def _add_commands(parser: ArgumentParser, cmds: CliDef) -> None:
             subparser.set_defaults(func=cmd)
 
 
+class CLIError(Exception):
+    def __init__(self, parser: ArgumentParser, msg: str) -> None:
+        self.parser = parser
+        self.msg = msg
+
+    def reraise(self) -> None:
+        ArgumentParser.error(self.parser, self.msg)
+
+
+class ThrowingArgumentParser(ArgumentParser):
+    def error(self, msg: str) -> None:
+        raise CLIError(self, msg)
+
+
 class CLI:
     def __init__(self, cmds: CliDef) -> None:
-        self.parser = ArgumentParser()
+        self.parser = ThrowingArgumentParser()
         _add_commands(self.parser, cmds)
 
     def parse(self, argv: List[str] = None) -> Dict[str, Any]:
@@ -54,5 +68,7 @@ class CLI:
 
     def run(self, *args: Any, argv: List[str] = None) -> Any:
         kwargs = self.parse(argv)
+        if not kwargs:
+            return
         func = kwargs.pop('func')
         return func(*args, **kwargs)

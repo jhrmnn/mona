@@ -14,7 +14,7 @@ from .Utils import get_timestamp, cd, config_items, groupby, listify
 from .Logging import error, info, Table, colstr, warn, no_cafdir, \
     handle_broken_pipe
 from . import Logging
-from .CLI import Arg, define_cli, CLI
+from .CLI import Arg, define_cli, CLI, CLIError
 from .Cellar import Cellar, State, Hash, TPath
 from .Remote import Remote, Local
 from .Configure import Context, get_configuration
@@ -35,19 +35,23 @@ def import_cscript() -> Union[ModuleType, object]:
     return cscript
 
 
+class RemoteNotExists(Exception):
+    pass
+
+
 class Caf:
     def __init__(self) -> None:
         self.cafdir = Path('.caf')
         self.config = ConfigParser()
         self.config.read([  # type: ignore
             self.cafdir/'config.ini',
-            os.path.expanduser('~/.config/caf/config.ini')
+            Path('~/.config/caf/config.ini').expanduser()
         ])
         self.cscript = import_cscript()
         self.out = Path(getattr(self.cscript, 'out', 'build'))
         self.top = Path(getattr(self.cscript, 'top', '.'))
         self.paths = listify(getattr(self.cscript, 'paths', []))
-        self.remotes: Dict[str, Remote] = {
+        self.remotes = {
             name: Remote(r['host'], r['path'], self.top)
             for name, r in config_items(self.config, 'remote')
         }
@@ -88,14 +92,31 @@ class Caf:
         if '--last' in args:
             with (self.cafdir/'LAST_QUEUE').open() as f:
                 queue_url = f.read().strip()
-            last_index = args.index('--last')
-            args = args[:last_index] + ['--queue', queue_url] \
-                + args[last_index+1:]
-        if args[0] not in self.remotes:
-            self.cli.run(self, args)
+            idx = args.index('--last')
+            args = args[:idx] + ['--queue', queue_url] + args[idx+1:]
+        try:
+            self.cli.run(args)
+        except CLIError as e:
+            clierror = e
+        else:
             return
         remote_spec, *args = args
-        kwargs = self.cli.parse(args)
+        try:
+            kwargs = self.cli.parse(args)
+        except CLIError as e:
+            rclierror: Optional[CLIError] = e
+        else:
+            rclierror = None
+        try:
+            remotes = self.parse_remotes(remote_spec)
+        except RemoteNotExists as e:
+            if not rclierror and kwargs:
+                error(f'Remote {e.args[0]!r} is not defined')
+            else:
+                clierror.reraise()
+        else:
+            if rclierror:
+                rclierror.reraise()
         if 'make' in args and 'url' in kwargs:
             queue = self.get_queue_url(kwargs['url'])
             args = [
@@ -114,15 +135,12 @@ class Caf:
 
     def parse_remotes(self, remotes: str) -> List[Remote]:
         if remotes == 'all':
-            rems = [
-                r for r in self.remotes.values() if not isinstance(r, Local)
-            ]
-        else:
-            try:
-                rems = [self.remotes[r] for r in remotes.split(',')]
-            except KeyError as e:
-                error(f'Remote "{e.args[0]}" is not defined')
-        return rems
+            return [r for r in self.remotes.values() if not isinstance(r, Local)]
+        try:
+            return [self.remotes[r] for r in remotes.split(',')]
+        except KeyError:
+            pass
+        raise RemoteNotExists(remotes)
 
     def get_queue_url(self, queue: str) -> str:
         num: Optional[str]
