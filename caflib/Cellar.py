@@ -5,7 +5,6 @@ from pathlib import Path
 import json
 import sqlite3
 import hashlib
-from datetime import datetime
 from collections import defaultdict
 import sys
 import os
@@ -13,7 +12,7 @@ import shutil
 from enum import IntEnum
 
 from .Logging import info, no_cafdir
-from .Utils import make_nonwritable
+from .Utils import make_nonwritable, get_timestamp
 from .Glob import match_glob
 
 from typing import (  # noqa
@@ -321,7 +320,7 @@ class Cellar:
                         print(label)
                 else:
                     sys.exit()
-        now = datetime.today().isoformat(timespec='seconds')
+        now = get_timestamp()
         self.executemany('insert or ignore into tasks values (?,?,?,?)', (
             (hashid, task, now, 0) for hashid, task in tasks.items()
             # TODO sort_keys=True

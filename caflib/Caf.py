@@ -10,16 +10,17 @@ from configparser import ConfigParser
 import signal
 import json
 
-from .Utils import get_timestamp, cd, config_items, groupby, listify
-from .Logging import error, info, Table, colstr, warn, no_cafdir, \
-    handle_broken_pipe
-from . import Logging
+from .Utils import get_timestamp, cd, config_group, groupby
 from .CLI import Arg, define_cli, CLI, CLIError
 from .Cellar import Cellar, State, Hash, TPath
 from .Remote import Remote, Local
 from .Configure import Context, get_configuration
 from .Scheduler import RemoteScheduler, Scheduler
 from .Announcer import Announcer
+from . import Logging
+from .Logging import (
+    error, info, Table, colstr, warn, no_cafdir, handle_broken_pipe
+)
 
 from typing import (  # noqa
     Any, Union, Dict, List, Optional, Set, Iterable, Sequence
@@ -50,10 +51,10 @@ class Caf:
         self.cscript = import_cscript()
         self.out = Path(getattr(self.cscript, 'out', 'build'))
         self.top = Path(getattr(self.cscript, 'top', '.'))
-        self.paths = listify(getattr(self.cscript, 'paths', []))
+        self.paths = getattr(self.cscript, 'paths', [])
         self.remotes = {
             name: Remote(r['host'], r['path'], self.top)
-            for name, r in config_items(self.config, 'remote')
+            for name, r in config_group(self.config, 'remote')
         }
         self.remotes['local'] = Local()
         self.cli = CLI([
@@ -421,7 +422,7 @@ def list_profiles(caf: Caf) -> None:
 @define_cli()
 def list_remotes(caf: Caf) -> None:
     """List remotes."""
-    for name, remote in config_items(caf.config, 'remote'):
+    for name, remote in config_group(caf.config, 'remote'):
         print(name)
         print(f'\t{remote["host"]}:{remote["path"]}')
 

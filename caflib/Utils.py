@@ -5,7 +5,7 @@ import re
 import os
 from contextlib import contextmanager
 from datetime import datetime
-from itertools import groupby as groupby_
+import itertools
 import stat
 import random
 from configparser import ConfigParser
@@ -18,26 +18,16 @@ _T = TypeVar('_T')
 _V = TypeVar('_V')
 
 
-def config_items(config: ConfigParser, group: str = None) \
+def config_group(config: ConfigParser, group: str) \
         -> Iterator[Tuple[str, Mapping[str, Any]]]:
-    if not group:
-        yield from config.items()
-    else:
-        for name, section in config.items():
-            m = re.match(r'(?P<group>\w+) *"(?P<member>\w+)"', name)
-            if m and m['group'] == group:
-                yield m['member'], section
-
-
-def slugify(s: str, path: bool = False) -> str:
-    s = re.sub(r'[^:_0-9a-zA-Z.()=+#/]', '-', s)
-    if not path:
-        s = s.replace('/', '-')
-    return s
+    for name, section in config.items():
+        m = re.match(r'(?P<group>\w+) *"(?P<member>\w+)"', name)
+        if m and m['group'] == group:
+            yield m['member'], section
 
 
 def get_timestamp() -> str:
-    return format(datetime.today(), '%Y-%m-%d_%H:%M:%S')
+    return datetime.now().isoformat(timespec='seconds')
 
 
 def make_nonwritable(path: os.PathLike) -> None:
@@ -54,23 +44,6 @@ def sample(seq: Iterable[_T]) -> Iterator[_T]:
         yield queue.pop(random.randrange(0, len(queue)))
 
 
-def filter_cmd(args: List[Any]) -> List[Any]:
-    cmd = []
-    for arg in args:
-        if isinstance(arg, tuple):
-            if arg[1] is not None:
-                if isinstance(arg[1], bool):
-                    if arg[1]:
-                        cmd.append(str(arg[0]))
-                else:
-                    cmd.extend(map(str, arg))
-        elif isinstance(arg, list):
-            cmd.extend(str(a) for a in arg if a)
-        elif arg:
-            cmd.append(str(arg))
-    return cmd
-
-
 @contextmanager
 def cd(path: str) -> Iterator[None]:
     path = str(path)
@@ -82,22 +55,9 @@ def cd(path: str) -> Iterator[None]:
         os.chdir(cwd)
 
 
-def listify(obj: Any) -> List[Any]:
-    if not obj:
-        return []
-    if isinstance(obj, (str, bytes)):
-        return obj.split()
-    elif isinstance(obj, tuple):
-        return [obj]
-    try:
-        return list(obj)
-    except TypeError:
-        return [obj]
-
-
 def groupby(lst: Iterable[_T], key: Callable[[_T], _V]) \
         -> Iterator[Tuple[_V, List[_T]]]:
     keylst = [(key(x), x) for x in lst]
     keylst.sort(key=lambda x: x[0])
-    for k, group in groupby_(keylst, key=lambda x: x[0]):
+    for k, group in itertools.groupby(keylst, key=lambda x: x[0]):
         yield k, [x[1] for x in group]
