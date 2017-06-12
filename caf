@@ -3,6 +3,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from caflib.Caf import Caf
+from caflib.Logging import CafError, print_error
 
 
 if __name__ == '__main__':
@@ -11,3 +12,6 @@ if __name__ == '__main__':
         caf()
     except KeyboardInterrupt:
         raise SystemExit(2)
+    except CafError as e:
+        print_error(e.args[0])
+        raise SystemExit(1)

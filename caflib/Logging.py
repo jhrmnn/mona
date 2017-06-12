@@ -64,12 +64,19 @@ def info(s: str) -> None:
     )
 
 
+class CafError(Exception):
+    pass
+
+
 def error(s: str) -> NoReturn:
+    raise CafError(s)
+
+
+def print_error(s: str) -> None:
     print(
         colstr(s, 'red'),
         file=sys.stdout if sys.stdout.isatty() else sys.stderr
     )
-    sys.exit(1)
 
 
 def no_cafdir() -> None:
