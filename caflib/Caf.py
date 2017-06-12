@@ -289,6 +289,7 @@ def make(caf: Caf,
     Arg('argv', metavar='...', nargs=argparse.REMAINDER, help='Arguments for make')
 ])
 def dispatch(caf: Caf, profile: str, argv: List[str], jobs: int = 1) -> None:
+    """Dispatch make to external workers."""
     parser = ThrowingArgumentParser()
     for arg in make.__cli__:  # type: ignore
         parser.add_argument(*arg.args, **arg.kwargs)

@@ -1,6 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import argparse
 from argparse import ArgumentParser
 
 from typing import (  # noqa
@@ -31,9 +32,29 @@ CliDef = List[Tuple[str, Union[Callable, List[Tuple[str, Any]]]]]
 
 
 def _add_commands(parser: ArgumentParser, clidef: CliDef) -> None:
-    subparsers = parser.add_subparsers()
+    rows = []
     for name, item in clidef:
-        subparser = subparsers.add_parser(name)
+        if isinstance(item, list):
+            rows.append((
+                name,
+                '-> ' + ', '.join(subname for subname, _ in item)  # type: ignore
+            ))
+        else:
+            rows.append((name, item.__doc__ or '?'))
+    maxlen = max(len(name) for name, _ in rows)
+    subparsers = parser.add_subparsers(
+        metavar='<command>',
+        help='Command to run',
+        title='commands',
+        description='\n'.join(
+            f'{name:<{maxlen}}   {desc}' for name, desc in rows
+        ),
+    )
+    for name, item in clidef:
+        subparser = subparsers.add_parser(
+            name,
+            formatter_class=parser.formatter_class  # type: ignore
+        )
         if isinstance(item, list):
             _add_commands(subparser, item)
         else:
@@ -58,7 +79,9 @@ class ThrowingArgumentParser(ArgumentParser):
 
 class CLI:
     def __init__(self, cmds: CliDef) -> None:
-        self.parser = ThrowingArgumentParser()
+        self.parser = ThrowingArgumentParser(
+            formatter_class=argparse.RawDescriptionHelpFormatter
+        )
         _add_commands(self.parser, cmds)
 
     def parse(self, argv: List[str] = None) -> Dict[str, Any]:
