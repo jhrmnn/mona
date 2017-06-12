@@ -4,6 +4,7 @@
 from pathlib import Path
 import inspect
 import pickle
+from textwrap import dedent
 
 from .Logging import error
 from .Cellar import get_hash, State, TaskObject, Cellar, Configuration
@@ -198,13 +199,19 @@ def function_task(func: Callable) -> Callable[..., Task]:
         arglist = ', '.join(repr(p) for p in positional)
         for kw, val in kwargs.items():
             arglist += f', {kw}={val!r}'
-        task_code = f"""\
-import pickle
+        task_code = dedent(
+            """\
+            import pickle
 
-{func_code}
-result = {func.__name__}({arglist})
-with open('_result.pickle', 'bw') as f:
-    pickle.dump(result, f)"""
+            {func_code}
+            result = {func_name}({arglist})
+            with open('_result.pickle', 'bw') as f:
+                pickle.dump(result, f)"""
+        ).format(
+            func_code=func_code,
+            func_name=func.__name__,
+            arglist=arglist,
+        )
         inputs = list(zip(positional, args))
         inputs.append(('_exec.py', Contents(task_code)))
         return ctx(
