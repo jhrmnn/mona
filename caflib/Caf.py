@@ -8,7 +8,7 @@ import subprocess as sp
 from configparser import ConfigParser
 import signal
 import json
-import importlib
+import importlib.util
 import argparse
 
 from .Utils import get_timestamp, cd, config_group, groupby
