@@ -90,37 +90,43 @@ class Caf:
         ])
 
     def __call__(self, args: List[str] = sys.argv[1:]) -> Any:
-        self.log(args)
+        if not args:
+            return
         try:
-            return self.cli.run(self, argv=args)
+            value = self.cli.run(self, argv=args)
         except CLIError as e:
             clierror = e
-        remote_spec, *args = args
-        try:
-            kwargs = self.cli.parse(args)
-        except CLIError as e:
-            rclierror: Optional[CLIError] = e
         else:
-            rclierror = None
+            self.log(args)
+            return value
+
+        remote_spec, *rargs = args
         try:
-            remotes = self.parse_remotes(remote_spec)
-        except RemoteNotExists as e:
-            if not rclierror and kwargs:
-                error(f'Remote {e.args[0]!r} is not defined')
-            else:
+            remotes: Optional[List[Remote]] = self.parse_remotes(remote_spec)
+        except RemoteNotExists:
+            remotes = None
+        if not rargs:
+            if remotes is None:
                 clierror.reraise()
-        else:
-            if rclierror:
-                rclierror.reraise()
-        args = self.get_remote_args(args, kwargs)
-        remotes = self.parse_remotes(remote_spec)
-        if args[0] in ['conf', 'make']:
+            return
+        try:
+            kwargs = self.cli.parse(rargs)
+        except CLIError as rclierror:
+            if remotes is None:
+                clierror.reraise()
+            rclierror.reraise()
+        if remotes is None:
+            error(f'Remote {remote_spec!r} is not defined')
+
+        self.mod_remote_args(rargs, kwargs)
+        self.log(args)
+        if rargs[0] in ['conf', 'make']:
             for remote in remotes:
                 remote.update()
-        if args[0] == 'make':
+        if rargs[0] == 'make':
             check(self, remote_spec)
         for remote in remotes:
-            remote.command(args)
+            remote.command(rargs)
 
     def log(self, args: List[str]) -> None:
         if self.cafdir.exists():
@@ -136,17 +142,13 @@ class Caf:
             pass
         raise RemoteNotExists(remotes)
 
-    def get_remote_args(self, args: List[str], kwargs: Dict) -> List[str]:
-        args = args.copy()
+    def mod_remote_args(self, args: List[str], kwargs: Dict) -> None:
         if '--last' in args:
-            idx = args.index('--last')
-            args = args[:idx] + ['--queue', self.last_queue] + args[idx+1:]
+            args.remove('--last')
+            args = args + ['--queue', self.last_queue]
         if args[0] == 'make' and 'url' in kwargs:
-            queue = self.get_queue_url(kwargs['url'])
-            args = [
-                arg if arg != kwargs['url'] else queue for arg in args
-            ]
-        return args
+            url = kwargs['url']
+            args[args.index(url)] = self.get_queue_url(url)
 
     @property
     def last_queue(self) -> str:
