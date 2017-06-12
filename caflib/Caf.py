@@ -64,7 +64,7 @@ class Caf:
                 ('profiles', list_profiles),
                 ('remotes', list_remotes),
                 ('builds', list_builds),
-                ('task', list_tasks),
+                ('tasks', list_tasks),
             ]),
             ('status', status),
             ('gc', gc),
