@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from pathlib import Path
-import os
 import shutil
 import sys
 import subprocess as sp
@@ -10,9 +9,10 @@ from configparser import ConfigParser
 import signal
 import json
 import importlib
+import argparse
 
 from .Utils import get_timestamp, cd, config_group, groupby
-from .CLI import Arg, define_cli, CLI, CLIError
+from .CLI import Arg, define_cli, CLI, CLIError, ThrowingArgumentParser
 from .Cellar import Cellar, State, Hash, TPath
 from .Remote import Remote, Local
 from .Configure import Context
@@ -63,6 +63,7 @@ class Caf:
         self.cli = CLI([
             ('conf', conf),
             ('make', make),
+            ('dispatch', dispatch),
             ('checkout', checkout),
             ('submit', submit),
             ('reset', reset),
@@ -219,8 +220,6 @@ def sig_handler(sig: Any, frame: Any) -> Any:
 @define_cli([
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be built'),
     Arg('-l', '--limit', type=int, help='Limit number of tasks to N'),
-    Arg('-p', '--profile', help='Run worker via ~/.config/caf/worker_PROFILE'),
-    Arg('-j', dest='n', type=int, help='Number of launched workers [default: 1]'),
     Arg('-q', '--queue', dest='url', help='Take tasks from web queue'),
     Arg('--last', action='store_true', help='Use last submitted queue'),
     Arg('-v', '--verbose', action='store_true'),
@@ -230,8 +229,6 @@ def sig_handler(sig: Any, frame: Any) -> Any:
 def make(caf: Caf,
          patterns: List[str],
          limit: int = None,
-         profile: str = None,
-         n: int = 1,
          url: str = None,
          dry: bool = False,
          last: bool = False,
@@ -239,29 +236,6 @@ def make(caf: Caf,
          maxerror: int = 5,
          randomize: bool = False) -> None:
     """Execute build tasks."""
-    if profile:
-        cmd = [os.path.expanduser(f'~/.config/caf/worker_{profile}')]
-        if verbose:
-            cmd.append('-v')
-        if randomize:
-            cmd.append('-r')
-        if dry:
-            cmd.append('--dry')
-        if limit:
-            cmd.extend(('-l', str(limit)))
-        if maxerror:
-            cmd.extend(('--maxerror', str(maxerror)))
-        if url:
-            cmd.extend(('-q', url))
-        elif last:
-            cmd.extend(('-q', caf.last_queue))
-        cmd.extend(patterns)
-        for _ in range(n):
-            try:
-                sp.run(cmd, check=True)
-            except sp.CalledProcessError:
-                error(f'Running ~/.config/caf/worker_{profile} did not succeed.')
-        return
     if verbose:
         Logging.DEBUG = True
     if url:
@@ -307,6 +281,28 @@ def make(caf: Caf,
                     task.interrupt()
                 else:
                     task.done()
+
+
+@define_cli([
+    Arg('profile', metavar='PROFILE', help='Use worker at ~/.config/caf/worker_PROFILE'),
+    Arg('-j', '--jobs', type=int, help='Number of launched workers [default: 1]'),
+    Arg('argv', metavar='...', nargs=argparse.REMAINDER, help='Arguments for make')
+])
+def dispatch(caf: Caf, profile: str, argv: List[str], jobs: int = 1) -> None:
+    parser = ThrowingArgumentParser()
+    for arg in make.__cli__:  # type: ignore
+        parser.add_argument(*arg.args, **arg.kwargs)
+    try:
+        parser.parse_args(argv)
+    except CLIError:
+        error(f'Invalid arguments for make: {argv}')
+    worker = Path(f'~/.config/caf/worker_{profile}').expanduser()
+    cmd = [str(worker)] + argv
+    for _ in range(jobs):
+        try:
+            sp.run(cmd, check=True)
+        except sp.CalledProcessError:
+            error(f'Running {worker} failed.')
 
 
 @define_cli([
