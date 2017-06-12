@@ -30,16 +30,16 @@ def define_cli(cli: List[Arg] = None) -> Callable[[_F], _F]:
 CliDef = List[Tuple[str, Union[Callable, List[Tuple[str, Any]]]]]
 
 
-def _add_commands(parser: ArgumentParser, cmds: CliDef) -> None:
+def _add_commands(parser: ArgumentParser, clidef: CliDef) -> None:
     subparsers = parser.add_subparsers()
-    for name, cmd in cmds:
+    for name, item in clidef:
         subparser = subparsers.add_parser(name)
-        if isinstance(cmd, list):
-            _add_commands(subparser, cmd)
+        if isinstance(item, list):
+            _add_commands(subparser, item)
         else:
-            for arg in cmd.__cli__:  # type: ignore
+            for arg in item.__cli__:  # type: ignore
                 subparser.add_argument(*arg.args, **arg.kwargs)
-            subparser.set_defaults(func=cmd)
+            subparser.set_defaults(func=item)
 
 
 class CLIError(Exception):
