@@ -8,17 +8,21 @@ from pathlib import Path
 
 from .Logging import info, error
 
-from typing import List, Optional, cast, Dict, Iterable, Any, Callable  # noqa
-from .Cellar import Hash, TPath
+from typing import (  # noqa
+    List, Optional, cast, Dict, Iterable, Any, Callable, TYPE_CHECKING
+)
+if TYPE_CHECKING:
+    from .Cellar import Hash, TPath
+else:
+    Hash, TPath = None, None
 
 
 class Remote:
-    def __init__(self, host: str, path: str, top: Path) -> None:
+    def __init__(self, host: str, path: str) -> None:
         self.host = host
         self.path = path
-        self.top = top
 
-    def update(self, delete: bool = False) -> None:
+    def update(self, top: Path, delete: bool = False) -> None:
         info(f'Updating {self.host}...')
         sp.run(['ssh', self.host, f'mkdir -p {self.path}'], check=True)
         exclude: List[str] = []
@@ -34,7 +38,7 @@ class Remote:
         if delete:
             cmd.append('--delete')
         cmd.extend(f'--exclude={patt}' for patt in exclude)
-        cmd.extend(['caf', 'cscript.py', str(self.top)])
+        cmd.extend(['caf', 'cscript.py', str(top)])
         if os.path.exists('caflib'):
             cmd.append('caflib')
         cmd.append(f'{self.host}:{self.path}')
@@ -140,7 +144,7 @@ class Local(Remote):
     def __init__(self) -> None:
         self.host = 'local'
 
-    def update(self, delete: bool = False) -> None:
+    def update(self, top: Path, delete: bool = False) -> None:
         pass
 
     def command(self, args: List[str], inp: str = None, _get_output: bool = False) -> Optional[str]:

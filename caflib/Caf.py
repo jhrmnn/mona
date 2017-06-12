@@ -13,11 +13,7 @@ import argparse
 
 from .Utils import get_timestamp, cd, config_group, groupby
 from .CLI import Arg, define_cli, CLI, CLIError, ThrowingArgumentParser
-from .Cellar import Cellar, State, Hash, TPath
 from .Remote import Remote, Local
-from .Configure import Context
-from .Scheduler import RemoteScheduler, Scheduler
-from .Announcer import Announcer
 from . import Logging
 from .Logging import (
     error, info, Table, colstr, warn, no_cafdir, handle_broken_pipe
@@ -51,12 +47,9 @@ class Caf:
             self.cafdir/'config.ini',
             Path('~/.config/caf/config.ini').expanduser()
         ])
-        self.cscript = import_cscript()
-        self.out = Path(getattr(self.cscript, 'out', 'build'))
-        self.top = Path(getattr(self.cscript, 'top', '.'))
-        self.paths = getattr(self.cscript, 'paths', [])
+        self._cscript: Optional[ModuleType] = None
         self.remotes = {
-            name: Remote(r['host'], r['path'], self.top)
+            name: Remote(r['host'], r['path'])
             for name, r in config_group(self.config, 'remote')
         }
         self.remotes['local'] = Local()
@@ -89,6 +82,24 @@ class Caf:
             ]),
             ('go', go),
         ])
+
+    @property
+    def cscript(self) -> ModuleType:
+        if not self._cscript:
+            self._cscript = import_cscript()
+        return self._cscript
+
+    @property
+    def out(self) -> Path:
+        return Path(getattr(self.cscript, 'out', 'build'))
+
+    @property
+    def top(self) -> Path:
+        return Path(getattr(self.cscript, 'top', '.'))
+
+    @property
+    def paths(self) -> List[str]:
+        return getattr(self.cscript, 'paths', [])  # type: ignore
 
     def __call__(self, args: List[str] = sys.argv[1:]) -> Any:
         if not args:
@@ -123,7 +134,7 @@ class Caf:
         self.log(args)
         if rargs[0] in ['conf', 'make']:
             for remote in remotes:
-                remote.update()
+                remote.update(self.top)
         if rargs[0] == 'make':
             check(self, remote_spec)
         for remote in remotes:
@@ -181,6 +192,9 @@ class Caf:
 @define_cli()
 def conf(caf: Caf) -> None:
     """Prepare tasks: process cscript.py and store tasks in cellar."""
+    from .Cellar import Cellar
+    from .Configure import Context
+    from .Scheduler import Scheduler
     if not hasattr(caf.cscript, 'run'):
         error('cscript has to contain function run()')
     if not caf.cafdir.is_dir():
@@ -236,6 +250,8 @@ def make(caf: Caf,
          maxerror: int = 5,
          randomize: bool = False) -> None:
     """Execute build tasks."""
+    from .Cellar import Cellar, Hash  # noqa
+    from .Scheduler import RemoteScheduler, Scheduler
     if verbose:
         Logging.DEBUG = True
     if url:
@@ -327,6 +343,7 @@ def checkout(caf: Caf,
              finished: bool = False,
              no_link: bool = False) -> None:
     """Create the dependecy tree physically on a file system."""
+    from .Cellar import Cellar, Hash
     cellar = Cellar(caf.cafdir)
     if not do_json:
         if blddir.exists():
@@ -353,6 +370,9 @@ def checkout(caf: Caf,
 ])
 def submit(caf: Caf, patterns: List[str], url: str, append: bool = False) -> None:
     """Submit the list of prepared tasks to a queue server."""
+    from .Cellar import Cellar, State, TPath
+    from .Scheduler import Scheduler
+    from .Announcer import Announcer
     url = caf.get_queue_url(url)
     announcer = Announcer(url, caf.config.get('core', 'curl', fallback='') or None)
     scheduler = Scheduler(caf.cafdir)
@@ -382,6 +402,8 @@ def submit(caf: Caf, patterns: List[str], url: str, append: bool = False) -> Non
 ])
 def reset(caf: Caf, patterns: List[str], hard: bool, running: bool) -> None:
     """Remove all temporary checkouts and set tasks to clean."""
+    from .Cellar import Cellar, State
+    from .Scheduler import Scheduler
     if hard and input('Are you sure? ["y" to confirm] ') != 'y':
         return
     if hard:
@@ -425,6 +447,7 @@ def list_remotes(caf: Caf) -> None:
 @define_cli()
 def list_builds(caf: Caf) -> None:
     """List builds."""
+    from .Cellar import Cellar
     cellar = Cellar(caf.cafdir)
     table = Table(align='<<')
     for i, created in reversed(list(enumerate(cellar.get_builds()))):
@@ -462,6 +485,8 @@ def list_tasks(caf: Caf,
                disp_tmp: bool = False,
                no_color: bool = False) -> None:
     """List tasks."""
+    from .Cellar import Cellar, State
+    from .Scheduler import Scheduler
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
@@ -510,6 +535,8 @@ def list_tasks(caf: Caf,
 ])
 def status(caf: Caf, patterns: List[str] = None, incomplete: bool = False) -> None:
     """Print number of initialized, running and finished tasks."""
+    from .Cellar import Cellar, State
+    from .Scheduler import Scheduler
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     patterns = patterns or caf.paths
@@ -566,6 +593,8 @@ def status(caf: Caf, patterns: List[str] = None, incomplete: bool = False) -> No
 ])
 def gc(caf: Caf, gc_all: bool = False) -> None:
     """Discard running and error tasks."""
+    from .Cellar import Cellar
+    from .Scheduler import Scheduler
     scheduler = Scheduler(caf.cafdir)
     scheduler.gc()
     if gc_all:
@@ -616,7 +645,7 @@ def remote_path(caf: Caf, _: Any, name: str) -> None:
 def update(caf: Caf, remotes: str, delete: bool = False) -> None:
     """Update a remote."""
     for remote in caf.parse_remotes(remotes):
-        remote.update(delete=delete)
+        remote.update(caf.top, delete=delete)
 
 
 @define_cli([
@@ -624,6 +653,7 @@ def update(caf: Caf, remotes: str, delete: bool = False) -> None:
 ])
 def check(caf: Caf, remotes: str) -> None:
     """Verify that hashes of the local and remote tasks match."""
+    from .Scheduler import Scheduler
     scheduler = Scheduler(caf.cafdir)
     hashes = {
         label: hashid for hashid, (_, label, *__) in scheduler.get_queue().items()
@@ -642,6 +672,8 @@ def fetch(caf: Caf,
           remotes: str,
           no_files: bool = False) -> None:
     """Fetch targets from remote."""
+    from .Cellar import Cellar, State
+    from .Scheduler import Scheduler
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
@@ -668,6 +700,8 @@ def fetch(caf: Caf,
 ])
 def archive_store(caf: Caf, filename: str, patterns: List[str]) -> None:
     """Archives files accessible from the given tasks as tar.gz."""
+    from .Cellar import Cellar
+    from .Scheduler import Scheduler
     cellar = Cellar(caf.cafdir)
     scheduler = Scheduler(caf.cafdir)
     states = scheduler.get_states()
