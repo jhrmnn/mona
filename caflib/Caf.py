@@ -242,7 +242,7 @@ def sig_handler(sig: Any, frame: Any) -> Any:
     Arg('-r', '--random', action='store_true', help='Pick tasks in random order')
 ])
 def make(caf: Caf,
-         patterns: List[str],
+         patterns: List[str] = None,
          limit: int = None,
          url: str = None,
          dry: bool = False,
