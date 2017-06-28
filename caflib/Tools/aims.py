@@ -73,7 +73,7 @@ class AimsTask(Task):
                 lines.append(f'{tag}  {p2f(value)}')
         basis_root = aims_path.parents[1]/'aimsfiles/species_defaults'/basis
         species = set(zip(geom.numbers, geom.species))
-        for number, specie in species:
+        for number, specie in sorted(species):
             if (basis, specie) not in species_db:
                 with (basis_root/f'{number:02d}_{specie}_default').open() as f:
                     basis_def = f.read()

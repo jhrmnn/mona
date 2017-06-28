@@ -306,8 +306,9 @@ def make(caf: Caf,
     Arg('-j', '--jobs', type=int, help='Number of launched workers [default: 1]'),
     Arg('argv', metavar='...', nargs=argparse.REMAINDER, help='Arguments for make')
 ])
-def dispatch(caf: Caf, profile: str, argv: List[str], jobs: int = 1) -> None:
+def dispatch(caf: Caf, profile: str, argv: List[str] = None, jobs: int = 1) -> None:
     """Dispatch make to external workers."""
+    argv = argv or []
     parser = ThrowingArgumentParser()
     for arg in make.__cli__:  # type: ignore
         parser.add_argument(*arg.args, **arg.kwargs)
@@ -481,7 +482,7 @@ def list_builds(caf: Caf) -> None:
         help='Do not color paths')
 ])
 def list_tasks(caf: Caf,
-               patterns: List[str],
+               patterns: List[str] = None,
                do_finished: bool = False,
                do_unfinished: bool = False,
                do_running: bool = False,
@@ -515,8 +516,7 @@ def list_tasks(caf: Caf,
             continue
         if do_running and states[hashid] != State.RUNNING:
             continue
-        if not no_color:
-            pathstr = colstr(path, states[hashid].color)
+        pathstr = str(path) if no_color else colstr(path, states[hashid].color)
         if disp_hash:
             line: str = hashid
         elif disp_tmp:
