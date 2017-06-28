@@ -196,6 +196,8 @@ def load(fp: IO[str], fmt: str) -> Molecule:
         species = []
         coords = []
         lattice = []
+        flags: Dict[Union[str, int], Dict[str, Any]] = {}
+        i = 0
         while True:
             l = fp.readline()
             if l == '':
@@ -205,16 +207,19 @@ def load(fp: IO[str], fmt: str) -> Molecule:
                 continue
             ws = l.split()
             what = ws[0]
-            if what == 'atom':
+            if what in ['atom', 'empty']:
                 species.append(ws[4])
                 coords.append(get_vec(ws[1:4]))
+                if what == 'empty':
+                    flags[i] = {'ghost': True}
+                i += 1
             elif what == 'lattice_vector':
                 lattice.append(get_vec(ws[1:4]))
         if lattice:
             assert len(lattice) == 3
             return Crystal(species, coords, lattice)
         else:
-            return Molecule(species, coords)
+            return Molecule(species, coords, flags)
     raise ValueError(f'Unknown format: {fmt}')
 
 
