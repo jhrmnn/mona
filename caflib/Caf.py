@@ -372,7 +372,7 @@ def checkout(caf: Caf,
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be submitted'),
     Arg('-a', '--append', action='store_true', help='Append to an existing queue'),
 ])
-def submit(caf: Caf, patterns: List[str], url: str, append: bool = False) -> None:
+def submit(caf: Caf, url: str, patterns: List[str] = None, append: bool = False) -> None:
     """Submit the list of prepared tasks to a queue server."""
     from .Cellar import Cellar, State, TPath
     from .Scheduler import Scheduler
@@ -405,7 +405,8 @@ def submit(caf: Caf, patterns: List[str], url: str, append: bool = False) -> Non
     Arg('--hard', action='store_true',
         help='Also reset finished tasks and remove outputs'),
 ])
-def reset(caf: Caf, patterns: List[str], hard: bool, running: bool) -> None:
+def reset(caf: Caf, patterns: List[str] = None, hard: bool = False,
+          running: bool = False) -> None:
     """Remove all temporary checkouts and set tasks to clean."""
     from .Cellar import Cellar, State
     from .Scheduler import Scheduler
@@ -677,8 +678,8 @@ def check(caf: Caf, remotes: str) -> None:
     Arg('--no-files', action='store_true', help='Fetch task metadata, but not files'),
 ])
 def fetch(caf: Caf,
-          patterns: List[str],
           remotes: str,
+          patterns: List[str] = None,
           no_files: bool = False) -> None:
     """Fetch targets from remote."""
     from .Cellar import Cellar, State
@@ -708,7 +709,7 @@ def fetch(caf: Caf,
     Arg('filename', metavar='FILE'),
     Arg('patterns', metavar='PATTERN', nargs='*'),
 ])
-def archive_store(caf: Caf, filename: str, patterns: List[str]) -> None:
+def archive_store(caf: Caf, filename: str, patterns: List[str] = None) -> None:
     """Archives files accessible from the given tasks as tar.gz."""
     from .Cellar import Cellar
     from .Scheduler import Scheduler
