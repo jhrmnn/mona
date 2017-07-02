@@ -68,7 +68,7 @@ class Task:
                 elif isinstance(item, Path):
                     path, file = str(item), item
                 elif isinstance(item, tuple) and len(item) == 2 \
-                        and isinstance(item[0], str):
+                        and isinstance(item[0], (str, Path)):
                     path, file = item
                 else:
                     raise UnknownInputType(item)
