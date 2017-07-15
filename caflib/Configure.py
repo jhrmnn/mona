@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from pathlib import Path
+import os
 import inspect
 import pickle
 from textwrap import dedent
@@ -152,10 +153,16 @@ class VirtualFile:
         return f'{self.task.hashid}/{self.name}'
 
 
-class StoredFile(VirtualFile):
+class StoredFile(VirtualFile, os.PathLike):
     def __init__(self, hashid: Hash, name: str, task: Task) -> None:
         super().__init__(name, task)
         self.hashid = hashid
+
+    def __str__(self) -> str:
+        return str(self.path)
+
+    def __fspath__(self) -> str:
+        return str(self)
 
     @property
     def path(self) -> Path:
