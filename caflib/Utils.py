@@ -9,6 +9,8 @@ import itertools
 import stat
 import random
 from configparser import ConfigParser
+import shutil
+from pathlib import Path
 
 from typing import (  # noqa
     Dict, Any, Iterator, Tuple, Iterable, TypeVar, List, Callable, Mapping
@@ -61,3 +63,10 @@ def groupby(lst: Iterable[_T], key: Callable[[_T], _V]) \
     keylst.sort(key=lambda x: x[0])
     for k, group in itertools.groupby(keylst, key=lambda x: x[0]):
         yield k, [x[1] for x in group]
+
+
+def delink(exe: str) -> str:
+    path = shutil.which(exe)
+    if not path:
+        raise ValueError(f'Executable {exe} not found')
+    return Path(path).resolve().name
