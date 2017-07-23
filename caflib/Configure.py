@@ -14,6 +14,7 @@ from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
     NewType, Type, Sequence, Iterable
 )
+from mypy_extensions import KwArg
 from .Cellar import Hash, TPath  # noqa
 
 
@@ -48,6 +49,7 @@ class MalformedTask(Exception):
 
 InputTarget = Union[Path, Contents, Tuple[str, 'VirtualFile']]
 Input = Union[str, Path, Tuple[str, InputTarget]]
+TaskFeature = Callable[[KwArg(Any)], Dict[str, Any]]
 
 
 class Task:
@@ -56,42 +58,40 @@ class Task:
     def __init__(
             self, *,
             command: str,
-            inputs: Sequence[Input] = None,
-            symlinks: Sequence[Tuple[str, str]] = None,
+            inputs: Sequence[Input],
+            symlinks: Sequence[Tuple[str, str]],
             ctx: 'Context'
     ) -> None:
         self.obj = TaskObject(command)
         file: InputTarget
-        if inputs:
-            for item in inputs:
-                if isinstance(item, str):
-                    path, file = item, Path(item)
-                elif isinstance(item, Path):
-                    path, file = str(item), item
-                elif isinstance(item, tuple) and len(item) == 2 \
-                        and isinstance(item[0], (str, Path)):
-                    path, file = item
-                else:
-                    raise UnknownInputType(item)
-                path = str(Path(path))  # normalize
-                if isinstance(file, Path):
-                    self.obj.inputs[path] = ctx.get_source(file)
-                elif isinstance(file, str):
-                    self.obj.inputs[path] = ctx.store_text(file)
-                elif isinstance(file, tuple) and len(file) == 2 \
-                        and isinstance(file[0], str) \
-                        and isinstance(file[1], VirtualFile):
-                    childname, vfile = file
-                    self.obj.children[childname] = vfile.task.hashid
-                    self.obj.childlinks[path] = (childname, vfile.name)
-                    vfile.task.parents.append(self)
-                else:
-                    raise UnknownInputType(item)
-        if symlinks:
-            for target, source in symlinks:
-                if not isinstance(target, str) and not isinstance(source, str):
-                    raise UnknownSymlinkType((target, source))
-                self.obj.symlinks[str(Path(target))] = str(Path(source))
+        for item in inputs:
+            if isinstance(item, str):
+                path, file = item, Path(item)
+            elif isinstance(item, Path):
+                path, file = str(item), item
+            elif isinstance(item, tuple) and len(item) == 2 \
+                    and isinstance(item[0], (str, Path)):
+                path, file = item
+            else:
+                raise UnknownInputType(item)
+            path = str(Path(path))  # normalize
+            if isinstance(file, Path):
+                self.obj.inputs[path] = ctx.get_source(file)
+            elif isinstance(file, str):
+                self.obj.inputs[path] = ctx.store_text(file)
+            elif isinstance(file, tuple) and len(file) == 2 \
+                    and isinstance(file[0], str) \
+                    and isinstance(file[1], VirtualFile):
+                childname, vfile = file
+                self.obj.children[childname] = vfile.task.hashid
+                self.obj.childlinks[path] = (childname, vfile.name)
+                vfile.task.parents.append(self)
+            else:
+                raise UnknownInputType(item)
+        for target, source in symlinks:
+            if not isinstance(target, str) and not isinstance(source, str):
+                raise UnknownSymlinkType((target, source))
+            self.obj.symlinks[str(Path(target))] = str(Path(source))
         self.hashid: Hash = self.obj.hashid
         Task.tasks[self.hashid] = self
         self.parents: List[Union[Target, Task]] = []
@@ -230,6 +230,11 @@ def function_task(func: Callable) -> Callable[..., Task]:
     return task_gen
 
 
+def base_feature(*, inputs: List = None, symlinks: List = None,
+                 **kwargs: Any) -> Dict[str, Any]:
+    return dict(**kwargs, inputs=inputs or [], symlinks=symlinks or [])
+
+
 class Context:
     """Represent a build configuration: tasks and targets."""
 
@@ -246,8 +251,12 @@ class Context:
             self, *,
             target: Union[TPath, str] = None,
             klass: Type[Task] = Task,
+            features: List[TaskFeature] = None,
             **kwargs: Any
     ) -> Task:
+        features = [cast(TaskFeature, base_feature), *(features or [])]
+        for feature in features:
+            kwargs = feature(**kwargs)
         task = klass(ctx=self, **kwargs)
         if target:
             path = Path(target)
