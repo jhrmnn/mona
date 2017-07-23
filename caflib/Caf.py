@@ -10,7 +10,7 @@ from configparser import ConfigParser
 import signal
 import json
 import argparse
-import imp
+from tempfile import NamedTemporaryFile
 
 from .Utils import get_timestamp, cd, config_group, groupby
 from .CLI import Arg, define_cli, CLI, CLIError, ThrowingArgumentParser
@@ -27,18 +27,17 @@ from types import ModuleType
 
 
 def import_cscript() -> ModuleType:
-    cscript = imp.new_module('cscript')
-    try:
-        script = Path('cscript.py').read_text().split('END CSCRIPT', 1)[0]
-    except FileNotFoundError:
-        warn('No cscript found')
-        return cscript
-    try:
-        exec(compile(script, 'cscript', 'exec'), cscript.__dict__)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        error('There was an error while reading cscript')
+    import importlib.util
+    with NamedTemporaryFile('w', dir='.', prefix='cscript', suffix='.py') as f:
+        f.write(Path('cscript.py').read_text().split('END CSCRIPT', 1)[0])
+        f.flush()
+        spec = importlib.util.spec_from_file_location('cscript', f.name)
+        cscript = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(cscript)  # type: ignore
+        except FileNotFoundError as e:
+            if e.filename != f.name:
+                raise
     return cscript
 
 
