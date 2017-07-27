@@ -9,8 +9,8 @@ setup(
     author='Jan Hermann',
     author_email='dev@hermann.in',
     license='MIT',
-    packages=['caflib', 'caflib.extras', 'caflib.Tools'],
-    scripts=['caf'],
+    packages=find_packages(),
+    scripts=['scripts/caf'],
     classifieres=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
