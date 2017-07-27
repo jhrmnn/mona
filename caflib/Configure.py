@@ -14,7 +14,6 @@ from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
     NewType, Type, Sequence, Iterable
 )
-from mypy_extensions import KwArg
 from .Cellar import Hash, TPath  # noqa
 
 
@@ -49,7 +48,7 @@ class MalformedTask(Exception):
 
 InputTarget = Union[Path, Contents, Tuple[str, 'VirtualFile']]
 Input = Union[str, Path, Tuple[str, InputTarget]]
-TaskFeature = Callable[[KwArg(Any)], Dict[str, Any]]
+TaskFeature = Callable[[Dict[str, Any]], None]
 
 
 class Task:
@@ -230,9 +229,9 @@ def function_task(func: Callable) -> Callable[..., Task]:
     return task_gen
 
 
-def base_feature(*, inputs: List = None, symlinks: List = None,
-                 **kwargs: Any) -> Dict[str, Any]:
-    return dict(**kwargs, inputs=inputs or [], symlinks=symlinks or [])
+def base_feature(task: Dict[str, Any]) -> None:
+    task.setdefault('inputs', [])
+    task.setdefault('symlinks', [])
 
 
 class Context:
@@ -254,9 +253,9 @@ class Context:
             features: List[TaskFeature] = None,
             **kwargs: Any
     ) -> Task:
-        features = [cast(TaskFeature, base_feature), *(features or [])]
+        features = [base_feature, *(features or [])]
         for feature in features:
-            kwargs = feature(**kwargs)
+            feature(kwargs)
         task = klass(ctx=self, **kwargs)
         if target:
             path = Path(target)
