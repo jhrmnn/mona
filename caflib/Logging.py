@@ -68,11 +68,13 @@ class CafError(Exception):
     pass
 
 
-def error(s: str) -> NoReturn:
+def error(s: str = None) -> NoReturn:
     raise CafError(s)
 
 
 def print_error(s: str) -> None:
+    if not s:
+        return
     print(
         colstr(s, 'red'),
         file=sys.stdout if sys.stdout.isatty() else sys.stderr

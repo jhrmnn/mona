@@ -109,7 +109,8 @@ class Caf:
 
     def __call__(self, args: List[str] = sys.argv[1:]) -> Any:
         if not args:
-            return
+            self.cli.parser.print_help()
+            error()
         try:
             value = self.cli.run(self, argv=args)
         except CLIError as e:
