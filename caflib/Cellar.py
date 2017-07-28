@@ -47,7 +47,7 @@ state_colors: Dict[State, str] = {
     State.INTERRUPTED: 'blue',
 }
 
-sqlite3.register_converter('state', lambda x: State(int(x)))  # type: ignore
+sqlite3.register_converter('state', lambda x: State(int(x)))
 sqlite3.register_adapter(State, lambda state: cast(int, state.value))
 
 
@@ -99,8 +99,8 @@ class TaskObject:
         return cls(**dct)
 
 
-sqlite3.register_converter('task', TaskObject.from_data)  # type: ignore
-sqlite3.register_adapter(TaskObject, lambda task: task.data)
+sqlite3.register_converter('task', TaskObject.from_data)
+sqlite3.register_adapter(TaskObject, lambda task: task.data)  # type: ignore
 
 
 class Tree(Dict[TPath, Hash]):
