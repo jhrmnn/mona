@@ -21,12 +21,12 @@ def __lib_unpack(name, header):  # type: ignore
             raise RuntimeError('No packed lib')
         version = next(f).split()[2]
         files = next(f).split()[2:]
-        UNPACKDIR = os.environ.get('UNPACKDIR')
-        if UNPACKDIR:
-            libpath = Path(UNPACKDIR)
+        libpath = os.environ.get('UNPACKDIR')
+        if libpath:
+            libpath = Path(libpath)
             files_exist = False
         else:
-            tmpdir = Path(gettempdir())/f'{name}-{os.getlogin()}'
+            tmpdir = Path(gettempdir())/f'{name}-{os.environ["USER"]}'
             if not tmpdir.is_dir():
                 tmpdir.mkdir()
             libpath = tmpdir/version
@@ -125,7 +125,7 @@ def main() -> None:
         os.chdir(args['startdir'])
     paths = list_patterns(args['patterns'])
     version = get_version(paths)
-    if args.pop('dry'):
+    if args['dry']:
         print(f'version: {version}')
         for path in paths:
             print(path)
