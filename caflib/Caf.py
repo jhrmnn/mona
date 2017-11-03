@@ -49,7 +49,7 @@ class Caf:
     def __init__(self) -> None:
         self.cafdir = Path('.caf')
         self.config = ConfigParser()
-        self.config.read([  # type: ignore
+        self.config.read([
             self.cafdir/'config.ini',
             Path('~/.config/caf/config.ini').expanduser()
         ])
@@ -646,7 +646,7 @@ def cmd(caf: Caf, cmd: str) -> None:
 def remote_add(caf: Caf, url: str, name: str = None) -> None:
     """Add a remote."""
     config = ConfigParser(interpolation=None)
-    config.read([caf.cafdir/'config.ini'])  # type: ignore
+    config.read([caf.cafdir/'config.ini'])
     host, path = url.split(':')
     name = name or host
     config[f'remote "{name}"'] = {'host': host, 'path': path}

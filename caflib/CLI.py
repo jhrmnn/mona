@@ -37,7 +37,7 @@ def _add_commands(parser: ArgumentParser, clidef: CliDef) -> None:
         if isinstance(item, list):
             rows.append((
                 name,
-                '-> ' + ', '.join(subname for subname, _ in item)  # type: ignore
+                '-> ' + ', '.join(subname for subname, _ in item)
             ))
         else:
             rows.append((name, item.__doc__ or '?'))
