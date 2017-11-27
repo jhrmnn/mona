@@ -374,7 +374,7 @@ def checkout(caf: Caf,
     else:
         hashes = [Hash(l.strip()) for l in sys.stdin.readlines()]
         json.dump({
-            hashid: task.asdict() for hashid, task in
+            hashid: task.asdict_v2() for hashid, task in
             cellar.get_tasks(hashes).items()
         }, sys.stdout)
 

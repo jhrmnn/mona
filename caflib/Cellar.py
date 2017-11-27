@@ -10,6 +10,7 @@ import sys
 import os
 import shutil
 from enum import IntEnum
+from textwrap import dedent
 
 from .Logging import info, no_cafdir
 from .Utils import make_nonwritable, get_timestamp
@@ -79,12 +80,6 @@ class TaskObject:
             f'childlinks={self.childlinks!r} outputs={self.outputs!r}>'
         )
 
-    def asdict(self) -> Dict[str, Any]:
-        dct = vars(self).copy()
-        if self.outputs is None:
-            del dct['outputs']
-        return dct
-
     def asdict_v2(self) -> Dict[str, Any]:
         inputs = cast(Dict[str, str], self.inputs.copy())
         for name, target in self.symlinks.items():
@@ -95,21 +90,39 @@ class TaskObject:
         return obj
 
     @property
-    def data(self) -> str:
-        return json.dumps(self.asdict())
+    def data(self) -> bytes:
+        return json.dumps(self.asdict_v2(), sort_keys=True).encode()
 
     @property
     def hashid(self) -> Hash:
-        return get_hash(json.dumps(self.asdict_v2(), sort_keys=True))
+        return get_hash(self.data)
 
     @classmethod
-    def from_data(cls, data: bytes) -> 'TaskObject':
-        dct: Dict[str, Any] = json.loads(data)
-        return cls(**dct)
-
-
-sqlite3.register_converter('task', TaskObject.from_data)
-sqlite3.register_adapter(TaskObject, lambda task: task.data)  # type: ignore
+    def from_data(cls,
+                  inp: bytes,
+                  out: Optional[bytes] = None) -> 'TaskObject':
+        obj: Dict[str, Any] = json.loads(inp)
+        inputs: Dict[str, Hash] = {}
+        symlinks: Dict[str, str] = {}
+        children_inv: Dict[Hash, str] = {}
+        childlinks: Dict[str, Tuple[str, str]] = {}
+        nchildren = 0
+        for name, target in obj['inputs'].items():
+            if target[0] == '>':
+                symlinks[name] = target[1:]
+            elif target[0] == '@':
+                hs, target = target[1:].split('/', 1)
+                if hs not in children_inv:
+                    nchildren += 1
+                    children_inv[hs] = f'_{nchildren}'
+                childlinks[name] = (children_inv[hs], target)
+            else:
+                inputs[name] = Hash(target)
+        children = {childname: hs for hs, childname in children_inv.items()}
+        outputs: Dict[str, Hash] = json.loads(out) if out else None
+        return cls(
+            obj['command'], inputs, symlinks, children, childlinks, outputs
+        )
 
 
 class Tree(Dict[TPath, Hash]):
@@ -168,11 +181,19 @@ class Cellar:
             )
         except sqlite3.OperationalError:
             no_cafdir()
-        self.execute(
-            'create table if not exists tasks ('
-            'hash text primary key, task text, created text, state integer'
-            ')'
-        )
+        self.execute(dedent(
+            """\
+            CREATE TABLE IF NOT EXISTS tasks (
+                hash    TEXT,
+                execid  TEXT,
+                state   INTEGER,
+                created TEXT,
+                inp     BLOB,
+                out     BLOB,
+                PRIMARY KEY (hash)
+            )
+            """
+        ))
         self.execute(
             'create table if not exists builds ('
             'id integer primary key, created text'
@@ -261,12 +282,12 @@ class Cellar:
         return self.store(hashid, file=file)
 
     def get_task(self, hashid: Hash) -> Optional[TaskObject]:
-        row: Optional[Tuple[TaskObject]] = self.execute(
-            'select task as "[task]" from tasks where hash = ?', (hashid,)
+        row: Optional[Tuple[bytes, bytes]] = self.execute(
+            'select inp, out from tasks where hash = ?', (hashid,)
         ).fetchone()
         if not row:
             return None
-        return row[0]
+        return TaskObject.from_data(row[0], row[1])
 
     def _update_outputs(
             self,
@@ -331,8 +352,8 @@ class Cellar:
                 else:
                     sys.exit()
         now = get_timestamp()
-        self.executemany('insert or ignore into tasks values (?,?,?,?)', (
-            (hashid, task, now, 0) for hashid, task in conf.tasks.items()
+        self.executemany('insert or ignore into tasks values (?,?,?,?,?,?)', (
+            (hashid, 'dir-bash', 0, now, task.data, None) for hashid, task in conf.tasks.items()
             # TODO sort_keys=True
         ))
         cur = self.execute('insert into builds values (?,?)', (None, now))
@@ -355,7 +376,7 @@ class Cellar:
         hashes = list(hashes)
         if len(hashes) < 10:
             cur = self.execute(
-                'select hash, task as "[task]" from tasks where hash in ({})'.format(
+                'select hash, inp, out from tasks where hash in ({})'.format(
                     ','.join(len(hashes)*['?'])
                 ),
                 hashes
@@ -367,10 +388,13 @@ class Cellar:
                 (hashid,) for hashid in hashes
             ))
             cur = self.execute(
-                'select tasks.hash, task as "[task]" from tasks join current_tasks '
+                'select tasks.hash, inp, out from tasks join current_tasks '
                 'on current_tasks.hash = tasks.hash'
             )
-        return {hashid: task for hashid, task in cur}
+        return {
+            hashid: TaskObject.from_data(inp, out)
+            for hashid, inp, out in cur
+        }
 
     def get_file(self, hashid: Hash) -> Path:
         path = self.objects/hashid[:2]/hashid[2:]
@@ -425,8 +449,9 @@ class Cellar:
             (nth,)
         )]
         tasks = {
-            hashid: task for hashid, task in self.db.execute(
-                'select tasks.hash, task as "[task]" from tasks join '
+            hashid: TaskObject.from_data(inp, out)
+            for hashid, inp, out in self.db.execute(
+                'select tasks.hash, inp, out from tasks join '
                 '(select distinct(taskhash) as hash from targets join '
                 '(select id from builds order by created desc limit 1) b '
                 'on targets.buildid = b.id) build '
