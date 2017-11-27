@@ -85,13 +85,22 @@ class TaskObject:
             del dct['outputs']
         return dct
 
+    def asdict_v2(self) -> Dict[str, Any]:
+        inputs = cast(Dict[str, str], self.inputs.copy())
+        for name, target in self.symlinks.items():
+            inputs[name] = '>' + target
+        for name, (childname, target) in self.childlinks.items():
+            inputs[name] = f'@{self.children[childname]}/{target}'
+        obj = {'command': self.command, 'inputs': inputs}
+        return obj
+
     @property
     def data(self) -> str:
         return json.dumps(self.asdict())
 
     @property
     def hashid(self) -> Hash:
-        return get_hash(json.dumps(self.asdict(), sort_keys=True))
+        return get_hash(json.dumps(self.asdict_v2(), sort_keys=True))
 
     @classmethod
     def from_data(cls, data: bytes) -> 'TaskObject':
