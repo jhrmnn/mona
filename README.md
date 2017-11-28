@@ -8,14 +8,6 @@ In Caf, each build task represents a single shell command and a directory of inp
 
 A particular Caf build consists of a mapping from task labels, in the form of Posix paths, to task hashes. A single task can have multiple labels. This leads to a natural representation of the nameless task dependency tree as a directory tree.
 
-## Getting Caf
-
-Caf would be typically distributed and versioned together with the project it builds as a single executable file, `caf`, with all Python modules packed in it. To create this packed executable from the Caf source repository in the current working directory, run
-
-```
-make -C <path to Caf repo>
-```
-
 ## Using Caf
 
 A particular Caf build is defined in a calculation script (cscript), `cscript.py`, which is to Caf what a makefile is to Make. This section documents the use of Caf with an already written cscript, while the next one documents how cscripts are written.
