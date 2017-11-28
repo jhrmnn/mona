@@ -51,7 +51,7 @@ class Remote:
             output = sp.run([  # type: ignore
                 'ssh',
                 self.host,
-                f'sh -c "cd {self.path} && exec python3 -u caf {cmd}"'
+                f'sh -c "cd {self.path} && exec ./caf {cmd}"'
             ], check=True, input=inp_bytes, stdout=sp.PIPE if _get_output else None)
         except sp.CalledProcessError:
             error(f'Command `{cmd}` on {self.host} ended with error')
