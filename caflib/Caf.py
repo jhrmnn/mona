@@ -18,22 +18,11 @@ from . import Logging
 from .Logging import (
     error, info, Table, colstr, warn, no_cafdir, handle_broken_pipe
 )
+from .Configure import Context
 
 from typing import (  # noqa
-    Any, Union, Dict, List, Optional, Set, Iterable, Sequence
+    Any, Union, Dict, List, Optional, Set, Iterable, Sequence, Callable
 )
-from types import ModuleType
-
-
-def import_cscript() -> ModuleType:
-    import importlib.util
-    spec = importlib.util.spec_from_file_location('cscript', 'cscript.py')
-    cscript = importlib.util.module_from_spec(spec)
-    try:
-        spec.loader.exec_module(cscript)  # type: ignore
-    except FileNotFoundError:
-        pass
-    return cscript
 
 
 class RemoteNotExists(Exception):
@@ -48,12 +37,15 @@ class Caf:
             self.cafdir/'config.ini',
             Path('~/.config/caf/config.ini').expanduser()
         ])
-        self._cscript: Optional[ModuleType] = None
         self.remotes = {
             name: Remote(r['host'], r['path'])
             for name, r in config_group(self.config, 'remote')
         }
         self.remotes['local'] = Local()
+        self.out = Path('build')
+        self.top = Path('.')
+        self.paths: List[str] = []
+        self.cscript: Optional[Callable[[Context], Any]] = None
         self.cli = CLI([
             ('conf', conf),
             ('make', make),
@@ -84,25 +76,7 @@ class Caf:
             ('go', go),
         ])
 
-    @property
-    def cscript(self) -> ModuleType:
-        if not self._cscript:
-            self._cscript = import_cscript()
-        return self._cscript
-
-    @property
-    def out(self) -> Path:
-        return Path(getattr(self.cscript, 'out', 'build'))
-
-    @property
-    def top(self) -> Path:
-        return Path(getattr(self.cscript, 'top', '.'))
-
-    @property
-    def paths(self) -> List[str]:
-        return getattr(self.cscript, 'paths', [])  # type: ignore
-
-    def __call__(self, args: List[str] = sys.argv[1:]) -> Any:
+    def run(self, args: List[str] = sys.argv[1:]) -> Any:
         if not args:
             self.cli.parser.print_help()
             error()
@@ -141,6 +115,10 @@ class Caf:
             check(self, remote_spec)
         for remote in remotes:
             remote.command(rargs)
+
+    def register(self, func: Callable[[Context], Any]) -> Callable[[Context], Any]:
+        self.cscript = func
+        return func
 
     def log(self, args: List[str]) -> None:
         if self.cafdir.exists():
@@ -208,8 +186,8 @@ def conf(caf: Caf) -> None:
     from .Configure import Context
     from .Scheduler import Scheduler
 
-    if not hasattr(caf.cscript, 'run'):
-        error('cscript has to contain function run()')
+    if not caf.cscript:
+        error('Caf has no registered cscript')
     if not caf.cafdir.is_dir():
         caf.cafdir.mkdir()
         info(f'Initializing an empty repository in {caf.cafdir.resolve()}.')
@@ -222,12 +200,7 @@ def conf(caf: Caf) -> None:
             (caf.cafdir/'objects').mkdir()
     cellar = Cellar(caf.cafdir)
     ctx = Context(caf.top, cellar, conf_only=True)
-    try:
-        caf.cscript.run(ctx)  # type: ignore
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        error('There was an error when executing run()')
+    caf.cscript(ctx)
     conf = ctx.get_configuration()
     states = cellar.store_build(conf)
     if any(label[0] == '?' for label in conf.labels.values()):

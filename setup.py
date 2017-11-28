@@ -10,7 +10,6 @@ setup(
     author_email='dev@janhermann.cz',
     license='Mozilla Public License 2.0',
     packages=find_packages(),
-    scripts=['scripts/caf'],
     classifieres=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
