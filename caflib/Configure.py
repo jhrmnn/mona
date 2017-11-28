@@ -20,20 +20,6 @@ from .Cellar import Hash, TPath  # noqa
 Contents = NewType('Contents', str)
 
 
-class Target:
-    def __init__(self, path: Path, task: 'Task') -> None:
-        self.path = path
-        self.task = task
-        self.children = {path.name: task}
-        task.parents.append(self)
-
-    def __repr__(self) -> str:
-        return f"<Target '{self.path}'>"
-
-    def __str__(self) -> str:
-        return str(self.path.parent) if len(self.path.parts) > 1 else ''
-
-
 class UnknownInputType(Exception):
     pass
 
@@ -59,6 +45,7 @@ class Task:
             command: str,
             inputs: Sequence[Input],
             symlinks: Sequence[Tuple[str, str]],
+            label: str,
             ctx: 'Context'
     ) -> None:
         self.obj = TaskObject(command)
@@ -82,9 +69,7 @@ class Task:
                     and isinstance(file[0], str) \
                     and isinstance(file[1], VirtualFile):
                 childname, vfile = file
-                self.obj.children[childname] = vfile.task.hashid
-                self.obj.childlinks[path] = (childname, vfile.name)
-                vfile.task.parents.append(self)
+                self.obj.childlinks[path] = (vfile.task.hashid, vfile.name)
             else:
                 raise UnknownInputType(item)
         for target, source in symlinks:
@@ -93,8 +78,8 @@ class Task:
             self.obj.symlinks[str(Path(target))] = str(Path(source))
         self.hashid: Hash = self.obj.hashid
         Task.tasks[self.hashid] = self
-        self.parents: List[Union[Target, Task]] = []
         self.ctx = ctx
+        self.label = label
 
     def __hash__(self) -> int:
         return hash(self.hashid)
@@ -105,21 +90,10 @@ class Task:
         return self.hashid == other.hashid
 
     def __repr__(self) -> str:
-        return f'<Task obj={self.obj!r} hash={self.hashid!r} parents={self.parents!r}>'
+        return f'<Task obj={self.obj!r} hash={self.hashid!r}>'
 
     def __str__(self) -> str:
-        if not self.parents:
-            return '?'
-        parent = self.parents[-1]
-        for name, child in parent.children.items():
-            if child == self:
-                par = str(parent)
-                return f'{par}/{name}' if par else name
-        raise MalformedTask(repr(self))
-
-    @property
-    def children(self) -> Dict[str, 'Task']:
-        return {name: Task.tasks[hashid] for name, hashid in self.obj.children.items()}
+        return self.label  # type: ignore
 
     @property
     def state(self) -> State:
@@ -197,7 +171,7 @@ def function_task(func: Callable) -> Callable[..., Task]:
 
     def task_gen(
             *args: InputTarget,
-            target: TPath = None,
+            label: TPath,
             ctx: 'Context',
             **kwargs: Any
     ) -> Task:
@@ -223,7 +197,7 @@ def function_task(func: Callable) -> Callable[..., Task]:
         return ctx(
             command='python3 _exec.py',
             inputs=inputs,
-            target=target,
+            label=label,
             klass=PickledTask,
         )
     return task_gen
@@ -241,14 +215,14 @@ class Context:
         self.top = top
         self.cellar = cellar
         self.tasks: List[Task] = []
-        self.targets: Dict[Path, Target] = {}
+        self.targets: Dict[Path, Hash] = {}
         self.inputs: Dict[Hash, Union[str, bytes]] = {}
         self._sources: Dict[Path, Hash] = {}
         self.conf_only = conf_only
 
     def __call__(
             self, *,
-            target: Union[TPath, str] = None,
+            label: Union[TPath, str],
             klass: Type[Task] = Task,
             features: List[TaskFeature] = None,
             **kwargs: Any
@@ -256,13 +230,12 @@ class Context:
         features = [base_feature, *(features or [])]
         for feature in features:
             feature(kwargs)
-        task = klass(ctx=self, **kwargs)
-        if target:
-            path = Path(target)
+        task = klass(ctx=self, label=label, **kwargs)
+        if label:
+            path = Path(label)
             if path in self.targets:
-                error(f'Multiple definitions of target {target!r}')
-            targetnode = Target(path, task)
-            self.targets[path] = targetnode
+                error(f'Multiple definitions of target {label!r}')
+            self.targets[path] = task.hashid
         self.tasks.append(task)
         return task
 
@@ -293,10 +266,7 @@ class Context:
     def get_configuration(self) -> Configuration:
         return Configuration(
             {task.hashid: task.obj for task in self.tasks},
-            {
-                TPath(str(target.path)): target.task.hashid
-                for target in self.targets.values()
-            },
+            {TPath(str(path)): hs for path, hs in self.targets.items()},
             self.inputs,
             {task.hashid: TPath(str(task)) for task in self.tasks}
         )

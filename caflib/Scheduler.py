@@ -163,7 +163,7 @@ class Scheduler:
                 assert task
                 if any(
                         states[child] != State.DONE
-                        for child in task.children.values()
+                        for child in task.children
                 ):
                     self.skip_task(hashid)
                     debug(f'{label} has unsealed children, skipping')

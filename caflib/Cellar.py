@@ -63,20 +63,18 @@ class TaskObject:
                  command: str,
                  inputs: Dict[str, Hash] = None,
                  symlinks: Dict[str, str] = None,
-                 children: Dict[str, Hash] = None,
-                 childlinks: Dict[str, Tuple[str, str]] = None,
+                 childlinks: Dict[str, Tuple[Hash, str]] = None,
                  outputs: Optional[Dict[str, Hash]] = None) -> None:
         self.command = command
         self.inputs = inputs or {}
         self.symlinks = symlinks or {}
-        self.children = children or {}
         self.childlinks = childlinks or {}
         self.outputs = outputs
 
     def __repr__(self) -> str:
         return (
             f'<TaskObj command={self.command!r} inputs={self.inputs!r} '
-            f'symlinks={self.symlinks!r} children={self.children!r} '
+            f'symlinks={self.symlinks!r} '
             f'childlinks={self.childlinks!r} outputs={self.outputs!r}>'
         )
 
@@ -84,14 +82,18 @@ class TaskObject:
         inputs = cast(Dict[str, str], self.inputs.copy())
         for name, target in self.symlinks.items():
             inputs[name] = '>' + target
-        for name, (childname, target) in self.childlinks.items():
-            inputs[name] = f'@{self.children[childname]}/{target}'
+        for name, (hs, target) in self.childlinks.items():
+            inputs[name] = f'@{hs}/{target}'
         obj = {'command': self.command, 'inputs': inputs}
         return obj
 
     @property
     def data(self) -> bytes:
         return json.dumps(self.asdict_v2(), sort_keys=True).encode()
+
+    @property
+    def children(self) -> Set[Hash]:
+        return set(hs for hs, _ in self.childlinks.values())
 
     @property
     def hashid(self) -> Hash:
@@ -104,24 +106,18 @@ class TaskObject:
         obj: Dict[str, Any] = json.loads(inp)
         inputs: Dict[str, Hash] = {}
         symlinks: Dict[str, str] = {}
-        children_inv: Dict[Hash, str] = {}
-        childlinks: Dict[str, Tuple[str, str]] = {}
-        nchildren = 0
+        childlinks: Dict[str, Tuple[Hash, str]] = {}
         for name, target in obj['inputs'].items():
             if target[0] == '>':
                 symlinks[name] = target[1:]
             elif target[0] == '@':
                 hs, target = target[1:].split('/', 1)
-                if hs not in children_inv:
-                    nchildren += 1
-                    children_inv[hs] = f'_{nchildren}'
-                childlinks[name] = (children_inv[hs], target)
+                childlinks[name] = (Hash(hs), target)
             else:
                 inputs[name] = Hash(target)
-        children = {childname: hs for hs, childname in children_inv.items()}
         outputs: Dict[str, Hash] = json.loads(out) if out else None
         return cls(
-            obj['command'], inputs, symlinks, children, childlinks, outputs
+            obj['command'], inputs, symlinks, childlinks, outputs
         )
 
 
@@ -407,11 +403,10 @@ class Cellar:
             self,
             task: TaskObject,
             path: Path,
-            resolve: bool = True,
             nolink: bool = False
     ) -> List[str]:
         copier: Callable[[Path, Path], None] = copy_to if nolink else symlink_to
-        children = self.get_tasks(task.children.values())
+        children = self.get_tasks(task.children)
         all_files = []
         for target, filehash in task.inputs.items():
             fulltarget = path/target
@@ -423,18 +418,17 @@ class Cellar:
             fulltarget.parent.mkdir(parents=True, exist_ok=True)
             fulltarget.symlink_to(source)
             all_files.append(target)
-        for target, (child, source) in task.childlinks.items():
-            if resolve:
-                childtask = children[task.children[child]]
-                assert childtask.outputs
+        for target, (hs, source) in task.childlinks.items():
+            childtask = children[hs]
+            if childtask.outputs:
                 childfile = childtask.outputs.get(
                     source, childtask.inputs.get(source)
                 )
                 assert childfile
                 copier(self.get_file(childfile), path/target)
+                all_files.append(target)
             else:
-                symlink_to(Path(child)/source, path/target)
-            all_files.append(target)
+                symlink_to(Path(hs)/source, path/target)
         for target, filehash in (task.outputs or {}).items():
             copier(self.get_file(filehash), path/target)
             all_files.append(target)
@@ -470,16 +464,6 @@ class Cellar:
         if hashes:
             tasks.update(self.get_tasks(hashes))
         tree = [(TPath(str(path)), hashid) for hashid, path in targets]
-        while targets:
-            hashid, path = targets.pop()
-            for name, childhash in tasks[hashid].children.items():
-                childpath = path/name
-                tree.append((TPath(str(childpath)), childhash))
-                if childhash not in tasks:
-                    task = self.get_task(childhash)
-                    assert task
-                    tasks[childhash] = task
-                targets.append((childhash, childpath))
         return Tree(sorted(tree), objects=tasks if objects else None)
 
     def checkout(
@@ -501,9 +485,6 @@ class Cellar:
                 task = self.get_task(hashid)
                 assert task
                 tasks[hashid] = task
-            for name, childhash in tasks[hashid].children.items():
-                childpath = path/name
-                targets.append((childhash, childpath))
             if not any(match_glob(str(path), patt) for patt in patterns):
                 continue
             if finished and tasks[hashid].outputs is None:
@@ -517,7 +498,7 @@ class Cellar:
             else:
                 rootpath.mkdir(parents=True)
                 nsymlinks += len(self.checkout_task(
-                    tasks[hashid], rootpath, resolve=False, nolink=nolink
+                    tasks[hashid], rootpath, nolink=nolink
                 ))
                 ntasks += 1
                 paths[hashid] = rootpath
