@@ -30,12 +30,12 @@ class Remote:
         cmd = [
             'rsync', '-cirl', '--copy-unsafe-links',
             '--exclude=.*', '--exclude=build*', '--exclude=*.pyc',
-            '--exclude=__pycache__'
+            '--exclude=__pycache__', '--exclude=*.egg-info'
         ]
         if delete:
             cmd.append('--delete')
         cmd.extend(f'--exclude={patt}' for patt in exclude)
-        cmd.extend(['caf', 'cscript.py', str(top)])
+        cmd.append(str(top))
         if os.path.exists('caflib'):
             cmd.append('caflib')
         cmd.append(f'{self.host}:{self.path}')
