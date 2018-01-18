@@ -476,30 +476,17 @@ class Cellar:
     ) -> None:
         tasks, targets = self.get_build(nth=nth)
         root = root.resolve()
-        paths: Dict[Hash, Path] = {}
         nsymlinks = 0
         ntasks = 0
-        while targets:
-            hashid, path = targets.pop()
-            if hashid not in tasks:
-                task = self.get_task(hashid)
-                assert task
-                tasks[hashid] = task
+        for hashid, path in targets:
             if not any(match_glob(str(path), patt) for patt in patterns):
                 continue
             if finished and tasks[hashid].outputs is None:
                 continue
             rootpath = root/path
-            if hashid in paths:
-                rootpath.parent.mkdir(parents=True, exist_ok=True)
-                if not rootpath.exists():
-                    rootpath.symlink_to(paths[hashid])
-                    nsymlinks += 1
-            else:
-                rootpath.mkdir(parents=True)
-                nsymlinks += len(self.checkout_task(
-                    tasks[hashid], rootpath, nolink=nolink
-                ))
-                ntasks += 1
-                paths[hashid] = rootpath
+            rootpath.mkdir(parents=True, exist_ok=True)
+            nsymlinks += len(self.checkout_task(
+                tasks[hashid], rootpath, nolink=nolink
+            ))
+            ntasks += 1
         info(f'Checked out {ntasks} tasks: {nsymlinks} {"files" if nolink else "symlinks"}')
