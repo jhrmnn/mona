@@ -66,7 +66,7 @@ class AimsTask:
         aims, check = task.pop('aims'), task.pop('check', True)
         command = f'AIMS={aims} run_aims'
         if check:
-            command += ' && grep "Have a nice day" run.out >/dev/null'
+            command += ' && egrep "Have a nice day|stop_if_parser" run.out >/dev/null'
         task['command'] = command
 
     def basis(self, task: Task) -> None:
