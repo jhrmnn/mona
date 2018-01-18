@@ -7,8 +7,8 @@ setup(
     description='Distributed calculation framework',
     url='https://github.com/azag0/caf',
     author='Jan Hermann',
-    author_email='dev@hermann.in',
-    license='MIT',
+    author_email='dev@janhermann.cz',
+    license='Mozilla Public License 2.0',
     packages=find_packages(),
     scripts=['scripts/caf'],
     classifieres=[
