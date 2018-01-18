@@ -90,7 +90,7 @@ class Task:
         return f'<Task obj={self.obj!r} hash={self.hashid!r}>'
 
     def __str__(self) -> str:
-        return self.label  # type: ignore
+        return self.label
 
     @property
     def state(self) -> State:

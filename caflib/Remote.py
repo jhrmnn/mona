@@ -48,7 +48,7 @@ class Remote:
             info(f'Running `./caf {cmd}` on {self.host}...')
         inp_bytes = inp.encode() if inp is not None else None
         try:
-            output = sp.run([  # type: ignore
+            output = sp.run([
                 'ssh',
                 self.host,
                 f'sh -c "cd {self.path} && exec ./caf {cmd}"'

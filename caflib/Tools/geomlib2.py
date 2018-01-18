@@ -266,13 +266,13 @@ def load(fp: IO[str], fmt: str) -> Molecule:
         atoms = []
         lattice = []
         while True:
-            l = fp.readline()
-            if l == '':
+            line = fp.readline()
+            if line == '':
                 break
-            l = l.strip()
-            if not l or l.startswith('#'):
+            line = line.strip()
+            if not line or line.startswith('#'):
                 continue
-            ws = l.split()
+            ws = line.split()
             what = ws[0]
             if what in ['atom', 'empty']:
                 atoms.append(Atom(ws[4], get_vec(ws[1:4]), ghost=what == 'empty'))
