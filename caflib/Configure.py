@@ -32,7 +32,7 @@ class MalformedTask(Exception):
     pass
 
 
-InputTarget = Union[Path, Contents, Tuple[str, 'VirtualFile']]
+InputTarget = Union[Path, Contents, 'VirtualFile']
 Input = Union[str, Path, Tuple[str, InputTarget]]
 TaskFeature = Callable[[Dict[str, Any]], None]
 
@@ -65,11 +65,8 @@ class Task:
                 self.obj.inputs[path] = ctx.get_source(file)
             elif isinstance(file, str):
                 self.obj.inputs[path] = ctx.store_text(file)
-            elif isinstance(file, tuple) and len(file) == 2 \
-                    and isinstance(file[0], str) \
-                    and isinstance(file[1], VirtualFile):
-                childname, vfile = file
-                self.obj.childlinks[path] = (vfile.task.hashid, vfile.name)
+            elif isinstance(file, VirtualFile):
+                self.obj.childlinks[path] = (file.task.hashid, file.name)
             else:
                 raise UnknownInputType(item)
         for target, source in symlinks:
