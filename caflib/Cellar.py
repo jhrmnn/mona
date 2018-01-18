@@ -291,12 +291,9 @@ class Cellar:
             state: State,
             outputs: Dict[str, Hash]
     ) -> None:
-        task = self.get_task(hashid)
-        assert task
-        task.outputs = outputs
         self.execute(
-            'update tasks set task = ?, state = ? where hash = ?',
-            (task, state, hashid)
+            'update tasks set out = ?, state = ? where hash = ?',
+            (json.dumps(outputs, sort_keys=True).encode(), state, hashid)
         )
         self.commit()
 
