@@ -10,6 +10,7 @@ from configparser import ConfigParser
 import signal
 import json
 import argparse
+from collections import OrderedDict
 
 from .Utils import get_timestamp, cd, config_group, groupby
 from .CLI import Arg, define_cli, CLI, CLIError, ThrowingArgumentParser
@@ -21,8 +22,10 @@ from .Logging import (
 from .Configure import Context
 
 from typing import (  # noqa
-    Any, Union, Dict, List, Optional, Set, Iterable, Sequence, Callable
+    Any, Union, Dict, List, Optional, Set, Iterable, Sequence, Callable, TypeVar
 )
+
+Cscript = Callable[[Context], Any]
 
 
 class RemoteNotExists(Exception):
@@ -45,7 +48,7 @@ class Caf:
         self.out = Path('build')
         self.top = Path('.')
         self.paths: List[str] = []
-        self.cscript: Optional[Callable[[Context], Any]] = None
+        self.cscripts: Dict[str, Cscript] = OrderedDict()
         self.cli = CLI([
             ('conf', conf),
             ('make', make),
@@ -116,9 +119,11 @@ class Caf:
         for remote in remotes:
             remote.command(rargs)
 
-    def register(self, func: Callable[[Context], Any]) -> Callable[[Context], Any]:
-        self.cscript = func
-        return func
+    def register(self, label: str) -> Callable[[Cscript], Cscript]:
+        def decorator(cscript: Cscript) -> Cscript:
+            self.cscripts[label] = cscript
+            return cscript
+        return decorator
 
     def log(self, args: List[str]) -> None:
         if self.cafdir.exists():
@@ -179,15 +184,15 @@ def get_context(path: os.PathLike = Path('.')) -> Any:
     return ctx
 
 
-@define_cli()
-def conf(caf: Caf) -> None:
+@define_cli([
+    Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
+])
+def conf(caf: Caf, cscripts: List[str] = None) -> None:
     """Prepare tasks: process cscript.py and store tasks in cellar."""
     from .Cellar import Cellar
     from .Configure import Context
     from .Scheduler import Scheduler
 
-    if not caf.cscript:
-        error('Caf has no registered cscript')
     if not caf.cafdir.is_dir():
         caf.cafdir.mkdir()
         info(f'Initializing an empty repository in {caf.cafdir.resolve()}.')
@@ -200,7 +205,10 @@ def conf(caf: Caf) -> None:
             (caf.cafdir/'objects').mkdir()
     cellar = Cellar(caf.cafdir)
     ctx = Context(caf.top, cellar, conf_only=True)
-    caf.cscript(ctx)
+    if not cscripts:
+        cscripts = list(caf.cscripts.keys())
+    for label in cscripts:
+        caf.cscripts[label](ctx)
     conf = ctx.get_configuration()
     states = cellar.store_build(conf)
     if any(label[0] == '?' for label in conf.labels.values()):
