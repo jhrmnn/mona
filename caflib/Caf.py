@@ -20,6 +20,7 @@ from .Logging import (
     error, info, Table, colstr, warn, no_cafdir, handle_broken_pipe
 )
 from .Configure import Context
+from .Cellar import Cellar, Hash, TPath, State
 
 from typing import (  # noqa
     Any, Union, Dict, List, Optional, Set, Iterable, Sequence, Callable, TypeVar
@@ -175,7 +176,6 @@ class Caf:
 
 
 def get_context(path: os.PathLike = Path('.')) -> Any:
-    from .Cellar import Cellar
     from .Configure import Context
 
     path = Path(path)
@@ -189,7 +189,6 @@ def get_context(path: os.PathLike = Path('.')) -> Any:
 ])
 def conf(caf: Caf, cscripts: List[str] = None) -> None:
     """Prepare tasks: process cscript.py and store tasks in cellar."""
-    from .Cellar import Cellar
     from .Configure import Context
     from .Scheduler import Scheduler
 
@@ -244,7 +243,6 @@ def make(caf: Caf,
          maxerror: int = 5,
          randomize: bool = False) -> None:
     """Execute build tasks."""
-    from .Cellar import Cellar, Hash  # noqa
     from .Scheduler import RemoteScheduler, Scheduler
 
     if verbose:
@@ -339,8 +337,6 @@ def checkout(caf: Caf,
              finished: bool = False,
              no_link: bool = False) -> None:
     """Create the dependecy tree physically on a file system."""
-    from .Cellar import Cellar, Hash
-
     cellar = Cellar(caf.cafdir)
     if not do_json:
         if blddir.exists():
@@ -367,7 +363,6 @@ def checkout(caf: Caf,
 ])
 def submit(caf: Caf, url: str, patterns: List[str] = None, append: bool = False) -> None:
     """Submit the list of prepared tasks to a queue server."""
-    from .Cellar import Cellar, State, TPath
     from .Scheduler import Scheduler
     from .Announcer import Announcer
 
@@ -401,7 +396,6 @@ def submit(caf: Caf, url: str, patterns: List[str] = None, append: bool = False)
 def reset(caf: Caf, patterns: List[str] = None, hard: bool = False,
           running: bool = False) -> None:
     """Remove all temporary checkouts and set tasks to clean."""
-    from .Cellar import Cellar, State
     from .Scheduler import Scheduler
 
     if hard and input('Are you sure? ["y" to confirm] ') != 'y':
@@ -447,8 +441,6 @@ def list_remotes(caf: Caf) -> None:
 @define_cli()
 def list_builds(caf: Caf) -> None:
     """List builds."""
-    from .Cellar import Cellar
-
     cellar = Cellar(caf.cafdir)
     table = Table(align='<<')
     for i, created in reversed(list(enumerate(cellar.get_builds()))):
@@ -486,7 +478,6 @@ def list_tasks(caf: Caf,
                disp_tmp: bool = False,
                no_color: bool = False) -> None:
     """List tasks."""
-    from .Cellar import Cellar, State
     from .Scheduler import Scheduler
 
     cellar = Cellar(caf.cafdir)
@@ -536,7 +527,6 @@ def list_tasks(caf: Caf,
 ])
 def status(caf: Caf, patterns: List[str] = None, incomplete: bool = False) -> None:
     """Print number of initialized, running and finished tasks."""
-    from .Cellar import Cellar, State
     from .Scheduler import Scheduler
 
     cellar = Cellar(caf.cafdir)
@@ -595,7 +585,6 @@ def status(caf: Caf, patterns: List[str] = None, incomplete: bool = False) -> No
 ])
 def gc(caf: Caf, gc_all: bool = False) -> None:
     """Discard running and error tasks."""
-    from .Cellar import Cellar
     from .Scheduler import Scheduler
 
     scheduler = Scheduler(caf.cafdir)
@@ -675,7 +664,6 @@ def fetch(caf: Caf,
           patterns: List[str] = None,
           no_files: bool = False) -> None:
     """Fetch targets from remote."""
-    from .Cellar import Cellar, State
     from .Scheduler import Scheduler
 
     cellar = Cellar(caf.cafdir)
@@ -704,7 +692,6 @@ def fetch(caf: Caf,
 ])
 def archive_store(caf: Caf, filename: str, patterns: List[str] = None) -> None:
     """Archives files accessible from the given tasks as tar.gz."""
-    from .Cellar import Cellar
     from .Scheduler import Scheduler
 
     cellar = Cellar(caf.cafdir)
