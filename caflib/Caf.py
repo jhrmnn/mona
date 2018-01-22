@@ -33,8 +33,9 @@ class RemoteNotExists(Exception):
 
 
 class Caf:
-    def __init__(self) -> None:
-        self.cafdir = Path('.caf')
+    def __init__(self, calcfile: str) -> None:
+        self.top = Path(calcfile).parent
+        self.cafdir = self.top/'.caf'
         self.config = ConfigParser()
         self.config.read([
             self.cafdir/'config.ini',
@@ -45,8 +46,7 @@ class Caf:
             for name, r in config_group(self.config, 'remote')
         }
         self.remotes['local'] = Local()
-        self.out = Path('build')
-        self.top = Path('.')
+        self.out = self.top/'build'
         self.paths: List[str] = []
         self.cscripts: Dict[str, Cscript] = OrderedDict()
         self.cli = CLI([
