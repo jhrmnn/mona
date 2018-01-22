@@ -232,7 +232,7 @@ def sig_handler(sig: Any, frame: Any) -> Any:
     Arg('--last', action='store_true', help='Use last submitted queue'),
     Arg('-v', '--verbose', action='store_true'),
     Arg('--maxerror', type=int, help='Number of errors in row to quit [default: 5]'),
-    Arg('-r', '--random', action='store_true', help='Pick tasks in random order')
+    Arg('-r', '--randomize', action='store_true', help='Pick tasks in random order')
 ])
 def make(caf: Caf,
          patterns: List[str] = None,
