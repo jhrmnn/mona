@@ -78,13 +78,15 @@ class TaskObject:
             f'childlinks={self.childlinks!r} outputs={self.outputs!r}>'
         )
 
-    def asdict_v2(self) -> Dict[str, Any]:
+    def asdict_v2(self, with_outputs: bool = False) -> Dict[str, Any]:
         inputs = cast(Dict[str, str], self.inputs.copy())
         for name, target in self.symlinks.items():
             inputs[name] = '>' + target
         for name, (hs, target) in self.childlinks.items():
             inputs[name] = f'@{hs}/{target}'
         obj = {'command': self.command, 'inputs': inputs}
+        if self.outputs is not None:
+            obj['outputs'] = self.outputs
         return obj
 
     @property
