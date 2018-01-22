@@ -13,7 +13,8 @@ import shutil
 from pathlib import Path
 
 from typing import (  # noqa
-    Dict, Any, Iterator, Tuple, Iterable, TypeVar, List, Callable, Mapping
+    Dict, Any, Iterator, Tuple, Iterable, TypeVar, List, Callable, Mapping,
+    Union
 )
 
 _T = TypeVar('_T')
@@ -47,7 +48,7 @@ def sample(seq: Iterable[_T]) -> Iterator[_T]:
 
 
 @contextmanager
-def cd(path: str) -> Iterator[None]:
+def cd(path: Union[str, Path]) -> Iterator[None]:
     path = str(path)
     cwd = os.getcwd()
     os.chdir(path)
