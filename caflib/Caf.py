@@ -174,6 +174,12 @@ class Caf:
             url += f'/queue/{qid}'
         return url
 
+    def get(self, name: str) -> Any:
+        cellar = Cellar(self.cafdir)
+        ctx = Context(self.top, cellar)
+        with cd(self.top):
+            return self.cscripts[name](ctx)
+
 
 def get_context(path: os.PathLike = Path('.')) -> Any:
     from .Configure import Context
