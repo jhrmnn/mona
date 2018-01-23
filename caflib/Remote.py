@@ -35,8 +35,6 @@ class Remote:
         if delete:
             cmd.append('--delete')
         cmd.extend(f'--exclude={patt}' for patt in exclude)
-        if os.path.exists('caflib'):
-            cmd.append('caflib')
         cmd.append(str(top) + '/')
         cmd.append(f'{self.host}:{self.path}')
         sp.run(cmd, check=True)
