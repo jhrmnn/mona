@@ -10,6 +10,7 @@ import signal
 import json
 import argparse
 from collections import OrderedDict
+from functools import wraps
 
 from .Utils import get_timestamp, cd, config_group, groupby
 from .CLI import Arg, define_cli, CLI, CLIError, ThrowingArgumentParser
@@ -119,10 +120,18 @@ class Caf:
         for remote in remotes:
             remote.command(rargs)
 
-    def register(self, label: str) -> Callable[[Cscript], Cscript]:
-        def decorator(cscript: Cscript) -> Cscript:
-            self.cscripts[label] = cscript
-            return cscript
+    def register(self, label: str) -> Callable[[Cscript], Callable[[], Any]]:
+        def decorator(cscript: Cscript) -> Callable[[], Any]:
+            @wraps(cscript)
+            def wrapper(ctx: Context) -> Any:
+                ctx._cwd = label
+                try:
+                    with cd(self.top):
+                        return cscript(ctx)
+                finally:
+                    ctx._cwd = None
+            self.cscripts[label] = wrapper
+            return wrapper
         return decorator
 
     def log(self, args: List[str]) -> None:

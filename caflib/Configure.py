@@ -216,6 +216,7 @@ class Context:
         self.inputs: Dict[Hash, Union[str, bytes]] = {}
         self._sources: Dict[Path, Hash] = {}
         self.conf_only = conf_only
+        self._cwd: Optional[str] = None
 
     def __call__(
             self, *,
@@ -227,6 +228,8 @@ class Context:
         features = [base_feature, *(features or [])]
         for feature in features:
             feature(kwargs)
+        if label and self._cwd is not None:
+            label = f'{self._cwd}/{label}'
         task = klass(ctx=self, label=label, **kwargs)
         if label:
             path = Path(label)
