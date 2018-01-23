@@ -120,6 +120,11 @@ class Caf:
         for remote in remotes:
             remote.command(rargs)
 
+    @property
+    def ctx(self) -> Context:
+        cellar = Cellar(self.cafdir)
+        return Context(self.top, cellar)
+
     def register(self, label: str) -> Callable[[Cscript], Callable[[], Any]]:
         def decorator(cscript: Cscript) -> Callable[[], Any]:
             @wraps(cscript)
