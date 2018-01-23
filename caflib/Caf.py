@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from pathlib import Path
 import shutil
-import os
 import sys
 import subprocess as sp
 from configparser import ConfigParser
@@ -173,21 +172,6 @@ class Caf:
         if qid:
             url += f'/queue/{qid}'
         return url
-
-    def get(self, name: str) -> Any:
-        cellar = Cellar(self.cafdir)
-        ctx = Context(self.top, cellar)
-        with cd(self.top):
-            return self.cscripts[name](ctx)
-
-
-def get_context(path: os.PathLike = Path('.')) -> Any:
-    from .Configure import Context
-
-    path = Path(path)
-    cellar = Cellar(path/'.caf')
-    ctx = Context(path, cellar)
-    return ctx
 
 
 @define_cli([
