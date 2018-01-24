@@ -39,7 +39,8 @@ class Scheduler:
         try:
             self.db = sqlite3.connect(
                 str(path/'queue.db'),
-                detect_types=sqlite3.PARSE_COLNAMES
+                detect_types=sqlite3.PARSE_COLNAMES,
+                timeout=30.0,
             )
         except sqlite3.OperationalError:
             no_cafdir()
