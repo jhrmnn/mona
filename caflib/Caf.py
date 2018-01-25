@@ -11,6 +11,7 @@ import json
 import argparse
 from collections import OrderedDict
 from functools import wraps
+import os
 
 from .Utils import get_timestamp, cd, config_group, groupby
 from .CLI import Arg, define_cli, CLI, CLIError, ThrowingArgumentParser
@@ -35,7 +36,7 @@ class RemoteNotExists(Exception):
 
 class Caf:
     def __init__(self) -> None:
-        self.cafdir = Path('.caf')
+        self.cafdir = Path(os.environ.get('CAF_DIR', '.caf'))
         self.config = ConfigParser()
         self.config.read([
             self.cafdir/'config.ini',
