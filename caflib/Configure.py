@@ -94,9 +94,7 @@ class Task:
 
     @property
     def state(self) -> State:
-        # mypy complains on direct return
-        state: State = self.ctx.cellar.get_state(self.hashid)
-        return state
+        return self.ctx.cellar.get_state(self.hashid)
 
     @property
     def finished(self) -> bool:
