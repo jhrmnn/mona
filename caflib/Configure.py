@@ -206,8 +206,7 @@ def base_feature(task: Dict[str, Any]) -> None:
 class Context:
     """Represent a build configuration: tasks and targets."""
 
-    def __init__(self, top: Path, cellar: Cellar, conf_only: bool = False) -> None:
-        self.top = top
+    def __init__(self, cellar: Cellar, conf_only: bool = False) -> None:
         self.cellar = cellar
         self.tasks: List[Task] = []
         self.targets: Dict[Path, Hash] = {}

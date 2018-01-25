@@ -47,7 +47,6 @@ class Caf:
         }
         self.remotes['local'] = Local()
         self.out = Path('build')
-        self.top = Path('.')
         self.paths: List[str] = []
         self.cscripts: Dict[str, Cscript] = OrderedDict()
         self.cli = CLI([
@@ -114,7 +113,7 @@ class Caf:
         self.log(args)
         if rargs[0] in ['conf', 'make']:
             for remote in remotes:
-                remote.update(self.top)
+                remote.update(self.cafdir.parent)
         if rargs[0] == 'make':
             check(self, remote_spec)
         for remote in remotes:
@@ -123,7 +122,7 @@ class Caf:
     @property
     def ctx(self) -> Context:
         cellar = Cellar(self.cafdir)
-        return Context(self.top, cellar)
+        return Context(cellar)
 
     def register(self, label: str) -> Callable[[Cscript], Callable[[], Any]]:
         def decorator(cscript: Cscript) -> Callable[[], Any]:
@@ -131,8 +130,7 @@ class Caf:
             def wrapper(ctx: Context) -> Any:
                 ctx._cwd = label
                 try:
-                    with cd(self.top):
-                        return cscript(ctx)
+                    return cscript(ctx)
                 finally:
                     ctx._cwd = None
             self.cscripts[label] = wrapper
@@ -207,7 +205,7 @@ def conf(caf: Caf, cscripts: List[str] = None) -> None:
         else:
             (caf.cafdir/'objects').mkdir()
     cellar = Cellar(caf.cafdir)
-    ctx = Context(caf.top, cellar, conf_only=True)
+    ctx = Context(cellar, conf_only=True)
     if not cscripts:
         cscripts = list(caf.cscripts.keys())
     for label in cscripts:
@@ -641,7 +639,7 @@ def remote_path(caf: Caf, _: Any, name: str) -> None:
 def update(caf: Caf, remotes: str, delete: bool = False) -> None:
     """Update a remote."""
     for remote in caf.parse_remotes(remotes):
-        remote.update(caf.top, delete=delete)
+        remote.update(caf.cafdir.parent, delete=delete)
 
 
 @define_cli([
