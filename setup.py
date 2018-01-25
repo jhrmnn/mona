@@ -23,5 +23,10 @@ setup(
         'Topic :: Software Development :: Build Tools',
         'Topic :: Utilities',
     ],
-    install_requires=['mypy_extensions']
+    install_requires=['mypy_extensions'],
+    entry_points={
+        'console_scripts': [
+            'caf = caflib.Caf:main',
+        ],
+    }
 )

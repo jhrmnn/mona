@@ -12,6 +12,7 @@ import argparse
 from collections import OrderedDict
 from functools import wraps
 import os
+import importlib
 
 from .Utils import get_timestamp, cd, config_group, groupby
 from .CLI import Arg, define_cli, CLI, CLIError, ThrowingArgumentParser
@@ -28,6 +29,11 @@ from typing import (  # noqa
 )
 
 Cscript = Callable[[Context], Any]
+
+
+def main() -> None:
+    app_module = importlib.import_module(os.environ['CAF_APP'])
+    app_module.app.run()  # type: ignore
 
 
 class RemoteNotExists(Exception):
