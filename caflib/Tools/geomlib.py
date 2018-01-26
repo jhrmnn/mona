@@ -5,18 +5,23 @@ from itertools import chain, product, repeat
 import os
 from io import StringIO
 import numpy as np  # type: ignore
+import pkg_resources
+import csv
+from collections import OrderedDict
 
 from typing import (  # noqa
     List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, Union, Dict, Any,
     Optional
 )
 
-from . import geomlib
 
-
-specie_data = geomlib.Atom.data
-bohr = geomlib.bohr
-
+specie_data = OrderedDict(
+    (r['symbol'], {**r, 'number': int(r['number'])})  # type: ignore
+    for r in csv.DictReader((
+        l.decode() for l in pkg_resources.resource_stream(__name__, 'atom-data.csv')
+    ), quoting=csv.QUOTE_NONNUMERIC)
+)
+bohr = 0.52917721092
 
 Vec = Tuple[float, float, float]
 
@@ -74,6 +79,17 @@ class Molecule(Sized, Iterable):
         return (masses[:, None]*self.xyz).sum(0)/self.mass
 
     @property
+    def inertia(self) -> np.ndarray:
+        masses = np.array([atom.mass for atom in self])
+        coords_w = np.sqrt(masses)[:, None]*(self.xyz-self.cms)
+        A = np.array([np.diag(np.full(3, r)) for r in np.sum(coords_w**2, 1)])
+        B = coords_w[:, :, None]*coords_w[:, None, :]
+        return np.sum(A-B, 0)
+
+    def __getitem__(self, i: int) -> Atom:
+        return self._atoms[i]
+
+    @property
     def coords(self) -> List[Vec]:
         return [atom.coord for atom in self]
 
@@ -102,12 +118,17 @@ class Molecule(Sized, Iterable):
 
     def get_fragments(self, scale: float = 1.3) -> List['Molecule']:
         bond = self.bondmatrix(scale)
-        ifragments = geomlib.getfragments(bond)
+        ifragments = getfragments(bond)
         fragments = [
             Molecule([self._atoms[i].copy() for i in fragment])
             for fragment in ifragments
         ]
         return fragments
+
+    def hash(self) -> int:
+        if len(self) == 1:
+            return self[0].number
+        return hash(tuple(np.round(sorted(np.linalg.eigvalsh(self.inertia)), 3)))
 
     def shifted(self, delta: Union[Vec, np.ndarray]) -> 'Molecule':
         m = self.copy()
@@ -302,3 +323,38 @@ def readfile(path: str, fmt: str = None) -> Molecule:
             raise RuntimeError('Cannot determine format')
     with open(path) as f:
         return load(f, fmt)
+
+
+def getfragments(C: np.ndarray) -> List[List[int]]:
+    """Find fragments within a set of sparsely connected elements.
+
+    Given square matrix C where C_ij = 1 if i and j are connected
+    and 0 otherwise, it extends the connectedness (if i and j and j and k
+    are connected, i and k are also connected) and returns a list sets of
+    elements which are not connected by any element.
+
+    The algorithm visits all elements, checks whether it wasn't already
+    assigned to a fragment, if not, it crawls it's neighbors and their
+    neighbors etc., until it cannot find any more neighbors. Then it goes
+    to the next element until all were visited.
+    """
+    n = C.shape[0]
+    assigned = [-1 for _ in range(n)]  # fragment index, otherwise -1
+    ifragment = 0  # current fragment index
+    queue = [0 for _ in range(n)]  # allocate queue of neighbors
+    for elem in range(n):  # iterate over elements
+        if assigned[elem] >= 0:  # skip if assigned
+            continue
+        queue[0], a, b = elem, 0, 1  # queue starting with the element itself
+        while b-a > 0:  # until queue is exhausted
+            node, a = queue[a], a+1  # pop from queue
+            assigned[node] = ifragment  # assign node
+            neighbors = np.flatnonzero(C[node, :])  # list of neighbors
+            for neighbor in neighbors:
+                if not (assigned[neighbor] >= 0 or neighbor in queue[a:b]):
+                    # add to queue if not assigned or in queue
+                    queue[b], b = neighbor, b+1
+        ifragment += 1
+    fragments = [[i for i, f in enumerate(assigned) if f == fragment]
+                 for fragment in range(ifragment)]
+    return fragments

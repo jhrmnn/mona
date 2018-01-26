@@ -8,7 +8,7 @@ import re
 
 from typing import Dict, Any, List, Tuple, Callable  # noqa
 from mypy_extensions import KwArg  # noqa
-from . import geomlib2  # noqa
+from . import geomlib  # noqa
 
 
 class AimsNotFound(Exception):
