@@ -135,11 +135,8 @@ class Caf:
         def decorator(cscript: Cscript) -> Callable[[], Any]:
             @wraps(cscript)
             def wrapper(ctx: Context) -> Any:
-                ctx._cwd = label
-                try:
+                with ctx.cd(label):
                     return cscript(ctx)
-                finally:
-                    ctx._cwd = None
             self.cscripts[label] = wrapper
             return wrapper
         return decorator

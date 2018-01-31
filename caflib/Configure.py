@@ -6,13 +6,14 @@ import os
 import inspect
 import pickle
 from textwrap import dedent
+from contextlib import contextmanager
 
 from .Logging import error
 from .Cellar import get_hash, State, TaskObject, Cellar, Configuration
 
 from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
-    NewType, Type, Sequence, Iterable
+    NewType, Type, Sequence, Iterable, Iterator
 )
 from .Cellar import Hash, TPath  # noqa
 
@@ -99,6 +100,9 @@ class Task:
     @property
     def finished(self) -> bool:
         return self.state == State.DONE
+
+    def add_label(self, label: Union[TPath, str]) -> None:
+        self.ctx.add_target(label, self.hashid)
 
     @property
     def outputs(self) -> Union[Dict[str, 'StoredFile'], 'FakeOutputs']:
@@ -213,7 +217,7 @@ class Context:
         self.inputs: Dict[Hash, Union[str, bytes]] = {}
         self._sources: Dict[Path, Hash] = {}
         self.conf_only = conf_only
-        self._cwd: Optional[str] = None
+        self._cwd = Path()
 
     def __call__(
             self, *,
@@ -225,16 +229,26 @@ class Context:
         features = [base_feature, *(features or [])]
         for feature in features:
             feature(kwargs)
-        if label and self._cwd is not None:
-            label = f'{self._cwd}/{label}'
-        task = klass(ctx=self, label=label, **kwargs)
-        if label:
-            path = Path(label)
-            if path in self.targets:
-                error(f'Multiple definitions of target {label!r}')
-            self.targets[path] = task.hashid
+        task = klass(ctx=self, label=str(self._cwd/label), **kwargs)
+        task.add_label(label)
         self.tasks.append(task)
         return task
+
+    def add_target(self, label: Union[TPath, str], hashid: Hash) -> None:
+        path = self._cwd/label
+        if path in self.targets:
+            error(f'Multiple definitions of target {label!r}')
+        self.targets[path] = hashid
+
+    @contextmanager
+    def cd(self, label: str) -> Iterator[None]:
+        prev_cwd = self._cwd
+        self._cwd /= label
+        try:
+            yield
+        finally:
+            assert self._cwd == prev_cwd/label
+            self._cwd = prev_cwd
 
     def get_source(self, path: Path) -> Hash:
         if path in self._sources:
