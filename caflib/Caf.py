@@ -639,11 +639,12 @@ def remote_path(caf: Caf, _: Any, name: str) -> None:
 @define_cli([
     Arg('remotes', metavar='REMOTE'),
     Arg('--delete', action='store_true', help='Delete files when syncing'),
+    Arg('--dry', action='store_true', help='Do a dry run'),
 ])
-def update(caf: Caf, remotes: str, delete: bool = False) -> None:
+def update(caf: Caf, remotes: str, delete: bool = False, dry: bool = False) -> None:
     """Update a remote."""
     for remote in caf.parse_remotes(remotes):
-        remote.update(caf.cafdir.parent, delete=delete)
+        remote.update(caf.cafdir.parent, delete=delete, dry=dry)
 
 
 @define_cli([

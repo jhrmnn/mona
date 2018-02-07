@@ -19,7 +19,7 @@ class Remote:
         self.host = host
         self.path = path
 
-    def update(self, top: Path, delete: bool = False) -> None:
+    def update(self, top: Path, delete: bool = False, dry: bool = False) -> None:
         info(f'Updating {self.host}...')
         sp.run(['ssh', self.host, f'mkdir -p {self.path}'], check=True)
         exclude: List[str] = []
@@ -34,6 +34,8 @@ class Remote:
         ]
         if delete:
             cmd.append('--delete')
+        if dry:
+            cmd.append('--dry-run')
         cmd.extend(f'--exclude={patt}' for patt in exclude)
         cmd.append(str(top) + '/')
         cmd.append(f'{self.host}:{self.path}')
@@ -139,7 +141,7 @@ class Local(Remote):
     def __init__(self) -> None:
         self.host = 'local'
 
-    def update(self, top: Path, delete: bool = False) -> None:
+    def update(self, top: Path, delete: bool = False, dry: bool = False) -> None:
         pass
 
     def command(self, args: List[str], inp: str = None, _get_output: bool = False) -> Optional[str]:
