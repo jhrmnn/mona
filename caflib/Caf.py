@@ -396,11 +396,12 @@ def submit(caf: Caf, url: str, patterns: List[str] = None, append: bool = False)
 @define_cli([
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be reset'),
     Arg('--running', action='store_true', help='Also reset running tasks'),
+    Arg('--only-running', action='store_true', help='Reset only running tasks'),
     Arg('--hard', action='store_true',
         help='Also reset finished tasks and remove outputs'),
 ])
 def reset(caf: Caf, patterns: List[str] = None, hard: bool = False,
-          running: bool = False) -> None:
+          running: bool = False, only_running: bool = False) -> None:
     """Remove all temporary checkouts and set tasks to clean."""
     from .Scheduler import Scheduler
 
@@ -419,9 +420,13 @@ def reset(caf: Caf, patterns: List[str] = None, hard: bool = False,
         )
     else:
         hashes = set(queue)
+    states_to_reset = set()
+    if only_running or running:
+        states_to_reset.add(State.RUNNING)
+    if not only_running:
+        states_to_reset.update((State.ERROR, State.INTERRUPTED))
     for hashid in hashes:
-        if states[hashid] in (State.ERROR, State.INTERRUPTED) \
-                or running and states[hashid] == State.RUNNING:
+        if states[hashid] in states_to_reset:
             scheduler.reset_task(hashid)
         elif hard and states[hashid] in (State.DONE, State.DONEREMOTE, State.CLEAN):
             scheduler.reset_task(hashid)
