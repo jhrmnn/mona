@@ -11,6 +11,7 @@ import json
 import argparse
 from collections import OrderedDict
 import os
+import asyncio
 
 from .Utils import get_timestamp, cd, config_group, groupby
 from .argparse_cli import Arg, define_cli, CLIError, ThrowingArgumentParser
@@ -96,6 +97,9 @@ class Caf:
             url += f'/queue/{qid}'
         return url
 
+    def get(self, route: str) -> Any:
+        return asyncio.get_event_loop().run_until_complete(self.cscripts[route](self.ctx))
+
 
 @define_cli([
     Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
@@ -119,8 +123,9 @@ def conf(caf: Caf, cscripts: List[str] = None) -> None:
     ctx = Context(cellar, conf_only=True)
     if not cscripts:
         cscripts = list(caf.cscripts.keys())
-    for label in cscripts:
-        caf.cscripts[label](ctx)
+    asyncio.get_event_loop().run_until_complete(asyncio.gather(*(
+        caf.cscripts[label](ctx) for label in cscripts
+    )))
     conf = ctx.get_configuration()
     states = cellar.store_build(conf)
     if any(label[0] == '?' for label in conf.labels.values()):
