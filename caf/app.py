@@ -12,10 +12,9 @@ import argparse
 from collections import OrderedDict
 from functools import wraps
 import os
-import importlib
 
 from .Utils import get_timestamp, cd, config_group, groupby
-from .argparse_cli import Arg, define_cli, CLI, CLIError, ThrowingArgumentParser
+from .argparse_cli import Arg, define_cli, CLIError, ThrowingArgumentParser
 from .Remote import Remote, Local
 from . import Logging
 from .Logging import (
@@ -29,11 +28,6 @@ from typing import (  # noqa
 )
 
 Cscript = Callable[[Context], Any]
-
-
-def main() -> None:
-    app_module = importlib.import_module(os.environ['CAF_APP'])
-    app_module.app.run()  # type: ignore
 
 
 class RemoteNotExists(Exception):
@@ -56,75 +50,6 @@ class Caf:
         self.out = Path('build')
         self.paths: List[str] = []
         self.cscripts: Dict[str, Cscript] = OrderedDict()
-        self.cli = CLI([
-            ('conf', conf),
-            ('make', make),
-            ('dispatch', dispatch),
-            ('checkout', checkout),
-            ('submit', submit),
-            ('reset', reset),
-            ('list', [
-                ('profiles', list_profiles),
-                ('remotes', list_remotes),
-                ('builds', list_builds),
-                ('tasks', list_tasks),
-            ]),
-            ('status', status),
-            ('gc', gc),
-            ('cmd', cmd),
-            ('remote', [
-                ('add', remote_add),
-                ('path', remote_path),
-                ('list', list_remotes),
-            ]),
-            ('update', update),
-            ('check', check),
-            ('fetch', fetch),
-            ('archive', [
-                ('save', archive_store),
-            ]),
-            ('go', go),
-        ])
-
-    def run(self, args: List[str] = sys.argv[1:]) -> Any:
-        if not args:
-            self.cli.parser.print_help()
-            error()
-        try:
-            value = self.cli.run(self, argv=args)
-        except CLIError as e:
-            clierror = e
-        else:
-            self.log(args)
-            return value
-
-        remote_spec, *rargs = args
-        try:
-            remotes: Optional[List[Remote]] = self.parse_remotes(remote_spec)
-        except RemoteNotExists:
-            remotes = None
-        if not rargs:
-            if remotes is None:
-                clierror.reraise()
-            return
-        try:
-            kwargs = self.cli.parse(rargs)
-        except CLIError as rclierror:
-            if remotes is None:
-                clierror.reraise()
-            rclierror.reraise()
-        if remotes is None:
-            error(f'Remote {remote_spec!r} is not defined')
-
-        self.mod_remote_args(rargs, kwargs)
-        self.log(args)
-        if rargs[0] in ['conf', 'make']:
-            for remote in remotes:
-                remote.update(self.cafdir.parent)
-        if rargs[0] == 'make':
-            check(self, remote_spec)
-        for remote in remotes:
-            remote.command(rargs)
 
     @property
     def ctx(self) -> Context:
@@ -141,11 +66,6 @@ class Caf:
             return wrapper
         return decorator
 
-    def log(self, args: List[str]) -> None:
-        if self.cafdir.exists():
-            with (self.cafdir/'log').open('a') as f:
-                f.write(f'{get_timestamp()}: {" ".join(args)}\n')
-
     def parse_remotes(self, remotes: str) -> List[Remote]:
         if remotes == 'all':
             return [r for r in self.remotes.values() if not isinstance(r, Local)]
@@ -154,14 +74,6 @@ class Caf:
         except KeyError:
             pass
         raise RemoteNotExists(remotes)
-
-    def mod_remote_args(self, args: List[str], kwargs: Dict) -> None:
-        if '--last' in args:
-            args.remove('--last')
-            args = args + ['--queue', self.last_queue]
-        if args[0] == 'make' and 'url' in kwargs:
-            url = kwargs['url']
-            args[args.index(url)] = self.get_queue_url(url)
 
     @property
     def last_queue(self) -> str:
