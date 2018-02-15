@@ -15,7 +15,7 @@ import os
 import importlib
 
 from .Utils import get_timestamp, cd, config_group, groupby
-from .CLI import Arg, define_cli, CLI, CLIError, ThrowingArgumentParser
+from .argparse_cli import Arg, define_cli, CLI, CLIError, ThrowingArgumentParser
 from .Remote import Remote, Local
 from . import Logging
 from .Logging import (

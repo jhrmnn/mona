@@ -26,7 +26,7 @@ setup(
     install_requires=['mypy_extensions'],
     entry_points={
         'console_scripts': [
-            'caf = caf.Caf:main',
+            'caf = caf.app:main',
         ],
     }
 )
