@@ -592,7 +592,7 @@ def status(caf: Caf, patterns: List[str] = None, incomplete: bool = False) -> No
 
 
 @define_cli([
-    Arg('-a', '--all', action='store_true', help='Discard all nonactive tasks'),
+    Arg('-a', '--all', action='store_true', help='Discard all nonactive tasks', dest='gc_all'),
 ])
 def gc(caf: Caf, gc_all: bool = False) -> None:
     """Discard running and error tasks."""
