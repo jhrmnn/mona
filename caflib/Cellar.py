@@ -60,11 +60,13 @@ def get_hash(text: Union[str, bytes]) -> Hash:
 
 class TaskObject:
     def __init__(self,
+                 execid: str,
                  command: str,
                  inputs: Dict[str, Hash] = None,
                  symlinks: Dict[str, str] = None,
                  childlinks: Dict[str, Tuple[Hash, str]] = None,
                  outputs: Optional[Dict[str, Hash]] = None) -> None:
+        self.execid = execid
         self.command = command
         self.inputs = inputs or {}
         self.symlinks = symlinks or {}
@@ -73,8 +75,8 @@ class TaskObject:
 
     def __repr__(self) -> str:
         return (
-            f'<TaskObj command={self.command!r} inputs={self.inputs!r} '
-            f'symlinks={self.symlinks!r} '
+            f'<TaskObj execd={self.execid!r} command={self.command!r} '
+            f'inputs={self.inputs!r} symlinks={self.symlinks!r} '
             f'childlinks={self.childlinks!r} outputs={self.outputs!r}>'
         )
 
@@ -103,6 +105,7 @@ class TaskObject:
 
     @classmethod
     def from_data(cls,
+                  execid: str,
                   inp: bytes,
                   out: Optional[bytes] = None) -> 'TaskObject':
         obj: Dict[str, Any] = json.loads(inp)
@@ -119,7 +122,7 @@ class TaskObject:
                 inputs[name] = Hash(target)
         outputs: Dict[str, Hash] = json.loads(out) if out else None
         return cls(
-            obj['command'], inputs, symlinks, childlinks, outputs
+            execid, obj['command'], inputs, symlinks, childlinks, outputs
         )
 
 
@@ -281,12 +284,12 @@ class Cellar:
         return self.store(hashid, file=file)
 
     def get_task(self, hashid: Hash) -> Optional[TaskObject]:
-        row: Optional[Tuple[bytes, bytes]] = self.execute(
-            'select inp, out from tasks where hash = ?', (hashid,)
+        row: Optional[Tuple[str, bytes, bytes]] = self.execute(
+            'select execid, inp, out from tasks where hash = ?', (hashid,)
         ).fetchone()
         if not row:
             return None
-        return TaskObject.from_data(row[0], row[1])
+        return TaskObject.from_data(row[0], row[1], row[2])
 
     def _update_outputs(
             self,
@@ -349,7 +352,7 @@ class Cellar:
                     sys.exit()
         now = get_timestamp()
         self.executemany('insert or ignore into tasks values (?,?,?,?,?,?)', (
-            (hashid, 'dir-bash', 0, now, task.data, None) for hashid, task in conf.tasks.items()
+            (hashid, task.execid, 0, now, task.data, None) for hashid, task in conf.tasks.items()
             # TODO sort_keys=True
         ))
         cur = self.execute('insert into builds values (?,?)', (None, now))
@@ -372,7 +375,7 @@ class Cellar:
         hashes = list(hashes)
         if len(hashes) < 10:
             cur = self.execute(
-                'select hash, inp, out from tasks where hash in ({})'.format(
+                'select execid, hash, inp, out from tasks where hash in ({})'.format(
                     ','.join(len(hashes)*['?'])
                 ),
                 hashes
@@ -384,12 +387,12 @@ class Cellar:
                 (hashid,) for hashid in hashes
             ))
             cur = self.execute(
-                'select tasks.hash, inp, out from tasks join current_tasks '
+                'select execid, tasks.hash, inp, out from tasks join current_tasks '
                 'on current_tasks.hash = tasks.hash'
             )
         return {
-            hashid: TaskObject.from_data(inp, out)
-            for hashid, inp, out in cur
+            hashid: TaskObject.from_data(execid, inp, out)
+            for execid, hashid, inp, out in cur
         }
 
     def get_file(self, hashid: Hash) -> Path:
@@ -443,9 +446,9 @@ class Cellar:
             (nth,)
         )]
         tasks = {
-            hashid: TaskObject.from_data(inp, out)
-            for hashid, inp, out in self.db.execute(
-                'select tasks.hash, inp, out from tasks join '
+            hashid: TaskObject.from_data(execid, inp, out)
+            for execid, hashid, inp, out in self.db.execute(
+                'select execid, tasks.hash, inp, out from tasks join '
                 '(select distinct(taskhash) as hash from targets join '
                 '(select id from builds order by created desc limit 1) b '
                 'on targets.buildid = b.id) build '

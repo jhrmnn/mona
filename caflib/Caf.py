@@ -283,13 +283,21 @@ def make(caf: Caf,
         with cd(task.path):
             with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
                 try:
-                    sp.run(
-                        task.command,
-                        shell=True,
-                        stdout=stdout,
-                        stderr=stderr,
-                        check=True
-                    )
+                    if task.execid == 'dir-bash':
+                        sp.run(
+                            task.command,
+                            shell=True,
+                            stdout=stdout,
+                            stderr=stderr,
+                            check=True
+                        )
+                    elif task.execid == 'dir-python':
+                        sp.run(
+                            [sys.executable, '_exec.py'],
+                            stdout=stdout,
+                            stderr=stderr,
+                            check=True
+                        )
                 except sp.CalledProcessError as exc:
                     task.error(str(exc))
                 except KeyboardInterrupt:

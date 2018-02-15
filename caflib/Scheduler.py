@@ -19,7 +19,8 @@ from .Cellar import Hash, TPath  # noqa
 
 
 class Task:
-    def __init__(self, command: str, path: str) -> None:
+    def __init__(self, execid: str, command: str, path: str) -> None:
+        self.execid = execid
         self.command = command
         self.path = path
         self.state: Tuple[State, Optional[str]] = (State.CLEAN, None)
@@ -200,7 +201,7 @@ class Scheduler:
                     (str(tmppath), hashid)
                 )
                 inputs = self.cellar.checkout_task(task, tmppath)
-                queue_task = Task(task.command, str(tmppath))
+                queue_task = Task(task.execid, task.command, str(tmppath))
                 yield queue_task
                 if queue_task.state[0] == State.INTERRUPTED:
                     was_interrupted = True

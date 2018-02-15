@@ -47,9 +47,10 @@ class Task:
             inputs: Sequence[Input],
             symlinks: Sequence[Tuple[str, str]],
             label: str,
-            ctx: 'Context'
+            ctx: 'Context',
+            execid: str = 'dir-bash',
     ) -> None:
-        self.obj = TaskObject(command)
+        self.obj = TaskObject(execid, command)
         file: InputTarget
         for item in inputs:
             if isinstance(item, str):
@@ -152,6 +153,9 @@ class FakeOutputs:
 
 
 class PickledTask(Task):
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(execid='dir-python', **kwargs)
+
     @property
     def result(self) -> Any:
         taskobj = self.ctx.cellar.get_task(self.hashid)
