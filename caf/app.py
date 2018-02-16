@@ -20,14 +20,16 @@ from . import Logging
 from .Logging import (
     error, info, Table, colstr, warn, no_cafdir, handle_broken_pipe
 )
-from .Configure import Context
+from .ctx import Context
 from .Cellar import Cellar, Hash, TPath, State
 
 from typing import (  # noqa
-    Any, Union, Dict, List, Optional, Set, Iterable, Sequence, Callable, TypeVar
+    Any, Union, Dict, List, Optional, Set, Iterable, Sequence, Callable, TypeVar,
+    Awaitable
 )
 
 Cscript = Callable[[Context], Any]
+Executor = Callable[[bytes], Awaitable[bytes]]
 
 
 class RemoteNotExists(Exception):
@@ -50,11 +52,18 @@ class Caf:
         self.out = Path('build')
         self.paths: List[str] = []
         self.cscripts: Dict[str, Cscript] = OrderedDict()
+        self._executors: Dict[str, Executor] = {}
 
     def register(self, label: str) -> Callable[[Cscript], Cscript]:
         def decorator(cscript: Cscript) -> Cscript:
             self.cscripts[label] = cscript
             return cscript
+        return decorator
+
+    def register_exec(self, execid: str) -> Callable[[Executor], Executor]:
+        def decorator(exe: Executor) -> Executor:
+            self._executors[execid] = exe
+            return exe
         return decorator
 
     def parse_remotes(self, remotes: str) -> List[Remote]:
@@ -97,12 +106,16 @@ class Caf:
         ctx = Context(cellar)
         return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
 
+    def get_route(self, route: str) -> Any:
+        ctx = Context(None, app=self)  # type: ignore
+        return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
+
     @define_cli([
         Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
     ])
     def configure(self, cscripts: List[str] = None) -> None:
         """Prepare tasks: process cscript.py and store tasks in cellar."""
-        from .Configure import Context
+        from .ctx import Context
         from .Scheduler import Scheduler
 
         if not self.cafdir.is_dir():

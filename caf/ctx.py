@@ -12,9 +12,11 @@ from .Cellar import get_hash, State, TaskObject, Cellar, Configuration
 
 from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
-    NewType, Type, Sequence, Iterable, Iterator
+    NewType, Type, Sequence, Iterable, Iterator, Awaitable, TYPE_CHECKING
 )
 from .Cellar import Hash, TPath  # noqa
+if TYPE_CHECKING:
+    from .app import Caf  # noqa
 
 
 Contents = NewType('Contents', str)
@@ -213,13 +215,14 @@ def base_feature(task: Dict[str, Any]) -> None:
 class Context:
     """Represent a build configuration: tasks and targets."""
 
-    def __init__(self, cellar: Cellar, conf_only: bool = False) -> None:
+    def __init__(self, cellar: Cellar, conf_only: bool = False, app: 'Caf' = None) -> None:
         self.cellar = cellar
         self.tasks: List[Task] = []
         self.targets: Dict[Path, Hash] = {}
         self.inputs: Dict[Hash, Union[str, bytes]] = {}
         self._sources: Dict[Path, Hash] = {}
         self.conf_only = conf_only
+        self._app = app
 
     def __call__(
             self, *,
@@ -235,6 +238,11 @@ class Context:
         task.add_label(label)
         self.tasks.append(task)
         return task
+
+    async def task(self, execid: str, inp: bytes) -> bytes:
+        assert self._app
+        exe = self._app._executors[execid]
+        return await exe(inp)
 
     def add_target(self, label: Union[TPath, str], hashid: Hash) -> None:
         path = Path(label)
