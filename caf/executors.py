@@ -6,6 +6,7 @@ import subprocess
 import json
 import tempfile
 from pathlib import Path
+from abc import ABC, abstractmethod
 
 from caf import Caf
 from caf.ctx import Context, Task, Input
@@ -16,11 +17,20 @@ from typing_extensions import Protocol
 from mypy_extensions import TypedDict
 
 
-class BashExecutor:
-    def __init__(self, app: Caf) -> None:
-        app.register_exec('bash')(self._exec)
+class Executor(ABC):
+    name: str
 
-    async def _exec(self, inp: bytes) -> bytes:
+    def __init__(self, app: Caf) -> None:
+        app.register_exec(self.name)(self)
+
+    @abstractmethod
+    async def __call__(self, inp: bytes) -> bytes: ...
+
+
+class BashExecutor(Executor):
+    name = 'bash'
+
+    async def __call__(self, inp: bytes) -> bytes:
         proc = await asyncio.create_subprocess_shell(inp, stdout=asyncio.subprocess.PIPE)
         out, _ = await proc.communicate()
         if proc.returncode:
@@ -40,12 +50,14 @@ class FileStore(Protocol):
 DictTask = TypedDict('DictTask', {'command': str, 'inputs': Dict[str, Hash]})
 
 
-class DirBashExecutor:
+class DirBashExecutor(Executor):
+    name = 'dir-bash'
+
     def __init__(self, app: Caf, store: FileStore) -> None:
-        app.register_exec('dir-bash')(self._exec)
+        super().__init__(app)
         self._store = store
 
-    async def _exec(self, inp: bytes) -> bytes:
+    async def __call__(self, inp: bytes) -> bytes:
         task: DictTask = json.loads(inp)
         with tempfile.TemporaryDirectory(prefix='caftsk_') as _tmpdir:
             tmpdir = Path(_tmpdir)
