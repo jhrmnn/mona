@@ -40,6 +40,7 @@ class Caf:
         self.paths: List[str] = []
         self.cscripts: Dict[str, Cscript] = OrderedDict()
         self._executors: Dict[str, Executor] = {}
+        self._hooks: Dict[str, Callable] = {}
 
     def register(self, label: str) -> Callable[[Cscript], Cscript]:
         def decorator(cscript: Cscript) -> Cscript:
@@ -51,6 +52,12 @@ class Caf:
         def decorator(exe: Executor) -> Executor:
             self._executors[execid] = exe
             return exe
+        return decorator
+
+    def register_hook(self, hook_type: str) -> Callable[[Callable], Callable]:
+        def decorator(hook: Callable) -> Callable:
+            self._hooks[hook_type] = hook
+            return hook
         return decorator
 
     def parse_remotes(self, remotes: str) -> List[Remote]:

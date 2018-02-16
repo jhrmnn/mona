@@ -61,7 +61,7 @@ def copy_to(src: Path, dst: Path) -> None:
 
 
 class Cellar:
-    def __init__(self, app: Caf) -> None:
+    def __init__(self, app: Caf, hook: bool = False) -> None:
         path = app.cafdir.resolve()
         self.objects = path/'objects'
         self.objectdb: Set[Hash] = set()
@@ -98,6 +98,11 @@ class Cellar:
             'foreign key(buildid) references builds(id)'
             ')'
         )
+        if hook:
+            app.register_hook('cache')(self._cache_hook)
+
+    def _cache_hook(self, inp: bytes) -> Optional[bytes]:
+        return None
 
     def execute(self, sql: str, *parameters: Iterable) -> sqlite3.Cursor:
         return self.db.execute(sql, *parameters)

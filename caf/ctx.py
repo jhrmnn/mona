@@ -239,6 +239,10 @@ class Context:
 
     async def task(self, execid: str, inp: bytes) -> bytes:
         assert self._app
+        if 'cache' in self._app._hooks:
+            out = self._app._hooks['cache'](inp)
+            if out is not None:
+                return out  # type: ignore
         exe = self._app._executors[execid]
         return await exe(inp)
 
