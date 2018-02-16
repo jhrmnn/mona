@@ -8,16 +8,14 @@ import pickle
 from textwrap import dedent
 
 from .Logging import error
-from .cellar import get_hash, State, TaskObject, Configuration, TPath
+from .cellar_common import get_hash, State, TaskObject, Configuration, TPath, Hash
 
-from typing import (  # noqa
-    NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
-    NewType, Type, Sequence, Iterable, Iterator, Awaitable, TYPE_CHECKING
+from typing import (
+    Dict, Tuple, Union, List, Any, Callable, NewType, Type, Sequence, TYPE_CHECKING
 )
 if TYPE_CHECKING:
-    from .cellar import Hash, Cellar  # noqa
+    from .cellar import Cellar  # noqa
     from .app import Caf  # noqa
-
 
 Contents = NewType('Contents', str)
 

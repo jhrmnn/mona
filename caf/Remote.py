@@ -7,12 +7,9 @@ import json
 from pathlib import Path
 
 from .Logging import info, error
+from .cellar_common import Hash, TPath
 
-from typing import (  # noqa
-    List, Optional, cast, Dict, Iterable, Any, Callable, TYPE_CHECKING
-)
-if TYPE_CHECKING:
-    from .cellar import Hash, TPath
+from typing import List, Optional, cast, Dict, Any
 
 
 class Remote:
