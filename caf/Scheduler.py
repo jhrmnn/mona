@@ -11,6 +11,7 @@ from .cellar import Cellar, State
 from .Logging import error, debug, no_cafdir
 from .Utils import get_timestamp, sample
 from .Announcer import Announcer
+from .app import Caf
 
 from typing import Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any
 from .cellar import Hash, TPath
@@ -34,10 +35,10 @@ class Task:
 
 
 class Scheduler:
-    def __init__(self, path: Path, tmpdir: str = None) -> None:
+    def __init__(self, app: Caf, tmpdir: str = None) -> None:
         try:
             self.db = sqlite3.connect(
-                str(path/'queue.db'),
+                str(app.cafdir/'queue.db'),
                 detect_types=sqlite3.PARSE_COLNAMES,
                 timeout=30.0,
             )
@@ -49,7 +50,7 @@ class Scheduler:
             'changed text, active integer'
             ') without rowid'
         )
-        self.cellar = Cellar(path)
+        self.cellar = Cellar(app)
         self.tmpdir = tmpdir
 
     def execute(self, sql: str, *parameters: Iterable) -> sqlite3.Cursor:

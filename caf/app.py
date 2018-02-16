@@ -94,7 +94,7 @@ class Caf:
     def get(self, route: str) -> Any:
         from .cellar import Cellar
 
-        cellar = Cellar(self.cafdir)
+        cellar = Cellar(self)
         ctx = Context(cellar, app=self)
         return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
 
@@ -124,7 +124,7 @@ class Caf:
         from .Scheduler import Scheduler
 
         self.init()
-        cellar = Cellar(self.cafdir)
+        cellar = Cellar(self)
         ctx = Context(cellar, conf_only=True)
         if not cscripts:
             cscripts = list(self.cscripts.keys())
@@ -138,5 +138,5 @@ class Caf:
         tasks = [
             (hashid, state, conf.labels[hashid]) for hashid, state in states.items()
         ]
-        scheduler = Scheduler(self.cafdir)
+        scheduler = Scheduler(self)
         scheduler.submit(tasks)

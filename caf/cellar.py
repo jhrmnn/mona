@@ -6,7 +6,6 @@ import json
 import sqlite3
 from collections import defaultdict
 import sys
-import os
 import shutil
 from textwrap import dedent
 
@@ -62,8 +61,8 @@ def copy_to(src: Path, dst: Path) -> None:
 
 
 class Cellar:
-    def __init__(self, path: os.PathLike) -> None:
-        path = Path(path).resolve()
+    def __init__(self, app: Caf) -> None:
+        path = app.cafdir.resolve()
         self.objects = path/'objects'
         self.objectdb: Set[Hash] = set()
         try:

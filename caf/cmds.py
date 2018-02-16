@@ -16,6 +16,8 @@ from . import Logging
 from .Logging import error, Table, colstr, no_cafdir, handle_broken_pipe
 from .cellar import Cellar, Hash, TPath, State
 from .app import Caf
+from .Scheduler import RemoteScheduler, Scheduler
+from .Announcer import Announcer
 
 from typing import Any, List, Optional, Set, Iterable
 
@@ -44,7 +46,6 @@ def make(caf: Caf,
          maxerror: int = 5,
          randomize: bool = False) -> None:
     """Execute build tasks."""
-    from .Scheduler import RemoteScheduler, Scheduler
 
     if verbose:
         Logging.DEBUG = True
@@ -58,11 +59,11 @@ def make(caf: Caf,
         )
     else:
         scheduler = Scheduler(
-            caf.cafdir,
+            caf,
             tmpdir=caf.config.get('core', 'tmpdir', fallback='') or None,
         )
     if patterns:
-        cellar = Cellar(caf.cafdir)
+        cellar = Cellar(caf)
         hashes: Optional[Set[Hash]] = \
             set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
         if not hashes:
@@ -146,7 +147,7 @@ def checkout(caf: Caf,
              finished: bool = False,
              no_link: bool = False) -> None:
     """Create the dependecy tree physically on a file system."""
-    cellar = Cellar(caf.cafdir)
+    cellar = Cellar(caf)
     if not do_json:
         if blddir.exists():
             if force:
@@ -172,15 +173,12 @@ def checkout(caf: Caf,
 ])
 def submit(caf: Caf, url: str, patterns: List[str] = None, append: bool = False) -> None:
     """Submit the list of prepared tasks to a queue server."""
-    from .Scheduler import Scheduler
-    from .Announcer import Announcer
-
     url = caf.get_queue_url(url)
     announcer = Announcer(url, caf.config.get('core', 'curl', fallback='') or None)
-    scheduler = Scheduler(caf.cafdir)
+    scheduler = Scheduler(caf)
     queue = scheduler.get_queue()
     if patterns:
-        cellar = Cellar(caf.cafdir)
+        cellar = Cellar(caf)
         hashes = dict(cellar.get_tree().glob(*patterns))
     else:
         hashes = {hashid: TPath(label) for hashid, (state, label, *_) in queue.items()}
@@ -206,14 +204,12 @@ def submit(caf: Caf, url: str, patterns: List[str] = None, append: bool = False)
 def reset(caf: Caf, patterns: List[str] = None, hard: bool = False,
           running: bool = False, only_running: bool = False) -> None:
     """Remove all temporary checkouts and set tasks to clean."""
-    from .Scheduler import Scheduler
-
     if hard and input('Are you sure? ["y" to confirm] ') != 'y':
         return
     if hard:
         running = True
-    cellar = Cellar(caf.cafdir)
-    scheduler = Scheduler(caf.cafdir)
+    cellar = Cellar(caf)
+    scheduler = Scheduler(caf)
     states = scheduler.get_states()
     queue = scheduler.get_queue()
     if patterns:
@@ -255,7 +251,7 @@ def list_remotes(caf: Caf) -> None:
 @define_cli()
 def list_builds(caf: Caf) -> None:
     """List builds."""
-    cellar = Cellar(caf.cafdir)
+    cellar = Cellar(caf)
     table = Table(align='<<')
     for i, created in reversed(list(enumerate(cellar.get_builds()))):
         table.add_row(str(i), created)
@@ -292,10 +288,8 @@ def list_tasks(caf: Caf,
                disp_tmp: bool = False,
                no_color: bool = False) -> None:
     """List tasks."""
-    from .Scheduler import Scheduler
-
-    cellar = Cellar(caf.cafdir)
-    scheduler = Scheduler(caf.cafdir)
+    cellar = Cellar(caf)
+    scheduler = Scheduler(caf)
     states = scheduler.get_states()
     queue = scheduler.get_queue()
     if patterns:
@@ -341,10 +335,8 @@ def list_tasks(caf: Caf,
 ])
 def status(caf: Caf, patterns: List[str] = None, incomplete: bool = False) -> None:
     """Print number of initialized, running and finished tasks."""
-    from .Scheduler import Scheduler
-
-    cellar = Cellar(caf.cafdir)
-    scheduler = Scheduler(caf.cafdir)
+    cellar = Cellar(caf)
+    scheduler = Scheduler(caf)
     patterns = patterns or caf.paths
     colors = 'yellow green cyan red normal'.split()
     print('number of {} tasks:'.format('/'.join(
@@ -399,13 +391,11 @@ def status(caf: Caf, patterns: List[str] = None, incomplete: bool = False) -> No
 ])
 def gc(caf: Caf, gc_all: bool = False) -> None:
     """Discard running and error tasks."""
-    from .Scheduler import Scheduler
-
-    scheduler = Scheduler(caf.cafdir)
+    scheduler = Scheduler(caf)
     scheduler.gc()
     if gc_all:
         scheduler.gc_all()
-        cellar = Cellar(caf.cafdir)
+        cellar = Cellar(caf)
         cellar.gc()
 
 
@@ -460,8 +450,7 @@ def update(caf: Caf, remotes: str, delete: bool = False, dry: bool = False) -> N
 ])
 def check(caf: Caf, remotes: str) -> None:
     """Verify that hashes of the local and remote tasks match."""
-    from .Scheduler import Scheduler
-    scheduler = Scheduler(caf.cafdir)
+    scheduler = Scheduler(caf)
     hashes = {
         label: hashid for hashid, (_, label, *__) in scheduler.get_queue().items()
     }
@@ -479,10 +468,8 @@ def fetch(caf: Caf,
           patterns: List[str] = None,
           no_files: bool = False) -> None:
     """Fetch targets from remote."""
-    from .Scheduler import Scheduler
-
-    cellar = Cellar(caf.cafdir)
-    scheduler = Scheduler(caf.cafdir)
+    cellar = Cellar(caf)
+    scheduler = Scheduler(caf)
     states = scheduler.get_states()
     if patterns:
         hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
@@ -507,10 +494,8 @@ def fetch(caf: Caf,
 ])
 def archive_store(caf: Caf, filename: str, patterns: List[str] = None) -> None:
     """Archives files accessible from the given tasks as tar.gz."""
-    from .Scheduler import Scheduler
-
-    cellar = Cellar(caf.cafdir)
-    scheduler = Scheduler(caf.cafdir)
+    cellar = Cellar(caf)
+    scheduler = Scheduler(caf)
     states = scheduler.get_states()
     if patterns:
         hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
