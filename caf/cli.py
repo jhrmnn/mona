@@ -7,11 +7,11 @@ import sys
 from typing import Any, Dict, List, Optional
 
 from .argparse_cli import CLI, CLIError, partial
-from . import app as app_cmds
 from .app import Caf, RemoteNotExists
 from .Utils import get_timestamp
 from .Logging import error
 from .Remote import Remote
+from . import cmds
 
 
 def mod_remote_args(app: Caf, args: List[str], kwargs: Dict) -> None:
@@ -35,32 +35,32 @@ def main() -> Any:
     app: Caf = app_module.app  # type: ignore
     cli = CLI([
         ('conf', app.configure),
-        ('make', partial(app_cmds.make, app)),
-        ('dispatch', partial(app_cmds.dispatch, app)),
-        ('checkout', partial(app_cmds.checkout, app)),
-        ('submit', partial(app_cmds.submit, app)),
-        ('reset', partial(app_cmds.reset, app)),
+        ('make', partial(cmds.make, app)),
+        ('dispatch', partial(cmds.dispatch, app)),
+        ('checkout', partial(cmds.checkout, app)),
+        ('submit', partial(cmds.submit, app)),
+        ('reset', partial(cmds.reset, app)),
         ('list', [
-            ('profiles', partial(app_cmds.list_profiles, app)),
-            ('remotes', partial(app_cmds.list_remotes, app)),
-            ('builds', partial(app_cmds.list_builds, app)),
-            ('tasks', partial(app_cmds.list_tasks, app)),
+            ('profiles', partial(cmds.list_profiles, app)),
+            ('remotes', partial(cmds.list_remotes, app)),
+            ('builds', partial(cmds.list_builds, app)),
+            ('tasks', partial(cmds.list_tasks, app)),
         ]),
-        ('status', partial(app_cmds.status, app)),
-        ('gc', partial(app_cmds.gc, app)),
-        ('cmd', partial(app_cmds.cmd, app)),
+        ('status', partial(cmds.status, app)),
+        ('gc', partial(cmds.gc, app)),
+        ('cmd', partial(cmds.cmd, app)),
         ('remote', [
-            ('add', partial(app_cmds.remote_add, app)),
-            ('path', partial(app_cmds.remote_path, app)),
-            ('list', partial(app_cmds.list_remotes, app)),
+            ('add', partial(cmds.remote_add, app)),
+            ('path', partial(cmds.remote_path, app)),
+            ('list', partial(cmds.list_remotes, app)),
         ]),
-        ('update', partial(app_cmds.update, app)),
-        ('check', partial(app_cmds.check, app)),
-        ('fetch', partial(app_cmds.fetch, app)),
+        ('update', partial(cmds.update, app)),
+        ('check', partial(cmds.check, app)),
+        ('fetch', partial(cmds.fetch, app)),
         ('archive', [
-            ('save', partial(app_cmds.archive_store, app)),
+            ('save', partial(cmds.archive_store, app)),
         ]),
-        ('go', partial(app_cmds.go, app)),
+        ('go', partial(cmds.go, app)),
     ])
     if not args:
         cli.parser.print_help()
@@ -97,6 +97,6 @@ def main() -> Any:
         for remote in remotes:
             remote.update(app.cafdir.parent)
     if rargs[0] == 'make':
-        app_cmds.check(app, remote_spec)
+        cmds.check(app, remote_spec)
     for remote in remotes:
         remote.command(rargs)
