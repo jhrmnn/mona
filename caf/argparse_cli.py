@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import argparse
 from argparse import ArgumentParser
+import functools
 
 from typing import (  # noqa
     Any, Callable, TypeVar, List, NewType, Union, Dict, Tuple, Optional,
@@ -26,6 +27,13 @@ def define_cli(cli: List[Arg] = None) -> Callable[[_F], _F]:
         func.__cli__ = cli or []  # type: ignore
         return func
     return decorator
+
+
+def partial(func: Callable, *args: Any, **kwargs: Any) -> Any:
+    newfunc = functools.partial(func, *args, **kwargs)
+    if hasattr(func, '__cli__'):
+        newfunc.__cli__ = func.__cli__  # type: ignore
+    return newfunc
 
 
 CliDef = List[Tuple[str, Union[Callable, List[Tuple[str, Any]]]]]

@@ -100,41 +100,40 @@ class Caf:
     def get(self, route: str) -> Any:
         return asyncio.get_event_loop().run_until_complete(self.cscripts[route](self.ctx))
 
+    @define_cli([
+        Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
+    ])
+    def configure(self, cscripts: List[str] = None) -> None:
+        """Prepare tasks: process cscript.py and store tasks in cellar."""
+        from .Configure import Context
+        from .Scheduler import Scheduler
 
-@define_cli([
-    Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
-])
-def conf(caf: Caf, cscripts: List[str] = None) -> None:
-    """Prepare tasks: process cscript.py and store tasks in cellar."""
-    from .Configure import Context
-    from .Scheduler import Scheduler
-
-    if not caf.cafdir.is_dir():
-        caf.cafdir.mkdir()
-        info(f'Initializing an empty repository in {caf.cafdir.resolve()}.')
-        if caf.config.has_option('core', 'cache'):
-            ts = get_timestamp()
-            path = Path(caf.config['core']['cache'])/f'{Path.cwd().name}_{ts}'
-            path.mkdir()
-            (caf.cafdir/'objects').symlink_to(path)
-        else:
-            (caf.cafdir/'objects').mkdir()
-    cellar = Cellar(caf.cafdir)
-    ctx = Context(cellar, conf_only=True)
-    if not cscripts:
-        cscripts = list(caf.cscripts.keys())
-    asyncio.get_event_loop().run_until_complete(asyncio.gather(*(
-        caf.cscripts[label](ctx) for label in cscripts
-    )))
-    conf = ctx.get_configuration()
-    states = cellar.store_build(conf)
-    if any(label[0] == '?' for label in conf.labels.values()):
-        warn('Some tasks are not accessible.')
-    tasks = [
-        (hashid, state, conf.labels[hashid]) for hashid, state in states.items()
-    ]
-    scheduler = Scheduler(caf.cafdir)
-    scheduler.submit(tasks)
+        if not self.cafdir.is_dir():
+            self.cafdir.mkdir()
+            info(f'Initializing an empty repository in {self.cafdir.resolve()}.')
+            if self.config.has_option('core', 'cache'):
+                ts = get_timestamp()
+                path = Path(self.config['core']['cache'])/f'{Path.cwd().name}_{ts}'
+                path.mkdir()
+                (self.cafdir/'objects').symlink_to(path)
+            else:
+                (self.cafdir/'objects').mkdir()
+        cellar = Cellar(self.cafdir)
+        ctx = Context(cellar, conf_only=True)
+        if not cscripts:
+            cscripts = list(self.cscripts.keys())
+        asyncio.get_event_loop().run_until_complete(asyncio.gather(*(
+            self.cscripts[label](ctx) for label in cscripts
+        )))
+        conf = ctx.get_configuration()
+        states = cellar.store_build(conf)
+        if any(label[0] == '?' for label in conf.labels.values()):
+            warn('Some tasks are not accessible.')
+        tasks = [
+            (hashid, state, conf.labels[hashid]) for hashid, state in states.items()
+        ]
+        scheduler = Scheduler(self.cafdir)
+        scheduler.submit(tasks)
 
 
 def sig_handler(sig: Any, frame: Any) -> Any:

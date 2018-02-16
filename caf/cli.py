@@ -6,7 +6,7 @@ import importlib
 import sys
 from typing import Any, Dict, List, Optional
 
-from .argparse_cli import CLI, CLIError
+from .argparse_cli import CLI, CLIError, partial
 from . import app as app_cmds
 from .app import Caf, RemoteNotExists
 from .Utils import get_timestamp
@@ -29,46 +29,44 @@ def log(app: Caf, args: List[str]) -> None:
             f.write(f'{get_timestamp()}: {" ".join(args)}\n')
 
 
-cli = CLI([
-    ('conf', app_cmds.conf),
-    ('make', app_cmds.make),
-    ('dispatch', app_cmds.dispatch),
-    ('checkout', app_cmds.checkout),
-    ('submit', app_cmds.submit),
-    ('reset', app_cmds.reset),
-    ('list', [
-        ('profiles', app_cmds.list_profiles),
-        ('remotes', app_cmds.list_remotes),
-        ('builds', app_cmds.list_builds),
-        ('tasks', app_cmds.list_tasks),
-    ]),
-    ('status', app_cmds.status),
-    ('gc', app_cmds.gc),
-    ('cmd', app_cmds.cmd),
-    ('remote', [
-        ('add', app_cmds.remote_add),
-        ('path', app_cmds.remote_path),
-        ('list', app_cmds.list_remotes),
-    ]),
-    ('update', app_cmds.update),
-    ('check', app_cmds.check),
-    ('fetch', app_cmds.fetch),
-    ('archive', [
-        ('save', app_cmds.archive_store),
-    ]),
-    ('go', app_cmds.go),
-])
-
-
 def main() -> Any:
     args = sys.argv[1:]
     app_module = importlib.import_module(os.environ['CAF_APP'])
-    app = app_module.app  # type: ignore
+    app: Caf = app_module.app  # type: ignore
+    cli = CLI([
+        ('conf', app.configure),
+        ('make', partial(app_cmds.make, app)),
+        ('dispatch', partial(app_cmds.dispatch, app)),
+        ('checkout', partial(app_cmds.checkout, app)),
+        ('submit', partial(app_cmds.submit, app)),
+        ('reset', partial(app_cmds.reset, app)),
+        ('list', [
+            ('profiles', partial(app_cmds.list_profiles, app)),
+            ('remotes', partial(app_cmds.list_remotes, app)),
+            ('builds', partial(app_cmds.list_builds, app)),
+            ('tasks', partial(app_cmds.list_tasks, app)),
+        ]),
+        ('status', partial(app_cmds.status, app)),
+        ('gc', partial(app_cmds.gc, app)),
+        ('cmd', partial(app_cmds.cmd, app)),
+        ('remote', [
+            ('add', partial(app_cmds.remote_add, app)),
+            ('path', partial(app_cmds.remote_path, app)),
+            ('list', partial(app_cmds.list_remotes, app)),
+        ]),
+        ('update', partial(app_cmds.update, app)),
+        ('check', partial(app_cmds.check, app)),
+        ('fetch', partial(app_cmds.fetch, app)),
+        ('archive', [
+            ('save', partial(app_cmds.archive_store, app)),
+        ]),
+        ('go', partial(app_cmds.go, app)),
+    ])
     if not args:
         cli.parser.print_help()
         error()
     try:
-        value = cli.run(app, argv=args)
+        value = cli.run(argv=args)
     except CLIError as e:
         clierror = e
     else:
