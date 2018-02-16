@@ -51,11 +51,6 @@ class Caf:
         self.paths: List[str] = []
         self.cscripts: Dict[str, Cscript] = OrderedDict()
 
-    @property
-    def ctx(self) -> Context:
-        cellar = Cellar(self.cafdir)
-        return Context(cellar)
-
     def register(self, label: str) -> Callable[[Cscript], Cscript]:
         def decorator(cscript: Cscript) -> Cscript:
             self.cscripts[label] = cscript
@@ -98,7 +93,9 @@ class Caf:
         return url
 
     def get(self, route: str) -> Any:
-        return asyncio.get_event_loop().run_until_complete(self.cscripts[route](self.ctx))
+        cellar = Cellar(self.cafdir)
+        ctx = Context(cellar)
+        return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
 
     @define_cli([
         Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
