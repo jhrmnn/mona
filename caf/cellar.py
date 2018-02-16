@@ -16,6 +16,7 @@ from .cellar_common import (
     State, get_hash, TPath, Hash, TaskObject, Configuration, TimeStamp
 )
 from .app import Caf
+from .executors import Executor
 
 from typing import (
     Dict, Tuple, List, DefaultDict, Iterable,
@@ -101,8 +102,27 @@ class Cellar:
         if hook:
             app.register_hook('cache')(self._cache_hook)
 
-    def _cache_hook(self, inp: bytes) -> Optional[bytes]:
-        return None
+    async def _cache_hook(self, exe: Executor, inp: bytes) -> bytes:
+        now = get_timestamp()
+        hashid = get_hash(inp)
+        self.execute(
+            'insert or ignore into tasks values (?,?,?,?,?,?)',
+            (hashid, exe.name, State.CLEAN, now, inp, None)
+        )
+        self.commit()
+        out: Optional[bytes]
+        out, = self.execute(
+            'select out from tasks where hash = ?', (hashid,)
+        ).fetchone()
+        if out is not None:
+            return out
+        out = await exe(inp)
+        self.execute(
+            'update tasks set out = ?, state = ? where hash = ?',
+            (out, State.DONE, hashid)
+        )
+        self.commit()
+        return out
 
     def execute(self, sql: str, *parameters: Iterable) -> sqlite3.Cursor:
         return self.db.execute(sql, *parameters)
