@@ -7,9 +7,9 @@ from urllib.error import HTTPError, URLError
 import socket
 
 from .Logging import error
+from .cellar import Hash, TPath
 
-from typing import Optional, Dict  # noqa
-from .cellar import Hash, TPath  # noqa
+from typing import Optional, Dict
 
 
 class Announcer:

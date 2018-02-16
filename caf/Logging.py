@@ -5,13 +5,8 @@ import sys
 import os
 from itertools import chain, starmap
 
-from typing import (  # noqa
-    Callable, Any, List, Tuple, TYPE_CHECKING, Union
-)
-if TYPE_CHECKING:
-    from mypy_extensions import NoReturn
-else:
-    NoReturn = None
+from typing import Callable, Any, List, Tuple, Union
+from mypy_extensions import NoReturn
 
 
 DEBUG = bool(os.environ.get('DEBUG'))

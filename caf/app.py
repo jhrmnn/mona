@@ -13,10 +13,7 @@ from .Remote import Remote, Local
 from .Logging import error, info, warn
 from .ctx import Context
 
-from typing import (  # noqa
-    Any, Union, Dict, List, Optional, Set, Iterable, Sequence, Callable, TypeVar,
-    Awaitable
-)
+from typing import Any, Dict, List, Optional, Callable, Awaitable
 
 Cscript = Callable[[Context], Any]
 Executor = Callable[[bytes], Awaitable[bytes]]

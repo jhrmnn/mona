@@ -12,10 +12,8 @@ from .Logging import error, debug, no_cafdir
 from .Utils import get_timestamp, sample
 from .Announcer import Announcer
 
-from typing import (  # noqa
-    cast, Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any
-)
-from .cellar import Hash, TPath  # noqa
+from typing import Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any
+from .cellar import Hash, TPath
 
 
 class Task:

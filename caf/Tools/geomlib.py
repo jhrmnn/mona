@@ -9,9 +9,8 @@ import pkg_resources
 import csv
 from collections import OrderedDict
 
-from typing import (  # noqa
-    List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, Union, Dict, Any,
-    Optional
+from typing import (
+    List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, Union, Dict, Any
 )
 
 

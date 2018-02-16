@@ -6,9 +6,7 @@ from pathlib import Path
 import shutil
 import re
 
-from typing import Dict, Any, List, Tuple, Callable  # noqa
-from mypy_extensions import KwArg  # noqa
-from . import geomlib  # noqa
+from typing import Dict, Any, List, Tuple, Callable
 
 
 class AimsNotFound(Exception):

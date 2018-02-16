@@ -5,11 +5,7 @@ import argparse
 from argparse import ArgumentParser
 import functools
 
-from typing import (  # noqa
-    Any, Callable, TypeVar, List, NewType, Union, Dict, Tuple, Optional,
-    Iterable
-)
-from argparse import _SubParsersAction  # noqa
+from typing import Any, Callable, TypeVar, List, Union, Dict, Tuple
 
 
 _T = TypeVar('_T')

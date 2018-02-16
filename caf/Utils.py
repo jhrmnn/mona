@@ -12,9 +12,8 @@ from configparser import ConfigParser
 import shutil
 from pathlib import Path
 
-from typing import (  # noqa
-    Dict, Any, Iterator, Tuple, Iterable, TypeVar, List, Callable, Mapping,
-    Union
+from typing import (
+    Any, Iterator, Tuple, Iterable, TypeVar, List, Callable, Mapping, Union
 )
 
 _T = TypeVar('_T')
