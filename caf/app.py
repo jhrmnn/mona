@@ -10,7 +10,6 @@ import signal
 import json
 import argparse
 from collections import OrderedDict
-from functools import wraps
 import os
 
 from .Utils import get_timestamp, cd, config_group, groupby
@@ -56,14 +55,10 @@ class Caf:
         cellar = Cellar(self.cafdir)
         return Context(cellar)
 
-    def register(self, label: str) -> Callable[[Cscript], Callable[[], Any]]:
-        def decorator(cscript: Cscript) -> Callable[[], Any]:
-            @wraps(cscript)
-            def wrapper(ctx: Context) -> Any:
-                with ctx.cd(label):
-                    return cscript(ctx)
-            self.cscripts[label] = wrapper
-            return wrapper
+    def register(self, label: str) -> Callable[[Cscript], Cscript]:
+        def decorator(cscript: Cscript) -> Cscript:
+            self.cscripts[label] = cscript
+            return cscript
         return decorator
 
     def parse_remotes(self, remotes: str) -> List[Remote]:

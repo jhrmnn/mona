@@ -6,7 +6,6 @@ import os
 import inspect
 import pickle
 from textwrap import dedent
-from contextlib import contextmanager
 
 from .Logging import error
 from .Cellar import get_hash, State, TaskObject, Cellar, Configuration
@@ -221,7 +220,6 @@ class Context:
         self.inputs: Dict[Hash, Union[str, bytes]] = {}
         self._sources: Dict[Path, Hash] = {}
         self.conf_only = conf_only
-        self._cwd = Path()
 
     def __call__(
             self, *,
@@ -233,26 +231,16 @@ class Context:
         features = [base_feature, *(features or [])]
         for feature in features:
             feature(kwargs)
-        task = klass(ctx=self, label=str(self._cwd/label), **kwargs)
+        task = klass(ctx=self, label=str(label), **kwargs)
         task.add_label(label)
         self.tasks.append(task)
         return task
 
     def add_target(self, label: Union[TPath, str], hashid: Hash) -> None:
-        path = self._cwd/label
+        path = Path(label)
         if path in self.targets:
             error(f'Multiple definitions of target {label!r}')
         self.targets[path] = hashid
-
-    @contextmanager
-    def cd(self, label: str) -> Iterator[None]:
-        prev_cwd = self._cwd
-        self._cwd /= label
-        try:
-            yield
-        finally:
-            assert self._cwd == prev_cwd/label
-            self._cwd = prev_cwd
 
     def get_source(self, path: Path) -> Hash:
         if path in self._sources:
