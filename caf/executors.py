@@ -15,13 +15,29 @@ from typing import Dict, Sequence, Tuple
 from typing_extensions import Protocol
 from mypy_extensions import TypedDict
 
-DictTask = TypedDict('DictTask', {'command': str, 'inputs': Dict[str, Hash]})
+
+class BashExecutor:
+    def __init__(self, app: Caf) -> None:
+        app.register_exec('bash')(self._exec)
+
+    async def _exec(self, inp: bytes) -> bytes:
+        proc = await asyncio.create_subprocess_shell(inp, stdout=asyncio.subprocess.PIPE)
+        out, _ = await proc.communicate()
+        if proc.returncode:
+            raise subprocess.CalledProcessError(
+                proc.returncode, inp,
+                output=await proc.stdout.read(),  # type: ignore
+            )
+        return out
 
 
 class FileStore(Protocol):
     def store_bytes(self, hashid: Hash, data: bytes) -> bool: ...
     def store_file(self, hashid: Hash, file: Path) -> bool: ...
     def get_file(self, hashid: Hash) -> Path: ...
+
+
+DictTask = TypedDict('DictTask', {'command': str, 'inputs': Dict[str, Hash]})
 
 
 class DirBashExecutor:
