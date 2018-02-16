@@ -33,6 +33,7 @@ def partial(func: Callable, *args: Any, **kwargs: Any) -> Any:
     newfunc = functools.partial(func, *args, **kwargs)
     if hasattr(func, '__cli__'):
         newfunc.__cli__ = func.__cli__  # type: ignore
+        newfunc.__doc__ = func.__doc__
     return newfunc
 
 
