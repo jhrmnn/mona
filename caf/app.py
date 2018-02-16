@@ -12,7 +12,6 @@ from .argparse_cli import Arg, define_cli
 from .Remote import Remote, Local
 from .Logging import error, info, warn
 from .ctx import Context
-from .cellar import Cellar
 
 from typing import (  # noqa
     Any, Union, Dict, List, Optional, Set, Iterable, Sequence, Callable, TypeVar,
@@ -92,9 +91,14 @@ class Caf:
             url += f'/queue/{qid}'
         return url
 
+    @define_cli([
+        Arg('route', help='Route to get'),
+    ])
     def get(self, route: str) -> Any:
+        from .cellar import Cellar
+
         cellar = Cellar(self.cafdir)
-        ctx = Context(cellar)
+        ctx = Context(cellar, app=self)
         return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
 
     def get_route(self, route: str) -> Any:
@@ -119,6 +123,7 @@ class Caf:
     def configure(self, cscripts: List[str] = None) -> None:
         """Prepare tasks: process cscript.py and store tasks in cellar."""
         from .ctx import Context
+        from .cellar import Cellar
         from .Scheduler import Scheduler
 
         self.init()

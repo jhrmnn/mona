@@ -4,7 +4,7 @@
 import os
 import importlib
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from .argparse_cli import CLI, CLIError, partial
 from .app import Caf, RemoteNotExists
@@ -29,11 +29,12 @@ def log(app: Caf, args: List[str]) -> None:
             f.write(f'{get_timestamp()}: {" ".join(args)}\n')
 
 
-def main() -> Any:
+def main() -> None:
     args = sys.argv[1:]
     app_module = importlib.import_module(os.environ['CAF_APP'])
     app: Caf = app_module.app  # type: ignore
     cli = CLI([
+        ('get', app.get),
         ('conf', app.configure),
         ('make', partial(cmds.make, app)),
         ('dispatch', partial(cmds.dispatch, app)),
@@ -71,7 +72,9 @@ def main() -> Any:
         clierror = e
     else:
         log(app, args)
-        return value
+        if value:
+            print(value)
+        return
 
     remote_spec, *rargs = args
     try:
