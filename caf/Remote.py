@@ -11,7 +11,7 @@ from .Logging import info, error
 from typing import (  # noqa
     List, Optional, cast, Dict, Iterable, Any, Callable, TYPE_CHECKING
 )
-from .Cellar import Hash, TPath
+from .cellar import Hash, TPath
 
 
 class Remote:

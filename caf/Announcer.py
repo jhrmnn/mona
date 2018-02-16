@@ -9,7 +9,7 @@ import socket
 from .Logging import error
 
 from typing import Optional, Dict  # noqa
-from .Cellar import Hash, TPath  # noqa
+from .cellar import Hash, TPath  # noqa
 
 
 class Announcer:

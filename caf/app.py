@@ -21,7 +21,7 @@ from .Logging import (
     error, info, Table, colstr, warn, no_cafdir, handle_broken_pipe
 )
 from .ctx import Context
-from .Cellar import Cellar, Hash, TPath, State
+from .cellar import Cellar, Hash, TPath, State
 
 from typing import (  # noqa
     Any, Union, Dict, List, Optional, Set, Iterable, Sequence, Callable, TypeVar,
@@ -110,14 +110,7 @@ class Caf:
         ctx = Context(None, app=self)  # type: ignore
         return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
 
-    @define_cli([
-        Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
-    ])
-    def configure(self, cscripts: List[str] = None) -> None:
-        """Prepare tasks: process cscript.py and store tasks in cellar."""
-        from .ctx import Context
-        from .Scheduler import Scheduler
-
+    def init(self) -> None:
         if not self.cafdir.is_dir():
             self.cafdir.mkdir()
             info(f'Initializing an empty repository in {self.cafdir.resolve()}.')
@@ -128,6 +121,16 @@ class Caf:
                 (self.cafdir/'objects').symlink_to(path)
             else:
                 (self.cafdir/'objects').mkdir()
+
+    @define_cli([
+        Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
+    ])
+    def configure(self, cscripts: List[str] = None) -> None:
+        """Prepare tasks: process cscript.py and store tasks in cellar."""
+        from .ctx import Context
+        from .Scheduler import Scheduler
+
+        self.init()
         cellar = Cellar(self.cafdir)
         ctx = Context(cellar, conf_only=True)
         if not cscripts:
