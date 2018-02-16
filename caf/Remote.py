@@ -11,7 +11,8 @@ from .Logging import info, error
 from typing import (  # noqa
     List, Optional, cast, Dict, Iterable, Any, Callable, TYPE_CHECKING
 )
-from .cellar import Hash, TPath
+if TYPE_CHECKING:
+    from .cellar import Hash, TPath
 
 
 class Remote:
@@ -64,7 +65,7 @@ class Remote:
         assert output
         return output
 
-    def check(self, hashes: Dict[TPath, Hash]) -> None:
+    def check(self, hashes: Dict['TPath', 'Hash']) -> None:
         info(f'Checking {self.host}...')
         remote_hashes: Dict[TPath, Hash] = {}
         output = self.command_output(['list', 'tasks', '--no-color'])
@@ -87,8 +88,8 @@ class Remote:
         else:
             error('Local tasks are not on remote')
 
-    def fetch(self, hashes: List[Hash], files: bool = True) \
-            -> Dict[Hash, Dict[str, Any]]:
+    def fetch(self, hashes: List['Hash'], files: bool = True) \
+            -> Dict['Hash', Dict[str, Any]]:
         info(f'Fetching from {self.host}...')
         tasks = {hashid: task for hashid, task in json.loads(self.command_output(
             ['checkout', '--json'], inp='\n'.join(hashes)
@@ -158,11 +159,11 @@ class Local(Remote):
             error(f'Command `{cmd}` on {self.host} ended with error')
         return cast(str, output.strip()) if _get_output else None
 
-    def check(self, hashes: Dict[TPath, Hash]) -> None:
+    def check(self, hashes: Dict['TPath', 'Hash']) -> None:
         pass
 
-    def fetch(self, hashes: List[Hash], files: bool = True) \
-            -> Dict[Hash, Dict[str, Any]]:
+    def fetch(self, hashes: List['Hash'], files: bool = True) \
+            -> Dict['Hash', Dict[str, Any]]:
         pass
 
     def go(self) -> None:
