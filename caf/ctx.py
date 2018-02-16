@@ -8,14 +8,14 @@ import pickle
 from textwrap import dedent
 
 from .Logging import error
-from .cellar import get_hash, State, TaskObject, Cellar, Configuration
+from .cellar import get_hash, State, TaskObject, Configuration, TPath
 
 from typing import (  # noqa
     NamedTuple, Dict, Tuple, Set, Optional, Union, List, cast, Any, Callable,
     NewType, Type, Sequence, Iterable, Iterator, Awaitable, TYPE_CHECKING
 )
-from .cellar import Hash, TPath  # noqa
 if TYPE_CHECKING:
+    from .cellar import Hash, Cellar  # noqa
     from .app import Caf  # noqa
 
 
@@ -40,7 +40,7 @@ TaskFeature = Callable[[Dict[str, Any]], None]
 
 
 class Task:
-    tasks: Dict[Hash, 'Task'] = {}
+    tasks: Dict['Hash', 'Task'] = {}
 
     def __init__(
             self, *,
@@ -103,7 +103,7 @@ class Task:
     def finished(self) -> bool:
         return self.state == State.DONE
 
-    def add_label(self, label: Union[TPath, str]) -> None:
+    def add_label(self, label: Union['TPath', str]) -> None:
         self.ctx.add_target(label, self.hashid)
 
     @property
@@ -128,7 +128,7 @@ class VirtualFile:
 
 
 class StoredFile(VirtualFile, os.PathLike):
-    def __init__(self, hashid: Hash, name: str, task: Task) -> None:
+    def __init__(self, hashid: 'Hash', name: str, task: Task) -> None:
         super().__init__(name, task)
         self.hashid = hashid
 
@@ -175,7 +175,7 @@ def function_task(func: Callable) -> Callable[..., Task]:
 
     def task_gen(
             *args: InputTarget,
-            label: TPath,
+            label: 'TPath',
             ctx: 'Context',
             **kwargs: Any
     ) -> Task:
@@ -215,7 +215,7 @@ def base_feature(task: Dict[str, Any]) -> None:
 class Context:
     """Represent a build configuration: tasks and targets."""
 
-    def __init__(self, cellar: Cellar, conf_only: bool = False, app: 'Caf' = None) -> None:
+    def __init__(self, cellar: 'Cellar', conf_only: bool = False, app: 'Caf' = None) -> None:
         self.cellar = cellar
         self.tasks: List[Task] = []
         self.targets: Dict[Path, Hash] = {}
@@ -226,7 +226,7 @@ class Context:
 
     def __call__(
             self, *,
-            label: Union[TPath, str],
+            label: Union['TPath', str],
             klass: Type[Task] = Task,
             features: List[TaskFeature] = None,
             **kwargs: Any
@@ -244,13 +244,13 @@ class Context:
         exe = self._app._executors[execid]
         return await exe(inp)
 
-    def add_target(self, label: Union[TPath, str], hashid: Hash) -> None:
+    def add_target(self, label: Union['TPath', str], hashid: 'Hash') -> None:
         path = Path(label)
         if path in self.targets:
             error(f'Multiple definitions of target {label!r}')
         self.targets[path] = hashid
 
-    def get_source(self, path: Path) -> Hash:
+    def get_source(self, path: Path) -> 'Hash':
         if path in self._sources:
             return self._sources[path]
         try:
@@ -262,13 +262,13 @@ class Context:
         self._sources[path] = hashid
         return hashid
 
-    def store_text(self, content: Contents) -> Hash:
+    def store_text(self, content: Contents) -> 'Hash':
         hashid = get_hash(content)
         if hashid not in self.inputs:
             self.inputs[hashid] = content
         return hashid
 
-    def store_bytes(self, content: bytes) -> Hash:
+    def store_bytes(self, content: bytes) -> 'Hash':
         hashid = get_hash(content)
         if hashid not in self.inputs:
             self.inputs[hashid] = content
