@@ -17,11 +17,24 @@ from .cellar_common import (
 )
 from .app import Caf
 from .executors import Executor
+from . import asyncio as _asyncio
 
 from typing import (
-    Dict, Tuple, List, DefaultDict, Iterable, Any,
-    Iterator, Set, Optional, Union, Callable
+    Dict, Tuple, List, DefaultDict, Iterable, Any, Awaitable,
+    Iterator, Set, Optional, Union, Callable, TypeVar
 )
+
+_T = TypeVar('_T')
+
+
+class UnfinishedTask(Exception):
+    pass
+
+
+async def collect(coros: Iterable[Awaitable[_T]], unfinished: _T = None
+                  ) -> List[Optional[_T]]:
+    results = await _asyncio.gather(*coros, returned_exception=UnfinishedTask)
+    return [unfinished if isinstance(r, UnfinishedTask) else r for r in results]
 
 
 class Tree(Dict[TPath, Hash]):
@@ -62,7 +75,8 @@ def copy_to(src: Path, dst: Path) -> None:
 
 
 class Cellar:
-    def __init__(self, app: Caf, hook: bool = False) -> None:
+    def __init__(self, app: Caf, hook: bool = False, noexec: bool = False
+                 ) -> None:
         path = app.cafdir.resolve()
         self.objects = path/'objects'
         self.objectdb: Set[Hash] = set()
@@ -99,6 +113,7 @@ class Cellar:
             'foreign key(buildid) references builds(id)'
             ')'
         )
+        self._noexec = noexec
         if hook:
             app.register_hook('cache')(self._cache_hook)
 
@@ -116,6 +131,8 @@ class Cellar:
         ).fetchone()
         if out is not None:
             return out
+        if self._noexec:
+            raise UnfinishedTask()
         out = await exe(inp)
         self.execute(
             'update tasks set out = ?, state = ? where hash = ?',
