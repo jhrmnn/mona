@@ -6,7 +6,7 @@ import re
 from typing import Dict, Pattern, Optional
 
 
-_regexes: Dict[str, Pattern] = {}
+_regexes: Dict[str, Pattern[str]] = {}
 
 
 def match_glob(path: str, pattern: str) -> Optional[str]:

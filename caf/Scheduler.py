@@ -53,10 +53,10 @@ class Scheduler:
         self.cellar = Cellar(app)
         self.tmpdir = tmpdir
 
-    def execute(self, sql: str, *parameters: Iterable) -> sqlite3.Cursor:
+    def execute(self, sql: str, *parameters: Iterable[Any]) -> sqlite3.Cursor:
         return self.db.execute(sql, *parameters)
 
-    def executemany(self, sql: str, *seq_of_parameters: Iterable[Iterable]) -> sqlite3.Cursor:
+    def executemany(self, sql: str, *seq_of_parameters: Iterable[Iterable[Any]]) -> sqlite3.Cursor:
         return self.db.executemany(sql, *seq_of_parameters)
 
     def commit(self) -> None:

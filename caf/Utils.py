@@ -32,7 +32,7 @@ def get_timestamp() -> str:
     return datetime.now().isoformat(timespec='seconds')
 
 
-def make_nonwritable(path: os.PathLike) -> None:
+def make_nonwritable(path: 'os.PathLike[str]') -> None:
     os.chmod(
         path,
         stat.S_IMODE(os.lstat(path).st_mode) &

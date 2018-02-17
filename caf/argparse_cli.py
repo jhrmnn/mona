@@ -25,7 +25,7 @@ def define_cli(cli: List[Arg] = None) -> Callable[[_F], _F]:
     return decorator
 
 
-def partial(func: Callable, *args: Any, **kwargs: Any) -> Any:
+def partial(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     newfunc = functools.partial(func, *args, **kwargs)
     if hasattr(func, '__cli__'):
         newfunc.__cli__ = func.__cli__  # type: ignore
@@ -33,7 +33,7 @@ def partial(func: Callable, *args: Any, **kwargs: Any) -> Any:
     return newfunc
 
 
-CliDef = List[Tuple[str, Union[Callable, List[Tuple[str, Any]]]]]
+CliDef = List[Tuple[str, Union[Callable[..., Any], List[Tuple[str, Any]]]]]
 
 
 def _add_commands(parser: ArgumentParser, clidef: CliDef) -> None:

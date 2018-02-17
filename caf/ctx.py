@@ -125,7 +125,7 @@ class VirtualFile:
         return f'{self.task.hashid}/{self.name}'
 
 
-class StoredFile(VirtualFile, os.PathLike):
+class StoredFile(VirtualFile, os.PathLike):  # type: ignore
     def __init__(self, hashid: 'Hash', name: str, task: Task) -> None:
         super().__init__(name, task)
         self.hashid = hashid
@@ -166,7 +166,7 @@ class PickledTask(Task):
             return pickle.load(f)
 
 
-def function_task(func: Callable) -> Callable[..., Task]:
+def function_task(func: Callable[..., Any]) -> Callable[..., Task]:
     func_code = inspect.getsource(func).split('\n', 1)[1]
     signature = inspect.signature(func)
     positional = [p.name for p in signature.parameters.values() if p.default is p.empty]

@@ -4,7 +4,7 @@
 import os
 import importlib
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from .argparse_cli import CLI, CLIError, partial
 from .app import Caf, RemoteNotExists
@@ -14,7 +14,7 @@ from .Remote import Remote
 from . import cmds
 
 
-def mod_remote_args(app: Caf, args: List[str], kwargs: Dict) -> None:
+def mod_remote_args(app: Caf, args: List[str], kwargs: Dict[str, Any]) -> None:
     if '--last' in args:
         args.remove('--last')
         args = args + ['--queue', app.last_queue]

@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Callable, Awaitable
 
 Cscript = Callable[[Context], Any]
 Executor = Callable[[bytes], Awaitable[bytes]]
+Hook = Callable[..., Any]
 
 
 class RemoteNotExists(Exception):
@@ -40,7 +41,7 @@ class Caf:
         self.paths: List[str] = []
         self.cscripts: Dict[str, Cscript] = OrderedDict()
         self._executors: Dict[str, Executor] = {}
-        self._hooks: Dict[str, Callable] = {}
+        self._hooks: Dict[str, Hook] = {}
 
     def register(self, label: str) -> Callable[[Cscript], Cscript]:
         def decorator(cscript: Cscript) -> Cscript:
@@ -54,8 +55,8 @@ class Caf:
             return exe
         return decorator
 
-    def register_hook(self, hook_type: str) -> Callable[[Callable], Callable]:
-        def decorator(hook: Callable) -> Callable:
+    def register_hook(self, hook_type: str) -> Callable[[Hook], Hook]:
+        def decorator(hook: Hook) -> Hook:
             self._hooks[hook_type] = hook
             return hook
         return decorator

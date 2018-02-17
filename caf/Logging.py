@@ -83,7 +83,7 @@ def no_cafdir() -> None:
 _reports = []
 
 
-def report(f: Callable) -> Callable:
+def report(f: Callable[..., Any]) -> Callable[..., Any]:
     """Register function as a report.
 
     Example:
@@ -137,7 +137,7 @@ class Table:
         self.align = align
         self.indent = indent
 
-    def sort(self, key: Callable = lambda x: x[0], **kwargs: Any) -> None:
+    def sort(self, key: Callable[[Tuple[Any, ...]], Any] = lambda x: x[0], **kwargs: Any) -> None:
         self.rows.sort(key=lambda x: key(x[1]), **kwargs)
 
     def __str__(self) -> str:

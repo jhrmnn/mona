@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 
 from caf import Caf
 from caf.ctx import Context, Task, Input
-from caf.cellar import Hash, get_hash
+from caf.cellar_common import Hash, get_hash
 
 from typing import Dict, Sequence, Tuple
 from typing_extensions import Protocol
