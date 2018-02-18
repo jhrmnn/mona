@@ -255,6 +255,11 @@ class Cellar:
     def store_file(self, hashid: Hash, file: Path) -> bool:
         return self.store(hashid, file=file)
 
+    def move_file(self, file: Path) -> Hash:
+        hash_ = get_hash(file.read_bytes())
+        self.store_file(hash_, file)
+        return hash_
+
     def save_file(self, file: Path) -> Hash:
         return self.save_bytes(file.read_bytes())
 

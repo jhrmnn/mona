@@ -62,6 +62,7 @@ class OutputFile(Protocol):
 class FileStore(Protocol[_U]):
     unfinished_exc: Type[_U]
     def save_file(self, file: Path) -> Hash: ...
+    def move_file(self, file: Path) -> Hash: ...
     def save_bytes(self, contents: bytes) -> Hash: ...
     def get_file(self, hashid: Hash) -> Path: ...
     def wrap_files(self, inp: bytes, files: Dict[str, Hash]
@@ -104,7 +105,7 @@ class DirBashExecutor(Executor, Generic[_U]):
             for filepath in tmpdir.glob('**/*'):
                 filename = str(filepath.relative_to(tmpdir))
                 if filename not in task['inputs'] and filepath.is_file():
-                    outputs[filename] = self._store.save_file(filepath)
+                    outputs[filename] = self._store.move_file(filepath)
         return json.dumps(outputs, sort_keys=True).encode()
 
     async def task(self, ctx: Context, command: str,
