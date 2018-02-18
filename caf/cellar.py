@@ -74,7 +74,19 @@ def copy_to(src: Path, dst: Path) -> None:
     shutil.copyfile(src, dst)
 
 
+class FakeOutput:
+    def read_bytes(self) -> bytes:
+        raise UnfinishedTask()
+
+
+class FakeOutputs:
+    def __getitem__(self, name: str) -> FakeOutput:
+        return FakeOutput()
+
+
 class Cellar:
+    unfinished_exc = UnfinishedTask
+
     def __init__(self, app: Caf, hook: bool = False, noexec: bool = False
                  ) -> None:
         path = app.cafdir.resolve()
@@ -336,6 +348,9 @@ class Cellar:
 
     def wrap_files(self, inp: bytes, files: Dict[str, Hash]) -> Dict[str, Path]:
         return {fname: self.get_file(hs) for fname, hs in files.items()}
+
+    def unfinished_output(self, inp: bytes) -> FakeOutputs:
+        return FakeOutputs()
 
     def checkout_task(
             self,

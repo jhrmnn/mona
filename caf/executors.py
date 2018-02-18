@@ -8,13 +8,16 @@ import tempfile
 from pathlib import Path
 from abc import ABC, abstractmethod
 
-from caf import Caf
-from caf.ctx import Context, Task, Input
-from caf.cellar_common import Hash, get_hash
+from . import Caf
+from .ctx import Context, Task, Input
+from .cellar_common import Hash, get_hash
+from .Utils import Map
 
-from typing import Dict, Sequence, Tuple, Mapping
+from typing import Dict, Sequence, Tuple, Type, TypeVar, Generic
 from typing_extensions import Protocol
 from mypy_extensions import TypedDict
+
+_U = TypeVar('_U', bound=Exception)
 
 
 class Executor(ABC):
@@ -45,20 +48,22 @@ class VirtualFile(Protocol):
     def read_bytes(self) -> bytes: ...
 
 
-class FileStore(Protocol):
+class FileStore(Protocol[_U]):
+    unfinished_exc: Type[_U]
     def store_file(self, hashid: Hash, file: Path) -> bool: ...
     def get_file(self, hashid: Hash) -> Path: ...
     def wrap_files(self, inp: bytes, files: Dict[str, Hash]
-                   ) -> Mapping[str, VirtualFile]: ...
+                   ) -> Map[str, VirtualFile]: ...
+    def unfinished_output(self, inp: bytes) -> Map[str, VirtualFile]: ...
 
 
 DictTask = TypedDict('DictTask', {'command': str, 'inputs': Dict[str, Hash]})
 
 
-class DirBashExecutor(Executor):
+class DirBashExecutor(Executor, Generic[_U]):
     name = 'dir-bash'
 
-    def __init__(self, app: Caf, store: FileStore) -> None:
+    def __init__(self, app: Caf, store: FileStore[_U]) -> None:
         super().__init__(app)
         self._store = store
 
@@ -85,11 +90,14 @@ class DirBashExecutor(Executor):
     async def task(self, ctx: Context, command: str,
                    inputs: Sequence[Input] = None,
                    symlinks: Sequence[Tuple[str, str]] = None
-                   ) -> Mapping[str, VirtualFile]:
+                   ) -> Map[str, VirtualFile]:
         task = Task(
             ctx=ctx, command=command, inputs=inputs or [],
             symlinks=symlinks or [], label=''
         )
         inp = task.obj.data
-        out = await ctx.task('dir-bash', inp)
+        try:
+            out = await ctx.task('dir-bash', inp)
+        except self._store.unfinished_exc:
+            return self._store.unfinished_output(inp)
         return self._store.wrap_files(inp, json.loads(out))

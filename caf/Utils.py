@@ -15,9 +15,16 @@ from pathlib import Path
 from typing import (
     Any, Iterator, Tuple, Iterable, TypeVar, List, Callable, Mapping, Union
 )
+from typing_extensions import Protocol
 
 _T = TypeVar('_T')
 _V = TypeVar('_V')
+_K_contra = TypeVar('_K_contra', contravariant=True)
+_V_co = TypeVar('_V_co', covariant=True)
+
+
+class Map(Protocol[_K_contra, _V_co]):
+    def __getitem__(self, key: _K_contra) -> _V_co: ...
 
 
 def config_group(config: ConfigParser, group: str) \
