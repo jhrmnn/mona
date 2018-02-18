@@ -6,6 +6,7 @@ from configparser import ConfigParser
 from collections import OrderedDict
 import os
 import asyncio
+from contextlib import contextmanager
 
 from .Utils import get_timestamp, config_group
 from .argparse_cli import Arg, define_cli
@@ -13,9 +14,10 @@ from .Remote import Remote, Local
 from .Logging import error, info, warn
 from .ctx import Context
 
-from typing import Any, Dict, List, Optional, Callable, Awaitable
+from typing import Any, Dict, List, Optional, Callable, Awaitable, Iterator
 
 Cscript = Callable[[Context], Any]
+RouteFunc = Callable[[], Any]
 Executor = Callable[[bytes], Awaitable[bytes]]
 Hook = Callable[..., Any]
 
@@ -40,13 +42,21 @@ class Caf:
         self.out = Path('build')
         self.paths: List[str] = []
         self.cscripts: Dict[str, Cscript] = OrderedDict()
+        self._routes: Dict[str, RouteFunc] = OrderedDict()
         self._executors: Dict[str, Executor] = {}
         self._hooks: Dict[str, Hook] = {}
+        self._ctx: Optional[Context] = None
 
     def register(self, label: str) -> Callable[[Cscript], Cscript]:
         def decorator(cscript: Cscript) -> Cscript:
             self.cscripts[label] = cscript
             return cscript
+        return decorator
+
+    def register_route(self, label: str) -> Callable[[RouteFunc], RouteFunc]:
+        def decorator(route_func: RouteFunc) -> RouteFunc:
+            self._routes[label] = route_func
+            return route_func
         return decorator
 
     def register_exec(self, execid: str) -> Callable[[Executor], Executor]:
@@ -96,6 +106,14 @@ class Caf:
             url += f'/queue/{qid}'
         return url
 
+    @contextmanager
+    def context(self) -> Iterator[None]:
+        self._ctx = Context(None, app=self)  # type: ignore
+        try:
+            yield
+        finally:
+            self._ctx = None
+
     def get(self, route: str) -> Any:
         from .cellar import Cellar
 
@@ -104,8 +122,8 @@ class Caf:
         return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
 
     def get_route(self, route: str) -> Any:
-        ctx = Context(None, app=self)  # type: ignore
-        result = asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
+        with self.context():
+            result = asyncio.get_event_loop().run_until_complete(self._routes[route]())
         if 'postget' in self._hooks:
             self._hooks['postget']()
         return result

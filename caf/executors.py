@@ -27,6 +27,7 @@ class Executor(ABC):
     name: str
 
     def __init__(self, app: Caf) -> None:
+        self._app = app
         app.register_exec(self.name)(self)
 
     @abstractmethod
@@ -108,7 +109,7 @@ class DirBashExecutor(Executor, Generic[_U]):
                     outputs[filename] = self._store.move_file(filepath)
         return json.dumps(outputs, sort_keys=True).encode()
 
-    async def task(self, ctx: Context, command: str,
+    async def task(self, command: str,
                    inputs: Sequence[Input] = None,
                    symlinks: Sequence[Tuple[str, str]] = None
                    ) -> Map[str, OutputFile]:
@@ -138,7 +139,8 @@ class DirBashExecutor(Executor, Generic[_U]):
         dict_inp = {'command': command, 'inputs': hashed_inputs}
         inp = json.dumps(dict_inp, sort_keys=True).encode()
         try:
-            out = await ctx.task('dir-bash', inp)
+            assert self._app._ctx
+            out = await self._app._ctx.task('dir-bash', inp)
         except self._store.unfinished_exc:
             return self._store.unfinished_output(inp)
         return self._store.wrap_files(inp, json.loads(out))
