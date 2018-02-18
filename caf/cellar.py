@@ -8,6 +8,7 @@ from collections import defaultdict
 import sys
 import shutil
 from textwrap import dedent
+from itertools import chain
 
 from .Logging import info, no_cafdir
 from .Utils import make_nonwritable, get_timestamp
@@ -21,7 +22,7 @@ from . import asyncio as _asyncio
 
 from typing import (
     Dict, Tuple, List, DefaultDict, Iterable, Any, Awaitable,
-    Iterator, Set, Optional, Union, Callable, TypeVar
+    Iterator, Set, Optional, Union, Callable, TypeVar, NamedTuple
 )
 
 _T = TypeVar('_T')
@@ -112,11 +113,17 @@ class StoredOutput(VirtualOutput):
         return self._cellar.get_file(self._hash)
 
 
+class Cache(NamedTuple):
+    tasks: Dict[Hash, Tuple[str, bytes]] = {}
+    files: Dict[Path, Hash] = {}
+    contents: Dict[Hash, bytes] = {}
+
+
 class Cellar:
     unfinished_exc = UnfinishedTask
 
-    def __init__(self, app: Caf, hook: bool = False, noexec: bool = False
-                 ) -> None:
+    def __init__(self, app: Caf, hook: bool = False, noexec: bool = False,
+                 cached: bool = False) -> None:
         path = app.cafdir.resolve()
         self.objects = path/'objects'
         self.objectdb: Set[Hash] = set()
@@ -154,23 +161,57 @@ class Cellar:
             ')'
         )
         self._noexec = noexec
+        self._cached = cached
+        assert not self._cached or self._noexec
+        self._cache = Cache()
         if hook:
             app.register_hook('cache')(self._cache_hook)
+            if self._cached:
+                app.register_hook('postget')(self._save_cache)
+
+    def _save_cache(self) -> None:
+        cache = self._cache
+        file_hashes = set(chain(cache.files.values(), cache.contents.keys()))
+        new_files = set((
+            hs for hs in file_hashes
+            if not (self.objects/hs[:2]/hs[2:]).is_file()
+        ))
+        info(f'Will store {len(cache.tasks)} new tasks and {len(new_files)} new files.')
+        if not cache.tasks:
+            return
+        if input('Continue? ["y" to confirm]: ') != 'y':
+            sys.exit(1)
+        now = get_timestamp()
+        self.executemany('insert into tasks values (?,?,?,?,?,?)', (
+            (hashid, execid, State.CLEAN, now, inp, None)
+            for hashid, (execid, inp) in cache.tasks.items()
+        ))
+        self.commit()
+        for path, hs in cache.files.items():
+            if hs not in new_files:
+                continue
+            assert self.store_bytes(hs, path.read_bytes())
+        for hs, contents in cache.contents.items():
+            if hs not in new_files:
+                continue
+            assert self.store_bytes(hs, contents)
 
     async def _cache_hook(self, exe: Executor, inp: bytes) -> bytes:
         now = get_timestamp()
         hashid = get_hash(inp)
-        self.execute(
-            'insert or ignore into tasks values (?,?,?,?,?,?)',
-            (hashid, exe.name, State.CLEAN, now, inp, None)
-        )
-        self.commit()
-        out: Optional[bytes]
-        out, = self.execute(
+        if not self._cached:
+            self.execute(
+                'insert or ignore into tasks values (?,?,?,?,?,?)',
+                (hashid, exe.name, State.CLEAN, now, inp, None)
+            )
+            self.commit()
+        row: Optional[Tuple[bytes]] = self.execute(
             'select out from tasks where hash = ?', (hashid,)
         ).fetchone()
-        if out is not None:
-            return out
+        if row and row[0] is not None:
+            return row[0]
+        if not row and self._cached:
+            self._cache.tasks[hashid] = (exe.name, inp)
         if self._noexec:
             raise UnfinishedTask()
         out = await exe(inp)
@@ -261,11 +302,18 @@ class Cellar:
         return hash_
 
     def save_file(self, file: Path) -> Hash:
+        if self._cached:
+            if file in self._cache.files:
+                return self._cache.files[file]
+            return self._cache.files.setdefault(file, get_hash(file.read_bytes()))
         return self.save_bytes(file.read_bytes())
 
     def save_bytes(self, contents: bytes) -> Hash:
         hash_ = get_hash(contents)
-        self.store_bytes(hash_, contents)
+        if self._cached:
+            self._cache.contents.setdefault(hash_, contents)
+        else:
+            self.store_bytes(hash_, contents)
         return hash_
 
     def get_task(self, hashid: Hash) -> Optional[TaskObject]:

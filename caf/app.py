@@ -105,7 +105,10 @@ class Caf:
 
     def get_route(self, route: str) -> Any:
         ctx = Context(None, app=self)  # type: ignore
-        return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
+        result = asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
+        if 'postget' in self._hooks:
+            self._hooks['postget']()
+        return result
 
     def init(self) -> None:
         if not self.cafdir.is_dir():
