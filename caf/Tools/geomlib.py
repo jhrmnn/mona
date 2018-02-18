@@ -52,7 +52,7 @@ class Atom:
         return Atom(self.specie, self.coord, self.ghost)
 
 
-class Molecule(Sized, Iterable):
+class Molecule(Sized, Iterable[Atom]):
     def __init__(self, atoms: List[Atom]) -> None:
         self._atoms = atoms
 

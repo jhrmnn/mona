@@ -6,7 +6,13 @@ from pathlib import Path
 import shutil
 import re
 
-from typing import Dict, Any, List, Tuple, Callable
+from typing import Dict, Any, List, Tuple, Callable, TypeVar, Generic
+
+from ..Utils import Map
+from ..executors import DirBashExecutor, OutputFile
+from ..ctx import Context
+
+_U = TypeVar('_U', bound=Exception)
 
 
 class AimsNotFound(Exception):
@@ -16,21 +22,31 @@ class AimsNotFound(Exception):
 Task = Dict[str, Any]
 
 
-class AimsTask:
+class AimsTask(Generic[_U]):
     default_features = [
         'speciedir', 'tags', 'command', 'basis', 'uncomment_tier', 'geom', 'core'
     ]
 
-    def __init__(self, features: List[str] = None) -> None:
+    def __init__(self, features: List[str] = None,
+                 dir_bash: DirBashExecutor[_U] = None) -> None:
         self.basis_defs: Dict[Tuple[Path, str], str] = {}
         self.speciedirs: Dict[Tuple[str, str], Path] = {}
         self.features: List[Callable[[Task], None]] = [
             getattr(self, feat) for feat in features or self.default_features
         ]
+        self._dir_bash = dir_bash
 
     def __call__(self, task: Task) -> None:
         for feature in self.features:
             feature(task)
+
+    async def task(self, ctx: Context, **task: Any) -> Map[str, OutputFile]:
+        assert self._dir_bash
+        self(task)
+        inputs: List[Tuple[str, bytes]] = [
+            (name, contents.encode()) for name, contents in task['inputs']
+        ]
+        return await self._dir_bash.task(ctx, task['command'], inputs)
 
     def speciedir(self, task: Task) -> None:
         basis_key = aims, basis = task['aims'], task.pop('basis')
@@ -63,6 +79,8 @@ class AimsTask:
     def command(self, task: Task) -> None:
         aims, check = task.pop('aims'), task.pop('check', True)
         command = f'AIMS={aims} run_aims'
+        if self._dir_bash:
+            command += ' >run.out 2>run.err'
         if check:
             command += ' && egrep "Have a nice day|stop_if_parser" run.out >/dev/null'
         task['command'] = command
@@ -124,7 +142,7 @@ def _get_gaussian_basis(L: int, alpha: List[float], coeff: List[float]) -> Any:
 
 
 class AimsWriter:
-    rules: Dict[str, Callable] = {
+    rules: Dict[str, Callable[..., Any]] = {
         'ROOT': lambda species: species,
         'species': lambda species_name, basis, angular_grids, valence, ion_occ, **kw: [
             ('species', species_name), kw, angular_grids, valence, ion_occ, basis
@@ -146,7 +164,7 @@ class AimsWriter:
         ),
     }
 
-    def __init__(self, rules: Dict[str, Callable] = None) -> None:
+    def __init__(self, rules: Dict[str, Callable[..., Any]] = None) -> None:
         if rules:
             self.rules = rules
 
