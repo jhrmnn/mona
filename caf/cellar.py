@@ -82,6 +82,10 @@ class VirtualOutput:
     def read_bytes(self) -> bytes:
         raise UnfinishedTask()
 
+    @property
+    def path(self) -> Path:
+        raise UnfinishedTask()
+
     def get_hash(self) -> Hash:
         return Hash(f'@{self._task_hash}/{self._name}')
 
@@ -101,7 +105,11 @@ class StoredOutput(VirtualOutput):
         self._hash = hashid
 
     def read_bytes(self) -> bytes:
-        return self._cellar.get_file(self._hash).read_bytes()
+        return self.path.read_bytes()
+
+    @property
+    def path(self) -> Path:
+        return self._cellar.get_file(self._hash)
 
 
 class Cellar:
