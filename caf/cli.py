@@ -34,7 +34,7 @@ def main() -> None:
     app_module = importlib.import_module(os.environ['CAF_APP'])
     app: Caf = app_module.app  # type: ignore
     cli = CLI([
-        ('get', app.get),
+        ('get', partial(cmds.get, app)),
         ('conf', app.configure),
         ('make', partial(cmds.make, app)),
         ('dispatch', partial(cmds.dispatch, app)),

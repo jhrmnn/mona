@@ -96,9 +96,6 @@ class Caf:
             url += f'/queue/{qid}'
         return url
 
-    @define_cli([
-        Arg('route', help='Route to get'),
-    ])
     def get(self, route: str) -> Any:
         from .cellar import Cellar
 

@@ -28,6 +28,13 @@ def sig_handler(sig: Any, frame: Any) -> Any:
 
 
 @define_cli([
+    Arg('route', help='Route to get'),
+])
+def get(app: Caf, route: str) -> Any:
+    return app.get_route(route)
+
+
+@define_cli([
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be built'),
     Arg('-l', '--limit', type=int, help='Limit number of tasks to N'),
     Arg('-q', '--queue', dest='url', help='Take tasks from web queue'),
