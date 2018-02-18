@@ -12,7 +12,7 @@ from caf import Caf
 from caf.ctx import Context, Task, Input
 from caf.cellar_common import Hash, get_hash
 
-from typing import Dict, Sequence, Tuple
+from typing import Dict, Sequence, Tuple, Mapping
 from typing_extensions import Protocol
 from mypy_extensions import TypedDict
 
@@ -41,10 +41,15 @@ class BashExecutor(Executor):
         return out
 
 
+class VirtualFile(Protocol):
+    def read_bytes(self) -> bytes: ...
+
+
 class FileStore(Protocol):
-    def store_bytes(self, hashid: Hash, data: bytes) -> bool: ...
     def store_file(self, hashid: Hash, file: Path) -> bool: ...
     def get_file(self, hashid: Hash) -> Path: ...
+    def wrap_files(self, inp: bytes, files: Dict[str, Hash]
+                   ) -> Mapping[str, VirtualFile]: ...
 
 
 DictTask = TypedDict('DictTask', {'command': str, 'inputs': Dict[str, Hash]})
@@ -80,14 +85,11 @@ class DirBashExecutor(Executor):
     async def task(self, ctx: Context, command: str,
                    inputs: Sequence[Input] = None,
                    symlinks: Sequence[Tuple[str, str]] = None
-                   )-> Dict[str, bytes]:
+                   ) -> Mapping[str, VirtualFile]:
         task = Task(
             ctx=ctx, command=command, inputs=inputs or [],
             symlinks=symlinks or [], label=''
         )
         inp = task.obj.data
         out = await ctx.task('dir-bash', inp)
-        return {
-            fname: self._store.get_file(hs).read_bytes()
-            for fname, hs in json.loads(out).items()
-        }
+        return self._store.wrap_files(inp, json.loads(out))

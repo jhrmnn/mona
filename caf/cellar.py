@@ -334,6 +334,9 @@ class Cellar:
                 raise FileNotFoundError()
         return path
 
+    def wrap_files(self, inp: bytes, files: Dict[str, Hash]) -> Dict[str, Path]:
+        return {fname: self.get_file(hs) for fname, hs in files.items()}
+
     def checkout_task(
             self,
             task: TaskObject,
