@@ -9,15 +9,18 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 
 from . import Caf
-from .ctx import Context, Task, Input
-from .cellar_common import Hash, get_hash
+from .cellar_common import Hash
 from .Utils import Map
 
-from typing import Dict, Sequence, Tuple, Type, TypeVar, Generic
-from typing_extensions import Protocol
+from typing import Dict, Sequence, Tuple, Type, TypeVar, Generic, Union
+from typing_extensions import Protocol, runtime
 from mypy_extensions import TypedDict
 
 _U = TypeVar('_U', bound=Exception)
+
+
+class Context(Protocol):
+    async def task(self, execid: str, inp: bytes) -> bytes: ...
 
 
 class Executor(ABC):
@@ -44,20 +47,37 @@ class BashExecutor(Executor):
         return out
 
 
-class VirtualFile(Protocol):
+@runtime
+class InputFile(Protocol):
+    def get_hash(self) -> Hash: ...
+
+
+class OutputFile(Protocol):
     def read_bytes(self) -> bytes: ...
+    def get_hash(self) -> Hash: ...
 
 
 class FileStore(Protocol[_U]):
     unfinished_exc: Type[_U]
-    def store_file(self, hashid: Hash, file: Path) -> bool: ...
+    def save_file(self, file: Path) -> Hash: ...
+    def save_bytes(self, contents: bytes) -> Hash: ...
     def get_file(self, hashid: Hash) -> Path: ...
     def wrap_files(self, inp: bytes, files: Dict[str, Hash]
-                   ) -> Map[str, VirtualFile]: ...
-    def unfinished_output(self, inp: bytes) -> Map[str, VirtualFile]: ...
+                   ) -> Map[str, OutputFile]: ...
+    def unfinished_output(self, inp: bytes) -> Map[str, OutputFile]: ...
+
+
+class UnknownInputType(Exception):
+    pass
+
+
+class UnknownSymlinkType(Exception):
+    pass
 
 
 DictTask = TypedDict('DictTask', {'command': str, 'inputs': Dict[str, Hash]})
+InputTarget = Union[str, Path, bytes, InputFile]
+Input = Union[str, Path, Tuple[str, InputTarget]]
 
 
 class DirBashExecutor(Executor, Generic[_U]):
@@ -82,20 +102,38 @@ class DirBashExecutor(Executor, Generic[_U]):
             for filepath in tmpdir.glob('**/*'):
                 filename = str(filepath.relative_to(tmpdir))
                 if filename not in task['inputs'] and filepath.is_file():
-                    hs = get_hash(filepath.read_bytes())
-                    outputs[filename] = hs
-                    self._store.store_file(hs, filepath)
+                    outputs[filename] = self._store.save_file(filepath)
         return json.dumps(outputs, sort_keys=True).encode()
 
     async def task(self, ctx: Context, command: str,
                    inputs: Sequence[Input] = None,
                    symlinks: Sequence[Tuple[str, str]] = None
-                   ) -> Map[str, VirtualFile]:
-        task = Task(
-            ctx=ctx, command=command, inputs=inputs or [],
-            symlinks=symlinks or [], label=''
-        )
-        inp = task.obj.data
+                   ) -> Map[str, OutputFile]:
+        hashed_inputs: Dict[str, Hash] = {}
+        file: InputTarget
+        for item in inputs or []:
+            if isinstance(item, str):
+                path, file = item, Path(item)
+            elif isinstance(item, Path):
+                path, file = str(item), item
+            elif isinstance(item, tuple) and len(item) == 2 \
+                    and isinstance(item[0], str):
+                path, file = item
+            else:
+                raise UnknownInputType(item)
+            path = str(Path(path))  # normalize
+            if isinstance(file, (str, Path)):
+                hashed_inputs[path] = self._store.save_file(Path(file))
+            elif isinstance(file, bytes):
+                hashed_inputs[path] = self._store.save_bytes(file)
+            else:
+                hashed_inputs[path] = file.get_hash()
+        for target, source in symlinks or []:
+            if not isinstance(target, str) and not isinstance(source, str):
+                raise UnknownSymlinkType((target, source))
+            hashed_inputs[str(Path(target))] = Hash('>' + str(Path(source)))
+        dict_inp = {'command': command, 'inputs': hashed_inputs}
+        inp = json.dumps(dict_inp, sort_keys=True).encode()
         try:
             out = await ctx.task('dir-bash', inp)
         except self._store.unfinished_exc:

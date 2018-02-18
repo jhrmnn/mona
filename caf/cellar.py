@@ -74,14 +74,34 @@ def copy_to(src: Path, dst: Path) -> None:
     shutil.copyfile(src, dst)
 
 
-class FakeOutput:
+class VirtualOutput:
+    def __init__(self, task_hash: Hash, name: str) -> None:
+        self._task_hash = task_hash
+        self._name = name
+
     def read_bytes(self) -> bytes:
         raise UnfinishedTask()
 
+    def get_hash(self) -> Hash:
+        return Hash(f'@{self._task_hash}/{self._name}')
+
 
 class FakeOutputs:
-    def __getitem__(self, name: str) -> FakeOutput:
-        return FakeOutput()
+    def __init__(self, task_hash: Hash) -> None:
+        self._task_hash = task_hash
+
+    def __getitem__(self, name: str) -> VirtualOutput:
+        return VirtualOutput(self._task_hash, name)
+
+
+class StoredOutput(VirtualOutput):
+    def __init__(self, task_hash: Hash, name: str, cellar: 'Cellar', hashid: Hash) -> None:
+        super().__init__(task_hash, name)
+        self._cellar = cellar
+        self._hash = hashid
+
+    def read_bytes(self) -> bytes:
+        return self._cellar.get_file(self._hash).read_bytes()
 
 
 class Cellar:
@@ -227,6 +247,14 @@ class Cellar:
     def store_file(self, hashid: Hash, file: Path) -> bool:
         return self.store(hashid, file=file)
 
+    def save_file(self, file: Path) -> Hash:
+        return self.save_bytes(file.read_bytes())
+
+    def save_bytes(self, contents: bytes) -> Hash:
+        hash_ = get_hash(contents)
+        self.store_bytes(hash_, contents)
+        return hash_
+
     def get_task(self, hashid: Hash) -> Optional[TaskObject]:
         row: Optional[Tuple[str, bytes, bytes]] = self.execute(
             'select execid, inp, out from tasks where hash = ?', (hashid,)
@@ -340,17 +368,28 @@ class Cellar:
         }
 
     def get_file(self, hashid: Hash) -> Path:
+        if hashid[0] == '@':
+            task_hash, name = hashid[1:].split('/', 1)
+            out, = self.execute(
+                'select out from tasks where hash = ?', (task_hash,)
+            ).fetchone()
+            assert out
+            hashid = json.loads(out)[name]
         path = self.objects/hashid[:2]/hashid[2:]
         if hashid not in self.objectdb:
             if not path.is_file():
-                raise FileNotFoundError()
+                raise FileNotFoundError(path)
         return path
 
-    def wrap_files(self, inp: bytes, files: Dict[str, Hash]) -> Dict[str, Path]:
-        return {fname: self.get_file(hs) for fname, hs in files.items()}
+    def wrap_files(self, inp: bytes, files: Dict[str, Hash]) -> Dict[str, StoredOutput]:
+        task_hash = get_hash(inp)
+        return {
+            fname: StoredOutput(task_hash, fname, self, hs)
+            for fname, hs in files.items()
+        }
 
     def unfinished_output(self, inp: bytes) -> FakeOutputs:
-        return FakeOutputs()
+        return FakeOutputs(get_hash(inp))
 
     def checkout_task(
             self,
