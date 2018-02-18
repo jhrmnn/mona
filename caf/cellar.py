@@ -22,7 +22,7 @@ from . import asyncio as _asyncio
 
 from typing import (
     Dict, Tuple, List, DefaultDict, Iterable, Any, Awaitable,
-    Iterator, Set, Optional, Union, Callable, TypeVar, NamedTuple
+    Iterator, Set, Optional, Union, Callable, TypeVar, NamedTuple, overload
 )
 
 _T = TypeVar('_T')
@@ -32,8 +32,15 @@ class UnfinishedTask(Exception):
     pass
 
 
-async def collect(coros: Iterable[Awaitable[_T]], unfinished: _T = None
-                  ) -> List[Optional[_T]]:
+@overload
+async def collect(coros: Iterable[Awaitable[_T]]) -> List[Optional[_T]]: ...
+
+
+@overload
+async def collect(coros: Iterable[Awaitable[_T]], unfinished: _T) -> List[_T]: ...
+
+
+async def collect(coros, unfinished=None):  # type: ignore
     results = await _asyncio.gather(*coros, returned_exception=UnfinishedTask)
     return [unfinished if isinstance(r, UnfinishedTask) else r for r in results]
 
