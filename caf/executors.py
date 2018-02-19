@@ -139,8 +139,7 @@ class DirBashExecutor(Executor, Generic[_U]):
         dict_inp = {'command': command, 'inputs': hashed_inputs}
         inp = json.dumps(dict_inp, sort_keys=True).encode()
         try:
-            assert self._app._ctx
-            out = await self._app._ctx.task('dir-bash', inp)
+            out = await self._app.ctx.task('dir-bash', inp)
         except self._store.unfinished_exc:
             return self._store.unfinished_output(inp)
         return self._store.wrap_files(inp, json.loads(out))

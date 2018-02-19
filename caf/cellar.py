@@ -129,8 +129,7 @@ class Cache(NamedTuple):
 class Cellar:
     unfinished_exc = UnfinishedTask
 
-    def __init__(self, app: Caf, hook: bool = False, noexec: bool = False,
-                 cached: bool = False) -> None:
+    def __init__(self, app: Caf, hook: bool = False) -> None:
         path = app.cafdir.resolve()
         self.objects = path/'objects'
         self.objectdb: Set[Hash] = set()
@@ -167,16 +166,19 @@ class Cellar:
             'foreign key(buildid) references builds(id)'
             ')'
         )
-        self._noexec = noexec
-        self._cached = cached
-        assert not self._cached or self._noexec
-        self._cache = Cache()
         if hook:
+            self._app = app
+            self._cache = Cache()
             app.register_hook('cache')(self._cache_hook)
-            if self._cached:
-                app.register_hook('postget')(self._save_cache)
+            app.register_hook('postget')(self._save_cache)
+
+    @property
+    def _cached(self) -> bool:
+        return self._app.ctx.conf_only
 
     def _save_cache(self) -> None:
+        if not self._cached:
+            return
         cache = self._cache
         file_hashes = set(chain(cache.files.values(), cache.contents.keys()))
         new_files = set((
@@ -219,7 +221,7 @@ class Cellar:
             return row[0]
         if not row and self._cached:
             self._cache.tasks[hashid] = (exe.name, inp)
-        if self._noexec:
+        if self._cached:
             raise UnfinishedTask()
         out = await exe(inp)
         self.execute(

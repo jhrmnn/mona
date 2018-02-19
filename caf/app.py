@@ -106,12 +106,17 @@ class Caf:
         return url
 
     @contextmanager
-    def context(self) -> Iterator[None]:
-        self._ctx = Context(None, app=self)  # type: ignore
+    def context(self, execution: bool = False) -> Iterator[None]:
+        self._ctx = Context(None, app=self, conf_only=not execution)  # type: ignore
         try:
             yield
         finally:
             self._ctx = None
+
+    @property
+    def ctx(self) -> Context:
+        assert self._ctx
+        return self._ctx
 
     def get(self, route: str) -> Any:
         from .cellar import Cellar
@@ -121,8 +126,7 @@ class Caf:
         return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
 
     def get_route(self, route: str) -> Any:
-        with self.context():
-            result = asyncio.get_event_loop().run_until_complete(self._routes[route]())
+        result = asyncio.get_event_loop().run_until_complete(self._routes[route]())
         if 'postget' in self._hooks:
             self._hooks['postget']()
         return result

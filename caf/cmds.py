@@ -60,7 +60,16 @@ def configure(app: Caf, cscripts: List[str] = None) -> None:
     Arg('route', help='Route to get'),
 ])
 def get(app: Caf, route: str) -> Any:
-    return app.get_route(route)
+    with app.context(execution=False):
+        return app.get_route(route)
+
+
+@define_cli([
+    Arg('route', help='Route to run'),
+])
+def run(app: Caf, route: str) -> Any:
+    with app.context(execution=True):
+        return app.get_route(route)
 
 
 @define_cli([

@@ -35,6 +35,7 @@ def main() -> None:
     app: Caf = app_module.app  # type: ignore
     cli = CLI([
         ('get', partial(cmds.get, app)),
+        ('run', partial(cmds.run, app)),
         ('conf', partial(cmds.configure, app)),
         ('make', partial(cmds.make, app)),
         ('dispatch', partial(cmds.dispatch, app)),
