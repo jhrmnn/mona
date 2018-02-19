@@ -18,11 +18,9 @@ CAFDIR = Path(os.environ.get('CAF_DIR', '.caf')).resolve()
 
 
 class Context:
-    def __init__(self, noexec: bool = True,
-                 app: 'Caf' = None, readonly: bool = True) -> None:
+    def __init__(self, noexec: bool = True, readonly: bool = True) -> None:
         self.noexec = noexec
         self.readonly = readonly
-        self._app = app
 
 
 class Caf(Hookable):
@@ -52,7 +50,7 @@ class Caf(Hookable):
 
     @contextmanager
     def context(self, execution: bool = False, readonly: bool = True) -> Iterator[None]:
-        self._ctx = Context(app=self, noexec=not execution, readonly=readonly)
+        self._ctx = Context(noexec=not execution, readonly=readonly)
         try:
             yield
         finally:
