@@ -246,7 +246,7 @@ def make(ctx: CommandContext,
          maxerror: int = 5,
          randomize: bool = False) -> None:
     """Execute build tasks."""
-    cellar = Cellar(ctx.app)
+    cellar = Cellar()
     if verbose:
         Logging.DEBUG = True
     if url:
@@ -346,7 +346,7 @@ def checkout(ctx: CommandContext,
              finished: bool = False,
              no_link: bool = False) -> None:
     """Create the dependecy tree physically on a file system."""
-    cellar = Cellar(ctx.app)
+    cellar = Cellar()
     if not do_json:
         if blddir.exists():
             if force:
@@ -374,7 +374,7 @@ def submit(ctx: CommandContext, url: str, patterns: List[str] = None, append: bo
     """Submit the list of prepared tasks to a queue server."""
     url = ctx.get_queue_url(url)
     announcer = Announcer(url, ctx.config.get('core', 'curl', fallback='') or None)
-    cellar = Cellar(ctx.app)
+    cellar = Cellar()
     scheduler = Scheduler(cellar)
     queue = scheduler.get_queue()
     if patterns:
@@ -407,7 +407,7 @@ def reset(ctx: CommandContext, patterns: List[str] = None, hard: bool = False,
         return
     if hard:
         running = True
-    cellar = Cellar(ctx.app)
+    cellar = Cellar()
     scheduler = Scheduler(cellar)
     states = scheduler.get_states()
     queue = scheduler.get_queue()
@@ -450,7 +450,7 @@ def list_remotes(ctx: CommandContext) -> None:
 @define_cli()
 def list_builds(ctx: CommandContext) -> None:
     """List builds."""
-    cellar = Cellar(ctx.app)
+    cellar = Cellar()
     table = Table(align='<<')
     for i, created in reversed(list(enumerate(cellar.get_builds()))):
         table.add_row(str(i), created)
@@ -487,7 +487,7 @@ def list_tasks(ctx: CommandContext,
                disp_tmp: bool = False,
                no_color: bool = False) -> None:
     """List tasks."""
-    cellar = Cellar(ctx.app)
+    cellar = Cellar()
     scheduler = Scheduler(cellar)
     states = scheduler.get_states()
     queue = scheduler.get_queue()
@@ -590,7 +590,7 @@ def status(ctx: CommandContext, patterns: List[str] = None, incomplete: bool = F
 ])
 def gc(ctx: CommandContext, gc_all: bool = False) -> None:
     """Discard running and error tasks."""
-    cellar = Cellar(ctx.app)
+    cellar = Cellar()
     scheduler = Scheduler(cellar)
     scheduler.gc()
     if gc_all:
@@ -649,7 +649,7 @@ def update(ctx: CommandContext, remotes: str, delete: bool = False, dry: bool = 
 ])
 def check(ctx: CommandContext, remotes: str) -> None:
     """Verify that hashes of the local and remote tasks match."""
-    cellar = Cellar(ctx.app)
+    cellar = Cellar()
     for remote in ctx.parse_remotes(remotes):
         remote.check(cellar.get_tree())
 
@@ -664,7 +664,7 @@ def fetch(ctx: CommandContext,
           patterns: List[str] = None,
           no_files: bool = False) -> None:
     """Fetch targets from remote."""
-    cellar = Cellar(ctx.app)
+    cellar = Cellar()
     scheduler = Scheduler(cellar)
     states = scheduler.get_states()
     if patterns:
@@ -690,7 +690,7 @@ def fetch(ctx: CommandContext,
 ])
 def archive_store(ctx: CommandContext, filename: str, patterns: List[str] = None) -> None:
     """Archives files accessible from the given tasks as tar.gz."""
-    cellar = Cellar(ctx.app)
+    cellar = Cellar()
     scheduler = Scheduler(cellar)
     states = scheduler.get_states()
     if patterns:

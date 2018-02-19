@@ -7,8 +7,6 @@ import os
 import asyncio
 from contextlib import contextmanager
 
-from .Utils import get_timestamp
-from .Logging import info
 from .hooks import Hookable
 
 from typing import Any, Dict, List, Optional, Callable, Awaitable, Iterator
@@ -16,7 +14,7 @@ from typing import Any, Dict, List, Optional, Callable, Awaitable, Iterator
 RouteFunc = Callable[[], Any]
 Executor = Callable[[bytes], Awaitable[bytes]]
 
-CAFDIR = Path(os.environ.get('CAF_DIR', '.caf'))
+CAFDIR = Path(os.environ.get('CAF_DIR', '.caf')).resolve()
 
 
 class Context:
@@ -30,7 +28,7 @@ class Context:
 class Caf(Hookable):
     def __init__(self, cafdir: Path = None) -> None:
         super().__init__()
-        self.cafdir = cafdir or CAFDIR
+        self.cafdir = cafdir.resolve() if cafdir else CAFDIR
         self.paths: List[str] = []
         self._routes: Dict[str, RouteFunc] = OrderedDict()
         self._executors: Dict[str, Executor] = {}

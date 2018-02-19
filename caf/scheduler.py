@@ -37,7 +37,7 @@ class Scheduler:
     def __init__(self, cellar: Cellar, tmpdir: str = None, hook: bool = False) -> None:
         try:
             self.db = sqlite3.connect(
-                str(cellar._app.cafdir/'queue.db'),
+                str(cellar.cafdir/'queue.db'),
                 detect_types=sqlite3.PARSE_COLNAMES,
                 timeout=30.0,
             )

@@ -3,7 +3,7 @@ from caf.cellar import Cellar, collect
 from caf.executors import DirBashExecutor, DirPythonExecutor
 
 app = Caf()
-cellar = Cellar(app, hook=True)
+cellar = Cellar(app)
 dir_bash = DirBashExecutor(app, cellar)
 dir_python = DirPythonExecutor(app, cellar)
 

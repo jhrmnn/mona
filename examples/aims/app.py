@@ -10,7 +10,7 @@ from caf.Tools.geomlib import Molecule
 from caf.scheduler import Scheduler
 
 app = Caf()
-cellar = Cellar(app, hook=True)
+cellar = Cellar(app)
 dir_bash = DirBashExecutor(app, cellar)
 Scheduler(cellar, hook=True)
 aims = AimsTask(dir_bash=dir_bash)

@@ -14,7 +14,7 @@ from enum import IntEnum
 from .Logging import info, no_cafdir
 from .Utils import make_nonwritable, get_timestamp, Hash, get_hash
 from .Glob import match_glob
-from .app import Caf
+from .app import Caf, CAFDIR
 from .hooks import Hookable
 from .executors import Executor
 from . import asyncio as _asyncio
@@ -227,14 +227,14 @@ class Cache(NamedTuple):
 class Cellar(Hookable):
     unfinished_exc = UnfinishedTask
 
-    def __init__(self, app: Caf, hook: bool = False) -> None:
+    def __init__(self, app: Caf = None) -> None:
         super().__init__()
-        path = app.cafdir.resolve()
-        self.objects = path/'objects'
+        self.cafdir = app.cafdir if app else CAFDIR
+        self.objects = self.cafdir/'objects'
         self.objectdb: Set[Hash] = set()
         try:
             self.db = sqlite3.connect(
-                str(path/'index.db'),
+                str(self.cafdir/'index.db'),
                 detect_types=sqlite3.PARSE_COLNAMES,
                 timeout=30.0,
             )
@@ -265,8 +265,8 @@ class Cellar(Hookable):
             'foreign key(buildid) references builds(id)'
             ')'
         )
-        self._app = app
-        if hook:
+        if app:
+            self._app = app
             self._cache = Cache()
             app.register_hook('cache')(self._cache_hook)
             app.register_hook('postget')(self._save_cache)
