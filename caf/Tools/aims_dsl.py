@@ -16,7 +16,7 @@ _aims_mm = metamodel_from_file(
     },
     auto_init_attributes=False
 )
-_parsed: Dict[str, Dict] = {}
+_parsed: Dict[str, Dict[str, Any]] = {}
 
 
 def _model_to_dict(o: Any) -> Any:
@@ -30,7 +30,7 @@ def _model_to_dict(o: Any) -> Any:
     return o
 
 
-def parse_aims_input(control: str) -> Dict:
+def parse_aims_input(control: str) -> Dict[str, Any]:
     hsh = hashlib.sha1(control.encode()).hexdigest()
     if hsh not in _parsed:
         model = _aims_mm.model_from_str(control)
@@ -39,7 +39,7 @@ def parse_aims_input(control: str) -> Dict:
 
 
 def parse_basis(task: Dict[str, Any]) -> None:
-    basis_new: Dict[str, Dict] = {}
+    basis_new: Dict[str, Dict[str, Dict[str, Any]]] = {}
     for basis_def in task['basis']:
         model = parse_aims_input(basis_def)['species'][0]
         basis_new[model['species_name']] = model
