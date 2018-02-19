@@ -26,8 +26,8 @@ class AimsTask(Generic[_U]):
         'speciedir', 'tags', 'command', 'basis', 'uncomment_tier', 'geom', 'core'
     ]
 
-    def __init__(self, features: List[str] = None,
-                 dir_bash: DirBashExecutor[_U] = None) -> None:
+    def __init__(self, dir_bash: DirBashExecutor[_U], features: List[str] = None
+                 ) -> None:
         self.basis_defs: Dict[Tuple[Path, str], str] = {}
         self.speciedirs: Dict[Tuple[str, str], Path] = {}
         self.features: List[Callable[[Task], None]] = [
@@ -35,14 +35,11 @@ class AimsTask(Generic[_U]):
         ]
         self._dir_bash = dir_bash
 
-    def __call__(self, task: Task) -> None:
-        for feature in self.features:
-            feature(task)
-
     async def task(self, *, label: str = None,
                    extra_feat: Any = None, **task: Any) -> Map[str, OutputFile]:
         assert self._dir_bash
-        self(task)
+        for feature in self.features:
+            feature(task)
         for feat in extra_feat or []:
             feat(task)
         inputs: List[Tuple[str, bytes]] = [

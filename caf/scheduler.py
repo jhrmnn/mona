@@ -34,7 +34,7 @@ class Task:
 
 
 class Scheduler:
-    def __init__(self, cellar: Cellar, tmpdir: str = None, hook: bool = False) -> None:
+    def __init__(self, cellar: Cellar, tmpdir: str = None) -> None:
         try:
             self.db = sqlite3.connect(
                 str(cellar.cafdir/'queue.db'),
@@ -51,8 +51,7 @@ class Scheduler:
         )
         self.cellar = cellar
         self.tmpdir = tmpdir
-        if hook:
-            cellar.register_hook('postsave')(self.submit)
+        cellar.register_hook('postsave')(self.submit)
 
     def execute(self, sql: str, *parameters: Iterable[Any]) -> sqlite3.Cursor:
         return self.db.execute(sql, *parameters)
