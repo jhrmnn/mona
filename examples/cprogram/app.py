@@ -8,7 +8,6 @@ from caf.cellar import Cellar
 from caf.executors import DirBashExecutor
 
 app = Caf()
-app.init()
 cellar = Cellar(app, hook=True)
 dir_bash = DirBashExecutor(app, cellar)
 

@@ -6,6 +6,7 @@ import os
 from contextlib import contextmanager
 from datetime import datetime
 import itertools
+import hashlib
 import stat
 import random
 from configparser import ConfigParser
@@ -13,7 +14,8 @@ import shutil
 from pathlib import Path
 
 from typing import (
-    Any, Iterator, Tuple, Iterable, TypeVar, List, Callable, Mapping, Union
+    Any, Iterator, Tuple, Iterable, TypeVar, List, Callable, Mapping, Union,
+    NewType
 )
 from typing_extensions import Protocol
 
@@ -21,6 +23,14 @@ _T = TypeVar('_T')
 _V = TypeVar('_V')
 _K_contra = TypeVar('_K_contra', contravariant=True)
 _V_co = TypeVar('_V_co', covariant=True)
+
+Hash = NewType('Hash', str)
+
+
+def get_hash(text: Union[str, bytes]) -> Hash:
+    if isinstance(text, str):
+        text = text.encode()
+    return Hash(hashlib.sha1(text).hexdigest())
 
 
 class Map(Protocol[_K_contra, _V_co]):

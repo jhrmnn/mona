@@ -13,9 +13,8 @@ from textwrap import dedent
 from pathlib import Path
 from abc import ABC, abstractmethod
 
-from . import Caf
-from .cellar_common import Hash
-from .Utils import Map
+from .app import Caf
+from .Utils import Map, Hash
 
 from typing import (
     Dict, Sequence, Tuple, Type, TypeVar, Generic, Union, Any, Callable
