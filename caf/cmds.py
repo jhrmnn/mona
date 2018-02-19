@@ -492,12 +492,9 @@ def update(caf: Caf, remotes: str, delete: bool = False, dry: bool = False) -> N
 ])
 def check(caf: Caf, remotes: str) -> None:
     """Verify that hashes of the local and remote tasks match."""
-    scheduler = Scheduler(Cellar(caf))
-    hashes = {
-        label: hashid for hashid, (_, label, *__) in scheduler.get_queue().items()
-    }
+    cellar = Cellar(caf)
     for remote in caf.parse_remotes(remotes):
-        remote.check(hashes)
+        remote.check(cellar.get_tree())
 
 
 @define_cli([

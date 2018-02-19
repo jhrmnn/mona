@@ -41,7 +41,7 @@ class Remote:
 
     def command(self, args: List[str], inp: str = None,
                 _get_output: bool = False) -> Optional[str]:
-        cmd = ' '.join(arg if ' ' not in arg else repr(arg) for arg in args)
+        cmd = ' '.join(arg if ' ' not in arg and '*' not in arg else repr(arg) for arg in args)
         if not _get_output:
             info(f'Running `./caf {cmd}` on {self.host}...')
         inp_bytes = inp.encode() if inp is not None else None
@@ -65,7 +65,7 @@ class Remote:
     def check(self, hashes: Dict['TPath', 'Hash']) -> None:
         info(f'Checking {self.host}...')
         remote_hashes: Dict[TPath, Hash] = {}
-        output = self.command_output(['list', 'tasks', '--no-color'])
+        output = self.command_output(['list', 'tasks', '**', '--no-color'])
         for hashid, path, *_ in (l.split() for l in output.strip().split('\n')):
             remote_hashes[TPath(path)] = Hash(hashid)
         is_ok = True
