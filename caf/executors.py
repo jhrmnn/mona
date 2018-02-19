@@ -5,6 +5,11 @@ import asyncio
 import subprocess
 import json
 import tempfile
+import sys
+import inspect
+import pickle
+import re
+from textwrap import dedent
 from pathlib import Path
 from abc import ABC, abstractmethod
 
@@ -12,7 +17,9 @@ from . import Caf
 from .cellar_common import Hash
 from .Utils import Map
 
-from typing import Dict, Sequence, Tuple, Type, TypeVar, Generic, Union
+from typing import (
+    Dict, Sequence, Tuple, Type, TypeVar, Generic, Union, Any, Callable
+)
 from typing_extensions import Protocol, runtime
 from mypy_extensions import TypedDict
 
@@ -91,6 +98,10 @@ class DirBashExecutor(Executor, Generic[_U]):
         super().__init__(app)
         self._store = store
 
+    async def create_process(self, cmd: str, **kwargs: Any
+                             ) -> asyncio.subprocess.Process:
+        return await asyncio.create_subprocess_shell(cmd, **kwargs)
+
     async def __call__(self, inp: bytes) -> bytes:
         task: DictTask = json.loads(inp)
         with tempfile.TemporaryDirectory(prefix='caftsk_') as _tmpdir:
@@ -98,7 +109,11 @@ class DirBashExecutor(Executor, Generic[_U]):
             for filename, hs in task['inputs'].items():
                 file = self._store.get_file(hs)
                 (tmpdir/filename).symlink_to(file)
-            proc = await asyncio.create_subprocess_shell(task['command'], cwd=tmpdir)
+            with (tmpdir/'run.out').open('w') as stdout, \
+                    (tmpdir/'run.err').open('w') as stderr:
+                proc = await self.create_process(
+                    task['command'], cwd=tmpdir, stdout=stdout, stderr=stderr,
+                )
             retcode = await proc.wait()
             if retcode:
                 raise subprocess.CalledProcessError(retcode, inp)
@@ -144,3 +159,52 @@ class DirBashExecutor(Executor, Generic[_U]):
         except self._store.unfinished_exc:
             return self._store.unfinished_output(inp)
         return self._store.wrap_files(inp, json.loads(out))
+
+
+class DirPythonExecutor(DirBashExecutor[_U]):
+    name = 'dir-python'
+
+    async def create_process(self, cmd: str, **kwargs: Any
+                             ) -> asyncio.subprocess.Process:
+        return await asyncio.create_subprocess_exec(
+            sys.executable, '_exec.py', **kwargs
+        )
+
+    def function_task(self, func: Callable[..., Any]
+                      ) -> Callable[..., Any]:
+        func_code = inspect.getsource(func).split('\n', 1)[1]
+        func_code = re.sub(r'\s*#.*$', '', func_code, flags=re.MULTILINE)
+        signature = inspect.signature(func)
+        positional = [
+            p.name for p in signature.parameters.values() if p.default is p.empty
+        ]
+
+        async def task(*args: InputTarget, label: str = None, **kwargs: Any
+                       ) -> Any:
+            assert len(args) == len(positional)
+            arglist = ', '.join(repr(p) for p in positional)
+            for kw, val in kwargs.items():
+                arglist += f', {kw}={val!r}'
+            task_code = dedent(
+                """\
+                import pickle
+
+                {func_code}
+                result = {func_name}({arglist})
+                with open('_result.pickle', 'bw') as f:
+                    pickle.dump(result, f)"""
+            ).format(
+                func_code=func_code,
+                func_name=func.__name__,
+                arglist=arglist,
+            )
+            inputs = list(zip(positional, args))
+            inputs.append(('_exec.py', task_code.encode()))
+            outputs = await super(DirPythonExecutor, self).task(
+                'python3 _exec.py', inputs, label=label
+            )
+            result = pickle.loads(outputs['_result.pickle'].read_bytes())
+            if result is None:
+                return outputs
+            return result
+        return task
