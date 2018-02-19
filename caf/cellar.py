@@ -17,6 +17,7 @@ from .cellar_common import (
     State, get_hash, TPath, Hash, TaskObject, Configuration, TimeStamp
 )
 from .app import Caf
+from .hooks import Hookable
 from .executors import Executor
 from . import asyncio as _asyncio
 
@@ -127,10 +128,11 @@ class Cache(NamedTuple):
     labels: Dict[str, Hash] = {}
 
 
-class Cellar:
+class Cellar(Hookable):
     unfinished_exc = UnfinishedTask
 
     def __init__(self, app: Caf, hook: bool = False) -> None:
+        super().__init__()
         path = app.cafdir.resolve()
         self.objects = path/'objects'
         self.objectdb: Set[Hash] = set()
@@ -196,6 +198,10 @@ class Cellar:
         self.executemany('insert into targets values (?,?,?)', (
             (hs, buildid, path) for path, hs in cache.labels.items()
         ))
+        if self.has_hook('postsave'):
+            self.get_hook('postsave')(
+                [(hs, state, path) for path, (hs, state) in cache.labels.items()]
+            )
         if not cache.tasks:
             self.commit()
             return
