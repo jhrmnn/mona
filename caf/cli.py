@@ -4,6 +4,7 @@
 import os
 import importlib
 import sys
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 
 from .argparse_cli import CLI, CLIError, partial
@@ -29,9 +30,20 @@ def log(app: Caf, args: List[str]) -> None:
             f.write(f'{get_timestamp()}: {" ".join(args)}\n')
 
 
+class NoAppFoundError(Exception):
+    pass
+
+
 def main() -> None:
     args = sys.argv[1:]
-    app_module = importlib.import_module(os.environ['CAF_APP'])
+    app_module_path = os.environ.get('CAF_APP')
+    if not app_module_path:
+        if Path('app.py').is_file():
+            app_module_path = 'app'
+            sys.path.append('')
+        else:
+            raise NoAppFoundError()
+    app_module = importlib.import_module(app_module_path)
     app: Caf = app_module.app  # type: ignore
     cli = CLI([
         ('schedule', partial(cmds.schedule, app)),
