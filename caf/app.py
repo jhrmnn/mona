@@ -11,7 +11,6 @@ from contextlib import contextmanager
 from .Utils import get_timestamp, config_group
 from .Remote import Remote, Local
 from .Logging import error, info
-from .ctx import Context
 from .hooks import Hookable
 
 from typing import Any, Dict, List, Optional, Callable, Awaitable, Iterator
@@ -22,6 +21,14 @@ Executor = Callable[[bytes], Awaitable[bytes]]
 
 class RemoteNotExists(Exception):
     pass
+
+
+class Context:
+    def __init__(self, noexec: bool = True,
+                 app: 'Caf' = None, readonly: bool = True) -> None:
+        self.noexec = noexec
+        self.readonly = readonly
+        self._app = app
 
 
 class Caf(Hookable):
@@ -43,6 +50,13 @@ class Caf(Hookable):
         self._routes: Dict[str, RouteFunc] = OrderedDict()
         self._executors: Dict[str, Executor] = {}
         self._ctx: Optional[Context] = None
+
+    async def task(self, execid: str, inp: bytes, label: str = None) -> bytes:
+        exe = self._executors[execid]
+        if self.has_hook('cache'):
+            assert label
+            return await self.get_hook('cache')(exe, inp, label)  # type: ignore
+        return await exe(inp)
 
     def route(self, label: str) -> Callable[[RouteFunc], RouteFunc]:
         def decorator(route_func: RouteFunc) -> RouteFunc:
@@ -90,9 +104,7 @@ class Caf(Hookable):
 
     @contextmanager
     def context(self, execution: bool = False, readonly: bool = True) -> Iterator[None]:
-        self._ctx = Context(  # type: ignore
-            None, app=self, noexec=not execution, readonly=readonly
-        )
+        self._ctx = Context(app=self, noexec=not execution, readonly=readonly)
         try:
             yield
         finally:
