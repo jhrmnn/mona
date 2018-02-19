@@ -55,19 +55,23 @@ def configure(app: Caf, cscripts: List[str] = None) -> None:
 
 
 @define_cli([
-    Arg('route', help='Route to get'),
+    Arg('routes', metavar='ROUTE', nargs='*', help='Route to schedule'),
 ])
-def schedule(app: Caf, route: str) -> Any:
+def schedule(app: Caf, routes: List[str] = None) -> Any:
+    if not routes:
+        routes = list(app._routes.keys())
     with app.context(readonly=False):
-        return app.get_route(route)
+        return app.get_route(*routes)
 
 
 @define_cli([
-    Arg('route', help='Route to run'),
+    Arg('routes', metavar='ROUTE', nargs='*', help='Route to run'),
 ])
-def run(app: Caf, route: str) -> Any:
+def run(app: Caf, routes: List[str] = None) -> Any:
+    if not routes:
+        routes = list(app._routes.keys())
     with app.context(execution=True, readonly=False):
-        return app.get_route(route)
+        return app.get_route(*routes)
 
 
 @define_cli([

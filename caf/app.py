@@ -121,11 +121,13 @@ class Caf(Hookable):
         ctx = Context(cellar, app=self)
         return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
 
-    def get_route(self, route: str) -> Any:
-        result = asyncio.get_event_loop().run_until_complete(self._routes[route]())
+    def get_route(self, *routes: str) -> Any:
+        result = asyncio.get_event_loop().run_until_complete(
+            asyncio.gather(*(self._routes[route]() for route in routes))
+        )
         if self.has_hook('postget'):
             self.get_hook('postget')()
-        return result
+        return result[0] if len(routes) == 1 else result
 
     def init(self) -> None:
         if not self.cafdir.is_dir():
