@@ -231,9 +231,9 @@ class Cellar(Hookable):
         row: Optional[Tuple[bytes, State]] = self.execute(
             'select out, state as "[state]" from tasks where hash = ?', (hashid,)
         ).fetchone()
-        if row and row[0] is not None:
         if self._cached:
             self._cache.labels[label] = hashid, row[1] if row else State.CLEAN
+        if row and row[1] == State.DONE:
             return row[0]
         if not row and self._cached:
             self._cache.tasks[hashid] = (exe.name, inp)
