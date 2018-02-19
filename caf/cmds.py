@@ -9,11 +9,12 @@ from configparser import ConfigParser
 import signal
 import json
 import argparse
+import asyncio
 
 from .Utils import cd, config_group, groupby
 from .argparse_cli import Arg, define_cli, CLIError, ThrowingArgumentParser
 from . import Logging
-from .Logging import error, Table, colstr, no_cafdir, handle_broken_pipe
+from .Logging import error, Table, colstr, no_cafdir, handle_broken_pipe, warn
 from .cellar import Cellar, Hash, TPath, State
 from .app import Caf
 from .Scheduler import RemoteScheduler, Scheduler
@@ -25,6 +26,34 @@ from typing import Any, List, Optional, Set, Iterable
 def sig_handler(sig: Any, frame: Any) -> Any:
     print(f'Received signal {signal.Signals(sig).name}')
     raise KeyboardInterrupt
+
+
+@define_cli([
+    Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
+])
+def configure(app: Caf, cscripts: List[str] = None) -> None:
+    """Prepare tasks: process cscript.py and store tasks in cellar."""
+    from .ctx import Context
+    from .cellar import Cellar
+    from .Scheduler import Scheduler
+
+    app.init()
+    cellar = Cellar(app)
+    ctx = Context(cellar, conf_only=True)
+    if not cscripts:
+        cscripts = list(app.cscripts.keys())
+    asyncio.get_event_loop().run_until_complete(asyncio.gather(*(
+        app.cscripts[label](ctx) for label in cscripts
+    )))
+    conf = ctx.get_configuration()
+    states = cellar.store_build(conf)
+    if any(label[0] == '?' for label in conf.labels.values()):
+        warn('Some tasks are not accessible.')
+    tasks = [
+        (hashid, state, conf.labels[hashid]) for hashid, state in states.items()
+    ]
+    scheduler = Scheduler(app)
+    scheduler.submit(tasks)
 
 
 @define_cli([

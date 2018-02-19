@@ -9,9 +9,8 @@ import asyncio
 from contextlib import contextmanager
 
 from .Utils import get_timestamp, config_group
-from .argparse_cli import Arg, define_cli
 from .Remote import Remote, Local
-from .Logging import error, info, warn
+from .Logging import error, info
 from .ctx import Context
 
 from typing import Any, Dict, List, Optional, Callable, Awaitable, Iterator
@@ -139,30 +138,3 @@ class Caf:
                 (self.cafdir/'objects').symlink_to(path)
             else:
                 (self.cafdir/'objects').mkdir()
-
-    @define_cli([
-        Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
-    ])
-    def configure(self, cscripts: List[str] = None) -> None:
-        """Prepare tasks: process cscript.py and store tasks in cellar."""
-        from .ctx import Context
-        from .cellar import Cellar
-        from .Scheduler import Scheduler
-
-        self.init()
-        cellar = Cellar(self)
-        ctx = Context(cellar, conf_only=True)
-        if not cscripts:
-            cscripts = list(self.cscripts.keys())
-        asyncio.get_event_loop().run_until_complete(asyncio.gather(*(
-            self.cscripts[label](ctx) for label in cscripts
-        )))
-        conf = ctx.get_configuration()
-        states = cellar.store_build(conf)
-        if any(label[0] == '?' for label in conf.labels.values()):
-            warn('Some tasks are not accessible.')
-        tasks = [
-            (hashid, state, conf.labels[hashid]) for hashid, state in states.items()
-        ]
-        scheduler = Scheduler(self)
-        scheduler.submit(tasks)
