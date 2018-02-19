@@ -167,8 +167,8 @@ class Cellar:
             'foreign key(buildid) references builds(id)'
             ')'
         )
+        self._app = app
         if hook:
-            self._app = app
             self._cache = Cache()
             app.register_hook('cache')(self._cache_hook)
             app.register_hook('postget')(self._save_cache)

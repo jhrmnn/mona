@@ -52,7 +52,7 @@ def configure(app: Caf, cscripts: List[str] = None) -> None:
     tasks = [
         (hashid, state, conf.labels[hashid]) for hashid, state in states.items()
     ]
-    scheduler = Scheduler(app)
+    scheduler = Scheduler(cellar)
     scheduler.submit(tasks)
 
 
@@ -91,7 +91,7 @@ def make(caf: Caf,
          maxerror: int = 5,
          randomize: bool = False) -> None:
     """Execute build tasks."""
-
+    cellar = Cellar(caf)
     if verbose:
         Logging.DEBUG = True
     if url:
@@ -104,11 +104,10 @@ def make(caf: Caf,
         )
     else:
         scheduler = Scheduler(
-            caf,
+            cellar,
             tmpdir=caf.config.get('core', 'tmpdir', fallback='') or None,
         )
     if patterns:
-        cellar = Cellar(caf)
         hashes: Optional[Set[Hash]] = \
             set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
         if not hashes:
@@ -220,10 +219,10 @@ def submit(caf: Caf, url: str, patterns: List[str] = None, append: bool = False)
     """Submit the list of prepared tasks to a queue server."""
     url = caf.get_queue_url(url)
     announcer = Announcer(url, caf.config.get('core', 'curl', fallback='') or None)
-    scheduler = Scheduler(caf)
+    cellar = Cellar(caf)
+    scheduler = Scheduler(cellar)
     queue = scheduler.get_queue()
     if patterns:
-        cellar = Cellar(caf)
         hashes = dict(cellar.get_tree().glob(*patterns))
     else:
         hashes = {hashid: TPath(label) for hashid, (state, label, *_) in queue.items()}
@@ -254,7 +253,7 @@ def reset(caf: Caf, patterns: List[str] = None, hard: bool = False,
     if hard:
         running = True
     cellar = Cellar(caf)
-    scheduler = Scheduler(caf)
+    scheduler = Scheduler(cellar)
     states = scheduler.get_states()
     queue = scheduler.get_queue()
     if patterns:
@@ -334,7 +333,7 @@ def list_tasks(caf: Caf,
                no_color: bool = False) -> None:
     """List tasks."""
     cellar = Cellar(caf)
-    scheduler = Scheduler(caf)
+    scheduler = Scheduler(cellar)
     states = scheduler.get_states()
     queue = scheduler.get_queue()
     if patterns:
@@ -381,7 +380,7 @@ def list_tasks(caf: Caf,
 def status(caf: Caf, patterns: List[str] = None, incomplete: bool = False) -> None:
     """Print number of initialized, running and finished tasks."""
     cellar = Cellar(caf)
-    scheduler = Scheduler(caf)
+    scheduler = Scheduler(cellar)
     patterns = patterns or caf.paths
     colors = 'yellow green cyan red normal'.split()
     print('number of {} tasks:'.format('/'.join(
@@ -436,11 +435,11 @@ def status(caf: Caf, patterns: List[str] = None, incomplete: bool = False) -> No
 ])
 def gc(caf: Caf, gc_all: bool = False) -> None:
     """Discard running and error tasks."""
-    scheduler = Scheduler(caf)
+    cellar = Cellar(caf)
+    scheduler = Scheduler(cellar)
     scheduler.gc()
     if gc_all:
         scheduler.gc_all()
-        cellar = Cellar(caf)
         cellar.gc()
 
 
@@ -495,7 +494,7 @@ def update(caf: Caf, remotes: str, delete: bool = False, dry: bool = False) -> N
 ])
 def check(caf: Caf, remotes: str) -> None:
     """Verify that hashes of the local and remote tasks match."""
-    scheduler = Scheduler(caf)
+    scheduler = Scheduler(Cellar(caf))
     hashes = {
         label: hashid for hashid, (_, label, *__) in scheduler.get_queue().items()
     }
@@ -514,7 +513,7 @@ def fetch(caf: Caf,
           no_files: bool = False) -> None:
     """Fetch targets from remote."""
     cellar = Cellar(caf)
-    scheduler = Scheduler(caf)
+    scheduler = Scheduler(cellar)
     states = scheduler.get_states()
     if patterns:
         hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
@@ -540,7 +539,7 @@ def fetch(caf: Caf,
 def archive_store(caf: Caf, filename: str, patterns: List[str] = None) -> None:
     """Archives files accessible from the given tasks as tar.gz."""
     cellar = Cellar(caf)
-    scheduler = Scheduler(caf)
+    scheduler = Scheduler(cellar)
     states = scheduler.get_states()
     if patterns:
         hashes = set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
