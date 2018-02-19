@@ -124,6 +124,7 @@ class Cache(NamedTuple):
     tasks: Dict[Hash, Tuple[str, bytes]] = {}
     files: Dict[Path, Hash] = {}
     contents: Dict[Hash, bytes] = {}
+    labels: Dict[str, Hash] = {}
 
 
 class Cellar:
@@ -186,11 +187,18 @@ class Cellar:
             if not (self.objects/hs[:2]/hs[2:]).is_file()
         ))
         info(f'Will store {len(cache.tasks)} new tasks and {len(new_files)} new files.')
-        if not cache.tasks:
-            return
-        if input('Continue? ["y" to confirm]: ') != 'y':
-            sys.exit(1)
+        if cache.tasks:
+            if input('Continue? ["y" to confirm]: ') != 'y':
+                sys.exit(1)
         now = get_timestamp()
+        cur = self.execute('insert into builds values (?,?)', (None, now))
+        buildid: int = cur.lastrowid
+        self.executemany('insert into targets values (?,?,?)', (
+            (hs, buildid, path) for path, hs in cache.labels.items()
+        ))
+        if not cache.tasks:
+            self.commit()
+            return
         self.executemany('insert into tasks values (?,?,?,?,?,?)', (
             (hashid, execid, State.CLEAN, now, inp, None)
             for hashid, (execid, inp) in cache.tasks.items()
@@ -205,9 +213,11 @@ class Cellar:
                 continue
             assert self.store_bytes(hs, contents)
 
-    async def _cache_hook(self, exe: Executor, inp: bytes) -> bytes:
+    async def _cache_hook(self, exe: Executor, inp: bytes, label: str) -> bytes:
         now = get_timestamp()
         hashid = get_hash(inp)
+        if self._cached:
+            self._cache.labels[label] = hashid
         if not self._cached:
             self.execute(
                 'insert or ignore into tasks values (?,?,?,?,?,?)',

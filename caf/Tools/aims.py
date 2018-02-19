@@ -39,13 +39,13 @@ class AimsTask(Generic[_U]):
         for feature in self.features:
             feature(task)
 
-    async def task(self, **task: Any) -> Map[str, OutputFile]:
+    async def task(self, *, label: str = None, **task: Any) -> Map[str, OutputFile]:
         assert self._dir_bash
         self(task)
         inputs: List[Tuple[str, bytes]] = [
             (name, contents.encode()) for name, contents in task['inputs']
         ]
-        return await self._dir_bash.task(task['command'], inputs)
+        return await self._dir_bash.task(task['command'], inputs, label=label)
 
     def speciedir(self, task: Task) -> None:
         basis_key = aims, basis = task['aims'], task.pop('basis')

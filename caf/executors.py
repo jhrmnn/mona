@@ -111,7 +111,8 @@ class DirBashExecutor(Executor, Generic[_U]):
 
     async def task(self, command: str,
                    inputs: Sequence[Input] = None,
-                   symlinks: Sequence[Tuple[str, str]] = None
+                   symlinks: Sequence[Tuple[str, str]] = None,
+                   label: str = None,
                    ) -> Map[str, OutputFile]:
         hashed_inputs: Dict[str, Hash] = {}
         file: InputTarget
@@ -139,7 +140,7 @@ class DirBashExecutor(Executor, Generic[_U]):
         dict_inp = {'command': command, 'inputs': hashed_inputs}
         inp = json.dumps(dict_inp, sort_keys=True).encode()
         try:
-            out = await self._app.ctx.task('dir-bash', inp)
+            out = await self._app.ctx.task('dir-bash', inp, label)
         except self._store.unfinished_exc:
             return self._store.unfinished_output(inp)
         return self._store.wrap_files(inp, json.loads(out))
