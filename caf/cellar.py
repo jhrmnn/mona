@@ -346,7 +346,7 @@ class Cellar(Hookable):
         hash_ = get_hash(contents)
         if self._cached:
             self._cache.contents.setdefault(hash_, contents)
-        else:
+        elif not self._readonly or not self._noexec:
             self.store_bytes(hash_, contents)
         return hash_
 
