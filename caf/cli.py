@@ -68,13 +68,11 @@ def main() -> None:
         cli.parser.print_help()
         error()
     try:
-        value = cli.run(argv=args)
+        cli.run(argv=args)
     except CLIError as e:
         clierror = e
     else:
         log(app, args)
-        if value:
-            print(value)
         return
 
     remote_spec, *rargs = args
