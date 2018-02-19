@@ -213,13 +213,15 @@ def base_feature(task: Dict[str, Any]) -> None:
 class Context:
     """Represent a build configuration: tasks and targets."""
 
-    def __init__(self, cellar: 'Cellar', conf_only: bool = False, app: 'Caf' = None) -> None:
+    def __init__(self, cellar: 'Cellar', noexec: bool = True,
+                 app: 'Caf' = None, readonly: bool = True) -> None:
         self.cellar = cellar
         self.tasks: List[Task] = []
         self.targets: Dict[Path, Hash] = {}
         self.inputs: Dict[Hash, Union[str, bytes]] = {}
         self._sources: Dict[Path, Hash] = {}
-        self.conf_only = conf_only
+        self.noexec = noexec
+        self.readonly = readonly
         self._app = app
 
     def __call__(

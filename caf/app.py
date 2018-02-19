@@ -100,8 +100,10 @@ class Caf(Hookable):
         return url
 
     @contextmanager
-    def context(self, execution: bool = False) -> Iterator[None]:
-        self._ctx = Context(None, app=self, conf_only=not execution)  # type: ignore
+    def context(self, execution: bool = False, readonly: bool = True) -> Iterator[None]:
+        self._ctx = Context(  # type: ignore
+            None, app=self, noexec=not execution, readonly=readonly
+        )
         try:
             yield
         finally:

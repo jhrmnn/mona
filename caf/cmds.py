@@ -37,7 +37,7 @@ def configure(app: Caf, cscripts: List[str] = None) -> None:
 
     app.init()
     cellar = Cellar(app)
-    ctx = Context(cellar, conf_only=True)
+    ctx = Context(cellar)
     if not cscripts:
         cscripts = list(app.cscripts.keys())
     asyncio.get_event_loop().run_until_complete(asyncio.gather(*(
@@ -57,8 +57,8 @@ def configure(app: Caf, cscripts: List[str] = None) -> None:
 @define_cli([
     Arg('route', help='Route to get'),
 ])
-def get(app: Caf, route: str) -> Any:
-    with app.context(execution=False):
+def schedule(app: Caf, route: str) -> Any:
+    with app.context(readonly=False):
         return app.get_route(route)
 
 
@@ -66,7 +66,7 @@ def get(app: Caf, route: str) -> Any:
     Arg('route', help='Route to run'),
 ])
 def run(app: Caf, route: str) -> Any:
-    with app.context(execution=True):
+    with app.context(execution=True, readonly=False):
         return app.get_route(route)
 
 

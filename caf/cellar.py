@@ -176,8 +176,16 @@ class Cellar(Hookable):
             app.register_hook('postget')(self._save_cache)
 
     @property
+    def _readonly(self) -> bool:
+        return self._app.ctx.readonly
+
+    @property
+    def _noexec(self) -> bool:
+        return self._app.ctx.noexec
+
+    @property
     def _cached(self) -> bool:
-        return self._app.ctx.conf_only
+        return self._app.ctx.noexec and not self._app.ctx.readonly
 
     def _save_cache(self) -> None:
         if not self._cached:
@@ -222,7 +230,7 @@ class Cellar(Hookable):
     async def _cache_hook(self, exe: Executor, inp: bytes, label: str) -> bytes:
         now = get_timestamp()
         hashid = get_hash(inp)
-        if not self._cached:
+        if not self._noexec and not self._readonly:
             self.execute(
                 'insert or ignore into tasks values (?,?,?,?,?,?)',
                 (hashid, exe.name, State.CLEAN, now, inp, None)
@@ -237,14 +245,15 @@ class Cellar(Hookable):
             return row[0]
         if not row and self._cached:
             self._cache.tasks[hashid] = (exe.name, inp)
-        if self._cached:
+        if self._noexec:
             raise UnfinishedTask()
         out = await exe(inp)
-        self.execute(
-            'update tasks set out = ?, state = ? where hash = ?',
-            (out, State.DONE, hashid)
-        )
-        self.commit()
+        if not self._readonly:
+            self.execute(
+                'update tasks set out = ?, state = ? where hash = ?',
+                (out, State.DONE, hashid)
+            )
+            self.commit()
         return out
 
     def execute(self, sql: str, *parameters: Iterable[Any]) -> sqlite3.Cursor:
