@@ -46,9 +46,8 @@ def main() -> None:
     app_module = importlib.import_module(app_module_path)
     app: Caf = app_module.app  # type: ignore
     cli = CLI([
-        ('schedule', partial(cmds.schedule, app)),
-        ('run', partial(cmds.run, app)),
         ('conf', partial(cmds.configure, app)),
+        ('run', partial(cmds.run, app)),
         ('make', partial(cmds.make, app)),
         ('dispatch', partial(cmds.dispatch, app)),
         ('checkout', partial(cmds.checkout, app)),

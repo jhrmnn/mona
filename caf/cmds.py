@@ -9,12 +9,11 @@ from configparser import ConfigParser
 import signal
 import json
 import argparse
-import asyncio
 
 from .Utils import cd, config_group, groupby
 from .argparse_cli import Arg, define_cli, CLIError, ThrowingArgumentParser
 from . import Logging
-from .Logging import error, Table, colstr, no_cafdir, handle_broken_pipe, warn
+from .Logging import error, Table, colstr, no_cafdir, handle_broken_pipe
 from .cellar import Cellar, Hash, TPath, State
 from .app import Caf
 from .scheduler import RemoteScheduler, Scheduler
@@ -29,35 +28,9 @@ def sig_handler(sig: Any, frame: Any) -> Any:
 
 
 @define_cli([
-    Arg('cscripts', metavar='CSCRIPT', nargs='*', help='Cscripts to configure'),
-])
-def configure(app: Caf, cscripts: List[str] = None) -> None:
-    """Prepare tasks: process cscript.py and store tasks in cellar."""
-    from .ctx import Context
-
-    app.init()
-    cellar = Cellar(app)
-    ctx = Context(cellar)
-    if not cscripts:
-        cscripts = list(app.cscripts.keys())
-    asyncio.get_event_loop().run_until_complete(asyncio.gather(*(
-        app.cscripts[label](ctx) for label in cscripts
-    )))
-    conf = ctx.get_configuration()
-    states = cellar.store_build(conf)
-    if any(label[0] == '?' for label in conf.labels.values()):
-        warn('Some tasks are not accessible.')
-    tasks = [
-        (hashid, state, conf.labels[hashid]) for hashid, state in states.items()
-    ]
-    scheduler = Scheduler(cellar)
-    scheduler.submit(tasks)
-
-
-@define_cli([
     Arg('routes', metavar='ROUTE', nargs='*', help='Route to schedule'),
 ])
-def schedule(app: Caf, routes: List[str] = None) -> Any:
+def configure(app: Caf, routes: List[str] = None) -> Any:
     if not routes:
         routes = list(app._routes.keys())
     with app.context(readonly=False):
