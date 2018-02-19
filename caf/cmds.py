@@ -17,7 +17,7 @@ from . import Logging
 from .Logging import error, Table, colstr, no_cafdir, handle_broken_pipe, warn
 from .cellar import Cellar, Hash, TPath, State
 from .app import Caf
-from .Scheduler import RemoteScheduler, Scheduler
+from .scheduler import RemoteScheduler, Scheduler
 from .Announcer import Announcer
 
 from typing import Any, List, Optional, Set, Iterable
@@ -34,8 +34,6 @@ def sig_handler(sig: Any, frame: Any) -> Any:
 def configure(app: Caf, cscripts: List[str] = None) -> None:
     """Prepare tasks: process cscript.py and store tasks in cellar."""
     from .ctx import Context
-    from .cellar import Cellar
-    from .Scheduler import Scheduler
 
     app.init()
     cellar = Cellar(app)
