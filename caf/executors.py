@@ -4,11 +4,11 @@
 import asyncio
 import subprocess
 import json
-import tempfile
 import sys
 import inspect
 import pickle
 import re
+from tempfile import TemporaryDirectory
 from textwrap import dedent
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -96,6 +96,7 @@ class DirBashExecutor(Executor, Generic[_U]):
     def __init__(self, app: Caf, store: FileStore[_U]) -> None:
         super().__init__(app)
         self._store = store
+        self._tmpdir = app.config.get('core', 'tmpdir', fallback='')
 
     async def create_process(self, cmd: str, **kwargs: Any
                              ) -> asyncio.subprocess.Process:
@@ -103,7 +104,7 @@ class DirBashExecutor(Executor, Generic[_U]):
 
     async def __call__(self, inp: bytes) -> bytes:
         task: DictTask = json.loads(inp)
-        with tempfile.TemporaryDirectory(prefix='caftsk_') as _tmpdir:
+        with TemporaryDirectory(prefix='caftsk_', dir=self._tmpdir) as _tmpdir:
             tmpdir = Path(_tmpdir)
             for filename, hs in task['inputs'].items():
                 if hs[0] == '>':
