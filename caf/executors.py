@@ -107,7 +107,10 @@ class DirBashExecutor(Executor, Generic[_U]):
         with tempfile.TemporaryDirectory(prefix='caftsk_') as _tmpdir:
             tmpdir = Path(_tmpdir)
             for filename, hs in task['inputs'].items():
-                file = self._store.get_file(hs)
+                if hs[0] == '>':
+                    file = Path(hs[1:])
+                else:
+                    file = self._store.get_file(hs)
                 (tmpdir/filename).symlink_to(file)
             with (tmpdir/'run.out').open('w') as stdout, \
                     (tmpdir/'run.err').open('w') as stderr:
