@@ -125,7 +125,7 @@ class Cache(NamedTuple):
     tasks: Dict[Hash, Tuple[str, bytes]] = {}
     files: Dict[Path, Hash] = {}
     contents: Dict[Hash, bytes] = {}
-    labels: Dict[str, Hash] = {}
+    labels: Dict[str, Tuple[Hash, State]] = {}
 
 
 class Cellar(Hookable):
@@ -196,7 +196,7 @@ class Cellar(Hookable):
         cur = self.execute('insert into builds values (?,?)', (None, now))
         buildid: int = cur.lastrowid
         self.executemany('insert into targets values (?,?,?)', (
-            (hs, buildid, path) for path, hs in cache.labels.items()
+            (hs, buildid, path) for path, (hs, _) in cache.labels.items()
         ))
         if self.has_hook('postsave'):
             self.get_hook('postsave')(
@@ -222,18 +222,18 @@ class Cellar(Hookable):
     async def _cache_hook(self, exe: Executor, inp: bytes, label: str) -> bytes:
         now = get_timestamp()
         hashid = get_hash(inp)
-        if self._cached:
-            self._cache.labels[label] = hashid
         if not self._cached:
             self.execute(
                 'insert or ignore into tasks values (?,?,?,?,?,?)',
                 (hashid, exe.name, State.CLEAN, now, inp, None)
             )
             self.commit()
-        row: Optional[Tuple[bytes]] = self.execute(
-            'select out from tasks where hash = ?', (hashid,)
+        row: Optional[Tuple[bytes, State]] = self.execute(
+            'select out, state as "[state]" from tasks where hash = ?', (hashid,)
         ).fetchone()
         if row and row[0] is not None:
+        if self._cached:
+            self._cache.labels[label] = hashid, row[1] if row else State.CLEAN
             return row[0]
         if not row and self._cached:
             self._cache.tasks[hashid] = (exe.name, inp)
