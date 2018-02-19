@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Set, Iterable
 
 from .argparse_cli import CLI, CLIError, partial
-from .app import Caf, CAFDIR
+from .app import Caf, CAFDIR, read_config
 from .Utils import get_timestamp, config_group
 from . import Logging
 from .Logging import error, info, Table, colstr, no_cafdir, handle_broken_pipe
@@ -36,11 +36,7 @@ class RemoteNotExists(Exception):
 
 class CommandContext:
     def __init__(self) -> None:
-        self.config = ConfigParser()
-        self.config.read([
-            CAFDIR/'config.ini',
-            Path('~/.config/caf/config.ini').expanduser()
-        ])
+        self.config = read_config(CAFDIR)
         self.out = Path('build')
         self._remotes = {
             name: Remote(r['host'], r['path'])
