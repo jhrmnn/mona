@@ -240,9 +240,9 @@ class Context:
     async def task(self, execid: str, inp: bytes, label: str = None) -> bytes:
         assert self._app
         exe = self._app._executors[execid]
-        if 'cache' in self._app._hooks:
+        if self._app.has_hook('cache'):
             assert label
-            return await self._app._hooks['cache'](exe, inp, label)  # type: ignore
+            return await self._app.get_hook('cache')(exe, inp, label)  # type: ignore
         return await exe(inp)
 
     def add_target(self, label: Union['TPath', str], hashid: 'Hash') -> None:

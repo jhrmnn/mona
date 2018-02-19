@@ -12,21 +12,22 @@ from .Utils import get_timestamp, config_group
 from .Remote import Remote, Local
 from .Logging import error, info
 from .ctx import Context
+from .hooks import Hookable
 
 from typing import Any, Dict, List, Optional, Callable, Awaitable, Iterator
 
 Cscript = Callable[[Context], Any]
 RouteFunc = Callable[[], Any]
 Executor = Callable[[bytes], Awaitable[bytes]]
-Hook = Callable[..., Any]
 
 
 class RemoteNotExists(Exception):
     pass
 
 
-class Caf:
+class Caf(Hookable):
     def __init__(self) -> None:
+        super().__init__()
         self.cafdir = Path(os.environ.get('CAF_DIR', '.caf'))
         self.config = ConfigParser()
         self.config.read([
@@ -43,7 +44,6 @@ class Caf:
         self.cscripts: Dict[str, Cscript] = OrderedDict()
         self._routes: Dict[str, RouteFunc] = OrderedDict()
         self._executors: Dict[str, Executor] = {}
-        self._hooks: Dict[str, Hook] = {}
         self._ctx: Optional[Context] = None
 
     def register(self, label: str) -> Callable[[Cscript], Cscript]:
@@ -62,12 +62,6 @@ class Caf:
         def decorator(exe: Executor) -> Executor:
             self._executors[execid] = exe
             return exe
-        return decorator
-
-    def register_hook(self, hook_type: str) -> Callable[[Hook], Hook]:
-        def decorator(hook: Hook) -> Hook:
-            self._hooks[hook_type] = hook
-            return hook
         return decorator
 
     def parse_remotes(self, remotes: str) -> List[Remote]:
@@ -127,8 +121,8 @@ class Caf:
 
     def get_route(self, route: str) -> Any:
         result = asyncio.get_event_loop().run_until_complete(self._routes[route]())
-        if 'postget' in self._hooks:
-            self._hooks['postget']()
+        if self.has_hook('postget'):
+            self.get_hook('postget')()
         return result
 
     def init(self) -> None:
