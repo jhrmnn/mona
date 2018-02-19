@@ -35,7 +35,7 @@ class Executor(ABC):
 
     def __init__(self, app: Caf) -> None:
         self._app = app
-        app.register_exec(self.name)(self)
+        app.register_exec(self.name, self)
 
     @abstractmethod
     async def __call__(self, inp: bytes) -> bytes: ...

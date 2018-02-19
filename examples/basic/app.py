@@ -15,7 +15,7 @@ def process(output: str) -> int:
         return int(f.read())+3
 
 
-@app.register_route('main')
+@app.route('main')
 async def main() -> int:
     task_raw = await dir_bash.task(f'echo 101', label='raw')
     task_process = await dir_bash.task(
@@ -29,4 +29,4 @@ async def main() -> int:
 
 if __name__ == '__main__':
     with app.context():
-        print(app.get_route('main'))
+        print(app.get('main'))

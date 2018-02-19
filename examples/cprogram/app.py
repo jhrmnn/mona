@@ -13,7 +13,7 @@ cellar = Cellar(app, hook=True)
 dir_bash = DirBashExecutor(app, cellar)
 
 
-@app.register_route('main')
+@app.route('main')
 async def main() -> Any:
     sources = list(Path().glob('*.c'))
     objs = [str(s.with_suffix('.o')) for s in sources]
@@ -27,4 +27,4 @@ async def main() -> Any:
 
 if __name__ == '__main__':
     with app.context(execution=True, readonly=False):
-        shutil.copy(app.get_route('main'), 'app')
+        shutil.copy(app.get('main'), 'app')

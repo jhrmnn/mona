@@ -61,7 +61,7 @@ def schedule(app: Caf, routes: List[str] = None) -> Any:
     if not routes:
         routes = list(app._routes.keys())
     with app.context(readonly=False):
-        return app.get_route(*routes)
+        return app.get(*routes)
 
 
 @define_cli([
@@ -71,7 +71,7 @@ def run(app: Caf, routes: List[str] = None) -> Any:
     if not routes:
         routes = list(app._routes.keys())
     with app.context(execution=True, readonly=False):
-        return app.get_route(*routes)
+        return app.get(*routes)
 
 
 @define_cli([

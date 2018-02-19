@@ -16,7 +16,6 @@ from .hooks import Hookable
 
 from typing import Any, Dict, List, Optional, Callable, Awaitable, Iterator
 
-Cscript = Callable[[Context], Any]
 RouteFunc = Callable[[], Any]
 Executor = Callable[[bytes], Awaitable[bytes]]
 
@@ -41,28 +40,18 @@ class Caf(Hookable):
         self.remotes['local'] = Local()
         self.out = Path('build')
         self.paths: List[str] = []
-        self.cscripts: Dict[str, Cscript] = OrderedDict()
         self._routes: Dict[str, RouteFunc] = OrderedDict()
         self._executors: Dict[str, Executor] = {}
         self._ctx: Optional[Context] = None
 
-    def register(self, label: str) -> Callable[[Cscript], Cscript]:
-        def decorator(cscript: Cscript) -> Cscript:
-            self.cscripts[label] = cscript
-            return cscript
-        return decorator
-
-    def register_route(self, label: str) -> Callable[[RouteFunc], RouteFunc]:
+    def route(self, label: str) -> Callable[[RouteFunc], RouteFunc]:
         def decorator(route_func: RouteFunc) -> RouteFunc:
             self._routes[label] = route_func
             return route_func
         return decorator
 
-    def register_exec(self, execid: str) -> Callable[[Executor], Executor]:
-        def decorator(exe: Executor) -> Executor:
-            self._executors[execid] = exe
-            return exe
-        return decorator
+    def register_exec(self, execid: str, exe: Executor) -> None:
+        self._executors[execid] = exe
 
     def parse_remotes(self, remotes: str) -> List[Remote]:
         if remotes == 'all':
@@ -114,14 +103,7 @@ class Caf(Hookable):
         assert self._ctx
         return self._ctx
 
-    def get(self, route: str) -> Any:
-        from .cellar import Cellar
-
-        cellar = Cellar(self)
-        ctx = Context(cellar, app=self)
-        return asyncio.get_event_loop().run_until_complete(self.cscripts[route](ctx))
-
-    def get_route(self, *routes: str) -> Any:
+    def get(self, *routes: str) -> Any:
         result = asyncio.get_event_loop().run_until_complete(
             asyncio.gather(*(self._routes[route]() for route in routes))
         )

@@ -4,22 +4,15 @@ from typing import List
 
 from caf import Caf
 from caf.cellar import Cellar, collect
-from caf.executors import DirBashExecutor, DirPythonExecutor
+from caf.executors import DirBashExecutor
 from caf.Tools.aims import AimsTask
 from caf.Tools.geomlib import Molecule
 from caf.scheduler import Scheduler
 
 app = Caf()
 app.init()
-app.paths = [
-    's22/*/*',
-    's22/*/*/<>',
-    's66/*/*',
-    's66/*/*/<>',
-]
 cellar = Cellar(app, hook=True)
 dir_bash = DirBashExecutor(app, cellar)
-dir_python = DirPythonExecutor(app, cellar)
 Scheduler(cellar, hook=True)
 aims = AimsTask(dir_bash=dir_bash)
 
@@ -47,7 +40,7 @@ async def get_ene(dist: float) -> float:
     return parse_ene(outputs['run.out'].path)
 
 
-@app.register_route('main')
+@app.route('main')
 async def main() -> List[float]:
     dists = [3.3, 4, 5.2]
     return await collect((get_ene(dist) for dist in dists), nan)
@@ -55,4 +48,4 @@ async def main() -> List[float]:
 
 if __name__ == '__main__':
     with app.context():
-        print(app.get_route('main'))
+        print(app.get('main'))
