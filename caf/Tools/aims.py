@@ -39,9 +39,12 @@ class AimsTask(Generic[_U]):
         for feature in self.features:
             feature(task)
 
-    async def task(self, *, label: str = None, **task: Any) -> Map[str, OutputFile]:
+    async def task(self, *, label: str = None,
+                   extra_feat: Any = None, **task: Any) -> Map[str, OutputFile]:
         assert self._dir_bash
         self(task)
+        for feat in extra_feat or []:
+            feat(task)
         inputs: List[Tuple[str, bytes]] = [
             (name, contents.encode()) for name, contents in task['inputs']
         ]
