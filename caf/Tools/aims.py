@@ -81,8 +81,9 @@ class AimsTask(Generic[_U]):
     def command(self, task: Task) -> None:
         aims, check = task.pop('aims'), task.pop('check', True)
         command = f'AIMS={aims} run_aims'
-        if self._dir_bash:
-            command += ' >run.out 2>run.err'
+        # TODO for now to keep compatibility with old Caf
+        # if self._dir_bash:
+        #     command += ' >STDOUT 2>STDERR'
         if check:
             command += ' && egrep "Have a nice day|stop_if_parser" run.out >/dev/null'
         task['command'] = command
