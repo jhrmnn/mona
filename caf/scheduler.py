@@ -6,16 +6,14 @@ import sqlite3
 from contextlib import contextmanager
 import tempfile
 import shutil
+import subprocess
 
 from .cellar import Cellar, State
 from .Logging import error, debug, no_cafdir
 from .Utils import get_timestamp, sample
 from .Announcer import Announcer
 
-from typing import (
-    Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any,
-    AsyncIterator
-)
+from typing import Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any
 from .cellar import Hash, TPath
 
 
@@ -54,7 +52,21 @@ class Scheduler:
         )
         self.cellar = cellar
         self.tmpdir = tmpdir
+        self._tmpdirs: Dict[Hash, Path] = {}
+        self._labels: Dict[Hash, str] = {}
         cellar.register_hook('postsave')(self.submit)
+        cellar.register_hook('tmpdir')(self._get_tmpdir)
+
+    def _get_tmpdir(self, hashid: Hash) -> Path:
+        label = self._labels[hashid]
+        tmpdir = Path(tempfile.mkdtemp(prefix='caftsk_', dir=self.tmpdir))
+        self._tmpdirs[hashid] = tmpdir
+        self.execute(
+            'update queue set path = ? where taskhash = ?',
+            (str(tmpdir), hashid)
+        )
+        debug(f'Executing {label} in {tmpdir}')
+        return tmpdir
 
     def execute(self, sql: str, *parameters: Iterable[Any]) -> sqlite3.Cursor:
         return self.db.execute(sql, *parameters)
@@ -126,7 +138,8 @@ class Scheduler:
             nmaxerror: int = 5,
             dry: bool = False,
             randomize: bool = False
-    ) -> AsyncIterator[Task]:
+    ) -> None:
+        assert self.cellar._app
         self.db.commit()
         self.db.isolation_level = None
         nrun = 0
@@ -141,13 +154,13 @@ class Scheduler:
                 break
             queue = self.get_queue()
             states = {hashid: state for hashid, (state, *_) in queue.items()}
-            labels = {hashid: label for hashid, (_, label, *__) in queue.items()}
+            self._labels = {hashid: label for hashid, (_, label, *__) in queue.items()}
             skipped: Set[Hash] = set()
             will_continue = False
             was_interrupted = False
             debug(f'Starting candidate loop')
             for hashid in self.candidate_tasks(states, randomize=randomize):
-                label = labels[hashid]
+                label = self._labels[hashid]
                 debug(f'Got {hashid}:{label} as candidate')
                 if hashid in skipped:
                     self.skip_task(hashid)
@@ -194,38 +207,24 @@ class Scheduler:
                     self.task_done(hashid)
                     print(f'{get_timestamp()}: {label} finished successfully')
                     continue
-                tmppath = Path(tempfile.mkdtemp(
-                    prefix='caftsk_', dir=self.tmpdir
-                ))
-                debug(f'Executing {label} in {tmppath}')
-                self.execute(
-                    'update queue set path = ? where taskhash = ?',
-                    (str(tmppath), hashid)
-                )
-                inputs = self.cellar.checkout_task(task, tmppath)
-                queue_task = Task(task.execid, task.command, str(tmppath))
-                yield queue_task
-                if queue_task.state[0] == State.INTERRUPTED:
+                try:
+                    out = await self.cellar._app._executors[task.execid](task.data)
+                except KeyboardInterrupt:
                     was_interrupted = True
                     self.task_interrupt(hashid)
                     print(f'{get_timestamp()}: {label} was interrupted')
                     break
-                elif queue_task.state[0] == State.DONE:
-                    outputs = {}
-                    for filepath in tmppath.glob('**/*'):
-                        rel_path = filepath.relative_to(tmppath)
-                        if str(rel_path) not in inputs and filepath.is_file():
-                            outputs[str(rel_path)] = filepath
-                    self.cellar.seal_task(hashid, outputs)
-                    shutil.rmtree(tmppath)
-                    nerror = 0
-                    self.task_done(hashid)
-                    print(f'{get_timestamp()}: {label} finished successfully')
-                elif queue_task.state[0] == State.ERROR:
-                    print(queue_task.state[1])
+                except subprocess.CalledProcessError as e:
+                    print(e)
                     nerror += 1
                     self.task_error(hashid)
                     print(f'{get_timestamp()}: {label} finished with error')
+                else:
+                    self.cellar.update_outputs_v2(hashid, State.DONE, out)
+                    shutil.rmtree(self._tmpdirs.pop(hashid))
+                    nerror = 0
+                    self.task_done(hashid)
+                    print(f'{get_timestamp()}: {label} finished successfully')
                 skipped = set()
                 nrun += 1
                 will_continue = True

@@ -20,7 +20,7 @@ from .Utils import get_timestamp, config_group
 from . import Logging
 from .Logging import error, info, Table, colstr, no_cafdir, handle_broken_pipe
 from .Remote import Remote, Local
-from .Utils import cd, config_group, groupby
+from .Utils import config_group, groupby
 from .argparse_cli import Arg, define_cli, CLIError, ThrowingArgumentParser
 from .cellar import Cellar, Hash, TPath, State
 from .scheduler import RemoteScheduler, Scheduler
@@ -249,7 +249,7 @@ def make(ctx: CommandContext,
          maxerror: int = 5,
          randomize: bool = False) -> None:
     """Execute build tasks."""
-    cellar = Cellar()
+    cellar = ctx.cellar
     if verbose:
         Logging.DEBUG = True
     if url:
@@ -274,37 +274,12 @@ def make(ctx: CommandContext,
         hashes = None
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
-
-    async def _schedule_tasks() -> None:
-        async for task in scheduler.tasks_for_work(
-                hashes=hashes, limit=limit, dry=dry, nmaxerror=maxerror,
-                randomize=randomize
-        ):
-            with cd(task.path):
-                with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
-                    try:
-                        if task.execid == 'dir-bash':
-                            sp.run(
-                                task.command,
-                                shell=True,
-                                stdout=stdout,
-                                stderr=stderr,
-                                check=True
-                            )
-                        elif task.execid == 'dir-python':
-                            sp.run(
-                                [sys.executable, '_exec.py'],
-                                stdout=stdout,
-                                stderr=stderr,
-                                check=True
-                            )
-                    except sp.CalledProcessError as exc:
-                        task.error(str(exc))
-                    except KeyboardInterrupt:
-                        task.interrupt()
-                    else:
-                        task.done()
-    asyncio.get_event_loop().run_until_complete(_schedule_tasks())
+    asyncio.get_event_loop().run_until_complete(
+        scheduler.tasks_for_work(
+            hashes=hashes, limit=limit, dry=dry, nmaxerror=maxerror,
+            randomize=randomize
+        )
+    )
 
 
 @define_cli([

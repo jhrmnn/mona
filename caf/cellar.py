@@ -10,6 +10,7 @@ import shutil
 from textwrap import dedent
 from itertools import chain
 from enum import IntEnum
+from contextlib import contextmanager
 
 from .Logging import info, no_cafdir
 from .Utils import make_nonwritable, get_timestamp, Hash, get_hash
@@ -352,6 +353,11 @@ class Cellar(Hookable):
             self.commit()
         return out
 
+    @contextmanager
+    def get_tmpdir(self, inp: bytes) -> Iterator[Path]:
+        hashid = get_hash(inp)
+        yield self.get_hook('tmpdir')(hashid)
+
     def execute(self, sql: str, *parameters: Iterable[Any]) -> sqlite3.Cursor:
         return self.db.execute(sql, *parameters)
 
@@ -455,6 +461,13 @@ class Cellar(Hookable):
         self.execute(
             'update tasks set out = ?, state = ? where hash = ?',
             (json.dumps(outputs, sort_keys=True).encode(), state, hashid)
+        )
+        self.commit()
+
+    def update_outputs_v2(self, hashid: Hash, state: State, out: bytes) -> None:
+        self.execute(
+            'update tasks set out = ?, state = ? where hash = ?',
+            (out, state, hashid)
         )
         self.commit()
 

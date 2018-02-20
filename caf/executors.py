@@ -8,7 +8,6 @@ import sys
 import inspect
 import pickle
 import re
-from tempfile import TemporaryDirectory
 from textwrap import dedent
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -17,7 +16,8 @@ from .app import Caf
 from .Utils import Map, Hash
 
 from typing import (
-    Dict, Sequence, Tuple, Type, TypeVar, Generic, Union, Any, Callable
+    Dict, Sequence, Tuple, Type, TypeVar, Generic, Union, Any, Callable,
+    ContextManager
 )
 from typing_extensions import Protocol, runtime
 from mypy_extensions import TypedDict
@@ -75,6 +75,7 @@ class FileStore(Protocol[_U]):
     def wrap_files(self, inp: bytes, files: Dict[str, Hash]
                    ) -> Map[str, OutputFile]: ...
     def unfinished_output(self, inp: bytes) -> Map[str, OutputFile]: ...
+    def get_tmpdir(self, inp: bytes) -> ContextManager[Path]: ...
 
 
 class UnknownInputType(Exception):
@@ -104,8 +105,7 @@ class DirBashExecutor(Executor, Generic[_U]):
 
     async def __call__(self, inp: bytes) -> bytes:
         task: DictTask = json.loads(inp)
-        with TemporaryDirectory(prefix='caftsk_', dir=self._tmpdir) as _tmpdir:
-            tmpdir = Path(_tmpdir)
+        with self._store.get_tmpdir(inp) as tmpdir:
             for filename, hs in task['inputs'].items():
                 if hs[0] == '>':
                     file = Path(hs[1:])
