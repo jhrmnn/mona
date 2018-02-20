@@ -44,23 +44,28 @@ class CommandContext:
             for name, r in config_group(self.config, 'remote')
         }
         self._remotes['local'] = Local()
-        self._app: Optional[Caf] = None
+        self.__app_module: Any = None
+
+    @property
+    def _app_module(self) -> Any:
+        if not self.__app_module:
+            app_module_path = os.environ.get('CAF_APP')
+            if not app_module_path:
+                if Path('app.py').is_file():
+                    app_module_path = 'app'
+                    sys.path.append('')
+                else:
+                    raise NoAppFoundError()
+            self.__app_module = importlib.import_module(app_module_path)
+        return self.__app_module
 
     @property
     def app(self) -> Caf:
-        if self._app:
-            return self._app
-        app_module_path = os.environ.get('CAF_APP')
-        if not app_module_path:
-            if Path('app.py').is_file():
-                app_module_path = 'app'
-                sys.path.append('')
-            else:
-                raise NoAppFoundError()
-        app_module = importlib.import_module(app_module_path)
-        app: Caf = app_module.app  # type: ignore
-        self._app = app
-        return app
+        return self._app_module.app  # type: ignore
+
+    @property
+    def cellar(self) -> Cellar:
+        return self._app_module.cellar  # type: ignore
 
     def parse_remotes(self, remotes: str) -> List[Remote]:
         if remotes == 'all':
@@ -208,6 +213,7 @@ def init(ctx: CommandContext) -> None:
     Arg('routes', metavar='ROUTE', nargs='*', help='Route to schedule'),
 ])
 def configure(ctx: CommandContext, routes: List[str] = None) -> Any:
+    Scheduler(ctx.cellar)
     if not routes:
         routes = list(ctx.app._routes.keys())
     with ctx.app.context(readonly=False):
