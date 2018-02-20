@@ -27,9 +27,5 @@ setup(
         'mypy_extensions',
         'typing_extensions',
     ],
-    entry_points={
-        'console_scripts': [
-            'caf = caf.cli:main',
-        ],
-    }
+    scripts=['scripts/caf'],
 )
