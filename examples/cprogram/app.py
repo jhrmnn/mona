@@ -19,11 +19,11 @@ async def main() -> Any:
     obj_tasks = await asyncio.gather(*(
         dir_bash.task(f'gcc -c {src}', [src], label=str(src)) for src in sources
     ))
-    return (await dir_bash.task(f'gcc -o app *.o', [
+    return await dir_bash.task(f'gcc -o app *.o', [
         (obj, tsk[obj]) for tsk, obj in zip(obj_tasks, objs)
-    ], label='link'))['app'].path
+    ], label='link')
 
 
 if __name__ == '__main__':
     with app.context(execution=True, readonly=False):
-        shutil.copy(app.get('main'), 'app')
+        shutil.copy(app.get('main')['app'].path, 'app')

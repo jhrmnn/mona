@@ -325,12 +325,11 @@ class Cellar(Hookable):
             assert self.store_bytes(hs, contents)
 
     async def _cache_hook(self, exe: Executor, inp: bytes, label: str) -> bytes:
-        now = get_timestamp()
         hashid = get_hash(inp)
         if not self._noexec and not self._readonly:
             self.execute(
                 'insert or ignore into tasks values (?,?,?,?,?,?)',
-                (hashid, exe.name, State.CLEAN, now, inp, None)
+                (hashid, exe.name, State.CLEAN, get_timestamp(), inp, None)
             )
             self.commit()
         row: Optional[Tuple[bytes, State]] = self.execute(
