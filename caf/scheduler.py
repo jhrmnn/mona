@@ -13,25 +13,8 @@ from .Logging import error, debug, no_cafdir
 from .Utils import get_timestamp, sample
 from .Announcer import Announcer
 
-from typing import Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any
+from typing import Tuple, Iterable, List, Iterator, Set, Dict, Any
 from .cellar import Hash, TPath
-
-
-class Task:
-    def __init__(self, execid: str, command: str, path: str) -> None:
-        self.execid = execid
-        self.command = command
-        self.path = path
-        self.state: Tuple[State, Optional[str]] = (State.CLEAN, None)
-
-    def error(self, exc: str) -> None:
-        self.state = (State.ERROR, exc)
-
-    def done(self) -> None:
-        self.state = (State.DONE, None)
-
-    def interrupt(self) -> None:
-        self.state = (State.INTERRUPTED, None)
 
 
 class Scheduler:
