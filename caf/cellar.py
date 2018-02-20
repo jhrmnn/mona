@@ -586,10 +586,8 @@ class Cellar(Hookable, WithDB):
             'select created from builds order by created desc',
         )]
 
-    def get_tree(self, objects: bool = False, hashes: Iterable[Hash] = None) -> Tree:
+    def get_tree(self, objects: bool = False) -> Tree:
         tasks, targets = self.get_build()
-        if hashes:
-            tasks.update(self.get_tasks(hashes))
         tree = [(TPath(str(path)), hashid) for hashid, path in targets]
         return Tree(sorted(tree), objects=tasks if objects else None)
 

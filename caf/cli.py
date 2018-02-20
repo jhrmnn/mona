@@ -399,7 +399,7 @@ def reset(ctx: CommandContext, patterns: List[str] = None, hard: bool = False,
     if patterns:
         hashes = set(
             hashid for hashid, _
-            in cellar.get_tree(hashes=states.keys()).glob(*patterns)
+            in cellar.get_tree().glob(*patterns)
         )
     else:
         hashes = set(queue)
@@ -477,7 +477,7 @@ def list_tasks(ctx: CommandContext,
     states = scheduler.get_states()
     queue = scheduler.get_queue()
     if patterns:
-        hashes_paths = cellar.get_tree(hashes=states.keys()).glob(*patterns)
+        hashes_paths = cellar.get_tree().glob(*patterns)
     else:
         hashes_paths = (
             (hashid, label) for hashid, (_, label, *__) in sorted(
@@ -530,7 +530,7 @@ def status(ctx: CommandContext, patterns: List[str] = None, incomplete: bool = F
         )
     )))
     states = scheduler.get_states()
-    tree = cellar.get_tree(hashes=states.keys())
+    tree = cellar.get_tree()
     groups = tree.dglob(*patterns)
     queue = scheduler.get_queue()
     groups['ALL'] = [(hashid, label) for hashid, (_, label, *__) in queue.items()]
