@@ -86,7 +86,7 @@ class TaskObject:
         for name, (hs, target) in self.childlinks.items():
             inputs[name] = f'@{hs}/{target}'
         obj = {'command': self.command, 'inputs': inputs}
-        if self.outputs is not None:
+        if with_outputs and self.outputs is not None:
             obj['outputs'] = self.outputs
         return obj
 
