@@ -9,24 +9,18 @@ import shutil
 import subprocess
 
 from .cellar import Cellar, State
-from .Logging import error, debug, no_cafdir
+from .Logging import error, debug
 from .Utils import get_timestamp, sample
 from .Announcer import Announcer
+from .db import WithDB
 
 from typing import Tuple, Iterable, List, Iterator, Set, Dict, Any
 from .cellar import Hash, TPath
 
 
-class Scheduler:
+class Scheduler(WithDB):
     def __init__(self, cellar: Cellar, tmpdir: str = None) -> None:
-        try:
-            self.db = sqlite3.connect(
-                str(cellar.cafdir/'queue.db'),
-                detect_types=sqlite3.PARSE_COLNAMES,
-                timeout=30.0,
-            )
-        except sqlite3.OperationalError:
-            no_cafdir()
+        self.init_db(str(cellar.cafdir/'queue.db'))
         self.execute(
             'create table if not exists queue ('
             'taskhash text primary key, state integer, label text, path text, '
@@ -50,16 +44,6 @@ class Scheduler:
         )
         debug(f'Executing {label} in {tmpdir}')
         return tmpdir
-
-    def execute(self, sql: str, *parameters: Iterable[Any]) -> sqlite3.Cursor:
-        return self.db.execute(sql, *parameters)
-
-    def executemany(self, sql: str, *seq_of_parameters: Iterable[Iterable[Any]]) -> sqlite3.Cursor:
-        return self.db.executemany(sql, *seq_of_parameters)
-
-    def commit(self) -> None:
-        if self.db.isolation_level is not None:
-            self.db.commit()
 
     def submit(self, tasks: List[Tuple[Hash, State, TPath]]) -> None:
         self.execute('drop table if exists current_tasks')
@@ -95,7 +79,7 @@ class Scheduler:
 
     @contextmanager
     def db_lock(self) -> Iterator[None]:
-        self.db.execute('begin immediate transaction')
+        self.execute('begin immediate transaction')
         try:
             yield
         finally:
@@ -123,8 +107,8 @@ class Scheduler:
             randomize: bool = False
     ) -> None:
         assert self.cellar._app
-        self.db.commit()
-        self.db.isolation_level = None
+        self.commit()
+        self._db.isolation_level = None
         nrun = 0
         nerror = 0
         print(f'{get_timestamp()}: Started work')
@@ -218,7 +202,7 @@ class Scheduler:
                 print(f'{get_timestamp()}: Interrupted, quitting')
                 break
         print(f'Executed {nrun} tasks')
-        self.db.isolation_level = ''
+        self._db.isolation_level = ''
 
     def get_states(self) -> Dict[Hash, State]:
         try:

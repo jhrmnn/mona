@@ -12,11 +12,12 @@ from itertools import chain
 from enum import IntEnum
 from contextlib import contextmanager
 
-from .Logging import info, no_cafdir
+from .Logging import info
 from .Utils import make_nonwritable, get_timestamp, Hash, get_hash
 from .Glob import match_glob
 from .app import Caf, CAFDIR
 from .hooks import Hookable
+from .db import WithDB
 from .executors import Executor
 from . import asyncio as _asyncio
 
@@ -225,7 +226,7 @@ class Cache(NamedTuple):
     labels: Dict[str, Tuple[Hash, State]] = {}
 
 
-class Cellar(Hookable):
+class Cellar(Hookable, WithDB):
     unfinished_exc = UnfinishedTask
 
     def __init__(self, app: Caf = None) -> None:
@@ -233,14 +234,7 @@ class Cellar(Hookable):
         self.cafdir = app.cafdir if app else CAFDIR
         self.objects = self.cafdir/'objects'
         self.objectdb: Set[Hash] = set()
-        try:
-            self.db = sqlite3.connect(
-                str(self.cafdir/'index.db'),
-                detect_types=sqlite3.PARSE_COLNAMES,
-                timeout=30.0,
-            )
-        except sqlite3.OperationalError:
-            no_cafdir()
+        self.init_db(str(self.cafdir/'index.db'))
         self.execute(dedent(
             """\
             CREATE TABLE IF NOT EXISTS tasks (
@@ -357,15 +351,6 @@ class Cellar(Hookable):
         hashid = get_hash(inp)
         yield self.get_hook('tmpdir')(hashid)
 
-    def execute(self, sql: str, *parameters: Iterable[Any]) -> sqlite3.Cursor:
-        return self.db.execute(sql, *parameters)
-
-    def executemany(self, sql: str, *seq_of_parameters: Iterable[Iterable[Any]]) -> sqlite3.Cursor:
-        return self.db.executemany(sql, *seq_of_parameters)
-
-    def commit(self) -> None:
-        self.db.commit()
-
     def store(self, hashid: Hash, text: str = None, file: Path = None, data: bytes = None) \
             -> bool:
         if hashid in self.objectdb:
@@ -396,7 +381,7 @@ class Cellar(Hookable):
             for filehash in (task.outputs or {}).values():
                 self.execute('insert into retain values (?)', (filehash,))
         retain: Set[Hash] = set(
-            hashid for hashid, in self.db.execute('select hash from retain')
+            hashid for hashid, in self.execute('select hash from retain')
         )
         all_files = {Hash(''.join(p.parts[-2:])): p for p in self.objects.glob('*/*')}
         n_files = 0
@@ -404,11 +389,11 @@ class Cellar(Hookable):
             all_files[filehash].unlink()
             n_files += 1
         info(f'Removed {n_files} files.')
-        self.db.execute(
+        self.execute(
             'delete from targets where buildid != '
             '(select id from builds order by created desc limit 1)'
         )
-        self.db.execute(
+        self.execute(
             'delete from tasks '
             'where hash not in (select distinct(hash) from retain)'
         )
@@ -578,7 +563,7 @@ class Cellar(Hookable):
 
     def get_build(self, nth: int = 0) \
             -> Tuple[Dict[Hash, TaskObject], List[Tuple[Hash, Path]]]:
-        targets = [(hashid, Path(path)) for hashid, path in self.db.execute(
+        targets = [(hashid, Path(path)) for hashid, path in self.execute(
             'select taskhash, path from targets join '
             '(select id from builds order by created desc limit 1 offset ?) b '
             'on targets.buildid = b.id',
@@ -586,7 +571,7 @@ class Cellar(Hookable):
         )]
         tasks = {
             hashid: TaskObject.from_data(execid, inp, out)
-            for execid, hashid, inp, out in self.db.execute(
+            for execid, hashid, inp, out in self.execute(
                 'select execid, tasks.hash, inp, out from tasks join '
                 '(select distinct(taskhash) as hash from targets join '
                 '(select id from builds order by created desc limit 1) b '
@@ -597,7 +582,7 @@ class Cellar(Hookable):
         return tasks, targets
 
     def get_builds(self) -> List[TimeStamp]:
-        return [created for created, in self.db.execute(
+        return [created for created, in self.execute(
             'select created from builds order by created desc',
         )]
 
