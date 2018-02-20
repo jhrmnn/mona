@@ -97,7 +97,6 @@ class DirBashExecutor(Executor, Generic[_U]):
     def __init__(self, app: Caf, store: FileStore[_U]) -> None:
         super().__init__(app)
         self._store = store
-        self._tmpdir = app.config.get('core', 'tmpdir', fallback='')
 
     async def create_process(self, cmd: str, **kwargs: Any
                              ) -> asyncio.subprocess.Process:

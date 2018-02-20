@@ -5,7 +5,6 @@ from pathlib import Path
 from collections import OrderedDict
 import os
 import asyncio
-from configparser import ConfigParser
 from contextlib import contextmanager
 
 from .hooks import Hookable
@@ -18,15 +17,6 @@ Executor = Callable[[bytes], Awaitable[bytes]]
 CAFDIR = Path(os.environ.get('CAF_DIR', '.caf')).resolve()
 
 
-def read_config(cafdir: Path) -> ConfigParser:
-    config = ConfigParser()
-    config.read([
-        cafdir/'config.ini',
-        Path('~/.config/caf/config.ini').expanduser()
-    ])
-    return config
-
-
 class Context:
     def __init__(self, noexec: bool = True, readonly: bool = True) -> None:
         self.noexec = noexec
@@ -37,7 +27,6 @@ class Caf(Hookable):
     def __init__(self, cafdir: Path = None) -> None:
         super().__init__()
         self.cafdir = cafdir.resolve() if cafdir else CAFDIR
-        self.config = read_config(self.cafdir)
         self.paths: List[str] = []
         self._routes: Dict[str, RouteFunc] = OrderedDict()
         self._executors: Dict[str, Executor] = {}
