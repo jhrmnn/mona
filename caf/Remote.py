@@ -90,7 +90,7 @@ class Remote:
             -> Dict['Hash', Dict[str, Any]]:
         info(f'Fetching from {self.host}...')
         tasks = {hashid: task for hashid, task in json.loads(self.command_output(
-            ['checkout', '--json'], inp='\n'.join(hashes)
+            ['printout'], inp='\n'.join(hashes)
         )).items() if 'outputs' in task}
         if not files:
             info(f'Fetched {len(tasks)}/{len(hashes)} task metadata')

@@ -130,6 +130,7 @@ def main() -> None:
         ('make', partial(make, ctx)),
         ('dispatch', partial(dispatch, ctx)),
         ('checkout', partial(checkout, ctx)),
+        ('printout', partial(printout, ctx)),
         ('submit', partial(submit, ctx)),
         ('reset', partial(reset, ctx)),
         ('list', [
@@ -278,7 +279,8 @@ def make(ctx: CommandContext,
     Arg('-j', '--jobs', type=int, help='Number of launched workers [default: 1]'),
     Arg('argv', metavar='...', nargs=argparse.REMAINDER, help='Arguments for make')
 ])
-def dispatch(ctx: CommandContext, profile: str, argv: List[str] = None, jobs: int = 1) -> None:
+def dispatch(ctx: CommandContext, profile: str, argv: List[str] = None,
+             jobs: int = 1) -> None:
     """Dispatch make to external workers."""
     argv = argv or []
     parser = ThrowingArgumentParser()
@@ -301,8 +303,6 @@ def dispatch(ctx: CommandContext, profile: str, argv: List[str] = None, jobs: in
     Arg('patterns', metavar='PATTERN', nargs='*',
         help='Tasks to be checked out'),
     Arg('-b', '--blddir', type=Path, help=f'Where to checkout [default: blddir]'),
-    Arg('--json', dest='do_json', action='store_true',
-        help='Do not checkout, print JSONs of hashes from STDIN.'),
     Arg('-f', '--force', action='store_true', help='Remove PATH if exists'),
     Arg('-n', dest='nth', type=int, help='Nth build to the past'),
     Arg('--finished', action='store_true', help='Check out only finished tasks'),
@@ -312,29 +312,31 @@ def dispatch(ctx: CommandContext, profile: str, argv: List[str] = None, jobs: in
 def checkout(ctx: CommandContext,
              blddir: Path = Path('build'),
              patterns: Iterable[str] = None,
-             do_json: bool = False,
              force: bool = False,
              nth: int = 0,
              finished: bool = False,
              no_link: bool = False) -> None:
     """Create the dependecy tree physically on a file system."""
     cellar = Cellar()
-    if not do_json:
-        if blddir.exists():
-            if force:
-                shutil.rmtree(blddir)
-            else:
-                error(f'Cannot checkout to existing path: {blddir}')
-        cellar.checkout(
-            blddir, patterns=patterns or ['**'], nth=nth, finished=finished,
-            nolink=no_link
-        )
-    else:
-        hashes = [Hash(l.strip()) for l in sys.stdin.readlines()]
-        json.dump({
-            hashid: task.asdict_v2(with_outputs=True) for hashid, task in
-            cellar.get_tasks(hashes).items()
-        }, sys.stdout)
+    if blddir.exists():
+        if force:
+            shutil.rmtree(blddir)
+        else:
+            error(f'Cannot checkout to existing path: {blddir}')
+    cellar.checkout(
+        blddir, patterns=patterns or ['**'], nth=nth, finished=finished,
+        nolink=no_link
+    )
+
+
+@define_cli()
+def printout(ctx: CommandContext) -> None:
+    cellar = Cellar()
+    hashes = [Hash(l.strip()) for l in sys.stdin.readlines()]
+    json.dump({
+        hashid: task.asdict_v2(with_outputs=True) for hashid, task in
+        cellar.get_tasks(hashes).items()
+    }, sys.stdout)
 
 
 @define_cli([
