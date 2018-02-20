@@ -349,7 +349,8 @@ class Cellar(Hookable, WithDB):
     @contextmanager
     def get_tmpdir(self, inp: bytes) -> Iterator[Path]:
         hashid = get_hash(inp)
-        yield self.get_hook('tmpdir')(hashid)
+        with self.get_hook('tmpdir')(hashid) as path:
+            yield path
 
     def store(self, hashid: Hash, text: str = None, file: Path = None, data: bytes = None) \
             -> bool:

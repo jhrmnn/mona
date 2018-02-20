@@ -34,7 +34,8 @@ class Scheduler(WithDB):
         cellar.register_hook('postsave')(self.submit)
         cellar.register_hook('tmpdir')(self._get_tmpdir)
 
-    def _get_tmpdir(self, hashid: Hash) -> Path:
+    @contextmanager
+    def _get_tmpdir(self, hashid: Hash) -> Iterator[Path]:
         label = self._labels[hashid]
         tmpdir = Path(tempfile.mkdtemp(prefix='caftsk_', dir=self.tmpdir))
         self._tmpdirs[hashid] = tmpdir
@@ -43,7 +44,7 @@ class Scheduler(WithDB):
             (str(tmpdir), hashid)
         )
         debug(f'Executing {label} in {tmpdir}')
-        return tmpdir
+        yield tmpdir
 
     def submit(self, tasks: List[Tuple[Hash, State, TPath]]) -> None:
         self.execute('drop table if exists current_tasks')
