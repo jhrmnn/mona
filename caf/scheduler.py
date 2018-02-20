@@ -14,7 +14,7 @@ from .Utils import get_timestamp, sample
 from .Announcer import Announcer
 from .db import WithDB
 
-from typing import Tuple, Iterable, List, Iterator, Set, Dict, Any
+from typing import Tuple, Iterable, List, Iterator, Set, Dict, Any, Optional
 from .cellar import Hash, TPath
 
 
@@ -98,14 +98,9 @@ class Scheduler(WithDB):
     def skip_task(self, hashid: Hash) -> None:
         pass
 
-    async def tasks_for_work(
-            self,
-            hashes: Set[Hash] = None,
-            limit: int = None,
-            nmaxerror: int = 5,
-            dry: bool = False,
-            randomize: bool = False
-    ) -> None:
+    async def make(self, hashes: Optional[Set[Hash]], limit: int = None,
+                   nmaxerror: int = 5, dry: bool = False, randomize: bool = False
+                   ) -> None:
         assert self.cellar._app
         self.commit()
         self._db.isolation_level = None

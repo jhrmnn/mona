@@ -279,9 +279,9 @@ def make(ctx: CommandContext,
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
     asyncio.get_event_loop().run_until_complete(
-        scheduler.tasks_for_work(
-            hashes=hashes, limit=limit, dry=dry, nmaxerror=maxerror,
-            randomize=randomize
+        scheduler.make(
+            hashes,
+            limit=limit, dry=dry, nmaxerror=maxerror, randomize=randomize
         )
     )
 
