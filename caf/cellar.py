@@ -591,6 +591,13 @@ class Cellar(Hookable, WithDB):
         tree = [(TPath(str(path)), hashid) for hashid, path in targets]
         return Tree(sorted(tree), objects=tasks if objects else None)
 
+    def glob(self, *patterns: str) -> Iterator[Hash]:
+        _, targets = self.get_build()
+        for patt in patterns:
+            for hashid, path in targets:
+                if match_glob(str(path), patt):
+                    yield hashid
+
     def checkout(
             self,
             root: Path,

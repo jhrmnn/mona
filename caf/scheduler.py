@@ -98,10 +98,16 @@ class Scheduler(WithDB):
     def skip_task(self, hashid: Hash) -> None:
         pass
 
-    async def make(self, hashes: Optional[Set[Hash]], limit: int = None,
+    async def make(self, patterns: Optional[List[str]], limit: int = None,
                    nmaxerror: int = 5, dry: bool = False, randomize: bool = False
                    ) -> None:
         assert self.cellar._app
+        if patterns:
+            hashes: Optional[Set[Hash]] = set(self.cellar.glob(*patterns))
+            if not hashes:
+                return
+        else:
+            hashes = None
         self.commit()
         self._db.isolation_level = None
         nrun = 0

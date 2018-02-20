@@ -11,7 +11,7 @@ import argparse
 import subprocess as sp
 from configparser import ConfigParser
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Set, Iterable
+from typing import Dict, List, Optional, Any, Iterable
 import asyncio
 
 from .argparse_cli import CLI, CLIError, partial
@@ -256,31 +256,18 @@ def make(ctx: CommandContext,
     cellar = ctx.cellar
     if verbose:
         Logging.DEBUG = True
-    if url:
+    tmpdir = ctx.config.get('core', 'tmpdir', fallback='') or None
+    if not url:
+        scheduler = Scheduler(cellar, tmpdir)
+    else:
         url = ctx.get_queue_url(url)
-        scheduler: Scheduler = RemoteScheduler(
-            url,
-            ctx.config.get('core', 'curl', fallback='') or None,
-            CAFDIR,
-            tmpdir=ctx.config.get('core', 'tmpdir', fallback='') or None,
-        )
-    else:
-        scheduler = Scheduler(
-            cellar,
-            tmpdir=ctx.config.get('core', 'tmpdir', fallback='') or None,
-        )
-    if patterns:
-        hashes: Optional[Set[Hash]] = \
-            set(hashid for hashid, _ in cellar.get_tree().glob(*patterns))
-        if not hashes:
-            return
-    else:
-        hashes = None
+        curl = ctx.config.get('core', 'curl', fallback='') or None
+        scheduler = RemoteScheduler(url, curl, CAFDIR, tmpdir)
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
     asyncio.get_event_loop().run_until_complete(
         scheduler.make(
-            hashes,
+            patterns,
             limit=limit, dry=dry, nmaxerror=maxerror, randomize=randomize
         )
     )
