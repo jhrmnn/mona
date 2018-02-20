@@ -34,6 +34,9 @@ class Caf(Hookable):
 
     async def task(self, execid: str, inp: bytes, label: str = None) -> bytes:
         exe = self._executors[execid]
+        if self.has_hook('dispatch'):
+            assert label
+            exe = self.get_hook('dispatch')(exe, label)
         if self.has_hook('cache'):
             assert label
             return await self.get_hook('cache')(exe, execid, inp, label)  # type: ignore

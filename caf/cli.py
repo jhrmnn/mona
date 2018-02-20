@@ -11,7 +11,9 @@ import argparse
 import subprocess as sp
 from configparser import ConfigParser
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Iterable
+from typing import Dict, List, Optional, Any, Iterable, Iterator
+from contextlib import contextmanager
+from tempfile import TemporaryDirectory
 import asyncio
 
 from .argparse_cli import CLI, CLIError, partial
@@ -25,6 +27,7 @@ from .argparse_cli import Arg, define_cli, CLIError, ThrowingArgumentParser
 from .cellar import Cellar, Hash, TPath, State
 from .scheduler import RemoteScheduler, Scheduler
 from .Announcer import Announcer
+from .dispatch import Dispatcher
 
 
 class NoAppFoundError(Exception):
@@ -225,14 +228,24 @@ def configure(ctx: CommandContext, routes: List[str] = None) -> Any:
         return ctx.app.get(*routes)
 
 
+@contextmanager
+def _get_tmpdir(hashid: Hash) -> Iterator[Path]:
+    with TemporaryDirectory() as _tmpdir:
+        yield Path(_tmpdir)
+
+
 @define_cli([
-    Arg('routes', metavar='ROUTE', nargs='*', help='Route to run'),
+    Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be run'),
+    Arg('-n', '--jobs', type=int, help='Number of parallel tasks [default: 1]'),
+    Arg('-l', '--limit', type=int, help='Limit number of tasks to N'),
 ])
-def run(ctx: CommandContext, routes: List[str] = None) -> Any:
-    if not routes:
-        routes = list(ctx.app._routes.keys())
+def run(ctx: CommandContext, patterns: List[str] = None, limit: int = None,
+        jobs: int = 1) -> None:
+    routes = list(ctx.app._routes.keys())
+    ctx.cellar.register_hook('tmpdir')(_get_tmpdir)
+    Dispatcher(ctx.app, jobs, patterns, limit)
     with ctx.app.context(execution=True, readonly=False):
-        return ctx.app.get(*routes)
+        ctx.app.get(*routes)
 
 
 @define_cli([
