@@ -29,6 +29,7 @@ class AimsTask(Generic[_U]):
     def __init__(self, dir_bash: DirBashExecutor[_U], features: List[str] = None
                  ) -> None:
         self.basis_defs: Dict[Tuple[Path, str], str] = {}
+        self._tiers_cache: Dict[Tuple[str, int], str] = {}
         self.speciedirs: Dict[Tuple[str, str], Path] = {}
         self.features: List[Callable[[Task], None]] = [
             getattr(self, feat) for feat in features or self.default_features
@@ -103,12 +104,22 @@ class AimsTask(Generic[_U]):
         if tier is None:
             return
         for i in range(len(task['basis'])):
+            cache_key = task['basis'][i], tier
+            if cache_key in self._tiers_cache:
+                task['basis'][i] = self._tiers_cache[cache_key]
+                continue
             buffer = ''
             tier_now = None
             for l in task['basis'][i].split('\n'):
                 m = re.search(r'"(\w+) tier"', l) or re.search(r'(Further)', l)
                 if m:
-                    tier_now = {'First': 1, 'Second': 2, 'Third': 3, 'Fourth': 4, 'Further': 5}[m.group(1)]
+                    tier_now = {
+                        'First': 1,
+                        'Second': 2,
+                        'Third': 3,
+                        'Fourth': 4,
+                        'Further': 5
+                    }[m.group(1)]
                 m = re.search(r'#?(\s*(hydro|ionic) .*)', l)
                 if m:
                     l = m.group(1)
@@ -118,6 +129,7 @@ class AimsTask(Generic[_U]):
                     tier_now = None
                 buffer += l + '\n'
             task['basis'][i] = buffer
+            self._tiers_cache[cache_key] = buffer
 
     def geom(self, task: Task) -> None:
         task['geometry'] = task.pop('geom').dumps('aims')
