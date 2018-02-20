@@ -262,7 +262,7 @@ def make(ctx: CommandContext,
     else:
         url = ctx.get_queue_url(url)
         curl = ctx.config.get('core', 'curl', fallback='') or None
-        scheduler = RemoteScheduler(url, curl, CAFDIR, tmpdir)
+        scheduler = RemoteScheduler(cellar, url, tmpdir, curl)
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
     asyncio.get_event_loop().run_until_complete(

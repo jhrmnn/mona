@@ -14,7 +14,7 @@ from .Utils import get_timestamp, sample
 from .Announcer import Announcer
 from .db import WithDB
 
-from typing import Tuple, Iterable, List, Iterator, Set, Dict, Any, Optional
+from typing import Tuple, Iterable, List, Iterator, Set, Dict, Optional
 from .cellar import Hash, TPath
 
 
@@ -293,8 +293,8 @@ class Scheduler(WithDB):
 
 
 class RemoteScheduler(Scheduler):
-    def __init__(self, url: str, curl: str = None, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, cellar: Cellar, url: str, tmpdir: str = None, curl: str = None) -> None:
+        super().__init__(cellar, tmpdir)
         self.announcer = Announcer(url, curl)
 
     def candidate_tasks(self, states: Iterable[Hash], randomize: bool = False) \
