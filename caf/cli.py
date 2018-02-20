@@ -12,6 +12,7 @@ import subprocess as sp
 from configparser import ConfigParser
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Set, Iterable
+import asyncio
 
 from .argparse_cli import CLI, CLIError, partial
 from .app import Caf, CAFDIR, read_config
@@ -267,34 +268,37 @@ def make(ctx: CommandContext,
         hashes = None
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
-    for task in scheduler.tasks_for_work(
-            hashes=hashes, limit=limit, dry=dry, nmaxerror=maxerror,
-            randomize=randomize
-    ):
-        with cd(task.path):
-            with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
-                try:
-                    if task.execid == 'dir-bash':
-                        sp.run(
-                            task.command,
-                            shell=True,
-                            stdout=stdout,
-                            stderr=stderr,
-                            check=True
-                        )
-                    elif task.execid == 'dir-python':
-                        sp.run(
-                            [sys.executable, '_exec.py'],
-                            stdout=stdout,
-                            stderr=stderr,
-                            check=True
-                        )
-                except sp.CalledProcessError as exc:
-                    task.error(str(exc))
-                except KeyboardInterrupt:
-                    task.interrupt()
-                else:
-                    task.done()
+
+    async def _schedule_tasks() -> None:
+        async for task in scheduler.tasks_for_work(
+                hashes=hashes, limit=limit, dry=dry, nmaxerror=maxerror,
+                randomize=randomize
+        ):
+            with cd(task.path):
+                with open('run.out', 'w') as stdout, open('run.err', 'w') as stderr:
+                    try:
+                        if task.execid == 'dir-bash':
+                            sp.run(
+                                task.command,
+                                shell=True,
+                                stdout=stdout,
+                                stderr=stderr,
+                                check=True
+                            )
+                        elif task.execid == 'dir-python':
+                            sp.run(
+                                [sys.executable, '_exec.py'],
+                                stdout=stdout,
+                                stderr=stderr,
+                                check=True
+                            )
+                    except sp.CalledProcessError as exc:
+                        task.error(str(exc))
+                    except KeyboardInterrupt:
+                        task.interrupt()
+                    else:
+                        task.done()
+    asyncio.get_event_loop().run_until_complete(_schedule_tasks())
 
 
 @define_cli([

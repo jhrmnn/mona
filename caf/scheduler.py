@@ -12,7 +12,10 @@ from .Logging import error, debug, no_cafdir
 from .Utils import get_timestamp, sample
 from .Announcer import Announcer
 
-from typing import Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any
+from typing import (
+    Tuple, Optional, Iterable, List, Iterator, Set, Dict, Any,
+    AsyncIterator
+)
 from .cellar import Hash, TPath
 
 
@@ -116,14 +119,14 @@ class Scheduler:
     def skip_task(self, hashid: Hash) -> None:
         pass
 
-    def tasks_for_work(
+    async def tasks_for_work(
             self,
             hashes: Set[Hash] = None,
             limit: int = None,
             nmaxerror: int = 5,
             dry: bool = False,
             randomize: bool = False
-    ) -> Iterator[Task]:
+    ) -> AsyncIterator[Task]:
         self.db.commit()
         self.db.isolation_level = None
         nrun = 0
