@@ -15,10 +15,9 @@ from contextlib import contextmanager
 from .Logging import info
 from .Utils import make_nonwritable, get_timestamp, Hash, get_hash
 from .Glob import match_glob
-from .app import Caf, CAFDIR
+from .app import Caf, CAFDIR, Executor
 from .hooks import Hookable
 from .db import WithDB
-from .executors import Executor
 from . import asyncio as _asyncio
 
 from typing import (
@@ -318,12 +317,13 @@ class Cellar(Hookable, WithDB):
                 continue
             assert self.store_bytes(hs, contents)
 
-    async def _cache_hook(self, exe: Executor, inp: bytes, label: str) -> bytes:
+    async def _cache_hook(self, exe: Executor, execid: str, inp: bytes,
+                          label: str) -> bytes:
         hashid = get_hash(inp)
         if not self._noexec and not self._readonly:
             self.execute(
                 'insert or ignore into tasks values (?,?,?,?,?,?)',
-                (hashid, exe.name, State.CLEAN, get_timestamp(), inp, None)
+                (hashid, execid, State.CLEAN, get_timestamp(), inp, None)
             )
             self.commit()
         row: Optional[Tuple[bytes, State]] = self.execute(
@@ -334,7 +334,7 @@ class Cellar(Hookable, WithDB):
         if row and row[1] == State.DONE:
             return row[0]
         if not row and self._cached:
-            self._cache.tasks[hashid] = (exe.name, inp)
+            self._cache.tasks[hashid] = (execid, inp)
         if self._noexec:
             raise UnfinishedTask()
         out = await exe(inp)

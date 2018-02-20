@@ -36,7 +36,7 @@ class Caf(Hookable):
         exe = self._executors[execid]
         if self.has_hook('cache'):
             assert label
-            return await self.get_hook('cache')(exe, inp, label)  # type: ignore
+            return await self.get_hook('cache')(exe, execid, inp, label)  # type: ignore
         return await exe(inp)
 
     def route(self, label: str) -> Callable[[RouteFunc], RouteFunc]:
