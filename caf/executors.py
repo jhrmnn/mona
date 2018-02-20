@@ -119,7 +119,7 @@ class DirBashExecutor(Executor, Generic[_U]):
                 )
             retcode = await proc.wait()
             if retcode:
-                raise subprocess.CalledProcessError(retcode, inp)
+                raise subprocess.CalledProcessError(retcode, task['command'])
             outputs = {}
             for filepath in tmpdir.glob('**/*'):
                 filename = str(filepath.relative_to(tmpdir))
