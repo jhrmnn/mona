@@ -5,7 +5,9 @@ import asyncio
 from typing import List
 
 from .app import Caf, Executor
+from .cellar import UnfinishedTask
 from .Utils import get_timestamp
+from .Glob import match_glob
 
 
 class Dispatcher:
@@ -18,6 +20,9 @@ class Dispatcher:
 
     def _wrap(self, exe: Executor, label: str) -> Executor:
         async def dispatched_executor(inp: bytes) -> bytes:
+            if self._patterns and not any(
+                    match_glob(label, patt) for patt in self._patterns):
+                raise UnfinishedTask()
             await self._sem.acquire()
             print(f'{get_timestamp()}: will execute {label}')
             out = await exe(inp)

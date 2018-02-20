@@ -97,6 +97,7 @@ class DirBashExecutor(Executor, Generic[_U]):
     def __init__(self, app: Caf, store: FileStore[_U]) -> None:
         super().__init__(app)
         self._store = store
+        self._app = app
 
     async def create_process(self, cmd: str, **kwargs: Any
                              ) -> asyncio.subprocess.Process:
@@ -159,6 +160,8 @@ class DirBashExecutor(Executor, Generic[_U]):
         try:
             out = await self._app.task(self.name, inp, label)
         except self._store.unfinished_exc:
+            if not self._app.ctx.noexec:
+                raise
             return self._store.unfinished_output(inp)
         return self._store.wrap_files(inp, json.loads(out))
 
