@@ -16,11 +16,14 @@ from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 import asyncio
 
-from .argparse_cli import CLI, CLIError, partial
+from .argparse_cli import CLI, CLIError
 from .app import Caf, CAFDIR
 from .Utils import get_timestamp, config_group
 from . import Logging
-from .Logging import error, info, Table, colstr, no_cafdir, handle_broken_pipe
+from .Logging import (
+    error, info, Table, colstr, no_cafdir, handle_broken_pipe, CafError,
+    print_error
+)
 from .Remote import Remote, Local
 from .Utils import config_group, groupby
 from .argparse_cli import Arg, define_cli, CLIError, ThrowingArgumentParser
@@ -124,60 +127,63 @@ class CommandContext:
 
 
 def main() -> None:
-    args = sys.argv[1:]
-    ctx = CommandContext()
-    cli = CLI([
-        ('init', partial(init, ctx)),
-        ('conf', partial(configure, ctx)),
-        ('run', partial(run, ctx)),
-        ('make', partial(make, ctx)),
-        ('dispatch', partial(dispatch, ctx)),
-        ('checkout', partial(checkout, ctx)),
-        ('printout', partial(printout, ctx)),
-        ('submit', partial(submit, ctx)),
-        ('reset', partial(reset, ctx)),
-        ('list', [
-            ('profiles', partial(list_profiles, ctx)),
-            ('remotes', partial(list_remotes, ctx)),
-            ('builds', partial(list_builds, ctx)),
-            ('tasks', partial(list_tasks, ctx)),
-        ]),
-        ('status', partial(status, ctx)),
-        ('gc', partial(gc, ctx)),
-        ('cmd', partial(cmd, ctx)),
-        ('remote', [
-            ('add', partial(remote_add, ctx)),
-            ('path', partial(remote_path, ctx)),
-            ('list', partial(list_remotes, ctx)),
-        ]),
-        ('update', partial(update, ctx)),
-        ('check', partial(check, ctx)),
-        ('fetch', partial(fetch, ctx)),
-        ('archive', [
-            ('save', partial(archive_store, ctx)),
-        ]),
-        ('go', partial(go, ctx)),
-    ])
-    if not args:
-        cli.parser.print_help()
-        error()
     try:
-        cli.run(argv=args)
+        run_cli(sys.argv[1:])
+    except KeyboardInterrupt:
+        raise SystemExit(2)
+    except CafError as e:
+        print_error(e.args[0])
+        raise SystemExit(1)
+
+
+def run_cli(args: List[str]) -> None:
+    cli = CLI([
+        ('init', init),
+        ('conf', configure),
+        ('run', run),
+        ('make', make),
+        ('dispatch', dispatch),
+        ('checkout', checkout),
+        ('printout', printout),
+        ('submit', submit),
+        ('reset', reset),
+        ('list', [
+            ('profiles', list_profiles),
+            ('remotes', list_remotes),
+            ('builds', list_builds),
+            ('tasks', list_tasks),
+        ]),
+        ('status', status),
+        ('gc', gc),
+        ('cmd', cmd),
+        ('remote', [
+            ('add', remote_add),
+            ('path', remote_path),
+            ('list', list_remotes),
+        ]),
+        ('update', update),
+        ('check', check),
+        ('fetch', fetch),
+        ('archive', [
+            ('save', archive_store),
+        ]),
+        ('go', go),
+    ])
+    ctx = CommandContext()
+    try:
+        cli.run(ctx, argv=args)
     except CLIError as e:
         clierror = e
+        if not args:
+            clierror.reraise()
     else:
         ctx.log(args)
         return
-
     remote_spec, *rargs = args
     try:
         remotes: Optional[List[Remote]] = ctx.parse_remotes(remote_spec)
     except RemoteNotExists:
         remotes = None
-    if not rargs:
-        if remotes is None:
-            clierror.reraise()
-        return
     try:
         kwargs = cli.parse(rargs)
     except CLIError as rclierror:
@@ -186,13 +192,12 @@ def main() -> None:
         rclierror.reraise()
     if remotes is None:
         error(f'Remote {remote_spec!r} is not defined')
-
     ctx.mod_remote_args(rargs, kwargs)
     ctx.log(args)
-    if rargs[0] in ['conf', 'make']:
+    if rargs[0] in ['conf', 'make', 'dispatch']:
         for remote in remotes:
             remote.update(CAFDIR.parent)
-    if rargs[0] == 'make':
+    if rargs[0] in ['make', 'dispatch']:
         check(ctx, remote_spec)
     for remote in remotes:
         remote.command(rargs)

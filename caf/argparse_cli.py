@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import argparse
 from argparse import ArgumentParser
-import functools
 
 from typing import Any, Callable, TypeVar, List, Union, Dict, Tuple
 
@@ -26,14 +25,6 @@ def define_cli(cli: List[Arg] = None) -> Callable[[_F], _F]:
         _func_register[func] = cli or []
         return func
     return decorator
-
-
-def partial(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
-    newfunc = functools.partial(func, *args, **kwargs)
-    newfunc.__doc__ = func.__doc__
-    if func in _func_register:
-        _func_register[newfunc] = _func_register[func]
-    return newfunc
 
 
 CliDef = List[Tuple[str, Union[Callable[..., Any], List[Tuple[str, Any]]]]]
@@ -92,14 +83,14 @@ class CLI:
         )
         _add_commands(self.parser, cmds)
 
-    def parse(self, argv: List[str] = None) -> Dict[str, Any]:
+    def parse(self, argv: List[str]) -> Dict[str, Any]:
+        if not argv:
+            raise CLIError(self.parser, self.parser.format_help().strip())
         return {
             k: v for k, v in vars(self.parser.parse_args(argv)).items() if v
         }
 
-    def run(self, *args: Any, argv: List[str] = None) -> Any:
+    def run(self, *args: Any, argv: List[str]) -> Any:
         kwargs = self.parse(argv)
-        if not kwargs:
-            return
         func = kwargs.pop('func')
         return func(*args, **kwargs)
