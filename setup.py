@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+import fastentrypoints
 
 
 setup(
@@ -27,5 +28,7 @@ setup(
         'mypy_extensions',
         'typing_extensions',
     ],
-    scripts=['scripts/caf'],
+    entry_points={
+        'console_scripts': ['caf = caf.cli:main']
+    },
 )
