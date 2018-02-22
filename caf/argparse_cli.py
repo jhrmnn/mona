@@ -18,18 +18,21 @@ class Arg:
         self.kwargs = kwargs
 
 
+_func_register: Dict[Callable[..., Any], List[Arg]] = {}
+
+
 def define_cli(cli: List[Arg] = None) -> Callable[[_F], _F]:
     def decorator(func: _F) -> _F:
-        func.__cli__ = cli or []  # type: ignore
+        _func_register[func] = cli or []
         return func
     return decorator
 
 
 def partial(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     newfunc = functools.partial(func, *args, **kwargs)
-    if hasattr(func, '__cli__'):
-        newfunc.__cli__ = func.__cli__  # type: ignore
-        newfunc.__doc__ = func.__doc__
+    newfunc.__doc__ = func.__doc__
+    if func in _func_register:
+        _func_register[newfunc] = _func_register[func]
     return newfunc
 
 
@@ -63,7 +66,7 @@ def _add_commands(parser: ArgumentParser, clidef: CliDef) -> None:
         if isinstance(item, list):
             _add_commands(subparser, item)
         else:
-            for arg in item.__cli__:  # type: ignore
+            for arg in _func_register[item]:
                 subparser.add_argument(*arg.args, **arg.kwargs)
             subparser.set_defaults(func=item)
 
