@@ -521,8 +521,7 @@ def list_tasks(ctx: CommandContext,
 ])
 def status(ctx: CommandContext, patterns: List[str] = None, incomplete: bool = False) -> None:
     """Print number of initialized, running and finished tasks."""
-    cellar = Cellar(ctx.app)
-    scheduler = Scheduler(cellar)
+    scheduler = Scheduler(ctx.cellar)
     patterns = patterns or ctx.app.paths
     colors = 'yellow green cyan red normal'.split()
     print('number of {} tasks:'.format('/'.join(
@@ -532,7 +531,7 @@ def status(ctx: CommandContext, patterns: List[str] = None, incomplete: bool = F
         )
     )))
     states = scheduler.get_states()
-    tree = cellar.get_tree()
+    tree = ctx.cellar.get_tree()
     groups = tree.dglob(*patterns)
     queue = scheduler.get_queue()
     groups['ALL'] = [(hashid, label) for hashid, (_, label, *__) in queue.items()]
