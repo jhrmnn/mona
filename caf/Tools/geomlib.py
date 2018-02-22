@@ -4,15 +4,19 @@
 from itertools import chain, product, repeat
 import os
 from io import StringIO
-import numpy as np  # type: ignore
 import pkg_resources
 import csv
 from collections import OrderedDict
 
 from typing import (
-    List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, Union, Dict, Any
+    List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, Union, Dict, Any,
+    TYPE_CHECKING
 )
 
+if TYPE_CHECKING:
+    import numpy as np  # type: ignore
+else:
+    np = None  # lazy-loaded in Molecule constructor
 
 specie_data = OrderedDict(
     (r['symbol'], {**r, 'number': int(r['number'])})  # type: ignore
@@ -54,6 +58,9 @@ class Atom:
 
 class Molecule(Sized, Iterable[Atom]):
     def __init__(self, atoms: List[Atom]) -> None:
+        global np
+        if np is None:
+            import numpy as np
         self._atoms = atoms
 
     @classmethod
@@ -73,12 +80,12 @@ class Molecule(Sized, Iterable[Atom]):
         return sum(atom.mass for atom in self)
 
     @property
-    def cms(self) -> np.ndarray:
+    def cms(self) -> 'np.ndarray':
         masses = np.array([atom.mass for atom in self])
         return (masses[:, None]*self.xyz).sum(0)/self.mass
 
     @property
-    def inertia(self) -> np.ndarray:
+    def inertia(self) -> 'np.ndarray':
         masses = np.array([atom.mass for atom in self])
         coords_w = np.sqrt(masses)[:, None]*(self.xyz-self.cms)
         A = np.array([np.diag(np.full(3, r)) for r in np.sum(coords_w**2, 1)])
@@ -96,7 +103,7 @@ class Molecule(Sized, Iterable[Atom]):
         return "<{} '{}'>".format(self.__class__.__name__, self.formula)
 
     @property
-    def xyz(self) -> np.ndarray:
+    def xyz(self) -> 'np.ndarray':
         return np.array(self.coords)
 
     @property
@@ -108,7 +115,7 @@ class Molecule(Sized, Iterable[Atom]):
             f'{sp}{n if n > 1 else ""}' for sp, n in sorted(counter.items())
         )
 
-    def bondmatrix(self, scale: float) -> np.ndarray:
+    def bondmatrix(self, scale: float) -> 'np.ndarray':
         xyz = self.xyz
         Rs = np.array([atom.covalent_radius for atom in self])
         dmatrix = np.sqrt(np.sum((xyz[None, :]-xyz[:, None])**2, 2))
@@ -129,7 +136,7 @@ class Molecule(Sized, Iterable[Atom]):
             return self[0].number
         return hash(tuple(np.round(sorted(np.linalg.eigvalsh(self.inertia)), 3)))
 
-    def shifted(self, delta: Union[Vec, np.ndarray]) -> 'Molecule':
+    def shifted(self, delta: Union[Vec, 'np.ndarray']) -> 'Molecule':
         m = self.copy()
         for atom in m:
             c = atom.coord
@@ -243,7 +250,7 @@ class Crystal(Molecule):
         )
 
     @property
-    def abc(self) -> np.ndarray:
+    def abc(self) -> 'np.ndarray':
         return np.array(self.lattice)
 
     def get_kgrid(self, density: float = 0.06) -> Tuple[int, int, int]:
@@ -324,7 +331,7 @@ def readfile(path: str, fmt: str = None) -> Molecule:
         return load(f, fmt)
 
 
-def getfragments(C: np.ndarray) -> List[List[int]]:
+def getfragments(C: 'np.ndarray') -> List[List[int]]:
     """Find fragments within a set of sparsely connected elements.
 
     Given square matrix C where C_ij = 1 if i and j are connected
