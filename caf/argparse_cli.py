@@ -3,8 +3,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import argparse
 from argparse import ArgumentParser
+from collections import OrderedDict
 
-from typing import Any, Callable, TypeVar, List, Union, Dict, Tuple
+from typing import (
+    Any, Callable, TypeVar, List, Union, Dict, Tuple, Iterable, Optional
+)
 
 
 _T = TypeVar('_T')
@@ -20,14 +23,7 @@ class Arg:
 _func_register: Dict[Callable[..., Any], List[Arg]] = {}
 
 
-def define_cli(cli: List[Arg] = None) -> Callable[[_F], _F]:
-    def decorator(func: _F) -> _F:
-        _func_register[func] = cli or []
-        return func
-    return decorator
-
-
-CliDef = List[Tuple[str, Union[Callable[..., Any], List[Tuple[str, Any]]]]]
+CliDef = Iterable[Tuple[str, Union[Callable[..., Any], List[Tuple[str, Any]]]]]
 
 
 def _add_commands(parser: ArgumentParser, clidef: CliDef) -> None:
@@ -77,13 +73,16 @@ class ThrowingArgumentParser(ArgumentParser):
 
 
 class CLI:
-    def __init__(self, cmds: CliDef) -> None:
+    def __init__(self) -> None:
         self.parser = ThrowingArgumentParser(
             formatter_class=argparse.RawDescriptionHelpFormatter
         )
-        _add_commands(self.parser, cmds)
+        self._commands: Optional[Dict[str, Any]] = OrderedDict()
 
     def parse(self, argv: List[str]) -> Dict[str, Any]:
+        if self._commands:
+            _add_commands(self.parser, self._commands.items())
+            self._commands = None
         if not argv:
             raise CLIError(self.parser, self.parser.format_help().strip())
         return {
@@ -94,3 +93,24 @@ class CLI:
         kwargs = self.parse(argv)
         func = kwargs.pop('func')
         return func(*args, **kwargs)
+
+    def add_command(self, func: Callable[..., Any], cli: List[Arg] = None,
+                    name: str = None, group: str = None) -> None:
+        assert self._commands is not None
+        _func_register[func] = cli or []
+        if not name:
+            if '_' in func.__name__:
+                group, name = func.__name__.split('_', 1)
+            else:
+                name = func.__name__
+        if not group:
+            self._commands[name] = func
+        else:
+            self._commands.setdefault(group, []).append((name, func))
+
+    def command(self, cli: List[Arg] = None, name: str = None, group: str = None
+                ) -> Callable[[_F], _F]:
+        def decorator(func: _F) -> _F:
+            self.add_command(func, cli, name, group)
+            return func
+        return decorator
