@@ -160,7 +160,7 @@ class DirBashExecutor(Executor, Generic[_U]):
         try:
             out = await self._app.task(self.name, inp, label)
         except self._store.unfinished_exc:
-            if not self._app.ctx.noexec:
+            if self._app.ctx.executing:
                 raise
             return self._store.unfinished_output(inp)
         return self._store.wrap_files(inp, json.loads(out))

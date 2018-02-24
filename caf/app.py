@@ -18,13 +18,13 @@ CAFDIR = Path(os.environ.get('CAF_DIR', '.caf')).resolve()
 
 
 class Context:
-    def __init__(self, noexec: bool = True, readonly: bool = True) -> None:
-        self.noexec = noexec
+    def __init__(self, executing: bool = False, readonly: bool = True) -> None:
+        self.executing = executing
         self.readonly = readonly
         self.g: Dict[str, Any] = {}
 
     def __repr__(self) -> str:
-        return f'<Context noexec={self.noexec} readonly={self.readonly} g={self.g!r}>'
+        return f'<Context executing={self.executing} readonly={self.readonly} g={self.g!r}>'
 
 
 class Caf(Hookable):
@@ -59,8 +59,8 @@ class Caf(Hookable):
         self._executors[execid] = exe
 
     @contextmanager
-    def context(self, execution: bool = False, readonly: bool = True) -> Iterator[None]:
-        self._ctx = Context(noexec=not execution, readonly=readonly)
+    def context(self, executing: bool = False, readonly: bool = True) -> Iterator[None]:
+        self._ctx = Context(executing=executing, readonly=readonly)
         try:
             yield
         finally:

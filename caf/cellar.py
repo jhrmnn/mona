@@ -275,12 +275,12 @@ class Cellar(Hookable, WithDB):
         return self._app.ctx.readonly
 
     @property
-    def _noexec(self) -> bool:
-        return self._app.ctx.noexec
+    def _executing(self) -> bool:
+        return self._app.ctx.executing
 
     @property
     def _cached(self) -> bool:
-        return self._app.ctx.noexec and not self._app.ctx.readonly
+        return not self._app.ctx.executing and not self._app.ctx.readonly
 
     @property
     def _cache(self) -> Cache:
@@ -334,7 +334,7 @@ class Cellar(Hookable, WithDB):
     async def _cache_hook(self, exe: Executor, execid: str, inp: bytes,
                           label: str) -> bytes:
         hashid = get_hash(inp)
-        if not self._noexec and not self._readonly:
+        if self._executing and not self._readonly:
             self.execute(
                 'insert or ignore into tasks values (?,?,?,?,?,?)',
                 (hashid, execid, State.CLEAN, get_timestamp(), inp, None)
@@ -349,7 +349,7 @@ class Cellar(Hookable, WithDB):
             return row[0]
         if not row and self._cached:
             self._cache.tasks[hashid] = (execid, inp)
-        if self._noexec:
+        if not self._executing:
             raise UnfinishedTask()
         out = await exe(inp)
         if not self._readonly:
@@ -439,7 +439,7 @@ class Cellar(Hookable, WithDB):
         hash_ = get_hash(contents)
         if self._cached:
             self._cache.contents.setdefault(hash_, contents)
-        elif not self._readonly or not self._noexec:
+        elif not self._readonly or self._executing:
             self.store_bytes(hash_, contents)
         return hash_
 

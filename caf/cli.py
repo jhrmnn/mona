@@ -220,7 +220,7 @@ def run(ctx: CommandContext, patterns: List[str] = None, limit: int = None,
     routes = list(ctx.app._routes.keys())
     ctx.cellar.register_hook('tmpdir')(_get_tmpdir)
     Dispatcher(ctx.app, jobs, patterns, limit)
-    with ctx.app.context(execution=True, readonly=False):
+    with ctx.app.context(executing=True, readonly=False):
         ctx.app.get(*routes)
 
 

@@ -25,5 +25,5 @@ async def main() -> Any:
 
 
 if __name__ == '__main__':
-    with app.context(execution=True, readonly=False):
+    with app.context(executing=True, readonly=False):
         shutil.copy(app.get('main')['app'].path, 'app')
