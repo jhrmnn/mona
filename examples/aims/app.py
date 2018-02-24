@@ -2,8 +2,7 @@ from math import nan
 from pathlib import Path
 from typing import List
 
-from caf import Caf
-from caf.cellar import Cellar, collect
+from caf import Caf, Cellar, collect
 from caf.executors import DirBashExecutor
 from caf.Tools.aims import AimsTask
 from caf.Tools.geomlib import Molecule

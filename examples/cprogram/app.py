@@ -3,8 +3,7 @@ from typing import Any
 import asyncio
 import shutil
 
-from caf import Caf
-from caf.cellar import Cellar
+from caf import Caf, Cellar
 from caf.executors import DirBashExecutor
 
 app = Caf()

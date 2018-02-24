@@ -4,8 +4,7 @@
 import asyncio
 from typing import List
 
-from .app import Caf, Executor
-from .cellar import UnfinishedTask
+from .app import Caf, Executor, UnfinishedTask
 from .Utils import get_timestamp
 from .Glob import match_glob
 

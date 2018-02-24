@@ -1,5 +1,4 @@
-from caf import Caf
-from caf.cellar import Cellar, collect
+from caf import Caf, Cellar, collect
 from caf.executors import DirBashExecutor, DirPythonExecutor
 
 app = Caf()

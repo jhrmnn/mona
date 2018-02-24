@@ -15,18 +15,15 @@ from contextlib import contextmanager
 from .Logging import info
 from .Utils import make_nonwritable, get_timestamp, Hash, get_hash
 from .Glob import match_glob
-from .app import Caf, CAFDIR, Executor
+from .app import Caf, CAFDIR, Executor, UnfinishedTask
 from .hooks import Hookable
 from .db import WithDB
-from . import asyncio as _asyncio
 
 from typing import (
-    Dict, Tuple, List, DefaultDict, Iterable, Any, Awaitable,
-    Iterator, Set, Optional, Union, Callable, TypeVar, NamedTuple, overload,
+    Dict, Tuple, List, DefaultDict, Iterable, Any,
+    Iterator, Set, Optional, Union, Callable, NamedTuple,
     NewType, cast
 )
-
-_T = TypeVar('_T')
 
 TPath = NewType('TPath', str)
 TimeStamp = NewType('TimeStamp', str)
@@ -124,23 +121,6 @@ class TaskObject:
         return cls(
             execid, obj['command'], inputs, symlinks, childlinks, outputs
         )
-
-
-class UnfinishedTask(Exception):
-    pass
-
-
-@overload
-async def collect(coros: Iterable[Awaitable[_T]]) -> List[Optional[_T]]: ...
-
-
-@overload
-async def collect(coros: Iterable[Awaitable[_T]], unfinished: _T) -> List[_T]: ...
-
-
-async def collect(coros, unfinished=None):  # type: ignore
-    results = await _asyncio.gather(*coros, returned_exception=UnfinishedTask)
-    return [unfinished if isinstance(r, UnfinishedTask) else r for r in results]
 
 
 class Tree(Dict[TPath, Hash]):
