@@ -224,6 +224,12 @@ class Cache(NamedTuple):
     contents: Dict[Hash, bytes] = {}
     labels: Dict[str, Tuple[Hash, State]] = {}
 
+    def __repr__(self) -> str:
+        return (
+            f'<Cache with {len(self.tasks)} tasks, {len(self.files)} files'
+            f', {len(self.contents)} contents, and {len(self.labels)} labels'
+        )
+
 
 class Cellar(Hookable, WithDB):
     unfinished_exc = UnfinishedTask

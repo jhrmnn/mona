@@ -23,6 +23,9 @@ class Context:
         self.readonly = readonly
         self.g: Dict[str, Any] = {}
 
+    def __repr__(self) -> str:
+        return f'<Context noexec={self.noexec} readonly={self.readonly} g={self.g!r}>'
+
 
 class Caf(Hookable):
     def __init__(self, cafdir: Path = None) -> None:
@@ -32,6 +35,9 @@ class Caf(Hookable):
         self._routes: Dict[str, RouteFunc] = OrderedDict()
         self._executors: Dict[str, Executor] = {}
         self._ctx: Optional[Context] = None
+
+    def __repr__(self) -> str:
+        return f'<Caf routes={list(self._routes)!r} cafdir={self.cafdir!r}>'
 
     async def task(self, execid: str, inp: bytes, label: str = None) -> bytes:
         exe = self._executors[execid]
