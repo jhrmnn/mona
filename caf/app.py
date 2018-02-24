@@ -21,6 +21,7 @@ class Context:
     def __init__(self, noexec: bool = True, readonly: bool = True) -> None:
         self.noexec = noexec
         self.readonly = readonly
+        self.g: Dict[str, Any] = {}
 
 
 class Caf(Hookable):

@@ -261,7 +261,6 @@ class Cellar(Hookable, WithDB):
         )
         if app:
             self._app = app
-            self._cache = Cache()
             app.register_hook('cache')(self._cache_hook)
             app.register_hook('postget')(self._save_cache)
 
@@ -276,6 +275,15 @@ class Cellar(Hookable, WithDB):
     @property
     def _cached(self) -> bool:
         return self._app.ctx.noexec and not self._app.ctx.readonly
+
+    @property
+    def _cache(self) -> Cache:
+        try:
+            return self._app.ctx.g['cellar_cache']  # type: ignore
+        except KeyError:
+            cache = Cache()
+            self._app.ctx.g['cellar_cache'] = cache
+            return cache
 
     def _save_cache(self) -> None:
         if not self._cached:
