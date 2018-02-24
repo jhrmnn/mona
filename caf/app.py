@@ -21,6 +21,10 @@ class Context:
     def __init__(self, noexec: bool = True, readonly: bool = True) -> None:
         self.noexec = noexec
         self.readonly = readonly
+        self.g: Dict[str, Any] = {}
+
+    def __repr__(self) -> str:
+        return f'<Context noexec={self.noexec} readonly={self.readonly} g={self.g!r}>'
 
 
 class Caf(Hookable):
@@ -32,11 +36,17 @@ class Caf(Hookable):
         self._executors: Dict[str, Executor] = {}
         self._ctx: Optional[Context] = None
 
+    def __repr__(self) -> str:
+        return f'<Caf routes={list(self._routes)!r} cafdir={self.cafdir!r}>'
+
     async def task(self, execid: str, inp: bytes, label: str = None) -> bytes:
         exe = self._executors[execid]
+        if self.has_hook('dispatch'):
+            assert label
+            exe = self.get_hook('dispatch')(exe, label)
         if self.has_hook('cache'):
             assert label
-            return await self.get_hook('cache')(exe, inp, label)  # type: ignore
+            return await self.get_hook('cache')(exe, execid, inp, label)  # type: ignore
         return await exe(inp)
 
     def route(self, label: str) -> Callable[[RouteFunc], RouteFunc]:

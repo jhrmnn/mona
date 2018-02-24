@@ -3,69 +3,21 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import argparse
 from argparse import ArgumentParser
-import functools
+from collections import OrderedDict
 
-from typing import Any, Callable, TypeVar, List, Union, Dict, Tuple
+from typing import (
+    Any, Callable, TypeVar, List, Union, Dict, Tuple, Iterable, Optional
+)
 
-
-_T = TypeVar('_T')
 _F = TypeVar('_F', bound=Callable[..., Any])
+
+CliDef = Iterable[Tuple[str, Union[Callable[..., Any], List[Tuple[str, Any]]]]]
 
 
 class Arg:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.args = args
         self.kwargs = kwargs
-
-
-def define_cli(cli: List[Arg] = None) -> Callable[[_F], _F]:
-    def decorator(func: _F) -> _F:
-        func.__cli__ = cli or []  # type: ignore
-        return func
-    return decorator
-
-
-def partial(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
-    newfunc = functools.partial(func, *args, **kwargs)
-    if hasattr(func, '__cli__'):
-        newfunc.__cli__ = func.__cli__  # type: ignore
-        newfunc.__doc__ = func.__doc__
-    return newfunc
-
-
-CliDef = List[Tuple[str, Union[Callable[..., Any], List[Tuple[str, Any]]]]]
-
-
-def _add_commands(parser: ArgumentParser, clidef: CliDef) -> None:
-    rows = []
-    for name, item in clidef:
-        if isinstance(item, list):
-            rows.append((
-                name,
-                '-> ' + ', '.join(subname for subname, _ in item)
-            ))
-        else:
-            rows.append((name, item.__doc__ or '?'))
-    maxlen = max(len(name) for name, _ in rows)
-    subparsers = parser.add_subparsers(
-        metavar='<command>',
-        help='Command to run',
-        title='commands',
-        description='\n'.join(
-            f'{name:<{maxlen}}   {desc}' for name, desc in rows
-        ),
-    )
-    for name, item in clidef:
-        subparser = subparsers.add_parser(
-            name,
-            formatter_class=parser.formatter_class  # type: ignore
-        )
-        if isinstance(item, list):
-            _add_commands(subparser, item)
-        else:
-            for arg in item.__cli__:  # type: ignore
-                subparser.add_argument(*arg.args, **arg.kwargs)
-            subparser.set_defaults(func=item)
 
 
 class CLIError(Exception):
@@ -83,20 +35,76 @@ class ThrowingArgumentParser(ArgumentParser):
 
 
 class CLI:
-    def __init__(self, cmds: CliDef) -> None:
+    def __init__(self) -> None:
         self.parser = ThrowingArgumentParser(
             formatter_class=argparse.RawDescriptionHelpFormatter
         )
-        _add_commands(self.parser, cmds)
+        self._commands: Optional[Dict[str, Any]] = OrderedDict()
+        self._func_register: Dict[Callable[..., Any], List[Arg]] = {}
 
-    def parse(self, argv: List[str] = None) -> Dict[str, Any]:
+    def parse(self, argv: List[str]) -> Dict[str, Any]:
+        if self._commands:
+            self._add_commands(self.parser, self._commands.items())
+            self._commands = None
+        if not argv:
+            raise CLIError(self.parser, self.parser.format_help().strip())
         return {
             k: v for k, v in vars(self.parser.parse_args(argv)).items() if v
         }
 
-    def run(self, *args: Any, argv: List[str] = None) -> Any:
+    def run(self, *args: Any, argv: List[str]) -> Any:
         kwargs = self.parse(argv)
-        if not kwargs:
-            return
         func = kwargs.pop('func')
         return func(*args, **kwargs)
+
+    def add_command(self, func: Callable[..., Any], cli: List[Arg] = None,
+                    name: str = None, group: str = None) -> None:
+        assert self._commands is not None
+        self._func_register[func] = cli or []
+        if not name:
+            if '_' in func.__name__:
+                group, name = func.__name__.split('_', 1)
+            else:
+                name = func.__name__
+        if not group:
+            self._commands[name] = func
+        else:
+            self._commands.setdefault(group, []).append((name, func))
+
+    def command(self, cli: List[Arg] = None, name: str = None, group: str = None
+                ) -> Callable[[_F], _F]:
+        def decorator(func: _F) -> _F:
+            self.add_command(func, cli, name, group)
+            return func
+        return decorator
+
+    def _add_commands(self, parser: ArgumentParser, clidef: CliDef) -> None:
+        rows = []
+        for name, item in clidef:
+            if isinstance(item, list):
+                rows.append((
+                    name,
+                    '-> ' + ', '.join(subname for subname, _ in item)
+                ))
+            else:
+                rows.append((name, item.__doc__ or '?'))
+        maxlen = max(len(name) for name, _ in rows)
+        subparsers = parser.add_subparsers(
+            metavar='<command>',
+            help='Command to run',
+            title='commands',
+            description='\n'.join(
+                f'{name:<{maxlen}}   {desc}' for name, desc in rows
+            ),
+        )
+        for name, item in clidef:
+            subparser = subparsers.add_parser(
+                name,
+                formatter_class=parser.formatter_class  # type: ignore
+            )
+            if isinstance(item, list):
+                self._add_commands(subparser, item)
+            else:
+                for arg in self._func_register[item]:
+                    subparser.add_argument(*arg.args, **arg.kwargs)
+                subparser.set_defaults(func=item)

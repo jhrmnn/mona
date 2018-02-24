@@ -11,20 +11,26 @@ import argparse
 import subprocess as sp
 from configparser import ConfigParser
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Iterable
+from typing import Dict, List, Optional, Any, Iterable, Iterator
+from contextlib import contextmanager
+from tempfile import TemporaryDirectory
 import asyncio
 
-from .argparse_cli import CLI, CLIError, partial
+from .argparse_cli import CLI, CLIError
 from .app import Caf, CAFDIR
 from .Utils import get_timestamp, config_group
 from . import Logging
-from .Logging import error, info, Table, colstr, no_cafdir, handle_broken_pipe
+from .Logging import (
+    error, info, Table, colstr, no_cafdir, handle_broken_pipe, CafError,
+    print_error
+)
 from .Remote import Remote, Local
 from .Utils import config_group, groupby
-from .argparse_cli import Arg, define_cli, CLIError, ThrowingArgumentParser
+from .argparse_cli import Arg, CLIError, ThrowingArgumentParser
 from .cellar import Cellar, Hash, TPath, State
 from .scheduler import RemoteScheduler, Scheduler
 from .Announcer import Announcer
+from .dispatch import Dispatcher
 
 
 class NoAppFoundError(Exception):
@@ -121,60 +127,34 @@ class CommandContext:
 
 
 def main() -> None:
-    args = sys.argv[1:]
-    ctx = CommandContext()
-    cli = CLI([
-        ('init', partial(init, ctx)),
-        ('conf', partial(configure, ctx)),
-        ('run', partial(run, ctx)),
-        ('make', partial(make, ctx)),
-        ('dispatch', partial(dispatch, ctx)),
-        ('checkout', partial(checkout, ctx)),
-        ('printout', partial(printout, ctx)),
-        ('submit', partial(submit, ctx)),
-        ('reset', partial(reset, ctx)),
-        ('list', [
-            ('profiles', partial(list_profiles, ctx)),
-            ('remotes', partial(list_remotes, ctx)),
-            ('builds', partial(list_builds, ctx)),
-            ('tasks', partial(list_tasks, ctx)),
-        ]),
-        ('status', partial(status, ctx)),
-        ('gc', partial(gc, ctx)),
-        ('cmd', partial(cmd, ctx)),
-        ('remote', [
-            ('add', partial(remote_add, ctx)),
-            ('path', partial(remote_path, ctx)),
-            ('list', partial(list_remotes, ctx)),
-        ]),
-        ('update', partial(update, ctx)),
-        ('check', partial(check, ctx)),
-        ('fetch', partial(fetch, ctx)),
-        ('archive', [
-            ('save', partial(archive_store, ctx)),
-        ]),
-        ('go', partial(go, ctx)),
-    ])
-    if not args:
-        cli.parser.print_help()
-        error()
     try:
-        cli.run(argv=args)
+        run_cli(sys.argv[1:])
+    except KeyboardInterrupt:
+        raise SystemExit(2)
+    except CafError as e:
+        print_error(e.args[0])
+        raise SystemExit(1)
+
+
+cli = CLI()
+
+
+def run_cli(args: List[str]) -> None:
+    ctx = CommandContext()
+    try:
+        cli.run(ctx, argv=args)
     except CLIError as e:
         clierror = e
+        if not args:
+            clierror.reraise()
     else:
         ctx.log(args)
         return
-
     remote_spec, *rargs = args
     try:
         remotes: Optional[List[Remote]] = ctx.parse_remotes(remote_spec)
     except RemoteNotExists:
         remotes = None
-    if not rargs:
-        if remotes is None:
-            clierror.reraise()
-        return
     try:
         kwargs = cli.parse(rargs)
     except CLIError as rclierror:
@@ -183,13 +163,12 @@ def main() -> None:
         rclierror.reraise()
     if remotes is None:
         error(f'Remote {remote_spec!r} is not defined')
-
     ctx.mod_remote_args(rargs, kwargs)
     ctx.log(args)
-    if rargs[0] in ['conf', 'make']:
+    if rargs[0] in ['conf', 'make', 'dispatch']:
         for remote in remotes:
             remote.update(CAFDIR.parent)
-    if rargs[0] == 'make':
+    if rargs[0] in ['make', 'dispatch']:
         check(ctx, remote_spec)
     for remote in remotes:
         remote.command(rargs)
@@ -200,7 +179,7 @@ def sig_handler(sig: Any, frame: Any) -> Any:
     raise KeyboardInterrupt
 
 
-@define_cli()
+@cli.command()
 def init(ctx: CommandContext) -> None:
     if not CAFDIR.is_dir():
         CAFDIR.mkdir()
@@ -214,10 +193,10 @@ def init(ctx: CommandContext) -> None:
             (CAFDIR/'objects').mkdir()
 
 
-@define_cli([
+@cli.command([
     Arg('routes', metavar='ROUTE', nargs='*', help='Route to schedule'),
 ])
-def configure(ctx: CommandContext, routes: List[str] = None) -> Any:
+def conf(ctx: CommandContext, routes: List[str] = None) -> Any:
     Scheduler(ctx.cellar)
     if not routes:
         routes = list(ctx.app._routes.keys())
@@ -225,17 +204,27 @@ def configure(ctx: CommandContext, routes: List[str] = None) -> Any:
         return ctx.app.get(*routes)
 
 
-@define_cli([
-    Arg('routes', metavar='ROUTE', nargs='*', help='Route to run'),
+@contextmanager
+def _get_tmpdir(hashid: Hash) -> Iterator[Path]:
+    with TemporaryDirectory() as _tmpdir:
+        yield Path(_tmpdir)
+
+
+@cli.command([
+    Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be run'),
+    Arg('-n', '--jobs', type=int, help='Number of parallel tasks [default: 1]'),
+    Arg('-l', '--limit', type=int, help='Limit number of tasks to N'),
 ])
-def run(ctx: CommandContext, routes: List[str] = None) -> Any:
-    if not routes:
-        routes = list(ctx.app._routes.keys())
+def run(ctx: CommandContext, patterns: List[str] = None, limit: int = None,
+        jobs: int = 1) -> None:
+    routes = list(ctx.app._routes.keys())
+    ctx.cellar.register_hook('tmpdir')(_get_tmpdir)
+    Dispatcher(ctx.app, jobs, patterns, limit)
     with ctx.app.context(execution=True, readonly=False):
-        return ctx.app.get(*routes)
+        ctx.app.get(*routes)
 
 
-@define_cli([
+@cli.command([
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be built'),
     Arg('-l', '--limit', type=int, help='Limit number of tasks to N'),
     Arg('-q', '--queue', dest='url', help='Take tasks from web queue'),
@@ -274,7 +263,7 @@ def make(ctx: CommandContext,
     )
 
 
-@define_cli([
+@cli.command([
     Arg('profile', metavar='PROFILE', help='Use worker at ~/.config/caf/worker_PROFILE'),
     Arg('-j', '--jobs', type=int, help='Number of launched workers [default: 1]'),
     Arg('argv', metavar='...', nargs=argparse.REMAINDER, help='Arguments for make')
@@ -299,7 +288,7 @@ def dispatch(ctx: CommandContext, profile: str, argv: List[str] = None,
             error(f'Running {worker} failed.')
 
 
-@define_cli([
+@cli.command([
     Arg('patterns', metavar='PATTERN', nargs='*',
         help='Tasks to be checked out'),
     Arg('-b', '--blddir', type=Path, help=f'Where to checkout [default: blddir]'),
@@ -329,7 +318,7 @@ def checkout(ctx: CommandContext,
     )
 
 
-@define_cli()
+@cli.command()
 def printout(ctx: CommandContext) -> None:
     cellar = Cellar()
     hashes = [Hash(l.strip()) for l in sys.stdin.readlines()]
@@ -339,7 +328,7 @@ def printout(ctx: CommandContext) -> None:
     }, sys.stdout)
 
 
-@define_cli([
+@cli.command([
     Arg('url', metavar='URL'),
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be submitted'),
     Arg('-a', '--append', action='store_true', help='Append to an existing queue'),
@@ -367,7 +356,7 @@ def submit(ctx: CommandContext, url: str, patterns: List[str] = None, append: bo
         ctx.last_queue = queue_url
 
 
-@define_cli([
+@cli.command([
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be reset'),
     Arg('--running', action='store_true', help='Also reset running tasks'),
     Arg('--only-running', action='store_true', help='Reset only running tasks'),
@@ -406,14 +395,14 @@ def reset(ctx: CommandContext, patterns: List[str] = None, hard: bool = False,
                 cellar.reset_task(hashid)
 
 
-@define_cli()
+@cli.command()
 def list_profiles(ctx: CommandContext) -> None:
     """List profiles."""
     for p in Path.home().glob('.config/caf/worker_*'):
         print(p.name)
 
 
-@define_cli()
+@cli.command()
 def list_remotes(ctx: CommandContext) -> None:
     """List remotes."""
     for name, remote in config_group(ctx.config, 'remote'):
@@ -421,7 +410,10 @@ def list_remotes(ctx: CommandContext) -> None:
         print(f'\t{remote["host"]}:{remote["path"]}')
 
 
-@define_cli()
+cli.add_command(list_remotes, name='list', group='remote')
+
+
+@cli.command()
 def list_builds(ctx: CommandContext) -> None:
     """List builds."""
     cellar = Cellar()
@@ -431,7 +423,7 @@ def list_builds(ctx: CommandContext) -> None:
     print(table)
 
 
-@define_cli([
+@cli.command([
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be listed'),
     Arg('--finished', dest='do_finished', action='store_true',
         help='List finished tasks'),
@@ -501,15 +493,14 @@ def list_tasks(ctx: CommandContext,
             break
 
 
-@define_cli([
+@cli.command([
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be reset'),
     Arg('-i', '--incomplete', action='store_true',
         help='Print only incomplete patterns'),
 ])
 def status(ctx: CommandContext, patterns: List[str] = None, incomplete: bool = False) -> None:
     """Print number of initialized, running and finished tasks."""
-    cellar = Cellar(ctx.app)
-    scheduler = Scheduler(cellar)
+    scheduler = Scheduler(ctx.cellar)
     patterns = patterns or ctx.app.paths
     colors = 'yellow green cyan red normal'.split()
     print('number of {} tasks:'.format('/'.join(
@@ -519,7 +510,7 @@ def status(ctx: CommandContext, patterns: List[str] = None, incomplete: bool = F
         )
     )))
     states = scheduler.get_states()
-    tree = cellar.get_tree()
+    tree = ctx.cellar.get_tree()
     groups = tree.dglob(*patterns)
     queue = scheduler.get_queue()
     groups['ALL'] = [(hashid, label) for hashid, (_, label, *__) in queue.items()]
@@ -559,7 +550,7 @@ def status(ctx: CommandContext, patterns: List[str] = None, incomplete: bool = F
     print(table)
 
 
-@define_cli([
+@cli.command([
     Arg('-a', '--all', action='store_true', help='Discard all nonactive tasks', dest='gc_all'),
 ])
 def gc(ctx: CommandContext, gc_all: bool = False) -> None:
@@ -572,7 +563,7 @@ def gc(ctx: CommandContext, gc_all: bool = False) -> None:
         cellar.gc()
 
 
-@define_cli([
+@cli.command([
     Arg('cmd', metavar='CMD',
         help='This is a simple convenience alias for running commands remotely'),
 ])
@@ -581,7 +572,7 @@ def cmd(ctx: CommandContext, cmd: str) -> None:
     sp.run(cmd, shell=True)
 
 
-@define_cli([
+@cli.command([
     Arg('url', metavar='URL'),
     Arg('name', metavar='NAME', nargs='?')
 ])
@@ -599,7 +590,7 @@ def remote_add(ctx: CommandContext, url: str, name: str = None) -> None:
         no_cafdir()
 
 
-@define_cli([
+@cli.command([
     Arg('name', metavar='NAME')
 ])
 def remote_path(ctx: CommandContext, _: Any, name: str) -> None:
@@ -607,7 +598,7 @@ def remote_path(ctx: CommandContext, _: Any, name: str) -> None:
     print('{0[host]}:{0[path]}'.format(ctx.config[f'remote "{name}"']))
 
 
-@define_cli([
+@cli.command([
     Arg('remotes', metavar='REMOTE'),
     Arg('--delete', action='store_true', help='Delete files when syncing'),
     Arg('--dry', action='store_true', help='Do a dry run'),
@@ -618,7 +609,7 @@ def update(ctx: CommandContext, remotes: str, delete: bool = False, dry: bool = 
         remote.update(CAFDIR.parent, delete=delete, dry=dry)
 
 
-@define_cli([
+@cli.command([
     Arg('remotes', metavar='REMOTE'),
 ])
 def check(ctx: CommandContext, remotes: str) -> None:
@@ -628,7 +619,7 @@ def check(ctx: CommandContext, remotes: str) -> None:
         remote.check(cellar.get_tree())
 
 
-@define_cli([
+@cli.command([
     Arg('remotes', metavar='REMOTE'),
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to fetch'),
     Arg('--no-files', action='store_true', help='Fetch task metadata, but not files'),
@@ -658,11 +649,11 @@ def fetch(ctx: CommandContext,
             scheduler.task_done(hashid, remote=remote.host if no_files else None)
 
 
-@define_cli([
+@cli.command([
     Arg('filename', metavar='FILE'),
     Arg('patterns', metavar='PATTERN', nargs='*'),
 ])
-def archive_store(ctx: CommandContext, filename: str, patterns: List[str] = None) -> None:
+def archive_save(ctx: CommandContext, filename: str, patterns: List[str] = None) -> None:
     """Archives files accessible from the given tasks as tar.gz."""
     cellar = Cellar()
     scheduler = Scheduler(cellar)
@@ -689,7 +680,7 @@ def archive_store(ctx: CommandContext, filename: str, patterns: List[str] = None
 #         remote.push(targets, caf.cache, caf.out, dry=dry)
 
 
-@define_cli([
+@cli.command([
     Arg('remotes', metavar='REMOTE'),
 ])
 def go(ctx: CommandContext, remotes: str) -> None:

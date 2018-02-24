@@ -15,10 +15,9 @@ from contextlib import contextmanager
 from .Logging import info
 from .Utils import make_nonwritable, get_timestamp, Hash, get_hash
 from .Glob import match_glob
-from .app import Caf, CAFDIR
+from .app import Caf, CAFDIR, Executor
 from .hooks import Hookable
 from .db import WithDB
-from .executors import Executor
 from . import asyncio as _asyncio
 
 from typing import (
@@ -225,6 +224,12 @@ class Cache(NamedTuple):
     contents: Dict[Hash, bytes] = {}
     labels: Dict[str, Tuple[Hash, State]] = {}
 
+    def __repr__(self) -> str:
+        return (
+            f'<Cache with {len(self.tasks)} tasks, {len(self.files)} files'
+            f', {len(self.contents)} contents, and {len(self.labels)} labels'
+        )
+
 
 class Cellar(Hookable, WithDB):
     unfinished_exc = UnfinishedTask
@@ -262,7 +267,6 @@ class Cellar(Hookable, WithDB):
         )
         if app:
             self._app = app
-            self._cache = Cache()
             app.register_hook('cache')(self._cache_hook)
             app.register_hook('postget')(self._save_cache)
 
@@ -277,6 +281,15 @@ class Cellar(Hookable, WithDB):
     @property
     def _cached(self) -> bool:
         return self._app.ctx.noexec and not self._app.ctx.readonly
+
+    @property
+    def _cache(self) -> Cache:
+        try:
+            return self._app.ctx.g['cellar_cache']  # type: ignore
+        except KeyError:
+            cache = Cache()
+            self._app.ctx.g['cellar_cache'] = cache
+            return cache
 
     def _save_cache(self) -> None:
         if not self._cached:
@@ -318,12 +331,13 @@ class Cellar(Hookable, WithDB):
                 continue
             assert self.store_bytes(hs, contents)
 
-    async def _cache_hook(self, exe: Executor, inp: bytes, label: str) -> bytes:
+    async def _cache_hook(self, exe: Executor, execid: str, inp: bytes,
+                          label: str) -> bytes:
         hashid = get_hash(inp)
         if not self._noexec and not self._readonly:
             self.execute(
                 'insert or ignore into tasks values (?,?,?,?,?,?)',
-                (hashid, exe.name, State.CLEAN, get_timestamp(), inp, None)
+                (hashid, execid, State.CLEAN, get_timestamp(), inp, None)
             )
             self.commit()
         row: Optional[Tuple[bytes, State]] = self.execute(
@@ -334,7 +348,7 @@ class Cellar(Hookable, WithDB):
         if row and row[1] == State.DONE:
             return row[0]
         if not row and self._cached:
-            self._cache.tasks[hashid] = (exe.name, inp)
+            self._cache.tasks[hashid] = (execid, inp)
         if self._noexec:
             raise UnfinishedTask()
         out = await exe(inp)
@@ -349,7 +363,8 @@ class Cellar(Hookable, WithDB):
     @contextmanager
     def get_tmpdir(self, inp: bytes) -> Iterator[Path]:
         hashid = get_hash(inp)
-        yield self.get_hook('tmpdir')(hashid)
+        with self.get_hook('tmpdir')(hashid) as path:
+            yield path
 
     def store(self, hashid: Hash, text: str = None, file: Path = None, data: bytes = None) \
             -> bool:
