@@ -95,9 +95,17 @@ class Caf(Hookable):
         return self._ctx
 
     def get(self, *routes: str) -> Any:
-        result = asyncio.get_event_loop().run_until_complete(
-            asyncio.gather(*(self._routes[route]() for route in routes))
-        )
+        tasks = asyncio.gather(*(self._routes[route]() for route in routes))
+        loop = asyncio.get_event_loop()
+        try:
+            result = loop.run_until_complete(tasks)
+        except KeyboardInterrupt:
+            tasks.cancel()
+            try:
+                loop.run_until_complete(tasks)
+            except asyncio.CancelledError:
+                pass
+            raise
         if self.has_hook('postget'):
             self.get_hook('postget')()
         return result[0] if len(routes) == 1 else result

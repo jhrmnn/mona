@@ -42,6 +42,7 @@ class Dispatcher:
                 error('There is no queue.')
             if not self._scheduler.is_state_ok(state, hashid, label):
                 debug(f'{label} does not have conforming state, skipping')
+                self._sem.release()
                 raise UnfinishedTask()
             with self._scheduler.db_lock():
                 state, = self._scheduler.execute(
@@ -58,7 +59,7 @@ class Dispatcher:
             print(f'{get_timestamp()}: will execute {label}')
             try:
                 out = await exe(inp)
-            except KeyboardInterrupt:
+            except asyncio.CancelledError:
                 self._scheduler.task_interrupt(hashid)
                 print(f'{get_timestamp()}: {label} was interrupted')
                 raise
@@ -66,6 +67,8 @@ class Dispatcher:
                 print(e)
                 self._scheduler.task_error(hashid)
                 print(f'{get_timestamp()}: {label} finished with error')
+                self._sem.release()
+                raise UnfinishedTask()
             else:
                 shutil.rmtree(self._scheduler._tmpdirs.pop(hashid))
                 self._scheduler.task_done(hashid)

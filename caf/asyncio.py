@@ -18,9 +18,14 @@ async def gather(*coros_or_futures: _FutureT[_T], loop: AbstractEventLoop = None
     futures = list(map(asyncio.ensure_future, coros_or_futures))
     pending = set(futures)
     while pending:
-        done, pending = await asyncio.wait(
-            pending, return_when=asyncio.FIRST_EXCEPTION
-        )
+        try:
+            done, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_EXCEPTION
+            )
+        except asyncio.CancelledError:
+            for fut in futures:
+                fut.cancel()
+            raise
         for fut in done:
             try:
                 results[fut] = fut.result()

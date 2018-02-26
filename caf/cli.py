@@ -222,6 +222,8 @@ def run(ctx: CommandContext, patterns: List[str] = None, limit: int = None,
     tmpdir = ctx.config.get('core', 'tmpdir', fallback='') or None
     scheduler = Scheduler(ctx.cellar, tmpdir)
     Dispatcher(ctx.app, scheduler, jobs, patterns, limit)
+    signal.signal(signal.SIGTERM, sig_handler)
+    signal.signal(signal.SIGXCPU, sig_handler)
     with ctx.app.context(executing=True, readonly=False):
         ctx.app.get(*routes)
 
