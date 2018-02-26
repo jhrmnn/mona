@@ -26,7 +26,7 @@ from .Logging import (
 )
 from .Remote import Remote, Local
 from .Utils import config_group, groupby
-from .argparse_cli import Arg, CLIError, ThrowingArgumentParser
+from .argparse_cli import Arg, CLIError
 from .cellar import Cellar, Hash, TPath, State
 from .scheduler import RemoteScheduler, Scheduler
 from .Announcer import Announcer
@@ -266,21 +266,18 @@ def make(ctx: CommandContext,
 @cli.command([
     Arg('profile', metavar='PROFILE', help='Use worker at ~/.config/caf/worker_PROFILE'),
     Arg('-j', '--jobs', type=int, help='Number of launched workers [default: 1]'),
-    Arg('argv', metavar='...', nargs=argparse.REMAINDER, help='Arguments for make')
+    Arg('args', metavar='...', nargs=argparse.REMAINDER, help='Arguments for make')
 ])
-def dispatch(ctx: CommandContext, profile: str, argv: List[str] = None,
+def dispatch(ctx: CommandContext, profile: str, args: List[str] = None,
              jobs: int = 1) -> None:
     """Dispatch make to external workers."""
-    argv = argv or []
-    parser = ThrowingArgumentParser()
-    for arg in make.__cli__:  # type: ignore
-        parser.add_argument(*arg.args, **arg.kwargs)
+    args = args or []
     try:
-        parser.parse_args(argv)
+        cli.parse(args)
     except CLIError:
-        error(f'Invalid arguments for make: {argv}')
+        error(f'Invalid arguments for dispatch: {args}')
     worker = Path(f'~/.config/caf/worker_{profile}').expanduser()
-    cmd = [str(worker)] + argv
+    cmd = [str(worker)] + args
     for _ in range(jobs):
         try:
             sp.run(cmd, check=True)
@@ -352,7 +349,7 @@ def submit(ctx: CommandContext, url: str, patterns: List[str] = None, append: bo
         error('No tasks to submit')
     queue_url = announcer.submit(hashes, append=append)
     if queue_url:
-        print(f'./caf make --queue {queue_url}')
+        print(f'caf make --queue {queue_url}')
         ctx.last_queue = queue_url
 
 
