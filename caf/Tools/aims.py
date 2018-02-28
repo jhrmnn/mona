@@ -55,6 +55,8 @@ class AimsTask(Generic[_U]):
         else:
             pathname = shutil.which(aims)
             if not pathname:
+                pathname = shutil.which('aims-master')
+            if not pathname:
                 raise AimsNotFound(aims)
             path = Path(pathname)
             speciedir = path.parents[1]/'aimsfiles/species_defaults'/basis
