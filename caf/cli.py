@@ -594,7 +594,7 @@ def remote_add(ctx: CommandContext, url: str, name: str = None) -> None:
 @cli.command([
     Arg('name', metavar='NAME')
 ])
-def remote_path(ctx: CommandContext, _: Any, name: str) -> None:
+def remote_path(ctx: CommandContext, name: str) -> None:
     """Print a remote path in the form HOST:PATH."""
     print('{0[host]}:{0[path]}'.format(ctx.config[f'remote "{name}"']))
 
