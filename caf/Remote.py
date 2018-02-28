@@ -106,7 +106,7 @@ class Remote:
             for hashid in task['outputs'].values()
         )
         cmd = [
-            'rsync', '-cirlP', '--files-from=-',
+            'rsync', '-r', '--info=progress2', '--ignore-existing', '--files-from=-',
             f'{self.host}:{self.path}/.caf/objects', '.caf/objects'
         ]
         sp.run(cmd, input='\n'.join(f'{p[0:2]}/{p[2:]}' for p in paths).encode())
