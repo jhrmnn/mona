@@ -211,13 +211,15 @@ def _get_tmpdir(hashid: Hash) -> Iterator[Path]:
 
 
 @cli.command([
+    Arg('-r', '--route', dest='routes', metavar='ROUTE', action='append', help='Routes to run'),
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be run'),
     Arg('-n', '--jobs', type=int, help='Number of parallel tasks [default: 1]'),
     Arg('-l', '--limit', type=int, help='Limit number of tasks to N'),
 ])
 def run(ctx: CommandContext, patterns: List[str] = None, limit: int = None,
-        jobs: int = 1) -> None:
-    routes = list(ctx.app._routes.keys())
+        jobs: int = 1, routes: List[str] = None) -> None:
+    if not routes:
+        routes = list(ctx.app._routes.keys())
     ctx.cellar.register_hook('tmpdir')(_get_tmpdir)
     tmpdir = ctx.config.get('core', 'tmpdir', fallback='') or None
     scheduler = Scheduler(ctx.cellar, tmpdir)
