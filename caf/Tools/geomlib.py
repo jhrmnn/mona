@@ -212,6 +212,8 @@ class Molecule(Sized, Iterable[Atom]):
         ext = os.path.splitext(filename)[1]
         if ext == 'xyz':
             fmt = 'xyz'
+        if ext == 'xyzc':
+            fmt = 'xyzc'
         elif ext == 'aims' or os.path.basename(filename) == 'geometry.in':
             fmt = 'aims'
         elif ext == 'mopac':
@@ -289,6 +291,18 @@ def load(fp: IO[str], fmt: str) -> Molecule:
             species.append(ws[0])
             coords.append(get_vec(ws[1:4]))
         return Molecule.from_coords(species, coords)
+    elif fmt == 'xyzc':
+        n = int(fp.readline())
+        lattice = []
+        for _ in range(3):
+            lattice.append(get_vec(fp.readline().split()))
+        species = []
+        coords = []
+        for _ in range(n):
+            ws = fp.readline().split()
+            species.append(ws[0])
+            coords.append(get_vec(ws[1:4]))
+        return Crystal.from_coords(species, coords, lattice)
     if fmt == 'aims':
         atoms = []
         lattice = []
@@ -325,6 +339,8 @@ def readfile(path: str, fmt: str = None) -> Molecule:
             fmt = 'xyz'
         elif ext == '.aims' or os.path.basename(path) == 'geometry.in':
             fmt = 'aims'
+        elif ext == '.xyzc':
+            fmt = 'xyzc'
         else:
             raise RuntimeError('Cannot determine format')
     with open(path) as f:
