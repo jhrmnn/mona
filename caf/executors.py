@@ -7,6 +7,7 @@ import json
 import sys
 import inspect
 import pickle
+import os
 import re
 from textwrap import dedent
 from pathlib import Path
@@ -172,7 +173,8 @@ class DirPythonExecutor(DirBashExecutor[_U]):
     async def create_process(self, cmd: str, **kwargs: Any
                              ) -> asyncio.subprocess.Process:
         return await asyncio.create_subprocess_exec(
-            sys.executable, '_exec.py', **kwargs
+            sys.executable, '_exec.py', **kwargs,
+            env={**os.environ, 'CAF_DIR': self._app.cafdir}
         )
 
     def function_task(self, func: Callable[..., Any]
