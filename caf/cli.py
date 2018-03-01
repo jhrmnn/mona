@@ -45,9 +45,9 @@ class CommandContext:
     def __init__(self) -> None:
         self.config = ConfigParser()
         self.config.read([
-            CAFDIR/'config.ini',
+            Path('~/.config/caf/config.ini').expanduser(),
             'caf.ini',
-            Path('~/.config/caf/config.ini').expanduser()
+            CAFDIR/'config.ini',
         ])
         self.out = Path('build')
         self._remotes = {
