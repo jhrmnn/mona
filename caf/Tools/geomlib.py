@@ -242,6 +242,21 @@ class Crystal(Molecule):
             for label, (x, y, z) in zip('abc', self.lattice):
                 f.write(f'lattice_vector {x:15.8f} {y:15.8f} {z:15.8f}\n')
             super().dump(f, fmt)
+        elif fmt == 'vasp':
+            f.write(f'Formula: {self.formula}\n')
+            f.write(f'{1:15.8f}\n')
+            for x, y, z in self.lattice:
+                f.write(f'{x:15.8f} {y:15.8f} {z:15.8f}\n')
+            species: Dict[str, List[Atom]] = OrderedDict((sp, []) for sp in set(self.species))
+            f.write(' '.join(species.keys()) + '\n')
+            for atom in self:
+                species[atom.specie].append(atom)
+            f.write(' '.join(str(len(atoms)) for atoms in species.values()) + '\n')
+            f.write('cartesian\n')
+            for atom in chain(*species.values()):
+                r = atom.coord
+                s = f'{r[0]:15.8f} {r[1]:15.8f} {r[2]:15.8f}\n'
+                f.write(s)
         else:
             raise ValueError(f'Unknown format: {fmt!r}')
 
