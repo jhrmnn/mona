@@ -15,7 +15,7 @@ aims = AimsTask(DirBashExecutor(app, cellar))
 @app.route('main')
 async def main() -> List[float]:
     dists = [3.3, 4, 5.2]
-    return await collect((get_ene(dist) for dist in dists), nan)
+    return await collect(*(get_ene(dist) for dist in dists), nan)
 
 
 async def get_ene(dist: float) -> float:

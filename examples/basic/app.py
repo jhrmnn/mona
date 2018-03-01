@@ -22,7 +22,7 @@ async def main() -> int:
         symlinks=[('symlink', 'addition')],
         label='calc'
     )
-    return (await collect([process(task_process['run.out'], label='main')]))[0]  # type: ignore
+    return (await collect(process(task_process['run.out'], label='main')))[0]  # type: ignore
 
 
 if __name__ == '__main__':

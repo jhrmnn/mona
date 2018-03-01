@@ -12,7 +12,6 @@ from . import asyncio as _asyncio
 
 from typing import (
     Any, Dict, List, Optional, Callable, Awaitable, Iterator, TypeVar, overload,
-    Iterable,
 )
 
 _T = TypeVar('_T')
@@ -28,14 +27,14 @@ class UnfinishedTask(Exception):
 
 
 @overload
-async def collect(coros: Iterable[Awaitable[_T]]) -> List[Optional[_T]]: ...
+async def collect(*coros: Awaitable[_T]) -> List[Optional[_T]]: ...
 
 
 @overload
-async def collect(coros: Iterable[Awaitable[_T]], unfinished: _T) -> List[_T]: ...
+async def collect(*coros: Awaitable[_T], unfinished: _T) -> List[_T]: ...
 
 
-async def collect(coros, unfinished=None):  # type: ignore
+async def collect(*coros, unfinished=None):  # type: ignore
     results = await _asyncio.gather(*coros, returned_exception=UnfinishedTask)
     return [unfinished if isinstance(r, UnfinishedTask) else r for r in results]
 
