@@ -54,7 +54,6 @@ class Caf(Hookable):
     def __init__(self, cafdir: Path = None) -> None:
         super().__init__()
         self.cafdir = cafdir.resolve() if cafdir else CAFDIR
-        self.paths: List[str] = []
         self._routes: Dict[str, RouteFunc] = OrderedDict()
         self._executors: Dict[str, Executor] = {}
         self._ctx: Optional[Context] = None

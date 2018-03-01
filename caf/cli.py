@@ -46,6 +46,7 @@ class CommandContext:
         self.config = ConfigParser()
         self.config.read([
             CAFDIR/'config.ini',
+            'caf.ini',
             Path('~/.config/caf/config.ini').expanduser()
         ])
         self.out = Path('build')
@@ -198,8 +199,7 @@ def init(ctx: CommandContext) -> None:
 ])
 def conf(ctx: CommandContext, routes: List[str] = None) -> Any:
     Scheduler(ctx.cellar)
-    if not routes:
-        routes = list(ctx.app._routes.keys())
+    routes = routes or ctx.config.get('cli', 'routes', fallback='').split()
     with ctx.app.context(readonly=False):
         return ctx.app.get(*routes)
 
@@ -218,8 +218,7 @@ def _get_tmpdir(hashid: Hash) -> Iterator[Path]:
 ])
 def run(ctx: CommandContext, patterns: List[str] = None, limit: int = None,
         jobs: int = 1, routes: List[str] = None) -> None:
-    if not routes:
-        routes = list(ctx.app._routes.keys())
+    routes = routes or ctx.config.get('cli', 'routes', fallback='').split()
     ctx.cellar.register_hook('tmpdir')(_get_tmpdir)
     tmpdir = ctx.config.get('core', 'tmpdir', fallback='') or None
     scheduler = Scheduler(ctx.cellar, tmpdir)
@@ -504,7 +503,7 @@ def list_tasks(ctx: CommandContext,
 def status(ctx: CommandContext, patterns: List[str] = None, incomplete: bool = False) -> None:
     """Print number of initialized, running and finished tasks."""
     scheduler = Scheduler(ctx.cellar)
-    patterns = patterns or ctx.app.paths
+    patterns = patterns or ctx.config.get('cli', 'paths', fallback='').split()
     colors = 'yellow green cyan red normal'.split()
     print('number of {} tasks:'.format('/'.join(
         colstr(s, color) for s, color in zip(
