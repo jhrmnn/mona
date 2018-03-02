@@ -49,7 +49,8 @@ class CLI:
         if not argv:
             raise CLIError(self.parser, self.parser.format_help().strip())
         return {
-            k: v for k, v in vars(self.parser.parse_args(argv)).items() if v
+            k: v for k, v in vars(self.parser.parse_args(argv)).items()
+            if v is not None
         }
 
     def run(self, *args: Any, argv: List[str]) -> Any:
