@@ -15,18 +15,26 @@ from .Glob import match_glob
 from .Logging import error, debug
 
 
+class DispatcherStopped(Exception):
+    pass
+
+
 class Dispatcher:
     def __init__(self, app: Caf, scheduler: Scheduler, n: int,
                  patterns: List[str] = None, limit: int = None) -> None:
         self._sem = asyncio.Semaphore(n)
         self._patterns = patterns
         self._limit = limit
+        self._nexecuted = 0
         app.register_hook('dispatch')(self._wrap)
         self._scheduler = scheduler
         self._scheduler._db.isolation_level = None
 
     def _wrap(self, exe: Executor, label: str) -> Executor:
         async def dispatched_executor(inp: bytes) -> bytes:
+            if self._limit is not None and self._nexecuted >= self._limit:
+                msg = f'{get_timestamp()}: {self._nexecuted} tasks ran, quitting'
+                raise DispatcherStopped(msg)
             if self._patterns and not any(
                     match_glob(label, patt) for patt in self._patterns):
                 raise UnfinishedTask()
@@ -70,6 +78,7 @@ class Dispatcher:
                 self._sem.release()
                 raise UnfinishedTask()
             else:
+                self._nexecuted += 1
                 shutil.rmtree(self._scheduler._tmpdirs.pop(hashid))
                 self._scheduler.task_done(hashid)
                 print(f'{get_timestamp()}: {label} finished successfully')

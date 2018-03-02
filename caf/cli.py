@@ -30,7 +30,7 @@ from .argparse_cli import Arg, CLIError
 from .cellar import Cellar, Hash, TPath, State
 from .scheduler import RemoteScheduler, Scheduler
 from .Announcer import Announcer
-from .dispatch import Dispatcher
+from .dispatch import Dispatcher, DispatcherStopped
 
 
 class NoAppFoundError(Exception):
@@ -226,7 +226,10 @@ def run(ctx: CommandContext, patterns: List[str] = None, limit: int = None,
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
     with ctx.app.context(executing=True, readonly=False):
-        ctx.app.get(*routes)
+        try:
+            ctx.app.get(*routes)
+        except DispatcherStopped as e:
+            print(e.args[0])
 
 
 @cli.command([
