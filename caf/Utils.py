@@ -44,6 +44,24 @@ def config_group(config: ConfigParser, group: str) \
             yield m['member'], section
 
 
+class Shuffler:
+    def __init__(self, n: int) -> None:
+        self._idx = random.sample(range(n), n)
+
+    def shuffle(self, iterable: Iterable[_T]) -> List[_T]:
+        lst = list(iterable)
+        assert len(lst) == len(self._idx)
+        return [lst[i] for i in self._idx]
+
+    def deshuffle(self, iterable: Iterable[_T]) -> List[_T]:
+        lst = list(iterable)
+        assert len(lst) == len(self._idx)
+        deshuffled: List[_T] = len(self._idx)*[None]  # type: ignore
+        for i, x in zip(self._idx, lst):
+            deshuffled[i] = x
+        return deshuffled
+
+
 def get_timestamp() -> str:
     return datetime.now().isoformat(timespec='seconds')
 
