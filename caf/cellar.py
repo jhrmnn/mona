@@ -12,7 +12,7 @@ from itertools import chain
 from enum import IntEnum
 from contextlib import contextmanager
 
-from .Logging import info
+from .Logging import info, warn
 from .Utils import make_nonwritable, get_timestamp, Hash, get_hash
 from .Glob import match_glob
 from .app import Caf, CAFDIR, Executor, UnfinishedTask
@@ -552,7 +552,10 @@ class Cellar(Hookable, WithDB):
             else:
                 symlink_to(Path(hs)/source, path/target)
         for target, filehash in (task.outputs or {}).items():
-            copier(self.get_file(filehash), path/target)
+            try:
+                copier(self.get_file(filehash), path/target)
+            except FileNotFoundError:
+                warn(f'File {str(path/target)!r} is missing from cellar.')
             all_files.append(target)
         return all_files
 
