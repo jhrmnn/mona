@@ -215,14 +215,15 @@ def _get_tmpdir(hashid: Hash) -> Iterator[Path]:
     Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be run'),
     Arg('-n', '--jobs', type=int, help='Number of parallel tasks [default: 1]'),
     Arg('-l', '--limit', type=int, help='Limit number of tasks to N'),
+    Arg('--maxerror', type=int, help='Number of errors in row to quit [default: 5]'),
 ])
 def run(ctx: CommandContext, patterns: List[str] = None, limit: int = None,
-        jobs: int = 1, routes: List[str] = None) -> None:
+        jobs: int = 1, routes: List[str] = None, maxerror: int = 5) -> None:
     routes = routes or ctx.config.get('cli', 'routes', fallback='').split()
     ctx.cellar.register_hook('tmpdir')(_get_tmpdir)
     tmpdir = ctx.config.get('core', 'tmpdir', fallback='') or None
     scheduler = Scheduler(ctx.cellar, tmpdir)
-    Dispatcher(ctx.app, scheduler, jobs, patterns, limit)
+    Dispatcher(ctx.app, scheduler, jobs, patterns, limit, maxerror)
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGXCPU, sig_handler)
     with ctx.app.context(executing=True, readonly=False):

@@ -21,11 +21,14 @@ class DispatcherStopped(Exception):
 
 class Dispatcher:
     def __init__(self, app: Caf, scheduler: Scheduler, n: int,
-                 patterns: List[str] = None, limit: int = None) -> None:
+                 patterns: List[str] = None, limit: int = None,
+                 maxerror: int = None) -> None:
         self._sem = asyncio.Semaphore(n)
         self._patterns = patterns
         self._limit = limit
+        self._maxerror = maxerror
         self._nexecuted = 0
+        self._nerror = 0
         app.register_hook('dispatch')(self._wrap)
         self._scheduler = scheduler
         self._scheduler._db.isolation_level = None
@@ -34,6 +37,9 @@ class Dispatcher:
         async def dispatched_executor(inp: bytes) -> bytes:
             if self._limit is not None and self._nexecuted >= self._limit:
                 msg = f'{get_timestamp()}: {self._nexecuted} tasks ran, quitting'
+                raise DispatcherStopped(msg)
+            if self._maxerror is not None and self._nerror >= self._maxerror:
+                msg = f'{get_timestamp()}: {self._nerror} errors in row, quitting'
                 raise DispatcherStopped(msg)
             if self._patterns and not any(
                     match_glob(label, patt) for patt in self._patterns):
@@ -72,6 +78,7 @@ class Dispatcher:
                 print(f'{get_timestamp()}: {label} was interrupted')
                 raise
             except subprocess.CalledProcessError as e:
+                self._nerror += 1
                 print(e)
                 self._scheduler.task_error(hashid)
                 print(f'{get_timestamp()}: {label} finished with error')
@@ -79,6 +86,7 @@ class Dispatcher:
                 raise UnfinishedTask()
             else:
                 self._nexecuted += 1
+                self._nerror = 0
                 shutil.rmtree(self._scheduler._tmpdirs.pop(hashid))
                 self._scheduler.task_done(hashid)
                 print(f'{get_timestamp()}: {label} finished successfully')
