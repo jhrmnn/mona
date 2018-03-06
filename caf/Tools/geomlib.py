@@ -214,13 +214,13 @@ class Molecule(Sized, Iterable[Atom]):
 
     def write(self, filename: str) -> None:
         ext = os.path.splitext(filename)[1]
-        if ext == 'xyz':
+        if ext == '.xyz':
             fmt = 'xyz'
-        if ext == 'xyzc':
+        elif ext == '.xyzc':
             fmt = 'xyzc'
-        elif ext == 'aims' or os.path.basename(filename) == 'geometry.in':
+        elif ext == '.aims' or os.path.basename(filename) == 'geometry.in':
             fmt = 'aims'
-        elif ext == 'mopac':
+        elif ext == '.mopac':
             fmt = 'mopac'
         with open(filename, 'w') as f:
             self.dump(f, fmt)
