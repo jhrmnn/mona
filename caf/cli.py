@@ -211,8 +211,8 @@ def _get_tmpdir(hashid: Hash) -> Iterator[Path]:
 
 
 @cli.command([
-    Arg('-r', '--route', dest='routes', metavar='ROUTE', action='append', help='Routes to run'),
-    Arg('patterns', metavar='PATTERN', nargs='*', help='Tasks to be run'),
+    Arg('-p', '--pattern', dest='patterns', metavar='PATTERN', action='append', help='Tasks to be executed'),
+    Arg('routes', metavar='ROUTE', nargs='*', help='Routes to be run'),
     Arg('-n', '--jobs', type=int, help='Number of parallel tasks [default: 1]'),
     Arg('-l', '--limit', type=int, help='Limit number of tasks to N'),
     Arg('--maxerror', type=int, help='Number of errors in row to quit [default: 5]'),

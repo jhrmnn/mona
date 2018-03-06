@@ -101,7 +101,7 @@ class CLI:
         for name, item in clidef:
             subparser = subparsers.add_parser(
                 name,
-                formatter_class=parser.formatter_class  # type: ignore
+                formatter_class=parser.formatter_class
             )
             if isinstance(item, list):
                 self._add_commands(subparser, item)
