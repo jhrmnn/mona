@@ -155,6 +155,29 @@ class Molecule(Sized, Iterable[Atom]):
     def centered(self: _M) -> _M:
         return self.shifted(-self.cms)
 
+    def rotated(self: _M, axis: Union[str, int] = None, phi: float = None,
+                center: Union['np.ndarray', Vec] = None,
+                rotmat: 'np.ndarray' = None) -> _M:
+        if rotmat is None:
+            assert axis and phi
+            phi = phi*np.pi/180
+            rotmat = np.array([
+                1, 0, 0,
+                0, np.cos(phi), -np.sin(phi),
+                0, np.sin(phi), np.cos(phi)
+            ]).reshape(3, 3)
+            if isinstance(axis, str):
+                shift = {'x': 0, 'y': 1, 'z': 2}[axis]
+            else:
+                shift = axis
+            for i in [0, 1]:
+                rotmat = np.roll(rotmat, shift, i)
+        center = np.array(center) if center else self.cms
+        m = self.copy()
+        for atom in m:
+            atom.coord = tuple(center+rotmat.dot(atom.coord-center))  # type: ignore
+        return m
+
     @property
     def centers(self) -> Iterator[Atom]:
         yield from self._atoms
@@ -272,6 +295,16 @@ class Crystal(Molecule):
             [atom.copy() for atom in self._atoms],
             self.lattice.copy()
         )
+
+    def rotated(self, axis: Union[str, int] = None, phi: float = None,
+                center: Union['np.ndarray', Vec] = None,
+                rotmat: 'np.ndarray' = None) -> 'Crystal':
+        assert center is None
+        g = super().rotated(axis, phi, (0, 0, 0), rotmat)
+        m = Molecule.from_coords(['_']*3, self.lattice)
+        m = m.rotated(axis, phi, (0, 0, 0), rotmat)
+        g.lattice = m.coords
+        return g
 
     @property
     def abc(self) -> 'np.ndarray':
