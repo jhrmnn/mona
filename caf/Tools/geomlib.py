@@ -10,7 +10,7 @@ from collections import OrderedDict
 
 from typing import (
     List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, Union, Dict, Any,
-    TYPE_CHECKING
+    TYPE_CHECKING, TypeVar, Type
 )
 
 if TYPE_CHECKING:
@@ -27,6 +27,7 @@ specie_data = OrderedDict(
 bohr = 0.52917721092
 
 Vec = Tuple[float, float, float]
+_M = TypeVar('_M', bound='Molecule')
 
 
 _string_cache: Dict[Any, str] = {}
@@ -35,7 +36,7 @@ _string_cache: Dict[Any, str] = {}
 class Atom:
     def __init__(self, specie: str, coord: Vec, ghost: bool = False) -> None:
         self.specie = specie
-        self.coord = coord
+        self.coord: Vec = tuple(coord)  # type: ignore
         self.ghost = ghost
 
     @property
@@ -64,7 +65,8 @@ class Molecule(Sized, Iterable[Atom]):
         self._atoms = atoms
 
     @classmethod
-    def from_coords(cls, species: List[str], coords: List[Vec]) -> 'Molecule':
+    def from_coords(cls: Type[_M], species: List[str], coords: List[Vec]
+                    ) -> _M:
         return cls([Atom(sp, coord) for sp, coord in zip(species, coords)])
 
     @property
@@ -136,17 +138,19 @@ class Molecule(Sized, Iterable[Atom]):
             return self[0].number
         return hash(tuple(np.round(sorted(np.linalg.eigvalsh(self.inertia)), 3)))
 
-    def shifted(self, delta: Union[Vec, 'np.ndarray']) -> 'Molecule':
+    def shifted(self: _M, delta: Union[Vec, 'np.ndarray']) -> _M:
         m = self.copy()
         for atom in m:
             c = atom.coord
             atom.coord = (c[0]+delta[0], c[1]+delta[1], c[2]+delta[2])
         return m
 
-    def __add__(self, other: object) -> 'Molecule':
+    def __add__(self: _M, other: object) -> _M:
         if not isinstance(other, Molecule):
-            return NotImplemented  # type:ignore
-        return Molecule(self._atoms + other._atoms)
+            return NotImplemented
+        geom = self.copy()
+        geom._atoms.extend(other.copy())
+        return geom
 
     @property
     def centers(self) -> Iterator[Atom]:
@@ -199,10 +203,10 @@ class Molecule(Sized, Iterable[Atom]):
         else:
             raise ValueError("Unknown format: '{}'".format(fmt))
 
-    def copy(self) -> 'Molecule':
-        return Molecule([atom.copy() for atom in self._atoms])
+    def copy(self: _M) -> _M:
+        return type(self)([atom.copy() for atom in self._atoms])
 
-    def ghost(self) -> 'Molecule':
+    def ghost(self: _M) -> _M:
         m = self.copy()
         for atom in m:
             atom.ghost = True
@@ -224,7 +228,7 @@ class Molecule(Sized, Iterable[Atom]):
 
 class Crystal(Molecule):
     def __init__(self, atoms: List[Atom], lattice: List[Vec]) -> None:
-        Molecule.__init__(self, atoms)
+        super().__init__(atoms)
         self.lattice = lattice
 
     @classmethod
