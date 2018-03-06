@@ -152,6 +152,9 @@ class Molecule(Sized, Iterable[Atom]):
         geom._atoms.extend(other.copy())
         return geom
 
+    def centered(self: _M) -> _M:
+        return self.shifted(-self.cms)
+
     @property
     def centers(self) -> Iterator[Atom]:
         yield from self._atoms
@@ -293,6 +296,10 @@ class Crystal(Molecule):
         ]
         lattice = [(x, y, z) for x, y, z in abc*np.array(ns)[:, None]]
         return Crystal.from_coords(species, coords, lattice)
+
+    def normalized(self) -> 'Crystal':
+        xyz = np.mod(self.xyz@np.linalg.inv(self.lattice), 1)@self.lattice
+        return Crystal.from_coords(self.species, xyz, self.lattice.copy())
 
 
 def get_vec(ws: List[str]) -> Vec:
