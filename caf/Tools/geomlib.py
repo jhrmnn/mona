@@ -33,6 +33,10 @@ _M = TypeVar('_M', bound='Molecule')
 _string_cache: Dict[Any, str] = {}
 
 
+def no_neg_zeros(r: Any) -> Any:
+    return [0. if abs(x) < 1e-8 else x for x in r]
+
+
 class Atom:
     def __init__(self, specie: str, coord: Vec, ghost: bool = False) -> None:
         self.specie = specie
@@ -206,13 +210,14 @@ class Molecule(Sized, Iterable[Atom]):
             f.write('{}\n'.format(len(self)))
             f.write('Formula: {}\n'.format(self.formula))
             for specie, coord in self.items():
-                f.write('{:>2} {}\n'.format(
-                    specie, ' '.join('{:15.8}'.format(x) for x in coord)
-                ))
+                f.write('{:>2} {}\n'.format(specie, ' '.join(
+                    '{:15.8}'.format(x) for x in no_neg_zeros(coord)
+                )))
         elif fmt == 'aims':
             for atom in self.centers:
                 specie, r = atom.specie, atom.coord
                 key = (specie, r, atom.ghost, fmt)
+                r = no_neg_zeros(r)
                 try:
                     f.write(_string_cache[key])
                 except KeyError:
@@ -224,7 +229,8 @@ class Molecule(Sized, Iterable[Atom]):
             f.write('* Formula: {}\n'.format(self.formula))
             for specie, coord in self.items():
                 f.write('{:>2} {}\n'.format(
-                    specie, ' '.join('{:15.8} 1'.format(x) for x in coord)
+                    specie,
+                    ' '.join('{:15.8} 1'.format(x) for x in no_neg_zeros(coord))
                 ))
         else:
             raise ValueError("Unknown format: '{}'".format(fmt))
@@ -269,13 +275,15 @@ class Crystal(Molecule):
         if fmt == '':
             f.write(repr(self))
         elif fmt == 'aims':
-            for label, (x, y, z) in zip('abc', self.lattice):
+            for label, r in zip('abc', self.lattice):
+                x, y, z = no_neg_zeros(r)
                 f.write(f'lattice_vector {x:15.8f} {y:15.8f} {z:15.8f}\n')
             super().dump(f, fmt)
         elif fmt == 'vasp':
             f.write(f'Formula: {self.formula}\n')
             f.write(f'{1:15.8f}\n')
-            for x, y, z in self.lattice:
+            for r in self.lattice:
+                x, y, z = no_neg_zeros(r)
                 f.write(f'{x:15.8f} {y:15.8f} {z:15.8f}\n')
             species: Dict[str, List[Atom]] = OrderedDict((sp, []) for sp in set(self.species))
             f.write(' '.join(species.keys()) + '\n')
@@ -284,7 +292,7 @@ class Crystal(Molecule):
             f.write(' '.join(str(len(atoms)) for atoms in species.values()) + '\n')
             f.write('cartesian\n')
             for atom in chain(*species.values()):
-                r = atom.coord
+                r = no_neg_zeros(atom.coord)
                 s = f'{r[0]:15.8f} {r[1]:15.8f} {r[2]:15.8f}\n'
                 f.write(s)
         else:
