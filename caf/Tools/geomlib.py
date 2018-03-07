@@ -339,7 +339,9 @@ class Crystal(Molecule):
         return Crystal.from_coords(species, coords, lattice)
 
     def normalized(self) -> 'Crystal':
-        xyz = np.mod(self.xyz@np.linalg.inv(self.lattice), 1)@self.lattice
+        xyz = (
+            np.mod(self.xyz@np.linalg.inv(self.lattice)+1e-10, 1)-1e-10
+        )@self.lattice
         return Crystal.from_coords(self.species, xyz, self.lattice.copy())
 
 
