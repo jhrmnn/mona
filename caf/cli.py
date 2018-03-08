@@ -273,12 +273,15 @@ def make(ctx: CommandContext,
 
 
 @cli.command([
-    Arg('profile', metavar='PROFILE', help='Use worker at ~/.config/caf/worker_PROFILE'),
+    Arg('profile', metavar='PROFILE',
+        help='Use worker at ~/.config/caf/worker_PROFILE'),
     Arg('-j', '--jobs', type=int, help='Number of launched workers [default: 1]'),
+    Arg('-v', '--var', dest='envvars', action='append', metavar='VAR',
+        help='Environment variable for worker profile'),
     Arg('args', metavar='...', nargs=argparse.REMAINDER, help='Arguments for make')
 ])
 def dispatch(ctx: CommandContext, profile: str, args: List[str] = None,
-             jobs: int = 1) -> None:
+             jobs: int = 1, envvars: List[str] = None) -> None:
     """Dispatch make to external workers."""
     args = args or []
     try:
@@ -289,7 +292,10 @@ def dispatch(ctx: CommandContext, profile: str, args: List[str] = None,
     cmd = [str(worker)] + args
     for _ in range(jobs):
         try:
-            sp.run(cmd, check=True)
+            sp.run(cmd, check=True, env={
+                **os.environ,
+                **dict(x.split('=', 1) for x in envvars or [])  # type: ignore
+            })
         except sp.CalledProcessError:
             error(f'Running {worker} failed.')
 
