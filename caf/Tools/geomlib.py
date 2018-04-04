@@ -7,6 +7,7 @@ from io import StringIO
 import pkg_resources
 import csv
 from collections import OrderedDict
+from copy import deepcopy
 
 from typing import (
     List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, Union, Dict, Any,
@@ -38,10 +39,10 @@ def no_neg_zeros(r: Any) -> Any:
 
 
 class Atom:
-    def __init__(self, specie: str, coord: Vec, ghost: bool = False) -> None:
+    def __init__(self, specie: str, coord: Vec, **flags: Any) -> None:
         self.specie = specie
         self.coord: Vec = tuple(coord)  # type: ignore
-        self.ghost = ghost
+        self.flags = flags
 
     @property
     def mass(self) -> float:
@@ -58,7 +59,7 @@ class Atom:
         return r
 
     def copy(self) -> 'Atom':
-        return Atom(self.specie, self.coord, self.ghost)
+        return Atom(self.specie, self.coord, **deepcopy(self.flags))
 
 
 class Molecule(Sized, Iterable[Atom]):
@@ -187,10 +188,10 @@ class Molecule(Sized, Iterable[Atom]):
         yield from self._atoms
 
     def __iter__(self) -> Iterator[Atom]:
-        yield from (atom for atom in self._atoms if not atom.ghost)
+        yield from (atom for atom in self._atoms if not atom.flags.get('ghost'))
 
     def __len__(self) -> int:
-        return len([atom for atom in self._atoms if not atom.ghost])
+        return len([atom for atom in self._atoms if not atom.flags.get('ghost')])
 
     def __format__(self, fmt: str) -> str:
         fp = StringIO()
@@ -216,12 +217,13 @@ class Molecule(Sized, Iterable[Atom]):
         elif fmt == 'aims':
             for atom in self.centers:
                 specie, r = atom.specie, atom.coord
-                key = (specie, r, atom.ghost, fmt)
+                ghost = atom.flags.get('ghost', False)
+                key = (specie, r, ghost, fmt)
                 r = no_neg_zeros(r)
                 try:
                     f.write(_string_cache[key])
                 except KeyError:
-                    kind = 'atom' if not atom.ghost else 'empty'
+                    kind = 'atom' if not ghost else 'empty'
                     s = f'{kind} {r[0]:15.8f} {r[1]:15.8f} {r[2]:15.8f} {specie:>2}\n'
                     f.write(s)
                     _string_cache[key] = s
@@ -241,7 +243,7 @@ class Molecule(Sized, Iterable[Atom]):
     def ghost(self: _M) -> _M:
         m = self.copy()
         for atom in m:
-            atom.ghost = True
+            atom.flags['ghost'] = True
         return m
 
     def write(self, filename: str) -> None:
