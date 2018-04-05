@@ -216,7 +216,7 @@ class Molecule(Sized, Iterable[Atom]):
                     '{:15.8}'.format(x) for x in no_neg_zeros(coord)
                 )))
         elif fmt == 'aims':
-            for atom in self.centers:
+            for i, atom in enumerate(self.centers):
                 specie, r = atom.specie, atom.coord
                 ghost = atom.flags.get('ghost', False)
                 key = (specie, r, ghost, fmt)
@@ -228,6 +228,8 @@ class Molecule(Sized, Iterable[Atom]):
                     s = f'{kind} {r[0]:15.8f} {r[1]:15.8f} {r[2]:15.8f} {specie:>2}\n'
                     f.write(s)
                     _string_cache[key] = s
+                for con in self.flags.get('constrains', {}).get(i, []):
+                    f.write(f'constrain_relaxation {con}\n')
         elif fmt == 'mopac':
             f.write('* Formula: {}\n'.format(self.formula))
             for specie, coord in self.items():
@@ -281,6 +283,8 @@ class Crystal(Molecule):
             for label, r in zip('abc', self.lattice):
                 x, y, z = no_neg_zeros(r)
                 f.write(f'lattice_vector {x:15.8f} {y:15.8f} {z:15.8f}\n')
+                for con in self.flags.get('constrains', {}).get(label, []):
+                    f.write(f'constrain_relaxation {con}\n')
             super().dump(f, fmt)
         elif fmt == 'vasp':
             f.write(f'Formula: {self.formula}\n')
