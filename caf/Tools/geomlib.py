@@ -63,11 +63,12 @@ class Atom:
 
 
 class Molecule(Sized, Iterable[Atom]):
-    def __init__(self, atoms: List[Atom]) -> None:
+    def __init__(self, atoms: List[Atom], **flags: Any) -> None:
         global np
         if np is None:
             import numpy as np
         self._atoms = atoms
+        self.flags = flags
 
     @classmethod
     def from_coords(cls: Type[_M], species: List[str], coords: List[Vec]
@@ -261,8 +262,8 @@ class Molecule(Sized, Iterable[Atom]):
 
 
 class Crystal(Molecule):
-    def __init__(self, atoms: List[Atom], lattice: List[Vec]) -> None:
-        super().__init__(atoms)
+    def __init__(self, atoms: List[Atom], lattice: List[Vec], **flags: Any) -> None:
+        super().__init__(atoms, **flags)
         self.lattice = lattice
 
     @classmethod
