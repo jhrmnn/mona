@@ -166,7 +166,7 @@ def run_cli(args: List[str]) -> None:
         error(f'Remote {remote_spec!r} is not defined')
     ctx.mod_remote_args(rargs, kwargs)
     ctx.log(args)
-    if rargs[0] in ['conf', 'make', 'dispatch']:
+    if rargs[0] in ['init', 'conf', 'make', 'dispatch']:
         for remote in remotes:
             remote.update(CAFDIR.parent)
     if rargs[0] in ['make', 'dispatch']:
