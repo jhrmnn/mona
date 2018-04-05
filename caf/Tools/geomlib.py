@@ -71,9 +71,9 @@ class Molecule(Sized, Iterable[Atom]):
         self.flags = flags
 
     @classmethod
-    def from_coords(cls: Type[_M], species: List[str], coords: List[Vec]
-                    ) -> _M:
-        return cls([Atom(sp, coord) for sp, coord in zip(species, coords)])
+    def from_coords(cls: Type[_M], species: List[str], coords: List[Vec],
+                    **flags: Any) -> _M:
+        return cls([Atom(sp, coord) for sp, coord in zip(species, coords)], **flags)
 
     @property
     def species(self) -> List[str]:
@@ -270,10 +270,11 @@ class Crystal(Molecule):
 
     @classmethod
     def from_coords(cls, species: List[str], coords: List[Vec],  # type: ignore
-                    lattice: List[Vec]) -> 'Crystal':
+                    lattice: List[Vec], **flags) -> 'Crystal':
         return cls(
             [Atom(sp, coord) for sp, coord in zip(species, coords)],
-            lattice
+            lattice,
+            **flags
         )
 
     def dump(self, f: IO[str], fmt: str) -> None:
