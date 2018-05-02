@@ -27,7 +27,7 @@ from .Logging import (
 from .Remote import Remote, Local
 from .Utils import config_group, groupby
 from .argparse_cli import Arg, CLIError
-from .cellar import Cellar, Hash, TPath, State
+from .cellar import Cellar, Hash, TPath, State, Cache
 from .scheduler import RemoteScheduler, Scheduler
 from .Announcer import Announcer
 from .dispatch import Dispatcher, DispatcherStopped
@@ -194,12 +194,20 @@ def init(ctx: CommandContext) -> None:
             (CAFDIR/'objects').mkdir()
 
 
+def _tasks_repl(cache: Cache, n_new_files: int) -> None:
+    info(f'Will store {len(cache.tasks)} new tasks and {n_new_files} new files.')
+    if cache.tasks:
+        if input('Continue? ["y" to confirm]: ') != 'y':
+            sys.exit(1)
+
+
 @cli.command([
     Arg('routes', metavar='ROUTE', nargs='*', help='Route to schedule'),
 ])
 def conf(ctx: CommandContext, routes: List[str] = None) -> Any:
     Scheduler(ctx.cellar)
     routes = routes or ctx.config.get('cli', 'routes', fallback='').split()
+    ctx.cellar.register_hook('tasksrepl')(_tasks_repl)
     with ctx.app.context(readonly=False):
         return ctx.app.get(*routes)
 

@@ -5,7 +5,6 @@ from pathlib import Path
 import json
 import sqlite3
 from collections import defaultdict
-import sys
 import shutil
 from textwrap import dedent
 from itertools import chain
@@ -281,9 +280,8 @@ class Cellar(Hookable, WithDB):
             if not (self.objects/hs[:2]/hs[2:]).is_file()
         ))
         info(f'Will store {len(cache.tasks)} new tasks and {len(new_files)} new files.')
-        if cache.tasks:
-            if input('Continue? ["y" to confirm]: ') != 'y':
-                sys.exit(1)
+        if self.has_hook('tasksrepl'):
+            self.get_hook('tasksrepl')(cache)
         now = get_timestamp()
         cur = self.execute('insert into builds values (?,?)', (None, now))
         buildid: int = cur.lastrowid
