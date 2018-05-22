@@ -416,6 +416,12 @@ def reset(ctx: CommandContext, patterns: List[str] = None, hard: bool = False,
 
 
 @cli.command()
+def list_routes(ctx: CommandContext) -> None:
+    """List routes."""
+    print(' '.join(ctx.app._routes))
+
+
+@cli.command()
 def list_profiles(ctx: CommandContext) -> None:
     """List profiles."""
     for p in Path.home().glob('.config/caf/worker_*'):
