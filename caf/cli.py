@@ -9,6 +9,8 @@ import sys
 import signal
 import argparse
 import subprocess as sp
+from io import StringIO
+from difflib import context_diff
 from configparser import ConfigParser
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Iterable, Iterator
@@ -31,6 +33,7 @@ from .cellar import Cellar, Hash, TPath, State, Cache
 from .scheduler import RemoteScheduler, Scheduler
 from .Announcer import Announcer
 from .dispatch import Dispatcher, DispatcherStopped
+from .executors import DictTask
 
 
 class NoAppFoundError(Exception):
@@ -194,11 +197,70 @@ def init(ctx: CommandContext) -> None:
             (CAFDIR/'objects').mkdir()
 
 
-def _tasks_repl(cache: Cache, n_new_files: int) -> None:
-    info(f'Will store {len(cache.tasks)} new tasks and {n_new_files} new files.')
-    if cache.tasks:
-        if input('Continue? ["y" to confirm]: ') != 'y':
-            sys.exit(1)
+def _task_to_str(execid: str, inp: bytes) -> str:
+    s: str
+    if execid.startswith('dir-'):
+        task: DictTask = json.loads(inp)
+        s = f'!{task["command"]}'
+        for filename, hs in task['inputs'].items():
+            s += f'\n{filename} {hs}'
+    else:
+        s = inp.decode()
+    return s
+
+
+def _tasks_repl(cellar: Cellar, cache: Cache) -> None:
+    if not cache.tasks:
+        return
+    query_msg = 'Continue? ["y" to confirm, "l" to list, "d" to diff, "f" to file]: '
+    while True:
+        answer = input(query_msg).split()
+        if not answer:
+            continue
+        cmd, *args = answer
+        if cmd == 'y':
+            return
+        elif cmd == 'l':
+            if not args:
+                for label, (hs, state) in cache.labels.items():
+                    if hs not in cache.tasks:
+                        continue
+                    print(label, hs, state)
+            elif len(args) == 1:
+                print(_task_to_str(*cache.tasks[cache.labels[args[0]][0]]))
+        elif cmd == 'd' and len(args) == 1:
+            hs = cache.labels[args[0]][0]
+            if hs in cache.tasks:
+                now = _task_to_str(*cache.tasks[hs])
+            else:
+                task_obj = cellar.get_task(hs)
+                now = _task_to_str(task_obj.execid, task_obj.data)  # type: ignore
+            target = Path(args[0])
+            tasks, targets = cellar.get_build()
+            try:
+                hs = next(hs for hs, tgt in targets if tgt == target)
+            except StopIteration:
+                before = ''
+            else:
+                task_obj = tasks[hs]
+                before = _task_to_str(task_obj.execid, task_obj.data)
+            sys.stdout.writelines(context_diff(
+                StringIO(before).readlines(),
+                StringIO(now).readlines()
+            ))
+            print()
+        elif cmd == 'd' and len(args) == 2:
+            before_now = []
+            for hs in args:  # type: ignore
+                if hs in cache.contents:
+                    contents = cache.contents[hs].decode()
+                else:
+                    contents = cellar.get_file(hs).read_text()
+                before_now.append(StringIO(contents).readlines())
+            sys.stdout.writelines(context_diff(*before_now))  # type: ignore
+            print()
+        else:
+            print('Incorrect answer')
 
 
 @cli.command([

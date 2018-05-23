@@ -51,7 +51,7 @@ state_colors: Dict[State, str] = {
 }
 
 sqlite3.register_converter('state', lambda x: State(int(x)))
-sqlite3.register_adapter(State, lambda state: cast(int, state.value))
+sqlite3.register_adapter(State, lambda state: state.value)
 
 
 class TaskObject:
@@ -281,7 +281,7 @@ class Cellar(Hookable, WithDB):
         ))
         info(f'Will store {len(cache.tasks)} new tasks and {len(new_files)} new files.')
         if self.has_hook('tasksrepl'):
-            self.get_hook('tasksrepl')(cache)
+            self.get_hook('tasksrepl')(self, cache)
         now = get_timestamp()
         cur = self.execute('insert into builds values (?,?)', (None, now))
         buildid: int = cur.lastrowid
