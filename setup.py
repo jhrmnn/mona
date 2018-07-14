@@ -11,6 +11,7 @@ setup(
     author_email='dev@janhermann.cz',
     license='Mozilla Public License 2.0',
     packages=find_packages(),
+    package_data={'caf.Tools': ['atom-data.csv']},
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
