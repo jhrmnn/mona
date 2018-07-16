@@ -279,9 +279,8 @@ class Cellar(Hookable, WithDB):
             hs for hs in file_hashes
             if not (self.objects/hs[:2]/hs[2:]).is_file()
         ))
-        info(f'Will store {len(cache.tasks)} new tasks and {len(new_files)} new files.')
         if self.has_hook('tasksrepl'):
-            self.get_hook('tasksrepl')(cache)
+            self.get_hook('tasksrepl')(cache, len(new_files))
         now = get_timestamp()
         cur = self.execute('insert into builds values (?,?)', (None, now))
         buildid: int = cur.lastrowid
