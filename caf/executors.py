@@ -8,7 +8,6 @@ import sys
 import inspect
 import pickle
 import os
-import re
 from textwrap import dedent
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -170,6 +169,13 @@ class DirBashExecutor(Executor, Generic[_U]):
 class DirPythonExecutor(DirBashExecutor[_U]):
     name = 'dir-python'
 
+    def __init__(self, app: Caf, store: FileStore[_U]) -> None:
+        super().__init__(app, store)
+        self._funcs: Dict[str, Callable] = {}
+
+    def __getitem__(self, key: str) -> Callable:
+        return self._funcs[key]
+
     async def create_process(self, cmd: str, **kwargs: Any
                              ) -> asyncio.subprocess.Process:
         return await asyncio.create_subprocess_exec(
@@ -179,15 +185,17 @@ class DirPythonExecutor(DirBashExecutor[_U]):
 
     def function_task(self, func: Callable[..., Any]
                       ) -> Callable[..., Any]:
-        func_code = inspect.getsource(func).split('\n', 1)[1]
-        func_code = re.sub(r'\s*#.*$', '', func_code, flags=re.MULTILINE)
         signature = inspect.signature(func)
         positional = [
             p.name for p in signature.parameters.values() if p.default is p.empty
         ]
+        func_pickled = None
 
         async def task(*args: InputTarget, label: str = None, **kwargs: Any
                        ) -> Any:
+            nonlocal func_pickled
+            if func_pickled is None:
+                func_pickled = pickle.dumps(func)
             assert len(args) == len(positional)
             arglist = ', '.join(repr(p) for p in positional)
             for kw, val in kwargs.items():
@@ -196,17 +204,15 @@ class DirPythonExecutor(DirBashExecutor[_U]):
                 """\
                 import pickle
 
-                {func_code}
-                result = {func_name}({arglist})
+                with open('_func.pickle', 'rb') as f:
+                    func = pickle.load(f)
+                result = func({arglist})
                 with open('_result.pickle', 'bw') as f:
                     pickle.dump(result, f)"""
-            ).format(
-                func_code=func_code,
-                func_name=func.__name__,
-                arglist=arglist,
-            )
+            ).format(arglist=arglist)
             inputs = list(zip(positional, args))
             inputs.append(('_exec.py', task_code.encode()))
+            inputs.append(('_func.pickle', func_pickled))
             outputs = await super(DirPythonExecutor, self).task(
                 'python3 _exec.py', inputs, label=label
             )
@@ -214,4 +220,6 @@ class DirPythonExecutor(DirBashExecutor[_U]):
             if result is None:
                 return outputs
             return result
-        return task
+
+        self._funcs[func.__name__] = task
+        return func
