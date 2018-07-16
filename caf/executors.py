@@ -179,8 +179,11 @@ class DirPythonExecutor(DirBashExecutor[_U]):
     async def create_process(self, cmd: str, **kwargs: Any
                              ) -> asyncio.subprocess.Process:
         return await asyncio.create_subprocess_exec(
-            sys.executable, '_exec.py', **kwargs,
-            env={**os.environ, 'CAF_DIR': self._app.cafdir}
+            sys.executable, '_exec.py', **kwargs, env={
+                **os.environ,
+                'CAF_DIR': self._app.cafdir,
+                'PYTHONPATH': str(self._app.cafdir.parent),
+            }
         )
 
     def function_task(self, func: Callable[..., Any]
