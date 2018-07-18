@@ -7,13 +7,15 @@ import json
 import sys
 import inspect
 import pickle
+import re
+import inspect
 import os
 from textwrap import dedent
 from pathlib import Path
 from abc import ABC, abstractmethod
 
 from .app import Caf
-from .Utils import Map, Hash
+from .Utils import Map, Hash, get_hash
 
 from typing import (
     Dict, Sequence, Tuple, Type, TypeVar, Generic, Union, Any, Callable,
@@ -188,6 +190,9 @@ class DirPythonExecutor(DirBashExecutor[_U]):
 
     def function_task(self, func: Callable[..., Any]
                       ) -> Callable[..., Any]:
+        func_code = inspect.getsource(func).split('\n', 1)[1]
+        func_code = re.sub(r'\s*#.*$', '', func_code, flags=re.MULTILINE)
+        code_hash = get_hash(func_code)
         signature = inspect.signature(func)
         positional = [
             p.name for p in signature.parameters.values() if p.default is p.empty
@@ -204,7 +209,8 @@ class DirPythonExecutor(DirBashExecutor[_U]):
             for kw, val in kwargs.items():
                 arglist += f', {kw}={val!r}'
             task_code = dedent(
-                """\
+                f"""\
+                # function hash: {code_hash}
                 import pickle
 
                 with open('_func.pickle', 'rb') as f:
@@ -212,7 +218,7 @@ class DirPythonExecutor(DirBashExecutor[_U]):
                 result = func({arglist})
                 with open('_result.pickle', 'bw') as f:
                     pickle.dump(result, f)"""
-            ).format(arglist=arglist)
+            )
             inputs = list(zip(positional, args))
             inputs.append(('_exec.py', task_code.encode()))
             inputs.append(('_func.pickle', func_pickled))
