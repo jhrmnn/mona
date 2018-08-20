@@ -1,5 +1,8 @@
 from setuptools import setup, find_packages
-import fastentrypoints
+try:
+    import fastentrypoints  # noqa
+except ImportError:
+    pass
 
 
 setup(
