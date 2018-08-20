@@ -91,7 +91,7 @@ class Remote:
         info(f'Fetching from {self.host}...')
         tasks = {hashid: task for hashid, task in json.loads(self.command_output(
             ['printout'], inp='\n'.join(hashes)
-        )).items() if 'outputs' in task}
+        )).items() if task.get('outputs')}
         if not files:
             info(f'Fetched {len(tasks)}/{len(hashes)} task metadata')
             return tasks
