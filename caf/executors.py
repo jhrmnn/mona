@@ -9,6 +9,7 @@ import inspect
 import pickle
 import os
 import re
+from itertools import chain
 from textwrap import dedent
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -189,9 +190,10 @@ class DirPythonExecutor(DirBashExecutor[_U]):
         async def task(*args: InputTarget, label: str = None, **kwargs: Any
                        ) -> Any:
             assert len(args) == len(positional)
-            arglist = ', '.join(repr(p) for p in positional)
-            for kw, val in kwargs.items():
-                arglist += f', {kw}={val!r}'
+            arglist = ', '.join(chain(
+                (repr(p) for p in positional),
+                (f'{kw}={val!r}' for kw, val in kwargs.items()),
+            ))
             task_code = dedent(
                 """\
                 import pickle
