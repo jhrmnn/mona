@@ -6,6 +6,7 @@ import os
 from io import StringIO
 import pkg_resources
 import csv
+import json
 from collections import OrderedDict
 from copy import deepcopy
 
@@ -360,7 +361,10 @@ def get_vec(ws: List[str]) -> Vec:
 def load(fp: IO[str], fmt: str) -> Molecule:
     if fmt == 'xyz':
         n = int(fp.readline())
-        fp.readline()
+        try:
+            flags = json.loads(fp.readline())
+        except json.decoder.JSONDecodeError:
+            flags = {}
         species = []
         coords = []
         for _ in range(n):
