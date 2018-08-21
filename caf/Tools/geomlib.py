@@ -371,7 +371,7 @@ def load(fp: IO[str], fmt: str) -> Molecule:
             ws = fp.readline().split()
             species.append(ws[0])
             coords.append(get_vec(ws[1:4]))
-        return Molecule.from_coords(species, coords)
+        return Molecule.from_coords(species, coords, **flags)
     elif fmt == 'xyzc':
         n = int(fp.readline())
         lattice = []
