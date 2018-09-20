@@ -149,6 +149,29 @@ class Template(Future):
         return obj
 
 
+class Indexor(Future):
+    def __init__(self, task: 'Task', keys: List[Union[str, int]]) -> None:
+        super().__init__([task])
+        self._task = task
+        self._keys = keys
+        self._hashid = Hash('/'.join([task.hashid, *map(str, keys)]))
+        self.add_ready_callback(
+            lambda idx: idx.set_result(idx.resolve()))  # type: ignore
+
+    def __getitem__(self, key: Union[str, int]) -> 'Indexor':
+        return Indexor(self._task, self._keys + [key])
+
+    @property
+    def hashid(self) -> Hash:
+        return self._hashid
+
+    def resolve(self) -> Any:
+        obj = self._task.result()
+        for key in self._keys:
+            obj = obj[key]
+        return obj
+
+
 class Task(Future):
     _all_tasks: Dict[Hash, 'Task'] = {}
     _register: Optional[Callable[['Task'], None]] = None
@@ -172,6 +195,9 @@ class Task(Future):
         if self.done():
             dct['result'] = self.result()
         return get_repr('Task', dct)
+
+    def __getitem__(self, key: Union[str, int]) -> Indexor:
+        return Indexor(self, [key])
 
     @property
     def hashid(self) -> Hash:

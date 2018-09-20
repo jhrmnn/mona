@@ -43,6 +43,16 @@ def test_fibonacci2():
     assert caf.Session().eval(fib(10)) == 55
 
 
+def test_fibonacci3():
+    @caf.Rule
+    def fib(n):
+        if n < 2:
+            return [n]
+        return [add(fib(n-1)[0], fib(n-2)[0])]
+
+    assert caf.Session().eval(fib(10))[0] == 55
+
+
 def test_json_utils():
     class MyClass:
         def __init__(self, x):
