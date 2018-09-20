@@ -263,6 +263,7 @@ class Session:
         task.add_ready_callback(self._task_ready)
 
     def eval(self, task: Task) -> Any:
+        Task._all_tasks.clear()  # TODO: clean this up
         self._register_task(task)
         evaled_task = task
         with Task.registering(self._register_task):
