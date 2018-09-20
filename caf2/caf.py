@@ -43,6 +43,9 @@ class Future(ABC, Generic[_F]):
         self._done_callbacks: List[CallbackF] = []
         self._ready_callbacks: List[CallbackF] = []
 
+    def __repr__(self) -> str:
+        return self.hashid
+
     def ready(self) -> bool:
         return not self._pending
 
@@ -67,7 +70,7 @@ class Future(ABC, Generic[_F]):
     def dep_done(self, fut: 'Future') -> None:
         self._pending.remove(fut)
         if self.ready():
-            log.info(f'future ready: {self}')
+            log.debug(f'future ready: {self}')
             for callback in self._ready_callbacks:
                 callback(self)
 
@@ -79,7 +82,7 @@ class Future(ABC, Generic[_F]):
     def set_result(self, result: Any) -> None:
         assert self._result is FutureNotDone
         self._result = result
-        log.info(f'future done: {self}')
+        log.debug(f'future done: {self}')
         for fut in self._depants:
             fut.dep_done(self)
         for callback in self._done_callbacks:
@@ -93,17 +96,21 @@ class Future(ABC, Generic[_F]):
 
 class Template(Future):
     def __init__(self, jsonstr: str, futures: Iterable['Future']) -> None:
-        super().__init__(futures)
         self._jstr = jsonstr
+        self._hashid = Hash(f'(){get_hash(self._jstr)}')
+        log.info(f'{self._hashid} <= {self._jstr}')
+        super().__init__(futures)
         self._futs = {fut.hashid: fut for fut in futures}
         self.add_ready_callback(
             lambda tmpl: tmpl.set_result(tmpl.substitute()))  # type: ignore
-        self._hashid = get_hash(self._jstr)
-        self._hashid = Hash(f'templ:{get_hash(self._jstr)}')
 
-    def _loads(self, transform: Callable[[Future], Any] = lambda f: f) -> Any:
+    @property
+    def hashid(self) -> Hash:
+        return self._hashid
+
+    def substitute(self) -> Any:
         def decoder(dct: Any) -> Any:
-            return transform(self._futs[dct['hashid']])
+            return self._futs[dct['hashid']].result()
         return json.loads(
             self._jstr,
             classes={
@@ -111,17 +118,6 @@ class Template(Future):
             },
             cls=ClassJSONDecoder
         )
-
-    def __repr__(self) -> str:
-        obj = self._loads()
-        return get_repr('Template', {'obj': obj, 'done': self.done()})
-
-    @property
-    def hashid(self) -> Hash:
-        return self._hashid
-
-    def substitute(self) -> Any:
-        return self._loads(lambda f: f.result())
 
     @classmethod
     def ensure_future(cls, obj: Any) -> Any:
@@ -145,10 +141,11 @@ class Template(Future):
 
 class Indexor(Future):
     def __init__(self, task: 'Task', keys: List[Union[str, int]]) -> None:
+        self._hashid = Hash('/'.join([task.hashid, *map(str, keys)]))
+        log.info(self._hashid)
         super().__init__([task])
         self._task = task
         self._keys = keys
-        self._hashid = Hash('/'.join([task.hashid, *map(str, keys)]))
         self.add_ready_callback(
             lambda idx: idx.set_result(idx.resolve()))  # type: ignore
 
@@ -171,23 +168,12 @@ class Task(Future):
     _register: Optional[Callable[['Task'], None]] = None
 
     def __init__(self, hashid: Hash, f: Callable, *args: Future) -> None:
-        super().__init__(args)
         self._hashid = hashid
+        super().__init__(args)
         self._f = f
         self._args = args
         if Task._register:
             Task._register(self)
-        log.info(f'task created: {self}')
-
-    def __repr__(self) -> str:
-        dct = {
-            'fname': get_fullname(self._f),
-            'args': self._args,
-            'deps': self._pending,
-        }
-        if self.done():
-            dct['result'] = self.result()
-        return get_repr('Task', dct)
 
     def __getitem__(self, key: Union[str, int]) -> Indexor:
         return Indexor(self, [key])
@@ -198,7 +184,7 @@ class Task(Future):
 
     def run(self) -> None:
         assert self.ready()
-        log.info(f'task will run: {self}')
+        log.debug(f'task will run: {self}')
         args = [arg.result() for arg in self._args]
         result = Template.ensure_future(self._f(*args))
         if isinstance(result, Future):
@@ -215,6 +201,7 @@ class Task(Future):
         try:
             return cls._all_tasks[hashid]
         except KeyError:
+            log.info(f'{hashid} <= {hash_obj}')
             return cls._all_tasks.setdefault(hashid, Task(hashid, f, *args))
 
     @classmethod
@@ -235,9 +222,6 @@ class Task(Future):
 class Rule:
     def __init__(self, f: Callable) -> None:
         self._f = f
-
-    def __repr__(self) -> str:
-        return f'Rule({self._f!r})'
 
     def __call__(self, *args: Any) -> Task:
         return Task.create(self._f, *args)
@@ -265,10 +249,6 @@ class Session:
                 task = self._waiting.popleft()
                 task.run()
         return evaled_task.result()
-
-
-def get_repr(name: str, dct: Dict[str, Any]) -> str:
-    return f'<{name} ' + ' '.join(f'{k}={v!r}' for k, v in dct.items()) + '>'
 
 
 def get_fullname(obj: Any) -> str:

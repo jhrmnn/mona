@@ -7,10 +7,11 @@ import json
 import caf2 as caf
 from caf2.json_utils import ClassJSONDecoder, ClassJSONEncoder
 
-if os.environ.get('CAF_DEBUG'):
+debug_level = os.environ.get('CAF_DEBUG')
+if debug_level:
     import logging
     logging.basicConfig()
-    logging.getLogger('caf2').setLevel(logging.INFO)
+    logging.getLogger('caf2').setLevel(int(debug_level))
 
 
 @caf.Rule
