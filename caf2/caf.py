@@ -5,24 +5,33 @@ from contextlib import contextmanager
 import json
 from collections import deque
 import logging
+import hashlib
+from abc import ABC, abstractmethod
 
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
 
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
-    List, Iterator, Deque, TypeVar, Generic
+    List, Iterator, Deque, TypeVar, Generic, Union
 
 log = logging.getLogger(__name__)
 
-Hash = NewType('Hash', int)
-U = TypeVar('U', bound='Future', contravariant=True)
-CallbackU = Callable[[U], None]
+Hash = NewType('Hash', str)
+_T = TypeVar('_T')
+_F = TypeVar('_F', bound='Future', contravariant=True)
+CallbackF = Callable[[_F], None]
+
+
+def get_hash(text: Union[str, bytes]) -> Hash:
+    if isinstance(text, str):
+        text = text.encode()
+    return Hash(hashlib.sha1(text).hexdigest())
 
 
 class FutureNotDone(Exception):
     pass
 
 
-class Future(Generic[U]):
+class Future(ABC, Generic[_F]):
     def __init__(self, deps: Iterable['Future']) -> None:
         self._pending: Set['Future'] = set()
         for fut in deps:
@@ -31,8 +40,8 @@ class Future(Generic[U]):
                 fut.add_depant(self)
         self._depants: Set['Future'] = set()
         self._result: Any = FutureNotDone
-        self._done_callbacks: List[CallbackU] = []
-        self._ready_callbacks: List[CallbackU] = []
+        self._done_callbacks: List[CallbackF] = []
+        self._ready_callbacks: List[CallbackF] = []
 
     def ready(self) -> bool:
         return not self._pending
@@ -43,13 +52,13 @@ class Future(Generic[U]):
     def add_depant(self, fut: 'Future') -> None:
         self._depants.add(fut)
 
-    def add_ready_callback(self, callback: CallbackU) -> None:
+    def add_ready_callback(self, callback: CallbackF) -> None:
         if self.ready():
             callback(self)
         else:
             self._ready_callbacks.append(callback)
 
-    def add_done_callback(self, callback: CallbackU) -> None:
+    def add_done_callback(self, callback: CallbackF) -> None:
         if self.done():
             callback(self)
         else:
@@ -76,6 +85,11 @@ class Future(Generic[U]):
         for callback in self._done_callbacks:
             callback(self)
 
+    @property
+    @abstractmethod
+    def hashid(self) -> Hash:
+        ...
+
     @staticmethod
     def unwrap(obj: Any) -> Any:
         if isinstance(obj, Future):
@@ -84,37 +98,50 @@ class Future(Generic[U]):
 
 
 class Template(Future):
-    def __init__(self, jsonstr: str, tasks: Iterable['Task']) -> None:
-        super().__init__(tasks)
+    def __init__(self, jsonstr: str, futures: Iterable['Future']) -> None:
+        super().__init__(futures)
         self._jstr = jsonstr
-        self._tasks = {task.hashid: task for task in tasks}
+        self._futs = {fut.hashid: fut for fut in futures}
         self.add_ready_callback(
             lambda tmpl: tmpl.set_result(tmpl.substitute()))  # type: ignore
+        self._hashid = get_hash(self._jstr)
 
-    def __repr__(self) -> str:
-        obj = json.loads(
-            self._jstr,
-            classes={Task: lambda dct: self._tasks[dct['hashid']]},
-            cls=ClassJSONDecoder
-        )
-        return get_repr('Template', {'obj': obj, 'done': self.done()})
-
-    def substitute(self) -> Any:
+    def _loads(self, transform: Callable[[Future], Any] = lambda f: f) -> Any:
+        def decoder(dct: Any) -> Any:
+            return transform(self._futs[dct['hashid']])
         return json.loads(
             self._jstr,
-            classes={Task: lambda dct: self._tasks[dct['hashid']].result()},
+            classes={
+                Task: decoder,
+            },
             cls=ClassJSONDecoder
         )
+
+    def __repr__(self) -> str:
+        obj = self._loads()
+        return get_repr('Template', {'obj': obj, 'done': self.done()})
+
+    @property
+    def hashid(self) -> Hash:
+        return self._hashid
+
+    def substitute(self) -> Any:
+        return self._loads(lambda f: f.result())
 
     @classmethod
     def wrap(cls, obj: Any) -> Any:
+        def encoder(fut: Future) -> Dict[str, Hash]:
+            return {'hashid': fut.hashid}
         if isinstance(obj, Future):
             return obj
-        tasks: Set['Task'] = set()
+        tasks: Set['Future'] = set()
         jsonstr = json.dumps(
             obj,
+            sort_keys=True,
             tape=tasks,
-            classes={Task: lambda task: {'hashid': task.hashid}},
+            classes={
+                Task: encoder,
+            },
             cls=ClassJSONEncoder
         )
         if tasks:
@@ -164,7 +191,7 @@ class Task(Future):
     @classmethod
     def create(cls, f: Callable, *args: Any) -> 'Task':
         args = tuple(map(Template.wrap, args))
-        hashid = Hash(hash((f, *args)))
+        hashid = Hash(str(hash((f, *args))))
         try:
             return cls._all_tasks[hashid]
         except KeyError:
