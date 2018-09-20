@@ -20,7 +20,7 @@ def total(xs):
 
 @caf.Rule
 def add(x, y):
-    return x + y
+    return total([x, y])
 
 
 def test_fibonacci():

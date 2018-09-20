@@ -90,12 +90,6 @@ class Future(ABC, Generic[_F]):
     def hashid(self) -> Hash:
         ...
 
-    @staticmethod
-    def unwrap(obj: Any) -> Any:
-        if isinstance(obj, Future):
-            return obj.result()
-        return obj
-
 
 class Template(Future):
     def __init__(self, jsonstr: str, futures: Iterable['Future']) -> None:
@@ -105,6 +99,7 @@ class Template(Future):
         self.add_ready_callback(
             lambda tmpl: tmpl.set_result(tmpl.substitute()))  # type: ignore
         self._hashid = get_hash(self._jstr)
+        self._hashid = Hash(f'templ:{get_hash(self._jstr)}')
 
     def _loads(self, transform: Callable[[Future], Any] = lambda f: f) -> Any:
         def decoder(dct: Any) -> Any:
@@ -129,11 +124,12 @@ class Template(Future):
         return self._loads(lambda f: f.result())
 
     @classmethod
-    def wrap(cls, obj: Any) -> Any:
-        def encoder(fut: Future) -> Dict[str, Hash]:
-            return {'hashid': fut.hashid}
+    def ensure_future(cls, obj: Any) -> Any:
         if isinstance(obj, Future):
             return obj
+
+        def encoder(fut: Future) -> Dict[str, Hash]:
+            return {'hashid': fut.hashid}
         tasks: Set['Future'] = set()
         jsonstr = json.dumps(
             obj,
@@ -144,9 +140,7 @@ class Template(Future):
             },
             cls=ClassJSONEncoder
         )
-        if tasks:
-            return cls(jsonstr, tasks)
-        return obj
+        return cls(jsonstr, tasks)
 
 
 class Indexor(Future):
@@ -176,9 +170,8 @@ class Task(Future):
     _all_tasks: Dict[Hash, 'Task'] = {}
     _register: Optional[Callable[['Task'], None]] = None
 
-    def __init__(self, hashid: Hash, f: Callable, *args: Any) -> None:
-        deps = [arg for arg in args if isinstance(arg, Future)]
-        super().__init__(deps)
+    def __init__(self, hashid: Hash, f: Callable, *args: Future) -> None:
+        super().__init__(args)
         self._hashid = hashid
         self._f = f
         self._args = args
@@ -188,7 +181,7 @@ class Task(Future):
 
     def __repr__(self) -> str:
         dct = {
-            'fname': self._f.__name__,
+            'fname': get_fullname(self._f),
             'args': self._args,
             'deps': self._pending,
         }
@@ -206,8 +199,8 @@ class Task(Future):
     def run(self) -> None:
         assert self.ready()
         log.info(f'task will run: {self}')
-        args = tuple(map(Future.unwrap, self._args))
-        result = Template.wrap(self._f(*args))
+        args = [arg.result() for arg in self._args]
+        result = Template.ensure_future(self._f(*args))
         if isinstance(result, Future):
             log.info(f'task has run, pending: {self}')
             result.add_done_callback(lambda fut: self.set_result(fut.result()))
@@ -216,8 +209,9 @@ class Task(Future):
 
     @classmethod
     def create(cls, f: Callable, *args: Any) -> 'Task':
-        args = tuple(map(Template.wrap, args))
-        hashid = Hash(str(hash((f, *args))))
+        args = tuple(map(Template.ensure_future, args))
+        hash_obj = [get_fullname(f), *(fut.hashid for fut in args)]
+        hashid = get_hash(json.dumps(hash_obj, sort_keys=True))
         try:
             return cls._all_tasks[hashid]
         except KeyError:
@@ -275,3 +269,7 @@ class Session:
 
 def get_repr(name: str, dct: Dict[str, Any]) -> str:
     return f'<{name} ' + ' '.join(f'{k}={v!r}' for k, v in dct.items()) + '>'
+
+
+def get_fullname(obj: Any) -> str:
+    return f'{obj.__module__}.{obj.__qualname__}'
