@@ -180,14 +180,15 @@ def wrap_output(obj: Any) -> Any:
 
 
 class Task(Future):
-    def __init__(self, hashid: Hash, f: Callable, *args: Future
-                 ) -> None:
+    def __init__(self, hashid: Hash, f: Callable, *args: Future,
+                 default: Any = None) -> None:
         super().__init__(args)
         self._hashid = hashid
         self._f = f
         self._args = args
         self.children: List['Task'] = []
         self._future_result: Any = FutureNotDone
+        self._default = default
 
     def __getitem__(self, key: Union[str, int]) -> Indexor:
         return Indexor(self, [key])
@@ -204,12 +205,12 @@ class Task(Future):
     def has_run(self) -> bool:
         return self._future_result is not FutureNotDone
 
-    def run(self, default: Any = FutureNotDone) -> Any:
+    def run(self, allow_unfinished: bool = False) -> Any:
         assert not self.done()
-        if default is FutureNotDone:
+        if not allow_unfinished:
             assert self.ready()
         log.debug(f'{self}: will run')
-        args = [arg.result(default) for arg in self._args]
+        args = [arg.result(self._default) for arg in self._args]
         result = wrap_output(self._f(*args))
         if self.children:
             log.info(f'{self}: created children: {self.children}')
@@ -249,7 +250,7 @@ class Session:
         self._pending.remove(task)
         self._waiting.append(task)
 
-    def create_task(self, f: Callable, *args: Any) -> Task:
+    def create_task(self, f: Callable, *args: Any, **kwargs: Any) -> Task:
         args = tuple(map(wrap_input, args))
         hash_obj = [get_fullname(f), *(fut.hashid for fut in args)]
         hashid = get_hash(json.dumps(hash_obj, sort_keys=True))
@@ -257,7 +258,7 @@ class Session:
             return self._tasks[hashid]
         except KeyError:
             pass
-        task = Task(hashid, f, *args)
+        task = Task(hashid, f, *args, **kwargs)
         log.info(f'{task} <= {hash_obj}')
         self._pending.add(task)
         if self._task_tape is not None:

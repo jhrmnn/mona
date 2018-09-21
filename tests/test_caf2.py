@@ -82,17 +82,17 @@ def calcs():
             'expr $(cat input) "*" 2; true'.encode(),
             {'input': str(dist).encode()},
         )['STDOUT']
-    ) for dist in range(5)]
+    ) for dist in range(0, 5)]
 
 
-@caf.rule
+@caf.rule(default=0)
 def analysis(results):
-    return next(dist for dist, res in results if res and int(res) == 6)
+    return sum(int(res) for _, res in results)
 
 
 def test_calc():
     with caf.Session() as sess:
-        assert sess.eval(analysis(calcs())) == 3
+        assert sess.eval(analysis(calcs())) == 20
 
 
 @pytest.fixture
@@ -105,7 +105,7 @@ def db(tmpdir):
 def test_db(db):
     sess = caf.CachedSession(db)
     with sess:
-        assert sess.eval(analysis(calcs())) == 3
+        assert sess.eval(analysis(calcs())) == 20
     with sess:
         sess.eval(analysis(calcs()))
         assert len(sess._tasks) == 2
@@ -117,7 +117,7 @@ def test_partial_eval():
         with sess.record(calc_tasks):
             calcs().run()
         calc_tasks[4].run()
-        assert analysis(calcs()).run(None) == 3
+        assert analysis(calcs()).run(allow_unfinished=True) == 6
 
 
 def test_json_utils():
