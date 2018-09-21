@@ -190,6 +190,7 @@ class Task(Future):
 
     def run(self) -> None:
         assert self.ready()
+        assert not self.done()
         log.debug(f'{self}: will run')
         args = [arg.result() for arg in self._args]
         result = wrap_output(self._f(*args))
@@ -262,6 +263,8 @@ class Session:
             fut = Template(jsonstr, futures)
         while self._waiting:
             task = self._waiting.popleft()
+            if task.done():
+                continue
             with self._record(task.children):
                 task.run()
         return fut.result()
