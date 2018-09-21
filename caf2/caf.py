@@ -5,12 +5,13 @@ import json
 from collections import deque
 import logging
 import hashlib
+from contextlib import contextmanager
 from abc import ABC, abstractmethod
 
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
 
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
-    List, Deque, TypeVar, Generic, Union, Tuple
+    List, Deque, TypeVar, Generic, Union, Tuple, Iterator
 
 log = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class Future(ABC, Generic[_Fut]):
     def dep_done(self, fut: 'Future') -> None:
         self._pending.remove(fut)
         if self.ready():
-            log.debug(f'future ready: {self}')
+            log.debug(f'{self}: ready')
             for callback in self._ready_callbacks:
                 callback(self)
 
@@ -79,7 +80,7 @@ class Future(ABC, Generic[_Fut]):
         assert self.ready()
         assert self._result is FutureNotDone
         self._result = result
-        log.debug(f'future done: {self}')
+        log.debug(f'{self}: done')
         for fut in self._depants:
             fut.dep_done(self)
         for callback in self._done_callbacks:
@@ -97,7 +98,7 @@ class Template(Future):
         self._jsonstr = jsonstr
         self._futures = {fut.hashid: fut for fut in futures}
         self._hashid = Hash(f'{{}}{get_hash(self._jsonstr)}')
-        log.debug(f'{self._hashid} <= {self._jsonstr}')
+        log.debug(f'{self} <= {self._jsonstr}')
         self.add_ready_callback(
             lambda tmpl: tmpl.set_result(tmpl.substitute())  # type: ignore
         )
@@ -179,7 +180,8 @@ class Task(Future):
         self._hash_str = hash_str
         self._f = f
         self._args = args
-        log.info(f'{hashid} <= {hash_str}')
+        self.children: List['Task'] = []
+        log.info(f'{self} <= {hash_str}')
 
     def __getitem__(self, key: Union[str, int]) -> Indexor:
         return Indexor(self, [key])
@@ -194,11 +196,13 @@ class Task(Future):
 
     def run(self) -> None:
         assert self.ready()
-        log.debug(f'task will run: {self}')
+        log.debug(f'{self}: will run')
         args = [arg.result() for arg in self._args]
         result = wrap_output(self._f(*args))
+        if self.children:
+            log.info(f'{self}: created children: {self.children}')
         if isinstance(result, Future):
-            log.info(f'task has run, pending: {self}')
+            log.info(f'{self}: has run, pending: {result}')
             result.add_done_callback(lambda fut: self.set_result(fut.result()))
         else:
             self.set_result(result)
@@ -211,6 +215,7 @@ class Session:
         self._pending: Set[Task] = set()
         self._waiting: Deque[Task] = deque()
         self._tasks: Dict[Hash, Task] = {}
+        self._task_tape: Optional[List[Task]] = None
 
     def __enter__(self) -> 'Session':
         assert Session._active is None
@@ -238,9 +243,19 @@ class Session:
             pass
         task = Task(hashid, hash_str, f, *args)
         self._pending.add(task)
+        if self._task_tape is not None:
+            self._task_tape.append(task)
         task.add_ready_callback(self._task_ready)
         self._tasks[hashid] = task
         return task
+
+    @contextmanager
+    def _record(self, tape: List[Task]) -> Iterator[None]:
+        self._task_tape = tape
+        try:
+            yield
+        finally:
+            self._task_tape = None
 
     def eval(self, obj: Any) -> Any:
         if isinstance(obj, Future):
@@ -252,7 +267,8 @@ class Session:
             fut = Template(jsonstr, futures)
         while self._waiting:
             task = self._waiting.popleft()
-            task.run()
+            with self._record(task.children):
+                task.run()
         return fut.result()
 
     @classmethod
