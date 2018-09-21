@@ -173,15 +173,13 @@ def wrap_output(obj: Any) -> Any:
 
 
 class Task(Future):
-    def __init__(self, hashid: Hash, hash_str: str, f: Callable, *args: Future
+    def __init__(self, hashid: Hash, f: Callable, *args: Future
                  ) -> None:
         super().__init__(args)
         self._hashid = hashid
-        self._hash_str = hash_str
         self._f = f
         self._args = args
         self.children: List['Task'] = []
-        log.info(f'{self} <= {hash_str}')
 
     def __getitem__(self, key: Union[str, int]) -> Indexor:
         return Indexor(self, [key])
@@ -189,10 +187,6 @@ class Task(Future):
     @property
     def hashid(self) -> Hash:
         return self._hashid
-
-    @property
-    def hash_str(self) -> str:
-        return self._hash_str
 
     def run(self) -> None:
         assert self.ready()
@@ -202,6 +196,7 @@ class Task(Future):
         if self.children:
             log.info(f'{self}: created children: {self.children}')
         if isinstance(result, Future):
+            assert not result.done()
             log.info(f'{self}: has run, pending: {result}')
             result.add_done_callback(lambda fut: self.set_result(fut.result()))
         else:
@@ -228,24 +223,24 @@ class Session:
         self._waiting.clear()
         self._tasks.clear()
 
-    def _task_ready(self, task: Task) -> None:
+    def _schedule_task(self, task: Task) -> None:
         self._pending.remove(task)
         self._waiting.append(task)
 
     def create_task(self, f: Callable, *args: Any) -> Task:
         args = tuple(map(wrap_input, args))
         hash_obj = [get_fullname(f), *(fut.hashid for fut in args)]
-        hash_str = json.dumps(hash_obj, sort_keys=True)
-        hashid = get_hash(hash_str)
+        hashid = get_hash(json.dumps(hash_obj, sort_keys=True))
         try:
             return self._tasks[hashid]
         except KeyError:
             pass
-        task = Task(hashid, hash_str, f, *args)
+        task = Task(hashid, f, *args)
+        log.info(f'{task} <= {hash_obj}')
         self._pending.add(task)
         if self._task_tape is not None:
             self._task_tape.append(task)
-        task.add_ready_callback(self._task_ready)
+        task.add_ready_callback(self._schedule_task)
         self._tasks[hashid] = task
         return task
 
