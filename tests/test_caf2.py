@@ -26,6 +26,11 @@ def add(x, y):
     return total([x, y])
 
 
+def test_pass_through():
+    with caf.Session() as sess:
+        assert sess.eval(10) == 10
+
+
 def test_fibonacci():
     @caf.Rule
     def fib(n):
@@ -33,7 +38,8 @@ def test_fibonacci():
             return n
         return total([fib(n-1), fib(n-2)])
 
-    assert caf.Session().eval(fib(10)) == 55
+    with caf.Session() as sess:
+        assert sess.eval(fib(10)) == 55
 
 
 def test_fibonacci2():
@@ -43,17 +49,19 @@ def test_fibonacci2():
             return n
         return add(fib(n-1), fib(n-2))
 
-    assert caf.Session().eval(fib(10)) == 55
+    with caf.Session() as sess:
+        assert sess.eval([fib(5), fib(10)]) == [5, 55]
 
 
 def test_fibonacci3():
     @caf.Rule
     def fib(n):
         if n < 2:
-            return [n]
-        return [add(fib(n-1)[0], fib(n-2)[0])]
+            return [[n]]
+        return [[add(fib(n-1)[0][0], fib(n-2)[0][0])]]
 
-    assert caf.Session().eval(fib(10))[0] == 55
+    with caf.Session() as sess:
+        assert sess.eval(fib(10)[0][0]) == 55
 
 
 def test_calc():
@@ -71,11 +79,8 @@ def test_calc():
     def analysis(results):
         return next(dist for dist, res in results if int(res) == 6)
 
-    @caf.Rule
-    def main():
-        return analysis(setup())
-
-    assert caf.Session().eval(main()) == 3
+    with caf.Session() as sess:
+        assert sess.eval(analysis(setup())) == 3
 
 
 def test_json_utils():

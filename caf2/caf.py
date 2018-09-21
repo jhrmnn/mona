@@ -1,7 +1,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from contextlib import contextmanager
 import json
 from collections import deque
 import logging
@@ -11,7 +10,7 @@ from abc import ABC, abstractmethod
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
 
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
-    List, Iterator, Deque, TypeVar, Generic, Union, Tuple, Collection
+    List, Deque, TypeVar, Generic, Union, Tuple
 from typing_extensions import Protocol
 
 log = logging.getLogger(__name__)
@@ -69,10 +68,8 @@ class Future(ABC, Generic[_F]):
             self._ready_callbacks.append(callback)
 
     def add_done_callback(self, callback: CallbackF) -> None:
-        if self.done():
-            callback(self)
-        else:
-            self._done_callbacks.append(callback)
+        assert not self.done()
+        self._done_callbacks.append(callback)
 
     def dep_done(self, fut: 'Future') -> None:
         self._pending.remove(fut)
@@ -82,8 +79,7 @@ class Future(ABC, Generic[_F]):
                 callback(self)
 
     def result(self) -> Any:
-        if self._result is FutureNotDone:
-            raise FutureNotDone()
+        assert self._result is not FutureNotDone
         return self._result
 
     def set_result(self, result: Any) -> None:
@@ -185,16 +181,11 @@ def wrap_output(obj: Any) -> Any:
 
 
 class Task(Future):
-    _all_tasks: Dict[Hash, 'Task'] = {}
-    _register: Optional[Callable[['Task'], None]] = None
-
     def __init__(self, hashid: Hash, f: Callable, *args: Future) -> None:
         self._hashid = hashid
         super().__init__(args)
         self._f = f
         self._args = args
-        if Task._register:
-            Task._register(self)
 
     def __getitem__(self, key: Union[str, int]) -> Indexor:
         return Indexor(self, [key])
@@ -214,30 +205,61 @@ class Task(Future):
         else:
             self.set_result(result)
 
-    @classmethod
-    def create(cls, f: Callable, *args: Any) -> 'Task':
+
+class Session:
+    _active: Optional['Session'] = None
+
+    def __init__(self) -> None:
+        self._pending: Set[Task] = set()
+        self._waiting: Deque[Task] = deque()
+        self._tasks: Dict[Hash, Task] = {}
+
+    def __enter__(self) -> 'Session':
+        assert Session._active is None
+        Session._active = self
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        Session._active = None
+        self._pending.clear()
+        self._waiting.clear()
+        self._tasks.clear()
+
+    def _task_ready(self, task: Task) -> None:
+        self._pending.remove(task)
+        self._waiting.append(task)
+
+    def create_task(self, f: Callable, *args: Any) -> 'Task':
         args = tuple(map(wrap_input, args))
         hash_obj = [get_fullname(f), *(fut.hashid for fut in args)]
         hashid = get_hash(json.dumps(hash_obj, sort_keys=True))
         try:
-            return cls._all_tasks[hashid]
+            return self._tasks[hashid]
         except KeyError:
             log.info(f'{hashid} <= {hash_obj}')
-            return cls._all_tasks.setdefault(hashid, Task(hashid, f, *args))
+            task = Task(hashid, f, *args)
+            self._pending.add(task)
+            task.add_ready_callback(self._task_ready)
+            self._tasks[hashid] = task
+            return task
+
+    def eval(self, obj: Any) -> Any:
+        if isinstance(obj, Future):
+            fut = obj
+        else:
+            jsonstr, futures = Template.dumps(obj)
+            if not futures:
+                return obj
+            fut = Template(jsonstr, futures)
+        while self._waiting:
+            task = self._waiting.popleft()
+            task.run()
+        return fut.result()
 
     @classmethod
-    def all_tasks(cls) -> List['Task']:
-        return list(cls._all_tasks.values())
-
-    @classmethod
-    @contextmanager
-    def registering(cls, register: Callable[['Task'], None]) -> Iterator[None]:
-        assert cls._register is None
-        cls._register = register
-        try:
-            yield
-        finally:
-            cls._register = None
+    def active(cls) -> 'Session':
+        assert cls._active is not None
+        return cls._active
 
 
 class Rule:
@@ -245,31 +267,7 @@ class Rule:
         self._f = f
 
     def __call__(self, *args: Any) -> Task:
-        return Task.create(self._f, *args)
-
-
-class Session:
-    def __init__(self) -> None:
-        self._pending: Set[Task] = set()
-        self._waiting: Deque[Task] = deque()
-
-    def _task_ready(self, task: Task) -> None:
-        self._pending.remove(task)
-        self._waiting.append(task)
-
-    def _register_task(self, task: Task) -> None:
-        self._pending.add(task)
-        task.add_ready_callback(self._task_ready)
-
-    def eval(self, task: Task) -> Any:
-        Task._all_tasks.clear()  # TODO: clean this up
-        self._register_task(task)
-        evaled_task = task
-        with Task.registering(self._register_task):
-            while self._waiting:
-                task = self._waiting.popleft()
-                task.run()
-        return evaled_task.result()
+        return Session.active().create_task(self._f, *args)
 
 
 def get_fullname(obj: Any) -> str:
