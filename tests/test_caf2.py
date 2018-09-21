@@ -4,6 +4,8 @@
 import os
 import json
 
+import pytest  # type: ignore
+
 import caf2 as caf
 from caf2.files import bash
 from caf2.json_utils import ClassJSONDecoder, ClassJSONEncoder
@@ -91,6 +93,22 @@ def analysis(results):
 def test_calc():
     with caf.Session() as sess:
         assert sess.eval(analysis(calcs())) == 3
+
+
+@pytest.fixture
+def db(tmpdir):
+    conn = caf.cache.init_db(tmpdir.join('test.db'))
+    yield conn
+    conn.close()
+
+
+def test_db(db):
+    sess = caf.CachedSession(db)
+    with sess:
+        assert sess.eval(analysis(calcs())) == 3
+    with sess:
+        sess.eval(analysis(calcs()))
+        assert len(sess._tasks) == 2
 
 
 def test_json_utils():
