@@ -3,8 +3,29 @@ name = "caf"
 version = "0.4.0"
 description = "Distributed calculation framework"
 authors = ["Jan Hermann <dev@janhermann.cz>"]
+repository = "https://github.com/azag0/caf"
 license = "MPL-2.0"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: POSIX",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Utilities"
+]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+typing_extensions = "^3.6"
+mypy_extensions = "^0.4.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.8"
 coverage = "^4.5"
+mypy = "^0.630.0"
+
+[tool.poetry.scripts]
+caf = "caf.cli:main"
