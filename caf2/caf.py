@@ -115,6 +115,7 @@ class Template(Future):
             self._jstr,
             classes={
                 Task: decoder,
+                Indexor: decoder,
             },
             cls=ClassJSONDecoder
         )
@@ -133,6 +134,7 @@ class Template(Future):
             tape=tasks,
             classes={
                 Task: encoder,
+                Indexor: encoder,
             },
             cls=ClassJSONEncoder
         )
