@@ -87,7 +87,7 @@ def calcs():
 
 @caf.Rule
 def analysis(results):
-    return next(dist for dist, res in results if int(res) == 6)
+    return next(dist for dist, res in results if res and int(res) == 6)
 
 
 def test_calc():
@@ -109,6 +109,15 @@ def test_db(db):
     with sess:
         sess.eval(analysis(calcs()))
         assert len(sess._tasks) == 2
+
+
+def test_partial_eval():
+    with caf.Session() as sess:
+        calc_tasks = []
+        with sess.record(calc_tasks):
+            calcs().run()
+        calc_tasks[4].run()
+        assert analysis(calcs()).run(None) == 3
 
 
 def test_json_utils():

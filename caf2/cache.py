@@ -23,6 +23,16 @@ def init_db(path: str) -> sqlite3.Connection:
         )
         """
     ))
+    # db.execute(dedent(
+    #     """\
+    #     CREATE TABLE IF NOT EXISTS task_children (
+    #         parent   TEXT,
+    #         child    TEXT,
+    #         FOREIGN KEY(parent) REFERENCES builds(hashid),
+    #         FOREIGN KEY(child)  REFERENCES tasks(hashid)
+    #     )
+    #     """
+    # ))
     return db
 
 

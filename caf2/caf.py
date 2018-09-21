@@ -72,9 +72,15 @@ class Future(ABC, Generic[_Fut]):
             for callback in self._ready_callbacks:
                 callback(self)
 
-    def result(self) -> Any:
-        assert self._result is not FutureNotDone
-        return self._result
+    def default_result(self, default: Any) -> Any:
+        return default
+
+    def result(self, default: Any = FutureNotDone) -> Any:
+        if self._result is not FutureNotDone:
+            return self._result
+        if default is not FutureNotDone:
+            return self.default_result(default)
+        raise FutureNotDone()
 
     def set_result(self, result: Any) -> None:
         assert self.ready()
@@ -107,15 +113,17 @@ class Template(Future):
     def hashid(self) -> Hash:
         return self._hashid
 
-    def substitute(self) -> Any:
+    def substitute(self, default: Any = FutureNotDone) -> Any:
         return json.loads(
             self._jsonstr,
             classes={
-                Task: lambda dct: self._futures[dct['hashid']].result(),
-                Indexor: lambda dct: self._futures[dct['hashid']].result(),
+                Task: lambda dct: self._futures[dct['hashid']].result(default),
+                Indexor: lambda dct: self._futures[dct['hashid']].result(default),
             },
             cls=ClassJSONDecoder
         )
+
+    default_result = substitute
 
     @staticmethod
     def parse(obj: Any) -> Tuple[str, Set[Future]]:
@@ -180,28 +188,42 @@ class Task(Future):
         self._f = f
         self._args = args
         self.children: List['Task'] = []
+        self._future_result: Any = FutureNotDone
 
     def __getitem__(self, key: Union[str, int]) -> Indexor:
         return Indexor(self, [key])
+
+    def default_result(self, default: Any) -> Any:
+        if self._future_result is not FutureNotDone:
+            return self._future_result.default_result(default)
+        super().default_result(default)
 
     @property
     def hashid(self) -> Hash:
         return self._hashid
 
-    def run(self) -> None:
-        assert self.ready()
+    def has_run(self) -> bool:
+        return self._future_result is not FutureNotDone
+
+    def run(self, default: Any = FutureNotDone) -> Any:
         assert not self.done()
+        if default is FutureNotDone:
+            assert self.ready()
         log.debug(f'{self}: will run')
-        args = [arg.result() for arg in self._args]
+        args = [arg.result(default) for arg in self._args]
         result = wrap_output(self._f(*args))
         if self.children:
             log.info(f'{self}: created children: {self.children}')
+        if not self.ready():
+            return result
         if isinstance(result, Future):
             assert not result.done()
+            self._future_result = result
             log.info(f'{self}: has run, pending: {result}')
             result.add_done_callback(lambda fut: self.set_result(fut.result()))
         else:
             self.set_result(result)
+        return result
 
 
 class Session:
@@ -246,7 +268,7 @@ class Session:
         return task
 
     @contextmanager
-    def _record(self, tape: List[Task]) -> Iterator[None]:
+    def record(self, tape: List[Task]) -> Iterator[None]:
         self._task_tape = tape
         try:
             yield
@@ -265,7 +287,7 @@ class Session:
             task = self._waiting.popleft()
             if task.done():
                 continue
-            with self._record(task.children):
+            with self.record(task.children):
                 task.run()
         return fut.result()
 
