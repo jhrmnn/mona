@@ -11,7 +11,8 @@ from abc import ABC, abstractmethod
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
 
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
-    List, Iterator, Deque, TypeVar, Generic, Union
+    List, Iterator, Deque, TypeVar, Generic, Union, Tuple, Collection
+from typing_extensions import Protocol
 
 log = logging.getLogger(__name__)
 
@@ -19,6 +20,12 @@ Hash = NewType('Hash', str)
 _T = TypeVar('_T')
 _F = TypeVar('_F', bound='Future', contravariant=True)
 CallbackF = Callable[[_F], None]
+
+
+class Hashed(Protocol):
+    @property
+    def hashid(self) -> Hash:
+        ...
 
 
 def get_hash(text: Union[str, bytes]) -> Hash:
@@ -120,25 +127,22 @@ class Template(Future):
             cls=ClassJSONDecoder
         )
 
-    @classmethod
-    def ensure_future(cls, obj: Any) -> Any:
-        if isinstance(obj, Future):
-            return obj
-
+    @staticmethod
+    def dumps(obj: Any) -> Tuple[str, Set[Future]]:
         def encoder(fut: Future) -> Dict[str, Hash]:
             return {'hashid': fut.hashid}
-        tasks: Set['Future'] = set()
+        futures: Set[Future] = set()
         jsonstr = json.dumps(
             obj,
             sort_keys=True,
-            tape=tasks,
+            tape=futures,
             classes={
                 Task: encoder,
                 Indexor: encoder,
             },
             cls=ClassJSONEncoder
         )
-        return cls(jsonstr, tasks)
+        return jsonstr, futures
 
 
 class Indexor(Future):
@@ -165,6 +169,21 @@ class Indexor(Future):
         return obj
 
 
+def wrap_input(obj: Any) -> Hashed:
+    if isinstance(obj, Future):
+        return obj
+    return Template(*Template.dumps(obj))
+
+
+def wrap_output(obj: Any) -> Any:
+    if isinstance(obj, Future):
+        return obj
+    jsonstr, futures = Template.dumps(obj)
+    if futures:
+        return Template(jsonstr, futures)
+    return obj
+
+
 class Task(Future):
     _all_tasks: Dict[Hash, 'Task'] = {}
     _register: Optional[Callable[['Task'], None]] = None
@@ -188,7 +207,7 @@ class Task(Future):
         assert self.ready()
         log.debug(f'task will run: {self}')
         args = [arg.result() for arg in self._args]
-        result = Template.ensure_future(self._f(*args))
+        result = wrap_output(self._f(*args))
         if isinstance(result, Future):
             log.info(f'task has run, pending: {self}')
             result.add_done_callback(lambda fut: self.set_result(fut.result()))
@@ -197,7 +216,7 @@ class Task(Future):
 
     @classmethod
     def create(cls, f: Callable, *args: Any) -> 'Task':
-        args = tuple(map(Template.ensure_future, args))
+        args = tuple(map(wrap_input, args))
         hash_obj = [get_fullname(f), *(fut.hashid for fut in args)]
         hashid = get_hash(json.dumps(hash_obj, sort_keys=True))
         try:
