@@ -100,8 +100,11 @@ class Future(ABC, Generic[_F]):
 class Template(Future):
     def __init__(self, jsonstr: str, futures: Iterable['Future']) -> None:
         self._jstr = jsonstr
-        self._hashid = Hash(f'(){get_hash(self._jstr)}')
-        log.info(f'{self._hashid} <= {self._jstr}')
+        if len(jsonstr) > 40:
+            self._hashid = Hash(f'{{}}{get_hash(self._jstr)}')
+        else:
+            self._hashid = Hash(f'{{{self._jstr}}}')
+        log.debug(f'{self._hashid} <= {self._jstr}')
         super().__init__(futures)
         self._futs = {fut.hashid: fut for fut in futures}
         self.add_ready_callback(
@@ -143,8 +146,7 @@ class Template(Future):
 
 class Indexor(Future):
     def __init__(self, task: 'Task', keys: List[Union[str, int]]) -> None:
-        self._hashid = Hash('/'.join([task.hashid, *map(str, keys)]))
-        log.info(self._hashid)
+        self._hashid = Hash('/'.join(['@' + task.hashid, *map(str, keys)]))
         super().__init__([task])
         self._task = task
         self._keys = keys

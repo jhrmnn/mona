@@ -16,22 +16,42 @@ if debug_level:
     logging.getLogger('caf2').setLevel(int(debug_level))
 
 
-@caf.Rule
-def total(xs):
-    return sum(xs)
-
-
-@caf.Rule
-def add(x, y):
-    return total([x, y])
-
-
 def test_pass_through():
     with caf.Session() as sess:
         assert sess.eval(10) == 10
 
 
+@caf.Rule
+def add(x, y):
+    return x + y
+
+
+@caf.Rule
+def fib(n):
+    if n < 2:
+        return n
+    return add(fib(n-1), fib(n-2))
+
+
 def test_fibonacci():
+    with caf.Session() as sess:
+        assert sess.eval(fib(10)) == 55
+
+
+def test_fibonacci2():
+    with caf.Session() as sess:
+        sess.eval(fib(10))
+        n_tasks = len(sess._tasks)
+    with caf.Session() as sess:
+        assert sess.eval([fib(5), fib(10)]) == [5, 55]
+        assert n_tasks == len(sess._tasks)
+
+
+def test_fibonacci3():
+    @caf.Rule
+    def total(xs):
+        return sum(xs)
+
     @caf.Rule
     def fib(n):
         if n < 2:
@@ -42,18 +62,7 @@ def test_fibonacci():
         assert sess.eval(fib(10)) == 55
 
 
-def test_fibonacci2():
-    @caf.Rule
-    def fib(n):
-        if n < 2:
-            return n
-        return add(fib(n-1), fib(n-2))
-
-    with caf.Session() as sess:
-        assert sess.eval([fib(5), fib(10)]) == [5, 55]
-
-
-def test_fibonacci3():
+def test_fibonacci4():
     @caf.Rule
     def fib(n):
         if n < 2:
