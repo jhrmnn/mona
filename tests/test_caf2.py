@@ -22,12 +22,12 @@ def test_pass_through():
         assert sess.eval(10) == 10
 
 
-@caf.Rule
+@caf.rule
 def add(x, y):
     return x + y
 
 
-@caf.Rule
+@caf.rule
 def fib(n):
     if n < 2:
         return n
@@ -49,11 +49,11 @@ def test_fibonacci2():
 
 
 def test_fibonacci3():
-    @caf.Rule
+    @caf.rule
     def total(xs):
         return sum(xs)
 
-    @caf.Rule
+    @caf.rule
     def fib(n):
         if n < 2:
             return n
@@ -64,7 +64,7 @@ def test_fibonacci3():
 
 
 def test_fibonacci4():
-    @caf.Rule
+    @caf.rule
     def fib(n):
         if n < 2:
             return [[n]]
@@ -74,7 +74,7 @@ def test_fibonacci4():
         assert sess.eval(fib(10)[0][0]) == 55
 
 
-@caf.Rule
+@caf.rule
 def calcs():
     return [(
         dist,
@@ -85,7 +85,7 @@ def calcs():
     ) for dist in range(5)]
 
 
-@caf.Rule
+@caf.rule
 def analysis(results):
     return next(dist for dist, res in results if res and int(res) == 6)
 

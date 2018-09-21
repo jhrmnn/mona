@@ -1,2 +1,2 @@
-from .caf import Rule, Session
+from .caf import rule, Session
 from .cache import CachedSession

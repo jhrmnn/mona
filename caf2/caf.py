@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
 
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
-    List, Deque, TypeVar, Generic, Union, Tuple, Iterator
+    List, Deque, TypeVar, Generic, Union, Tuple, Iterator, overload
 
 log = logging.getLogger(__name__)
 
@@ -94,8 +94,7 @@ class Future(ABC, Generic[_Fut]):
 
     @property
     @abstractmethod
-    def hashid(self) -> Hash:
-        ...
+    def hashid(self) -> Hash: ...
 
 
 class Template(Future):
@@ -298,14 +297,33 @@ class Session:
 
 
 class Rule:
-    def __init__(self, f: Callable) -> None:
-        self._f = f
+    def __init__(self, func: Callable, **kwargs: Any) -> None:
+        self._func = func
+        self._kwargs = kwargs
 
     def __repr__(self) -> str:
-        return f'<Rule f={self._f!r}>'
+        return f'<Rule func={self._func!r} kwargs={self._kwargs!r}>'
 
     def __call__(self, *args: Any) -> Task:
-        return Session.active().create_task(self._f, *args)
+        return Session.active().create_task(self._func, *args, **self._kwargs)
+
+
+@overload
+def rule(func: Callable) -> Rule: ...
+@overload  # noqa
+def rule(*, label: str = None, default: Any = None
+         ) -> Callable[[Callable], Rule]: ...
+
+
+def rule(*args: Callable, **kwargs: Any) -> Any:
+    if args:
+        assert not kwargs
+        func, = args
+        return Rule(func)
+
+    def decorator(func: Callable) -> Rule:
+        return Rule(func, **kwargs)
+    return decorator
 
 
 def get_fullname(obj: Any) -> str:
