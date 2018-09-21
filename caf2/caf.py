@@ -76,6 +76,7 @@ class Future(ABC, Generic[_Fut]):
         return self._result
 
     def set_result(self, result: Any) -> None:
+        assert self.ready()
         assert self._result is FutureNotDone
         self._result = result
         log.debug(f'future done: {self}')
@@ -171,11 +172,14 @@ def wrap_output(obj: Any) -> Any:
 
 
 class Task(Future):
-    def __init__(self, hashid: Hash, f: Callable, *args: Future) -> None:
+    def __init__(self, hashid: Hash, hash_str: str, f: Callable, *args: Future
+                 ) -> None:
         super().__init__(args)
         self._hashid = hashid
+        self._hash_str = hash_str
         self._f = f
         self._args = args
+        log.info(f'{hashid} <= {hash_str}')
 
     def __getitem__(self, key: Union[str, int]) -> Indexor:
         return Indexor(self, [key])
@@ -183,6 +187,10 @@ class Task(Future):
     @property
     def hashid(self) -> Hash:
         return self._hashid
+
+    @property
+    def hash_str(self) -> str:
+        return self._hash_str
 
     def run(self) -> None:
         assert self.ready()
@@ -219,19 +227,20 @@ class Session:
         self._pending.remove(task)
         self._waiting.append(task)
 
-    def create_task(self, f: Callable, *args: Any) -> 'Task':
+    def create_task(self, f: Callable, *args: Any) -> Task:
         args = tuple(map(wrap_input, args))
         hash_obj = [get_fullname(f), *(fut.hashid for fut in args)]
-        hashid = get_hash(json.dumps(hash_obj, sort_keys=True))
+        hash_str = json.dumps(hash_obj, sort_keys=True)
+        hashid = get_hash(hash_str)
         try:
             return self._tasks[hashid]
         except KeyError:
-            log.info(f'{hashid} <= {hash_obj}')
-            task = Task(hashid, f, *args)
-            self._pending.add(task)
-            task.add_ready_callback(self._task_ready)
-            self._tasks[hashid] = task
-            return task
+            pass
+        task = Task(hashid, hash_str, f, *args)
+        self._pending.add(task)
+        task.add_ready_callback(self._task_ready)
+        self._tasks[hashid] = task
+        return task
 
     def eval(self, obj: Any) -> Any:
         if isinstance(obj, Future):
@@ -255,6 +264,9 @@ class Session:
 class Rule:
     def __init__(self, f: Callable) -> None:
         self._f = f
+
+    def __repr__(self) -> str:
+        return f'<Rule f={self._f!r}>'
 
     def __call__(self, *args: Any) -> Task:
         return Session.active().create_task(self._f, *args)

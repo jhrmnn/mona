@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
 import json
-from pathlib import Path
 
 import caf2 as caf
 from caf2.files import bash
@@ -73,23 +72,25 @@ def test_fibonacci4():
         assert sess.eval(fib(10)[0][0]) == 55
 
 
+@caf.Rule
+def calcs():
+    return [(
+        dist,
+        bash(
+            'expr $(cat input) "*" 2; true'.encode(),
+            {'input': str(dist).encode()},
+        )['STDOUT']
+    ) for dist in range(5)]
+
+
+@caf.Rule
+def analysis(results):
+    return next(dist for dist, res in results if int(res) == 6)
+
+
 def test_calc():
-    @caf.Rule
-    def setup():
-        return [(
-            dist,
-            bash(
-                'expr $(cat input) "*" 2; true'.encode(),
-                {'input': str(dist).encode()},
-            )['STDOUT']
-        ) for dist in range(5)]
-
-    @caf.Rule
-    def analysis(results):
-        return next(dist for dist, res in results if int(res) == 6)
-
     with caf.Session() as sess:
-        assert sess.eval(analysis(setup())) == 3
+        assert sess.eval(analysis(calcs())) == 3
 
 
 def test_json_utils():
