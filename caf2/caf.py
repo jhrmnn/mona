@@ -11,20 +11,13 @@ from .json_utils import ClassJSONEncoder, ClassJSONDecoder
 
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
     List, Deque, TypeVar, Generic, Union, Tuple
-from typing_extensions import Protocol
 
 log = logging.getLogger(__name__)
 
 Hash = NewType('Hash', str)
 _T = TypeVar('_T')
-_F = TypeVar('_F', bound='Future', contravariant=True)
-CallbackF = Callable[[_F], None]
-
-
-class Hashed(Protocol):
-    @property
-    def hashid(self) -> Hash:
-        ...
+_Fut = TypeVar('_Fut', bound='Future')
+CallbackFut = Callable[[_Fut], None]
 
 
 def get_hash(text: Union[str, bytes]) -> Hash:
@@ -37,7 +30,7 @@ class FutureNotDone(Exception):
     pass
 
 
-class Future(ABC, Generic[_F]):
+class Future(ABC, Generic[_Fut]):
     def __init__(self, deps: Iterable['Future']) -> None:
         self._pending: Set['Future'] = set()
         for fut in deps:
@@ -46,8 +39,8 @@ class Future(ABC, Generic[_F]):
                 fut.add_depant(self)
         self._depants: Set['Future'] = set()
         self._result: Any = FutureNotDone
-        self._done_callbacks: List[CallbackF] = []
-        self._ready_callbacks: List[CallbackF] = []
+        self._done_callbacks: List[CallbackFut] = []
+        self._ready_callbacks: List[CallbackFut] = []
 
     def __repr__(self) -> str:
         return self.hashid
@@ -61,13 +54,13 @@ class Future(ABC, Generic[_F]):
     def add_depant(self, fut: 'Future') -> None:
         self._depants.add(fut)
 
-    def add_ready_callback(self, callback: CallbackF) -> None:
+    def add_ready_callback(self, callback: CallbackFut) -> None:
         if self.ready():
             callback(self)
         else:
             self._ready_callbacks.append(callback)
 
-    def add_done_callback(self, callback: CallbackF) -> None:
+    def add_done_callback(self, callback: CallbackFut) -> None:
         assert not self.done()
         self._done_callbacks.append(callback)
 
@@ -98,46 +91,40 @@ class Future(ABC, Generic[_F]):
 
 
 class Template(Future):
-    def __init__(self, jsonstr: str, futures: Iterable['Future']) -> None:
-        self._jstr = jsonstr
-        if len(jsonstr) > 40:
-            self._hashid = Hash(f'{{}}{get_hash(self._jstr)}')
-        else:
-            self._hashid = Hash(f'{{{self._jstr}}}')
-        log.debug(f'{self._hashid} <= {self._jstr}')
+    def __init__(self, jsonstr: str, futures: Iterable[Future]) -> None:
         super().__init__(futures)
-        self._futs = {fut.hashid: fut for fut in futures}
+        self._jsonstr = jsonstr
+        self._futures = {fut.hashid: fut for fut in futures}
+        self._hashid = Hash(f'{{}}{get_hash(self._jsonstr)}')
+        log.debug(f'{self._hashid} <= {self._jsonstr}')
         self.add_ready_callback(
-            lambda tmpl: tmpl.set_result(tmpl.substitute()))  # type: ignore
+            lambda tmpl: tmpl.set_result(tmpl.substitute())  # type: ignore
+        )
 
     @property
     def hashid(self) -> Hash:
         return self._hashid
 
     def substitute(self) -> Any:
-        def decoder(dct: Any) -> Any:
-            return self._futs[dct['hashid']].result()
         return json.loads(
-            self._jstr,
+            self._jsonstr,
             classes={
-                Task: decoder,
-                Indexor: decoder,
+                Task: lambda dct: self._futures[dct['hashid']].result(),
+                Indexor: lambda dct: self._futures[dct['hashid']].result(),
             },
             cls=ClassJSONDecoder
         )
 
     @staticmethod
-    def dumps(obj: Any) -> Tuple[str, Set[Future]]:
-        def encoder(fut: Future) -> Dict[str, Hash]:
-            return {'hashid': fut.hashid}
+    def parse(obj: Any) -> Tuple[str, Set[Future]]:
         futures: Set[Future] = set()
         jsonstr = json.dumps(
             obj,
             sort_keys=True,
             tape=futures,
             classes={
-                Task: encoder,
-                Indexor: encoder,
+                Task: lambda fut: {'hashid': fut.hashid},
+                Indexor: lambda fut: {'hashid': fut.hashid},
             },
             cls=ClassJSONEncoder
         )
@@ -146,12 +133,13 @@ class Template(Future):
 
 class Indexor(Future):
     def __init__(self, task: 'Task', keys: List[Union[str, int]]) -> None:
-        self._hashid = Hash('/'.join(['@' + task.hashid, *map(str, keys)]))
         super().__init__([task])
         self._task = task
         self._keys = keys
+        self._hashid = Hash('/'.join(['@' + task.hashid, *map(str, keys)]))
         self.add_ready_callback(
-            lambda idx: idx.set_result(idx.resolve()))  # type: ignore
+            lambda idx: idx.set_result(idx.resolve())  # type: ignore
+        )
 
     def __getitem__(self, key: Union[str, int]) -> 'Indexor':
         return Indexor(self._task, self._keys + [key])
@@ -167,16 +155,16 @@ class Indexor(Future):
         return obj
 
 
-def wrap_input(obj: Any) -> Hashed:
+def wrap_input(obj: Any) -> Future:
     if isinstance(obj, Future):
         return obj
-    return Template(*Template.dumps(obj))
+    return Template(*Template.parse(obj))
 
 
 def wrap_output(obj: Any) -> Any:
     if isinstance(obj, Future):
         return obj
-    jsonstr, futures = Template.dumps(obj)
+    jsonstr, futures = Template.parse(obj)
     if futures:
         return Template(jsonstr, futures)
     return obj
@@ -184,8 +172,8 @@ def wrap_output(obj: Any) -> Any:
 
 class Task(Future):
     def __init__(self, hashid: Hash, f: Callable, *args: Future) -> None:
-        self._hashid = hashid
         super().__init__(args)
+        self._hashid = hashid
         self._f = f
         self._args = args
 
@@ -249,7 +237,7 @@ class Session:
         if isinstance(obj, Future):
             fut = obj
         else:
-            jsonstr, futures = Template.dumps(obj)
+            jsonstr, futures = Template.parse(obj)
             if not futures:
                 return obj
             fut = Template(jsonstr, futures)
@@ -273,4 +261,4 @@ class Rule:
 
 
 def get_fullname(obj: Any) -> str:
-    return f'{obj.__module__}.{obj.__qualname__}'
+    return f'{obj.__module__}:{obj.__qualname__}'
