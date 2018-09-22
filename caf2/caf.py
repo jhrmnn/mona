@@ -119,11 +119,14 @@ class HashedFuture(Future[_T], ABC):
     def spec(self) -> str: ...
 
     def __repr__(self) -> str:
+        return f'<{self.__class__.__name__} hashid={self.hashid} spec={self.spec!r}>'
+
+    def __str__(self) -> str:
         return self.hashid
 
     def register(self: _HFut) -> _HFut:
         super().register()
-        log.debug(f'{self} <= {self.spec}')
+        log.debug(f'registered: {self!r}')
         return self
 
 
@@ -133,7 +136,7 @@ class Template(HashedFuture[_T]):
         super().__init__(futures)
         self._jsonstr = jsonstr
         self._futures = {fut.hashid: fut for fut in futures}
-        self._hashid = Hash(f'{{}}{ hash_text(self._jsonstr)}')
+        self._hashid = Hash(f'{{}}{hash_text(self._jsonstr)}')
         self.add_ready_callback(
             lambda tmpl: tmpl.set_result(tmpl.substitute())
         )
@@ -264,7 +267,7 @@ class Task(HashedFuture[_T]):
         args = [arg.result(self._default) for arg in self._args]
         result = wrap_output(self._f(*args))
         if self.children:
-            log.info(f'{self}: created children: {self.children}')
+            log.info(f'{self}: created children: {[c.hashid for c in self.children]}')
         if not self.ready():
             return result
         if isinstance(result, Future):
