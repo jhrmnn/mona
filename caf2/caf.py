@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import json
-from collections import deque
 import logging
 import hashlib
 from enum import Enum
@@ -317,7 +316,7 @@ class Session:
 
     def __init__(self) -> None:
         self._pending: Set[Task[Any]] = set()
-        self._waiting: Deque[Task[Any]] = deque()
+        self._waiting = Deque[Task[Any]]()
         self._tasks: Dict[Hash, Task[Any]] = {}
         self._task_tape: Optional[List[Task[Any]]] = None
 
