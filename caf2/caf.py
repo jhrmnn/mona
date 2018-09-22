@@ -16,10 +16,11 @@ from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
 
 log = logging.getLogger(__name__)
 
+_T = TypeVar('_T')
+Callback = Callable[[_T], None]
 Hash = NewType('Hash', str)
 _Fut = TypeVar('_Fut', bound='Future')
 _HFut = TypeVar('_HFut', bound='HashedFuture')
-CallbackFut = Callable[[_Fut], None]
 
 
 def hash_text(text: Union[str, bytes]) -> Hash:
@@ -40,15 +41,15 @@ class FutureNotDone(Exception):
 
 
 class Future:
-    def __init__(self, parents: Iterable['Future']) -> None:
+    def __init__(self: _Fut, parents: Iterable['Future']) -> None:
         self._pending: Set['Future'] = set()
         for fut in parents:
             if not fut.done():
                 self._pending.add(fut)
         self._children: Set['Future'] = set()
         self._result: Any = _NoResult
-        self._done_callbacks: List[CallbackFut] = []
-        self._ready_callbacks: List[CallbackFut] = []
+        self._done_callbacks: List[Callback[_Fut]] = []
+        self._ready_callbacks: List[Callback[_Fut]] = []
 
     def register(self: _Fut) -> _Fut:
         for fut in self._pending:
@@ -64,17 +65,17 @@ class Future:
     def add_child(self, fut: 'Future') -> None:
         self._children.add(fut)
 
-    def add_ready_callback(self, callback: CallbackFut) -> None:
+    def add_ready_callback(self: _Fut, callback: Callback[_Fut]) -> None:
         if self.ready():
             callback(self)
         else:
             self._ready_callbacks.append(callback)
 
-    def add_done_callback(self, callback: CallbackFut) -> None:
+    def add_done_callback(self: _Fut, callback: Callback[_Fut]) -> None:
         assert not self.done()
         self._done_callbacks.append(callback)
 
-    def parent_done(self, fut: 'Future') -> None:
+    def parent_done(self: _Fut, fut: 'Future') -> None:
         self._pending.remove(fut)
         if self.ready():
             log.debug(f'{self}: ready')
@@ -91,7 +92,7 @@ class Future:
             return self.default_result(default)
         raise FutureNotDone()
 
-    def set_result(self, result: Any) -> None:
+    def set_result(self: _Fut, result: Any) -> None:
         assert self.ready()
         assert self._result is _NoResult
         self._result = result
