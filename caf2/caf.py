@@ -355,8 +355,6 @@ class Session:
     _active: Optional['Session'] = None
 
     def __init__(self) -> None:
-        self._pending: Set[Task[Any]] = set()
-        self._waiting = Deque[Task[Any]]()
         self._tasks: Dict[Hash, Task[Any]] = {}
         self._task_tape: Optional[List[Task[Any]]] = None
 
@@ -367,16 +365,10 @@ class Session:
 
     def __exit__(self, *args: Any) -> None:
         Session._active = None
-        self._pending.clear()
-        self._waiting.clear()
         self._tasks.clear()
 
     def __contains__(self, task: Task[Any]) -> bool:
         return task.hashid in self._tasks
-
-    def _schedule_task(self, task: Task[Any]) -> None:
-        self._pending.remove(task)
-        self._waiting.append(task)
 
     def create_task(self, func: Callable[..., _T], *args: Any, **kwargs: Any
                     ) -> Task[_T]:
@@ -400,8 +392,6 @@ class Session:
                         raise ArgNotInSession(f'{arg!r} -> {arg_task!r}')
             arg.register()
         task.register()
-        self._pending.add(task)
-        task.add_ready_callback(self._schedule_task)
         self._tasks[task.hashid] = task
         return task
 
@@ -453,12 +443,31 @@ class Session:
                 return obj
             fut = template
         fut.register()
-        while self._waiting:
-            task = self._waiting.popleft()
-            if task.done():
-                continue
+
+        queue = Deque[Task[Any]]()
+        queue_set: Set[Task[Any]] = set()
+
+        def schedule(task: Task[Any]) -> None:
+            if task not in queue_set:
+                queue.append(task)
+                queue_set.add(task)
+
+        for task in extract_tasks(fut):
+            if not task.has_run():
+                task.add_ready_callback(schedule)
+
+        while queue:
+            task = queue.popleft()
+            queue_set.remove(task)
+            assert not task.has_run()
             with self.record(task.children):
                 self.run_task(task)
+            if not task.done():
+                task_fut = task.future_result()
+
+                for parent_task in extract_tasks(task_fut):
+                    if not parent_task.has_run():
+                        parent_task.add_ready_callback(schedule)
         return fut.result()
 
     @classmethod
