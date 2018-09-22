@@ -7,13 +7,13 @@ import hashlib
 from enum import Enum
 from contextlib import contextmanager
 from abc import ABC, abstractmethod
-
-from .json_utils import ClassJSONEncoder, ClassJSONDecoder
-
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
     List, Deque, TypeVar, Union, Iterator, overload, Collection, Generic, \
     cast, Type
 from typing import Mapping  # noqa
+
+from .json_utils import ClassJSONEncoder, ClassJSONDecoder
+
 
 log = logging.getLogger(__name__)
 
@@ -66,18 +66,21 @@ class Future(Generic[_T]):
         self._ready_callbacks: List[Callback[_Fut]] = []
         self._registered = False
 
-    def register(self: _Fut) -> _Fut:
-        assert not self._registered
-        self._registered = True
-        for fut in self._pending:
-            fut.add_child(self)
-        return self
+    def register(self: _Fut) -> None:
+        if not self._registered:
+            self._registered = True
+            for fut in self._pending:
+                fut.add_child(self)
 
     def ready(self) -> bool:
         return not self._pending
 
     def done(self) -> bool:
         return self._result is not _NoResult
+
+    @property
+    def pending(self) -> Iterator['Future[Any]']:
+        yield from self._pending
 
     @property
     def state(self) -> State:
@@ -146,10 +149,10 @@ class HashedFuture(Future[_T], ABC):
     def __str__(self) -> str:
         return self.hashid
 
-    def register(self: _HFut) -> _HFut:
+    def register(self: _HFut) -> None:
+        if not self._registered:
+            log.debug(f'registered: {self!r}')
         super().register()
-        log.debug(f'registered: {self!r}')
-        return self
 
 
 class Template(HashedFuture[_T]):
@@ -170,6 +173,11 @@ class Template(HashedFuture[_T]):
     @property
     def spec(self) -> str:
         return self._jsonstr
+
+    def register(self) -> None:
+        for fut in self.pending:
+            fut.register()
+        super().register()
 
     def has_futures(self) -> bool:
         return bool(self._futures)
@@ -213,7 +221,7 @@ class Indexor(HashedFuture[_T]):
         )
 
     def __getitem__(self, key: Any) -> 'Indexor[Any]':
-        return Indexor(self._task, self._keys + [key]).register()
+        return Indexor(self._task, self._keys + [key])
 
     @property
     def hashid(self) -> Hash:
@@ -230,32 +238,23 @@ class Indexor(HashedFuture[_T]):
         return cast(_T, obj)
 
 
-def wrap_output(obj: _T) -> Union[_T, Future[_T]]:
-    if isinstance(obj, Future):
-        return obj
-    template = Template.from_object(obj)
-    if template.has_futures():
-        return template.register()
-    return obj
-
-
 class Task(HashedFuture[_T]):
-    def __init__(self, f: Callable[..., _T], *args: HashedFuture[Any],
+    def __init__(self, func: Callable[..., _T], *args: HashedFuture[Any],
                  default: Maybe[_T] = _NoResult, label: str = None) -> None:
         super().__init__(args)
-        self._f = f
+        self._func = func
         self._args = args
         self._hashid = hash_text(self.spec)
         self.children: List['Task'[Any]] = []
-        self._future_result: Maybe[Future[_T]] = _NoResult
+        self._future_result: Optional[Future[_T]] = None
         self._default = default
         self._label = label
 
     def __getitem__(self, key: Any) -> Indexor[Any]:
-        return Indexor(self, [key]).register()  # type: ignore
+        return Indexor(self, [key])  # type: ignore
 
     def default_result(self, default: Any) -> _T:
-        if not isinstance(self._future_result, NoResult):
+        if self._future_result:
             return self._future_result.default_result(default)
         return super().default_result(default)
 
@@ -265,8 +264,11 @@ class Task(HashedFuture[_T]):
 
     @property
     def spec(self) -> str:
-        obj = [get_fullname(self._f), *(fut.hashid for fut in self._args)]
+        obj = [get_fullname(self._func), *(fut.hashid for fut in self._args)]
         return json.dumps(obj, sort_keys=True)
+
+    def future_result(self) -> Optional[Future[_T]]:
+        return self._future_result
 
     @property
     def label(self) -> Optional[str]:
@@ -275,7 +277,10 @@ class Task(HashedFuture[_T]):
     def has_run(self) -> bool:
         return self._future_result is not _NoResult
 
-    def run(self, allow_unfinished: bool = False) -> Union[_T, Future[_T]]:
+    def set_result(self, result: _T) -> None:
+        super().set_result(result)
+        self._future_result = None
+
     @property
     def state(self) -> State:
         state = super().state
@@ -283,24 +288,49 @@ class Task(HashedFuture[_T]):
             state = State.HAS_RUN
         return state
 
+    def run(self, allow_unfinished: bool = False) -> Optional[_T]:
         assert not self.done()
         if not allow_unfinished:
             assert self.ready()
         log.debug(f'{self}: will run')
         args = [arg.result(self._default) for arg in self._args]
-        result = wrap_output(self._f(*args))
+        result = self._func(*args)
         if self.children:
             log.info(f'{self}: created children: {[c.hashid for c in self.children]}')
         if not self.ready():
             return result
-        if isinstance(result, Future):
-            assert not result.done()
-            self._future_result = result
-            log.info(f'{self}: has run, pending: {result}')
-            result.add_done_callback(lambda fut: self.set_result(fut.result()))
+        fut: Optional[HashedFuture[_T]] = None
+        if isinstance(result, HashedFuture):
+            fut = result
+        else:
+            template = Template.from_object(result)
+            if template.has_futures():
+                fut = template
+        if fut:
+            assert not fut.done()
+            self._future_result = fut
+            log.info(f'{self}: has run, pending: {fut}')
+            fut.add_done_callback(lambda fut: self.set_result(fut.result()))
+            fut.register()
         else:
             self.set_result(result)
-        return result
+        return None
+
+
+def extract_tasks(fut: Future[Any]) -> Set[Task[Any]]:
+    tasks: Set[Task[Any]] = set()
+    visited: Set[Future[Any]] = set()
+    queue = Deque[Future[Any]]()
+    queue.append(fut)
+    while queue:
+        fut = queue.popleft()
+        for parent in fut.pending:
+            if parent in visited:
+                continue
+            if isinstance(parent, Task):
+                tasks.add(parent)
+            queue.append(parent)
+    return tasks
 
 
 class NoActiveSession(CafError):
@@ -331,30 +361,42 @@ class Session:
         self._waiting.clear()
         self._tasks.clear()
 
+    def __contains__(self, task: Task[Any]) -> bool:
+        return task.hashid in self._tasks
+
     def _schedule_task(self, task: Task[Any]) -> None:
         self._pending.remove(task)
         self._waiting.append(task)
 
     def create_task(self, f: Callable[..., _T], *args: Any, **kwargs: Any
                     ) -> Task[_T]:
-        fut_args = []
+        fut_args: List[HashedFuture[Any]] = []
         for arg in args:
-            if isinstance(arg, Task):
-                if arg.hashid not in self._tasks:
-                    raise ArgNotInSession(repr(arg))
             if isinstance(arg, HashedFuture):
-                fut_args.append(arg)
+                fut_arg = arg
             else:
-                fut_args.append(Template.from_object(arg).register())
+                fut_arg = Template.from_object(arg)
+            if isinstance(fut_arg, Task):
+                if fut_arg not in self:
+                    raise ArgNotInSession(repr(fut_arg))
+            else:
+                for task in extract_tasks(fut_arg):
+                    if task not in self:
+                        raise ArgNotInSession(f'{fut_arg!r} -> {task!r}')
+            fut_arg.register()
+            fut_args.append(fut_arg)
         task = Task(f, *fut_args, **kwargs)
         try:
-            return self._tasks[task.hashid]
+            task = self._tasks[task.hashid]
         except KeyError:
             pass
+        else:
+            return task
+        finally:
+            if self._task_tape is not None:
+                self._task_tape.append(task)
         task.register()
         self._pending.add(task)
-        if self._task_tape is not None:
-            self._task_tape.append(task)
         task.add_ready_callback(self._schedule_task)
         self._tasks[task.hashid] = task
         return task
@@ -368,13 +410,16 @@ class Session:
             self._task_tape = None
 
     def eval(self, obj: Any) -> Any:
-        if isinstance(obj, Future):
+        if isinstance(obj, Task):
+            fut: HashedFuture[Any] = obj
+        elif isinstance(obj, HashedFuture):
             fut = obj
         else:
             template = Template.from_object(obj)
             if not template.has_futures():
                 return obj
-            fut = template.register()
+            fut = template
+        fut.register()
         while self._waiting:
             task = self._waiting.popleft()
             if task.done():
