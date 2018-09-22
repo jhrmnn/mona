@@ -44,6 +44,14 @@ def test_arg_not_in_session():
         with caf.Session():
             task = fib(1)
         with caf.Session():
+            fib(task[0])
+
+
+def test_fut_not_in_session():
+    with pytest.raises(caf.caf.ArgNotInSession):
+        with caf.Session():
+            task = fib(1)
+        with caf.Session():
             fib(task)
 
 
