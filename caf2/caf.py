@@ -333,11 +333,12 @@ def extract_tasks(fut: Future[Any]) -> Set[Task[Any]]:
     queue.append(fut)
     while queue:
         fut = queue.popleft()
+        visited.add(fut)
+        if isinstance(fut, Task):
+            tasks.add(fut)
         for parent in fut.pending:
             if parent in visited:
                 continue
-            if isinstance(parent, Task):
-                tasks.add(parent)
             queue.append(parent)
     return tasks
 
