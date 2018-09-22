@@ -186,10 +186,11 @@ def wrap_output(obj: Any) -> Any:
 
 
 class Task(Future):
-    def __init__(self, hashid: Hash, f: Callable, *args: Future,
+    def __init__(self, f: Callable, *args: Future,
                  default: Any = None, label: str = None) -> None:
         super().__init__(args)
-        self._hashid = hashid
+        hash_obj = [get_fullname(f), *(fut.hashid for fut in args)]
+        self._hashid = hash_text(json.dumps(hash_obj, sort_keys=True))
         self._f = f
         self._args = args
         self.children: List['Task'] = []
@@ -263,19 +264,18 @@ class Session:
 
     def create_task(self, f: Callable, *args: Any, **kwargs: Any) -> Task:
         args = tuple(map(wrap_input, args))
-        hash_obj = [get_fullname(f), *(fut.hashid for fut in args)]
-        hashid = hash_text(json.dumps(hash_obj, sort_keys=True))
+        task = Task(f, *args, **kwargs)
         try:
-            return self._tasks[hashid]
+            return self._tasks[task.hashid]
         except KeyError:
             pass
-        task = Task(hashid, f, *args, **kwargs).register()
-        log.info(f'{task} <= {hash_obj}')
+        task.register()
+        log.info(f'{task} <= ...')
         self._pending.add(task)
         if self._task_tape is not None:
             self._task_tape.append(task)
         task.add_ready_callback(self._schedule_task)
-        self._tasks[hashid] = task
+        self._tasks[task.hashid] = task
         return task
 
     @contextmanager
