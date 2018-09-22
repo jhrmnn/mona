@@ -148,9 +148,9 @@ def test_partial_eval():
     with caf.Session() as sess:
         calc_tasks = []
         with sess.record(calc_tasks):
-            calcs().run()
-        calc_tasks[4].run()
-        assert analysis(calcs()).run(allow_unfinished=True) == 6
+            sess.run_task(calcs())
+        sess.run_task(calc_tasks[4])
+        assert sess.run_task(analysis(calcs()), allow_unfinished=True) == 6
 
 
 def test_json_utils():

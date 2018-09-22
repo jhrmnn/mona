@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from abc import ABC, abstractmethod
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
     List, Deque, TypeVar, Union, Iterator, overload, Collection, Generic, \
-    cast, Type
+    cast, Type, Tuple
 from typing import Mapping  # noqa
 
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
@@ -253,10 +253,21 @@ class Task(HashedFuture[_T]):
     def __getitem__(self, key: Any) -> Indexor[Any]:
         return Indexor(self, [key])  # type: ignore
 
+    @property
+    def func(self) -> Callable[..., _T]:
+        return self._func
+
+    @property
+    def args(self) -> Tuple[HashedFuture[Any], ...]:
+        return self._args
+
     def default_result(self, default: Any) -> _T:
         if self._future_result:
             return self._future_result.default_result(default)
         return super().default_result(default)
+
+    def set_future_result(self, result: HashedFuture[Any]) -> None:
+        self._future_result = result
 
     @property
     def hashid(self) -> Hash:
@@ -287,34 +298,6 @@ class Task(HashedFuture[_T]):
         if state is State.READY and self.has_run():
             state = State.HAS_RUN
         return state
-
-    def run(self, allow_unfinished: bool = False) -> Optional[_T]:
-        assert not self.done()
-        if not allow_unfinished:
-            assert self.ready()
-        log.debug(f'{self}: will run')
-        args = [arg.result(self._default) for arg in self._args]
-        result = self._func(*args)
-        if self.children:
-            log.info(f'{self}: created children: {[c.hashid for c in self.children]}')
-        if not self.ready():
-            return result
-        fut: Optional[HashedFuture[_T]] = None
-        if isinstance(result, HashedFuture):
-            fut = result
-        else:
-            template = Template.from_object(result)
-            if template.has_futures():
-                fut = template
-        if fut:
-            assert not fut.done()
-            self._future_result = fut
-            log.info(f'{self}: has run, pending: {fut}')
-            fut.add_done_callback(lambda fut: self.set_result(fut.result()))
-            fut.register()
-        else:
-            self.set_result(result)
-        return None
 
 
 def extract_tasks(fut: Future[Any]) -> Set[Task[Any]]:
@@ -401,6 +384,35 @@ class Session:
         self._tasks[task.hashid] = task
         return task
 
+    def run_task(self, task: Task[_T], allow_unfinished: bool = False
+                 ) -> Optional[_T]:
+        assert not task.done()
+        if not allow_unfinished:
+            assert task.ready()
+        log.debug(f'{task}: will run')
+        args = [arg.result(task._default) for arg in task.args]
+        result = task.func(*args)
+        if task.children:
+            log.info(f'{task}: created children: {[c.hashid for c in task.children]}')
+        if not task.ready():
+            return result
+        fut: Optional[HashedFuture[_T]] = None
+        if isinstance(result, HashedFuture):
+            fut = result
+        else:
+            template = Template.from_object(result)
+            if template.has_futures():
+                fut = template
+        if fut:
+            assert not fut.done()
+            task.set_future_result(fut)
+            log.info(f'{task}: has run, pending: {fut}')
+            fut.add_done_callback(lambda fut: task.set_result(fut.result()))
+            fut.register()
+        else:
+            task.set_result(result)
+        return None
+
     @contextmanager
     def record(self, tape: List[Task[Any]]) -> Iterator[None]:
         self._task_tape = tape
@@ -425,7 +437,7 @@ class Session:
             if task.done():
                 continue
             with self.record(task.children):
-                task.run()
+                self.run_task(task)
         return fut.result()
 
     @classmethod
