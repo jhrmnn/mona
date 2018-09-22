@@ -74,6 +74,17 @@ def test_fibonacci4():
         assert sess.eval(fib(10)[0][0]) == 55
 
 
+def test_recursion():
+    @caf.rule
+    def recurse(i):
+        if i < 5:
+            return recurse(i+1)
+        return i
+
+    with caf.Session() as sess:
+        assert sess.eval(recurse(0)) == 5
+
+
 @caf.rule
 def calcs():
     return [(
