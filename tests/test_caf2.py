@@ -81,6 +81,7 @@ def calcs():
         bash(
             'expr $(cat input) "*" 2; true'.encode(),
             {'input': str(dist).encode()},
+            label=str(dist)
         )['STDOUT']
     ) for dist in range(0, 5)]
 

@@ -17,6 +17,7 @@ def init_db(path: str) -> sqlite3.Connection:
         """\
         CREATE TABLE IF NOT EXISTS tasks (
             hashid   TEXT,
+            label    TEXT,
             created  TEXT,
             result   BLOB,
             PRIMARY KEY (hashid)
@@ -51,8 +52,8 @@ class CachedSession(Session):
         ).fetchone()
         if not row:
             self._db.execute(
-                'INSERT INTO tasks VALUES (?,?,?)',
-                (task.hashid, get_timestamp(), None)
+                'INSERT INTO tasks VALUES (?,?,?,?)',
+                (task.hashid, task.label, get_timestamp(), None)
             )
             self._db.commit()
             task.add_done_callback(self._store_result)

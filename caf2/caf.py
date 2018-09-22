@@ -181,7 +181,7 @@ def wrap_output(obj: Any) -> Any:
 
 class Task(Future):
     def __init__(self, hashid: Hash, f: Callable, *args: Future,
-                 default: Any = None) -> None:
+                 default: Any = None, label: str = None) -> None:
         super().__init__(args)
         self._hashid = hashid
         self._f = f
@@ -189,6 +189,7 @@ class Task(Future):
         self.children: List['Task'] = []
         self._future_result: Any = FutureNotDone
         self._default = default
+        self._label = label
 
     def __getitem__(self, key: Union[str, int]) -> Indexor:
         return Indexor(self, [key])
@@ -201,6 +202,10 @@ class Task(Future):
     @property
     def hashid(self) -> Hash:
         return self._hashid
+
+    @property
+    def label(self) -> Optional[str]:
+        return self._label
 
     def has_run(self) -> bool:
         return self._future_result is not FutureNotDone
@@ -305,8 +310,10 @@ class Rule:
     def __repr__(self) -> str:
         return f'<Rule func={self._func!r} kwargs={self._kwargs!r}>'
 
-    def __call__(self, *args: Any) -> Task:
-        return Session.active().create_task(self._func, *args, **self._kwargs)
+    def __call__(self, *args: Any, **kwargs: Any) -> Task:
+        return Session.active().create_task(
+            self._func, *args, **self._kwargs, **kwargs
+        )
 
 
 @overload
