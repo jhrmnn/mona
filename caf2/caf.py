@@ -36,10 +36,18 @@ def hash_text(text: Union[str, bytes]) -> Hash:
 
 
 class NoResult(Enum):
-    token = 0
+    TOKEN = 0
 
 
-_NoResult = NoResult.token
+class State(Enum):
+    PENDING = 0
+    READY = 1
+    RUNNING = 2
+    HAS_RUN = 3
+    DONE = 1
+
+
+_NoResult = NoResult.TOKEN
 Maybe = Union[_T, NoResult]
 
 
@@ -71,6 +79,14 @@ class Future(Generic[_T]):
 
     def done(self) -> bool:
         return self._result is not _NoResult
+
+    @property
+    def state(self) -> State:
+        if self.done():
+            return State.DONE
+        if self.ready():
+            return State.READY
+        return State.PENDING
 
     def add_child(self, fut: 'Future[Any]') -> None:
         self._children.add(fut)
@@ -123,10 +139,9 @@ class HashedFuture(Future[_T], ABC):
     def spec(self) -> str: ...
 
     def __repr__(self) -> str:
-        state = 'DONE' if self.done() else 'READY' if self.ready() else 'PENDING'
         return (
             f'<{self.__class__.__name__} hashid={self.hashid} spec={self.spec!r} '
-            f'state={state}>'
+            f'state={self.state.name}>'
         )
 
     def __str__(self) -> str:
@@ -262,6 +277,13 @@ class Task(HashedFuture[_T]):
         return self._future_result is not _NoResult
 
     def run(self, allow_unfinished: bool = False) -> Union[_T, Future[_T]]:
+    @property
+    def state(self) -> State:
+        state = super().state
+        if state is State.READY and self.has_run():
+            state = State.HAS_RUN
+        return state
+
         assert not self.done()
         if not allow_unfinished:
             assert self.ready()
