@@ -12,7 +12,7 @@ class ClassJSONEncoder(json.JSONEncoder):
     }
 
     def __init__(self, *args: Any, tape: Set[Any] = None,
-                 classes: Dict[Type, Callable[[Any], Dict]] = None,
+                 classes: Dict[Type[Any], Callable[[Any], Dict[Any, Any]]] = None,
                  **kwargs: Any) -> None:
         classes = classes or {}
         super().__init__(*args, **kwargs)
@@ -37,7 +37,7 @@ class ClassJSONEncoder(json.JSONEncoder):
 
 class ClassJSONDecoder(json.JSONDecoder):
     def __init__(self, *args: Any,
-                 classes: Dict[Type, Callable[[Dict[str, Any]], Any]] = None,
+                 classes: Dict[Type[Any], Callable[[Dict[str, Any]], Any]] = None,
                  **kwargs: Any) -> None:
         assert 'object_hook' not in kwargs
         kwargs['object_hook'] = self._my_object_hook

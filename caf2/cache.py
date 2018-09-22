@@ -8,7 +8,9 @@ import pickle
 from .caf import Session, Task
 from caf.Utils import get_timestamp
 
-from typing import Callable, Any, Optional, Tuple, Set
+from typing import Callable, Any, Optional, Tuple, Set, TypeVar
+
+_T = TypeVar('_T')
 
 
 def init_db(path: str) -> sqlite3.Connection:
@@ -41,9 +43,10 @@ class CachedSession(Session):
     def __init__(self, db: sqlite3.Connection) -> None:
         super().__init__()
         self._db = db
-        self._processed_tasks: Set[Task] = set()
+        self._processed_tasks: Set[Task[Any]] = set()
 
-    def create_task(self, f: Callable, *args: Any, **kwargs: Any) -> Task:
+    def create_task(self, f: Callable[..., _T], *args: Any, **kwargs: Any
+                    ) -> Task[_T]:
         task = super().create_task(f, *args, **kwargs)
         if task in self._processed_tasks:
             return task
@@ -63,7 +66,7 @@ class CachedSession(Session):
                 task.set_result(pickle.loads(pickled_result))
         return task
 
-    def _store_result(self, task: Task) -> None:
+    def _store_result(self, task: Task[Any]) -> None:
         self._db.execute(
             'UPDATE tasks SET result = ? WHERE hashid = ?',
             (pickle.dumps(task.result()), task.hashid)

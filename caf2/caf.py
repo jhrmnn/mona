@@ -12,15 +12,17 @@ from abc import ABC, abstractmethod
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
 
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
-    List, Deque, TypeVar, Union, Iterator, overload, Collection
+    List, Deque, TypeVar, Union, Iterator, overload, Collection, Generic, \
+    cast, Type
+from typing import Mapping  # noqa
 
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
 Callback = Callable[[_T], None]
 Hash = NewType('Hash', str)
-_Fut = TypeVar('_Fut', bound='Future')
-_HFut = TypeVar('_HFut', bound='HashedFuture')
+_Fut = TypeVar('_Fut', bound='Future')  # type: ignore
+_HFut = TypeVar('_HFut', bound='HashedFuture')  # type: ignore
 
 
 def hash_text(text: Union[str, bytes]) -> Hash:
@@ -34,20 +36,21 @@ class NoResult(Enum):
 
 
 _NoResult = NoResult.token
+Maybe = Union[_T, NoResult]
 
 
 class FutureNotDone(Exception):
     pass
 
 
-class Future:
-    def __init__(self: _Fut, parents: Iterable['Future']) -> None:
-        self._pending: Set['Future'] = set()
+class Future(Generic[_T]):
+    def __init__(self: _Fut, parents: Iterable['Future[Any]']) -> None:
+        self._pending: Set['Future[Any]'] = set()
         for fut in parents:
             if not fut.done():
                 self._pending.add(fut)
-        self._children: Set['Future'] = set()
-        self._result: Any = _NoResult
+        self._children: Set['Future[Any]'] = set()
+        self._result: Maybe[_T] = _NoResult
         self._done_callbacks: List[Callback[_Fut]] = []
         self._ready_callbacks: List[Callback[_Fut]] = []
 
@@ -62,7 +65,7 @@ class Future:
     def done(self) -> bool:
         return self._result is not _NoResult
 
-    def add_child(self, fut: 'Future') -> None:
+    def add_child(self, fut: 'Future[Any]') -> None:
         self._children.add(fut)
 
     def add_ready_callback(self: _Fut, callback: Callback[_Fut]) -> None:
@@ -75,24 +78,24 @@ class Future:
         assert not self.done()
         self._done_callbacks.append(callback)
 
-    def parent_done(self: _Fut, fut: 'Future') -> None:
+    def parent_done(self: _Fut, fut: 'Future[Any]') -> None:
         self._pending.remove(fut)
         if self.ready():
             log.debug(f'{self}: ready')
             for callback in self._ready_callbacks:
                 callback(self)
 
-    def default_result(self, default: Any) -> Any:
+    def default_result(self, default: _T) -> _T:
         return default
 
-    def result(self, default: Any = _NoResult) -> Any:
-        if self._result is not _NoResult:
+    def result(self, default: Maybe[_T] = _NoResult) -> _T:
+        if not isinstance(self._result, NoResult):  # mypy limitation
             return self._result
-        if default is not _NoResult:
+        if not isinstance(default, NoResult):  # mypy limitation
             return self.default_result(default)
         raise FutureNotDone()
 
-    def set_result(self: _Fut, result: Any) -> None:
+    def set_result(self: _Fut, result: _T) -> None:
         assert self.ready()
         assert self._result is _NoResult
         self._result = result
@@ -103,7 +106,7 @@ class Future:
             callback(self)
 
 
-class HashedFuture(Future, ABC):
+class HashedFuture(Future[_T], ABC):
     @property
     @abstractmethod
     def hashid(self) -> Hash: ...
@@ -121,14 +124,15 @@ class HashedFuture(Future, ABC):
         return self
 
 
-class Template(HashedFuture):
-    def __init__(self, jsonstr: str, futures: Collection[HashedFuture]) -> None:
+class Template(HashedFuture[_T]):
+    def __init__(self, jsonstr: str, futures: Collection[HashedFuture[Any]]
+                 ) -> None:
         super().__init__(futures)
         self._jsonstr = jsonstr
         self._futures = {fut.hashid: fut for fut in futures}
         self._hashid = Hash(f'{{}}{ hash_text(self._jsonstr)}')
         self.add_ready_callback(
-            lambda tmpl: tmpl.set_result(tmpl.substitute())  # type: ignore
+            lambda tmpl: tmpl.set_result(tmpl.substitute())
         )
 
     @property
@@ -142,21 +146,21 @@ class Template(HashedFuture):
     def has_futures(self) -> bool:
         return bool(self._futures)
 
-    def substitute(self, default: Any = _NoResult) -> Any:
-        return json.loads(
+    def substitute(self, default: Maybe[_T] = _NoResult) -> _T:
+        return cast(_T, json.loads(
             self._jsonstr,
             classes={
                 Task: lambda dct: self._futures[dct['hashid']].result(default),
                 Indexor: lambda dct: self._futures[dct['hashid']].result(default),
             },
             cls=ClassJSONDecoder
-        )
+        ))
 
     default_result = substitute
 
     @classmethod
-    def from_object(cls, obj: Any) -> 'Template':
-        futures: Set[HashedFuture] = set()
+    def from_object(cls: Type['Template[_T]'], obj: _T) -> 'Template[_T]':
+        futures: Set[HashedFuture[Any]] = set()
         jsonstr = json.dumps(
             obj,
             sort_keys=True,
@@ -170,17 +174,17 @@ class Template(HashedFuture):
         return cls(jsonstr, futures)
 
 
-class Indexor(HashedFuture):
-    def __init__(self, task: 'Task', keys: List[Union[str, int]]) -> None:
+class Indexor(HashedFuture[_T]):
+    def __init__(self, task: 'Task[Mapping[Any, Any]]', keys: List[Any]) -> None:
         super().__init__([task])
         self._task = task
         self._keys = keys
         self._hashid = Hash('/'.join(['@' + task.hashid, *map(str, keys)]))
         self.add_ready_callback(
-            lambda idx: idx.set_result(idx.resolve())  # type: ignore
+            lambda idx: idx.set_result(idx.resolve())
         )
 
-    def __getitem__(self, key: Union[str, int]) -> 'Indexor':
+    def __getitem__(self, key: Any) -> 'Indexor[Any]':
         return Indexor(self._task, self._keys + [key]).register()
 
     @property
@@ -191,20 +195,20 @@ class Indexor(HashedFuture):
     def spec(self) -> str:
         return self._hashid
 
-    def resolve(self) -> Any:
+    def resolve(self) -> _T:
         obj = self._task.result()
         for key in self._keys:
             obj = obj[key]
-        return obj
+        return cast(_T, obj)
 
 
-def wrap_input(obj: Any) -> Future:
+def wrap_input(obj: _T) -> Future[_T]:
     if isinstance(obj, Future):
         return obj
     return Template.from_object(obj).register()
 
 
-def wrap_output(obj: Any) -> Any:
+def wrap_output(obj: _T) -> Union[_T, Future[_T]]:
     if isinstance(obj, Future):
         return obj
     template = Template.from_object(obj)
@@ -213,25 +217,25 @@ def wrap_output(obj: Any) -> Any:
     return obj
 
 
-class Task(HashedFuture):
-    def __init__(self, f: Callable, *args: HashedFuture,
-                 default: Any = None, label: str = None) -> None:
+class Task(HashedFuture[_T]):
+    def __init__(self, f: Callable[..., _T], *args: HashedFuture[Any],
+                 default: Maybe[_T] = _NoResult, label: str = None) -> None:
         super().__init__(args)
         self._f = f
         self._args = args
         self._hashid = hash_text(self.spec)
-        self.children: List['Task'] = []
-        self._future_result: Any = _NoResult
+        self.children: List['Task'[Any]] = []
+        self._future_result: Maybe[Future[_T]] = _NoResult
         self._default = default
         self._label = label
 
-    def __getitem__(self, key: Union[str, int]) -> Indexor:
-        return Indexor(self, [key]).register()
+    def __getitem__(self, key: Any) -> Indexor[Any]:
+        return Indexor(self, [key]).register()  # type: ignore
 
-    def default_result(self, default: Any) -> Any:
-        if self._future_result is not _NoResult:
+    def default_result(self, default: Any) -> _T:
+        if not isinstance(self._future_result, NoResult):
             return self._future_result.default_result(default)
-        super().default_result(default)
+        return super().default_result(default)
 
     @property
     def hashid(self) -> Hash:
@@ -249,7 +253,7 @@ class Task(HashedFuture):
     def has_run(self) -> bool:
         return self._future_result is not _NoResult
 
-    def run(self, allow_unfinished: bool = False) -> Any:
+    def run(self, allow_unfinished: bool = False) -> Union[_T, Future[_T]]:
         assert not self.done()
         if not allow_unfinished:
             assert self.ready()
@@ -274,10 +278,10 @@ class Session:
     _active: Optional['Session'] = None
 
     def __init__(self) -> None:
-        self._pending: Set[Task] = set()
-        self._waiting: Deque[Task] = deque()
-        self._tasks: Dict[Hash, Task] = {}
-        self._task_tape: Optional[List[Task]] = None
+        self._pending: Set[Task[Any]] = set()
+        self._waiting: Deque[Task[Any]] = deque()
+        self._tasks: Dict[Hash, Task[Any]] = {}
+        self._task_tape: Optional[List[Task[Any]]] = None
 
     def __enter__(self) -> 'Session':
         assert Session._active is None
@@ -290,11 +294,12 @@ class Session:
         self._waiting.clear()
         self._tasks.clear()
 
-    def _schedule_task(self, task: Task) -> None:
+    def _schedule_task(self, task: Task[Any]) -> None:
         self._pending.remove(task)
         self._waiting.append(task)
 
-    def create_task(self, f: Callable, *args: Any, **kwargs: Any) -> Task:
+    def create_task(self, f: Callable[..., _T], *args: Any, **kwargs: Any
+                    ) -> Task[_T]:
         args = tuple(map(wrap_input, args))
         task = Task(f, *args, **kwargs)
         try:
@@ -310,7 +315,7 @@ class Session:
         return task
 
     @contextmanager
-    def record(self, tape: List[Task]) -> Iterator[None]:
+    def record(self, tape: List[Task[Any]]) -> Iterator[None]:
         self._task_tape = tape
         try:
             yield
@@ -339,34 +344,35 @@ class Session:
         return cls._active
 
 
-class Rule:
-    def __init__(self, func: Callable, **kwargs: Any) -> None:
+class Rule(Generic[_T]):
+    def __init__(self, func: Callable[..., _T], **kwargs: Any) -> None:
         self._func = func
         self._kwargs = kwargs
 
     def __repr__(self) -> str:
         return f'<Rule func={self._func!r} kwargs={self._kwargs!r}>'
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Task:
+    def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
         return Session.active().create_task(
             self._func, *args, **self._kwargs, **kwargs
         )
 
 
 @overload
-def rule(func: Callable) -> Rule: ...
+def rule(func: Callable[..., _T]) -> Rule[_T]: ...
 @overload  # noqa
 def rule(*, label: str = None, default: Any = None
-         ) -> Callable[[Callable], Rule]: ...
+         ) -> Callable[[Callable[..., _T]], Rule[_T]]: ...
 
 
-def rule(*args: Callable, **kwargs: Any) -> Any:
+def rule(*args: Callable[..., _T], **kwargs: Any
+         ) -> Union[Rule[_T], Callable[[Callable[..., _T]], Rule[_T]]]:
     if args:
         assert not kwargs
         func, = args
         return Rule(func)
 
-    def decorator(func: Callable) -> Rule:
+    def decorator(func: Callable[..., _T]) -> Rule[_T]:
         return Rule(func, **kwargs)
     return decorator
 
