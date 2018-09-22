@@ -67,11 +67,13 @@ class Future(Generic[_T]):
         self._ready_callbacks: List[Callback[_Fut]] = []
         self._registered = False
 
-    def register(self: _Fut) -> None:
+    def register(self: _Fut) -> bool:
         if not self._registered:
             self._registered = True
             for fut in self._pending:
                 fut.add_child(self)
+            return True
+        return False
 
     def ready(self) -> bool:
         return not self._pending
@@ -152,10 +154,11 @@ class HashedFuture(Future[_T], ABC):
     def __str__(self) -> str:
         return self.hashid
 
-    def register(self: _HFut) -> None:
-        if not self._registered:
+    def register(self: _HFut) -> bool:
+        if super().register():
             log.debug(f'registered: {self!r}')
-        super().register()
+            return True
+        return False
 
 
 class Template(HashedFuture[_T]):
@@ -177,10 +180,12 @@ class Template(HashedFuture[_T]):
     def spec(self) -> str:
         return self._jsonstr
 
-    def register(self) -> None:
-        for fut in self.pending:
-            fut.register()
-        super().register()
+    def register(self) -> bool:
+        if super().register():
+            for fut in self.pending:
+                fut.register()
+            return True
+        return False
 
     def has_futures(self) -> bool:
         return bool(self._futures)
