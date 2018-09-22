@@ -20,7 +20,7 @@ _Fut = TypeVar('_Fut', bound='Future')
 CallbackFut = Callable[[_Fut], None]
 
 
-def get_hash(text: Union[str, bytes]) -> Hash:
+def hash_text(text: Union[str, bytes]) -> Hash:
     if isinstance(text, str):
         text = text.encode()
     return Hash(hashlib.sha1(text).hexdigest())
@@ -105,7 +105,7 @@ class Template(Future):
         super().__init__(futures)
         self._jsonstr = jsonstr
         self._futures = {fut.hashid: fut for fut in futures}
-        self._hashid = Hash(f'{{}}{get_hash(self._jsonstr)}')
+        self._hashid = Hash(f'{{}}{ hash_text(self._jsonstr)}')
         log.debug(f'{self} <= {self._jsonstr}')
         self.add_ready_callback(
             lambda tmpl: tmpl.set_result(tmpl.substitute())  # type: ignore
@@ -264,7 +264,7 @@ class Session:
     def create_task(self, f: Callable, *args: Any, **kwargs: Any) -> Task:
         args = tuple(map(wrap_input, args))
         hash_obj = [get_fullname(f), *(fut.hashid for fut in args)]
-        hashid = get_hash(json.dumps(hash_obj, sort_keys=True))
+        hashid = hash_text(json.dumps(hash_obj, sort_keys=True))
         try:
             return self._tasks[hashid]
         except KeyError:
