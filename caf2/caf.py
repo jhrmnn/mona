@@ -248,6 +248,12 @@ class Indexor(HashedFuture[_T]):
         return cast(_T, obj)
 
 
+def ensure_future(obj: Any) -> HashedFuture[Any]:
+    if isinstance(obj, HashedFuture):
+        return obj
+    return Template.from_object(obj)
+
+
 class TaskHasNotRun(CafError):
     pass
 
@@ -259,10 +265,7 @@ class TaskIsDone(CafError):
 class Task(HashedFuture[_T]):
     def __init__(self, func: Callable[..., _T], *args: Any,
                  default: Maybe[_T] = _NoResult, label: str = None) -> None:
-        self._args = tuple(
-            arg if isinstance(arg, HashedFuture) else Template.from_object(arg)
-            for arg in args
-        )
+        self._args = tuple(map(ensure_future, args))
         super().__init__(self._args)
         self._func = func
         self._hashid = hash_text(self.spec)
@@ -434,38 +437,27 @@ class Session:
             self._task_tape = None
 
     def eval(self, obj: Any) -> Any:
-        if isinstance(obj, Task):
-            fut: HashedFuture[Any] = obj
-        elif isinstance(obj, HashedFuture):
-            fut = obj
-        else:
-            template = Template.from_object(obj)
-            if not template.has_futures():
-                return obj
-            fut = template
+        fut = ensure_future(obj)
         fut.register()
-
         queue = HashedDeque[Task[Any]]()
 
         def schedule(task: Task[Any]) -> None:
             if task not in queue:
                 queue.append(task)
 
-        for task in extract_tasks(fut):
-            if not task.has_run():
-                task.add_ready_callback(schedule)
+        def process_future(fut: HashedFuture[Any]) -> None:
+            for task in extract_tasks(fut):
+                if not task.has_run():
+                    task.add_ready_callback(schedule)
 
+        process_future(fut)
         while queue:
             task = queue.popleft()
             assert not task.has_run()
             with self.record(task.children):
                 self.run_task(task)
             if not task.done():
-                task_fut = task.future_result()
-
-                for parent_task in extract_tasks(task_fut):
-                    if not parent_task.has_run():
-                        parent_task.add_ready_callback(schedule)
+                process_future(task.future_result())
         return fut.result()
 
     @classmethod
