@@ -6,7 +6,8 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 
 from typing import (
-    Any, Callable, TypeVar, List, Union, Dict, Tuple, Iterable, Optional
+    Any, Callable, TypeVar, List, Union, Dict, Tuple, Iterable, Optional,
+    NoReturn
 )
 
 _F = TypeVar('_F', bound=Callable[..., Any])
@@ -30,7 +31,7 @@ class CLIError(Exception):
 
 
 class ThrowingArgumentParser(ArgumentParser):
-    def error(self, msg: str) -> None:
+    def error(self, msg: str) -> NoReturn:
         raise CLIError(self, msg)
 
 
