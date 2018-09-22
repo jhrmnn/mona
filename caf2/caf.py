@@ -53,8 +53,11 @@ class Future(Generic[_T]):
         self._result: Maybe[_T] = _NoResult
         self._done_callbacks: List[Callback[_Fut]] = []
         self._ready_callbacks: List[Callback[_Fut]] = []
+        self._registered = False
 
     def register(self: _Fut) -> _Fut:
+        assert not self._registered
+        self._registered = True
         for fut in self._pending:
             fut.add_child(self)
         return self
