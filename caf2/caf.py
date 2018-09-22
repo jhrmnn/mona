@@ -25,6 +25,10 @@ _Fut = TypeVar('_Fut', bound='Future')  # type: ignore
 _HFut = TypeVar('_HFut', bound='HashedFuture')  # type: ignore
 
 
+class CafError(Exception):
+    pass
+
+
 def hash_text(text: Union[str, bytes]) -> Hash:
     if isinstance(text, str):
         text = text.encode()
@@ -39,7 +43,7 @@ _NoResult = NoResult.token
 Maybe = Union[_T, NoResult]
 
 
-class FutureNotDone(Exception):
+class FutureNotDone(CafError):
     pass
 
 
@@ -208,12 +212,6 @@ class Indexor(HashedFuture[_T]):
         return cast(_T, obj)
 
 
-def wrap_input(obj: _T) -> Future[_T]:
-    if isinstance(obj, Future):
-        return obj
-    return Template.from_object(obj).register()
-
-
 def wrap_output(obj: _T) -> Union[_T, Future[_T]]:
     if isinstance(obj, Future):
         return obj
@@ -280,7 +278,11 @@ class Task(HashedFuture[_T]):
         return result
 
 
-class NoActiveSession(Exception):
+class NoActiveSession(CafError):
+    pass
+
+
+class ArgNotInSession(CafError):
     pass
 
 
@@ -310,8 +312,16 @@ class Session:
 
     def create_task(self, f: Callable[..., _T], *args: Any, **kwargs: Any
                     ) -> Task[_T]:
-        args = tuple(map(wrap_input, args))
-        task = Task(f, *args, **kwargs)
+        fut_args = []
+        for arg in args:
+            if isinstance(arg, Task):
+                if arg.hashid not in self._tasks:
+                    raise ArgNotInSession(repr(arg))
+            if isinstance(arg, HashedFuture):
+                fut_args.append(arg)
+            else:
+                fut_args.append(Template.from_object(arg).register())
+        task = Task(f, *fut_args, **kwargs)
         try:
             return self._tasks[task.hashid]
         except KeyError:

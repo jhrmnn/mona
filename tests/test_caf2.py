@@ -39,6 +39,14 @@ def test_no_session():
         fib(10)
 
 
+def test_arg_not_in_session():
+    with pytest.raises(caf.caf.ArgNotInSession):
+        with caf.Session():
+            task = fib(1)
+        with caf.Session():
+            fib(task)
+
+
 def test_fibonacci():
     with caf.Session() as sess:
         assert sess.eval(fib(10)) == 55
