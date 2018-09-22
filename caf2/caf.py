@@ -13,6 +13,7 @@ from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
 from typing import Mapping  # noqa
 
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
+from .collections import HashedDeque
 
 
 log = logging.getLogger(__name__)
@@ -444,13 +445,11 @@ class Session:
             fut = template
         fut.register()
 
-        queue = Deque[Task[Any]]()
-        queue_set: Set[Task[Any]] = set()
+        queue = HashedDeque[Task[Any]]()
 
         def schedule(task: Task[Any]) -> None:
-            if task not in queue_set:
+            if task not in queue:
                 queue.append(task)
-                queue_set.add(task)
 
         for task in extract_tasks(fut):
             if not task.has_run():
@@ -458,7 +457,6 @@ class Session:
 
         while queue:
             task = queue.popleft()
-            queue_set.remove(task)
             assert not task.has_run()
             with self.record(task.children):
                 self.run_task(task)
