@@ -5,7 +5,8 @@ import sqlite3
 from textwrap import dedent
 import pickle
 
-from .caf import Session, Task
+from .sessions import Session
+from .tasks import Task
 from caf.Utils import get_timestamp
 
 from typing import Callable, Any, Optional, Tuple, Set, TypeVar

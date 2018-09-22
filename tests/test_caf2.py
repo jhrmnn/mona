@@ -35,12 +35,12 @@ def fib(n):
 
 
 def test_no_session():
-    with pytest.raises(caf.caf.NoActiveSession):
+    with pytest.raises(caf.sessions.NoActiveSession):
         fib(10)
 
 
 def test_arg_not_in_session():
-    with pytest.raises(caf.caf.ArgNotInSession):
+    with pytest.raises(caf.sessions.ArgNotInSession):
         with caf.Session():
             task = fib(1)
         with caf.Session():
@@ -48,7 +48,7 @@ def test_arg_not_in_session():
 
 
 def test_fut_not_in_session():
-    with pytest.raises(caf.caf.ArgNotInSession):
+    with pytest.raises(caf.sessions.ArgNotInSession):
         with caf.Session():
             task = fib(1)
         with caf.Session():

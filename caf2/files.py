@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import subprocess
 
-from .caf import Rule
+from .rules import Rule
 
 from typing import Dict, Union
 
