@@ -32,13 +32,13 @@ class FutureNotDone(Exception):
 
 
 class Future(ABC, Generic[_Fut]):
-    def __init__(self, deps: Iterable['Future']) -> None:
+    def __init__(self, parents: Iterable['Future']) -> None:
         self._pending: Set['Future'] = set()
-        for fut in deps:
+        for fut in parents:
             if not fut.done():
                 self._pending.add(fut)
-                fut.add_depant(self)
-        self._depants: Set['Future'] = set()
+                fut.add_child(self)
+        self._children: Set['Future'] = set()
         self._result: Any = FutureNotDone
         self._done_callbacks: List[CallbackFut] = []
         self._ready_callbacks: List[CallbackFut] = []
@@ -52,8 +52,8 @@ class Future(ABC, Generic[_Fut]):
     def done(self) -> bool:
         return self._result is not FutureNotDone
 
-    def add_depant(self, fut: 'Future') -> None:
-        self._depants.add(fut)
+    def add_child(self, fut: 'Future') -> None:
+        self._children.add(fut)
 
     def add_ready_callback(self, callback: CallbackFut) -> None:
         if self.ready():
@@ -65,7 +65,7 @@ class Future(ABC, Generic[_Fut]):
         assert not self.done()
         self._done_callbacks.append(callback)
 
-    def dep_done(self, fut: 'Future') -> None:
+    def parent_done(self, fut: 'Future') -> None:
         self._pending.remove(fut)
         if self.ready():
             log.debug(f'{self}: ready')
@@ -87,8 +87,8 @@ class Future(ABC, Generic[_Fut]):
         assert self._result is FutureNotDone
         self._result = result
         log.debug(f'{self}: done')
-        for fut in self._depants:
-            fut.dep_done(self)
+        for fut in self._children:
+            fut.parent_done(self)
         for callback in self._done_callbacks:
             callback(self)
 
