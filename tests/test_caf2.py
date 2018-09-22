@@ -106,6 +106,13 @@ def test_recursion():
         assert sess.eval(recurse(0)) == 5
 
 
+def test_tasks_not_run():
+    with caf.Session() as sess:
+        fib(10)
+        sess.eval(fib(1))
+        assert len(sess._tasks) == 2
+
+
 @caf.rule
 def calcs():
     return [(
