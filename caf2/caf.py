@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
 
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
-    List, Deque, TypeVar, Union, Tuple, Iterator, overload
+    List, Deque, TypeVar, Union, Iterator, overload, Collection
 
 log = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ class Future(ABC):
 
 
 class Template(Future):
-    def __init__(self, jsonstr: str, futures: Iterable[Future]) -> None:
+    def __init__(self, jsonstr: str, futures: Collection[Future]) -> None:
         super().__init__(futures)
         self._jsonstr = jsonstr
         self._futures = {fut.hashid: fut for fut in futures}
@@ -115,6 +115,9 @@ class Template(Future):
     def hashid(self) -> Hash:
         return self._hashid
 
+    def has_futures(self) -> bool:
+        return bool(self._futures)
+
     def substitute(self, default: Any = FutureNotDone) -> Any:
         return json.loads(
             self._jsonstr,
@@ -127,8 +130,8 @@ class Template(Future):
 
     default_result = substitute
 
-    @staticmethod
-    def parse(obj: Any) -> Tuple[str, Set[Future]]:
+    @classmethod
+    def from_object(cls, obj: Any) -> 'Template':
         futures: Set[Future] = set()
         jsonstr = json.dumps(
             obj,
@@ -140,7 +143,7 @@ class Template(Future):
             },
             cls=ClassJSONEncoder
         )
-        return jsonstr, futures
+        return cls(jsonstr, futures)
 
 
 class Indexor(Future):
@@ -170,15 +173,15 @@ class Indexor(Future):
 def wrap_input(obj: Any) -> Future:
     if isinstance(obj, Future):
         return obj
-    return Template(*Template.parse(obj)).register()
+    return Template.from_object(obj).register()
 
 
 def wrap_output(obj: Any) -> Any:
     if isinstance(obj, Future):
         return obj
-    jsonstr, futures = Template.parse(obj)
-    if futures:
-        return Template(jsonstr, futures).register()
+    template = Template.from_object(obj)
+    if template.has_futures():
+        return template.register()
     return obj
 
 
@@ -287,10 +290,10 @@ class Session:
         if isinstance(obj, Future):
             fut = obj
         else:
-            jsonstr, futures = Template.parse(obj)
-            if not futures:
+            template = Template.from_object(obj)
+            if not template.has_futures():
                 return obj
-            fut = Template(jsonstr, futures).register()
+            fut = template.register()
         while self._waiting:
             task = self._waiting.popleft()
             if task.done():
