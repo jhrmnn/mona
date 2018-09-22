@@ -5,6 +5,7 @@ import json
 from collections import deque
 import logging
 import hashlib
+from enum import Enum
 from contextlib import contextmanager
 from abc import ABC, abstractmethod
 
@@ -27,6 +28,13 @@ def hash_text(text: Union[str, bytes]) -> Hash:
     return Hash(hashlib.sha1(text).hexdigest())
 
 
+class NoResult(Enum):
+    token = 0
+
+
+_NoResult = NoResult.token
+
+
 class FutureNotDone(Exception):
     pass
 
@@ -38,7 +46,7 @@ class Future:
             if not fut.done():
                 self._pending.add(fut)
         self._children: Set['Future'] = set()
-        self._result: Any = FutureNotDone
+        self._result: Any = _NoResult
         self._done_callbacks: List[CallbackFut] = []
         self._ready_callbacks: List[CallbackFut] = []
 
@@ -51,7 +59,7 @@ class Future:
         return not self._pending
 
     def done(self) -> bool:
-        return self._result is not FutureNotDone
+        return self._result is not _NoResult
 
     def add_child(self, fut: 'Future') -> None:
         self._children.add(fut)
@@ -76,16 +84,16 @@ class Future:
     def default_result(self, default: Any) -> Any:
         return default
 
-    def result(self, default: Any = FutureNotDone) -> Any:
-        if self._result is not FutureNotDone:
+    def result(self, default: Any = _NoResult) -> Any:
+        if self._result is not _NoResult:
             return self._result
-        if default is not FutureNotDone:
+        if default is not _NoResult:
             return self.default_result(default)
         raise FutureNotDone()
 
     def set_result(self, result: Any) -> None:
         assert self.ready()
-        assert self._result is FutureNotDone
+        assert self._result is _NoResult
         self._result = result
         log.debug(f'{self}: done')
         for fut in self._children:
@@ -133,7 +141,7 @@ class Template(HashedFuture):
     def has_futures(self) -> bool:
         return bool(self._futures)
 
-    def substitute(self, default: Any = FutureNotDone) -> Any:
+    def substitute(self, default: Any = _NoResult) -> Any:
         return json.loads(
             self._jsonstr,
             classes={
@@ -212,7 +220,7 @@ class Task(HashedFuture):
         self._args = args
         self._hashid = hash_text(self.spec)
         self.children: List['Task'] = []
-        self._future_result: Any = FutureNotDone
+        self._future_result: Any = _NoResult
         self._default = default
         self._label = label
 
@@ -220,7 +228,7 @@ class Task(HashedFuture):
         return Indexor(self, [key]).register()
 
     def default_result(self, default: Any) -> Any:
-        if self._future_result is not FutureNotDone:
+        if self._future_result is not _NoResult:
             return self._future_result.default_result(default)
         super().default_result(default)
 
@@ -238,7 +246,7 @@ class Task(HashedFuture):
         return self._label
 
     def has_run(self) -> bool:
-        return self._future_result is not FutureNotDone
+        return self._future_result is not _NoResult
 
     def run(self, allow_unfinished: bool = False) -> Any:
         assert not self.done()
