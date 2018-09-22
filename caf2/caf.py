@@ -100,7 +100,7 @@ class Future(Generic[_T]):
             return self._result
         if not isinstance(default, NoResult):  # mypy limitation
             return self.default_result(default)
-        raise FutureNotDone()
+        raise FutureNotDone(repr(self))
 
     def set_result(self: _Fut, result: _T) -> None:
         assert self.ready()
@@ -123,7 +123,11 @@ class HashedFuture(Future[_T], ABC):
     def spec(self) -> str: ...
 
     def __repr__(self) -> str:
-        return f'<{self.__class__.__name__} hashid={self.hashid} spec={self.spec!r}>'
+        state = 'DONE' if self.done() else 'READY' if self.ready() else 'PENDING'
+        return (
+            f'<{self.__class__.__name__} hashid={self.hashid} spec={self.spec!r} '
+            f'state={state}>'
+        )
 
     def __str__(self) -> str:
         return self.hashid
