@@ -39,6 +39,7 @@ class NoResult(Enum):
 
 
 class State(Enum):
+    UNREGISTERED = -1
     PENDING = 0
     READY = 1
     RUNNING = 2
@@ -88,7 +89,9 @@ class Future(Generic[_T]):
             return State.DONE
         if self.ready():
             return State.READY
-        return State.PENDING
+        if self._registered:
+            return State.PENDING
+        return State.UNREGISTERED
 
     def add_child(self, fut: 'Future[Any]') -> None:
         self._children.add(fut)
@@ -196,6 +199,7 @@ class Template(HashedFuture[_T]):
 
     @classmethod
     def from_object(cls: Type['Template[_T]'], obj: _T) -> 'Template[_T]':
+        assert not isinstance(obj, HashedFuture)
         futures: Set[HashedFuture[Any]] = set()
         jsonstr = json.dumps(
             obj,
@@ -239,15 +243,18 @@ class Indexor(HashedFuture[_T]):
 
 
 class Task(HashedFuture[_T]):
-    def __init__(self, func: Callable[..., _T], *args: HashedFuture[Any],
+    def __init__(self, func: Callable[..., _T], *args: Any,
                  default: Maybe[_T] = _NoResult, label: str = None) -> None:
-        super().__init__(args)
+        self._args = tuple(
+            arg if isinstance(arg, HashedFuture) else Template.from_object(arg)
+            for arg in args
+        )
+        super().__init__(self._args)
         self._func = func
-        self._args = args
         self._hashid = hash_text(self.spec)
         self.children: List['Task'[Any]] = []
         self._future_result: Optional[Future[_T]] = None
-        self._default = default
+        self._default = default  # TODO resolve this
         self._label = label
 
     def __getitem__(self, key: Any) -> Indexor[Any]:
@@ -351,24 +358,9 @@ class Session:
         self._pending.remove(task)
         self._waiting.append(task)
 
-    def create_task(self, f: Callable[..., _T], *args: Any, **kwargs: Any
+    def create_task(self, func: Callable[..., _T], *args: Any, **kwargs: Any
                     ) -> Task[_T]:
-        fut_args: List[HashedFuture[Any]] = []
-        for arg in args:
-            if isinstance(arg, HashedFuture):
-                fut_arg = arg
-            else:
-                fut_arg = Template.from_object(arg)
-            if isinstance(fut_arg, Task):
-                if fut_arg not in self:
-                    raise ArgNotInSession(repr(fut_arg))
-            else:
-                for task in extract_tasks(fut_arg):
-                    if task not in self:
-                        raise ArgNotInSession(f'{fut_arg!r} -> {task!r}')
-            fut_arg.register()
-            fut_args.append(fut_arg)
-        task = Task(f, *fut_args, **kwargs)
+        task = Task(func, *args, **kwargs)
         try:
             task = self._tasks[task.hashid]
         except KeyError:
@@ -378,6 +370,15 @@ class Session:
         finally:
             if self._task_tape is not None:
                 self._task_tape.append(task)
+        for arg in task.args:
+            if isinstance(arg, Task):
+                if arg not in self:
+                    raise ArgNotInSession(repr(arg))
+            else:
+                for arg_task in extract_tasks(arg):
+                    if arg_task not in self:
+                        raise ArgNotInSession(f'{arg!r} -> {arg_task!r}')
+            arg.register()
         task.register()
         self._pending.add(task)
         task.add_ready_callback(self._schedule_task)

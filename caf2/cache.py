@@ -45,9 +45,9 @@ class CachedSession(Session):
         self._db = db
         self._processed_tasks: Set[Task[Any]] = set()
 
-    def create_task(self, f: Callable[..., _T], *args: Any, **kwargs: Any
+    def create_task(self, func: Callable[..., _T], *args: Any, **kwargs: Any
                     ) -> Task[_T]:
-        task = super().create_task(f, *args, **kwargs)
+        task = super().create_task(func, *args, **kwargs)
         if task in self._processed_tasks:
             return task
         row: Optional[Tuple[Optional[bytes]]] = self._db.execute(
