@@ -247,6 +247,14 @@ class Indexor(HashedFuture[_T]):
         return cast(_T, obj)
 
 
+class TaskHasNotRun(CafError):
+    pass
+
+
+class TaskIsDone(CafError):
+    pass
+
+
 class Task(HashedFuture[_T]):
     def __init__(self, func: Callable[..., _T], *args: Any,
                  default: Maybe[_T] = _NoResult, label: str = None) -> None:
@@ -258,7 +266,7 @@ class Task(HashedFuture[_T]):
         self._func = func
         self._hashid = hash_text(self.spec)
         self.children: List['Task'[Any]] = []
-        self._future_result: Optional[Future[_T]] = None
+        self._future_result: Optional[HashedFuture[_T]] = None
         self._default = default  # TODO resolve this
         self._label = label
 
@@ -290,7 +298,13 @@ class Task(HashedFuture[_T]):
         obj = [get_fullname(self._func), *(fut.hashid for fut in self._args)]
         return json.dumps(obj, sort_keys=True)
 
-    def future_result(self) -> Optional[Future[_T]]:
+    def future_result(self) -> HashedFuture[_T]:
+        if not self.has_run():
+            raise TaskHasNotRun(repr(self))
+        if self.done():
+            assert self._future_result is None
+            raise TaskIsDone(repr(self))
+        assert self._future_result
         return self._future_result
 
     @property
@@ -298,7 +312,7 @@ class Task(HashedFuture[_T]):
         return self._label
 
     def has_run(self) -> bool:
-        return self._future_result is not _NoResult
+        return self.done() or self._future_result is not None
 
     def set_result(self, result: _T) -> None:
         super().set_result(result)
@@ -411,8 +425,8 @@ class Session:
                 fut = template
         if fut:
             assert not fut.done()
-            task.set_future_result(fut)
             log.info(f'{task}: has run, pending: {fut}')
+            task.set_future_result(fut)
             fut.add_done_callback(lambda fut: task.set_result(fut.result()))
             fut.register()
         else:
