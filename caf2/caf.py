@@ -11,12 +11,11 @@ from abc import ABC, abstractmethod
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
 
 from typing import Iterable, Set, Any, NewType, Dict, Callable, Optional, \
-    List, Deque, TypeVar, Generic, Union, Tuple, Iterator, overload
+    List, Deque, TypeVar, Union, Tuple, Iterator, overload
 
 log = logging.getLogger(__name__)
 
 Hash = NewType('Hash', str)
-_T = TypeVar('_T')
 _Fut = TypeVar('_Fut', bound='Future')
 CallbackFut = Callable[[_Fut], None]
 
@@ -31,13 +30,12 @@ class FutureNotDone(Exception):
     pass
 
 
-class Future(ABC, Generic[_Fut]):
+class Future(ABC):
     def __init__(self, parents: Iterable['Future']) -> None:
         self._pending: Set['Future'] = set()
         for fut in parents:
             if not fut.done():
                 self._pending.add(fut)
-                fut.add_child(self)
         self._children: Set['Future'] = set()
         self._result: Any = FutureNotDone
         self._done_callbacks: List[CallbackFut] = []
@@ -45,6 +43,11 @@ class Future(ABC, Generic[_Fut]):
 
     def __repr__(self) -> str:
         return self.hashid
+
+    def register(self: _Fut) -> _Fut:
+        for fut in self._pending:
+            fut.add_child(self)
+        return self
 
     def ready(self) -> bool:
         return not self._pending
@@ -151,7 +154,7 @@ class Indexor(Future):
         )
 
     def __getitem__(self, key: Union[str, int]) -> 'Indexor':
-        return Indexor(self._task, self._keys + [key])
+        return Indexor(self._task, self._keys + [key]).register()
 
     @property
     def hashid(self) -> Hash:
@@ -167,7 +170,7 @@ class Indexor(Future):
 def wrap_input(obj: Any) -> Future:
     if isinstance(obj, Future):
         return obj
-    return Template(*Template.parse(obj))
+    return Template(*Template.parse(obj)).register()
 
 
 def wrap_output(obj: Any) -> Any:
@@ -175,7 +178,7 @@ def wrap_output(obj: Any) -> Any:
         return obj
     jsonstr, futures = Template.parse(obj)
     if futures:
-        return Template(jsonstr, futures)
+        return Template(jsonstr, futures).register()
     return obj
 
 
@@ -192,7 +195,7 @@ class Task(Future):
         self._label = label
 
     def __getitem__(self, key: Union[str, int]) -> Indexor:
-        return Indexor(self, [key])
+        return Indexor(self, [key]).register()
 
     def default_result(self, default: Any) -> Any:
         if self._future_result is not FutureNotDone:
@@ -263,7 +266,7 @@ class Session:
             return self._tasks[hashid]
         except KeyError:
             pass
-        task = Task(hashid, f, *args, **kwargs)
+        task = Task(hashid, f, *args, **kwargs).register()
         log.info(f'{task} <= {hash_obj}')
         self._pending.add(task)
         if self._task_tape is not None:
@@ -287,7 +290,7 @@ class Session:
             jsonstr, futures = Template.parse(obj)
             if not futures:
                 return obj
-            fut = Template(jsonstr, futures)
+            fut = Template(jsonstr, futures).register()
         while self._waiting:
             task = self._waiting.popleft()
             if task.done():
