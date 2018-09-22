@@ -34,6 +34,11 @@ def fib(n):
     return add(fib(n-1), fib(n-2))
 
 
+def test_no_session():
+    with pytest.raises(caf.caf.NoActiveSession):
+        fib(10)
+
+
 def test_fibonacci():
     with caf.Session() as sess:
         assert sess.eval(fib(10)) == 55

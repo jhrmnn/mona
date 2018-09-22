@@ -274,6 +274,10 @@ class Task(HashedFuture[_T]):
         return result
 
 
+class NoActiveSession(Exception):
+    pass
+
+
 class Session:
     _active: Optional['Session'] = None
 
@@ -340,7 +344,8 @@ class Session:
 
     @classmethod
     def active(cls) -> 'Session':
-        assert cls._active is not None
+        if cls._active is None:
+            raise NoActiveSession()
         return cls._active
 
 
