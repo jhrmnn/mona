@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 
 Hash = NewType('Hash', str)
 _Fut = TypeVar('_Fut', bound='Future')
+_HFut = TypeVar('_HFut', bound='HashedFuture')
 CallbackFut = Callable[[_Fut], None]
 
 
@@ -30,7 +31,7 @@ class FutureNotDone(Exception):
     pass
 
 
-class Future(ABC):
+class Future:
     def __init__(self, parents: Iterable['Future']) -> None:
         self._pending: Set['Future'] = set()
         for fut in parents:
@@ -40,9 +41,6 @@ class Future(ABC):
         self._result: Any = FutureNotDone
         self._done_callbacks: List[CallbackFut] = []
         self._ready_callbacks: List[CallbackFut] = []
-
-    def __repr__(self) -> str:
-        return self.hashid
 
     def register(self: _Fut) -> _Fut:
         for fut in self._pending:
@@ -95,18 +93,31 @@ class Future(ABC):
         for callback in self._done_callbacks:
             callback(self)
 
+
+class HashedFuture(Future, ABC):
     @property
     @abstractmethod
     def hashid(self) -> Hash: ...
 
+    @property
+    @abstractmethod
+    def spec(self) -> str: ...
 
-class Template(Future):
-    def __init__(self, jsonstr: str, futures: Collection[Future]) -> None:
+    def __repr__(self) -> str:
+        return self.hashid
+
+    def register(self: _HFut) -> _HFut:
+        super().register()
+        log.debug(f'{self} <= {self.spec}')
+        return self
+
+
+class Template(HashedFuture):
+    def __init__(self, jsonstr: str, futures: Collection[HashedFuture]) -> None:
         super().__init__(futures)
         self._jsonstr = jsonstr
         self._futures = {fut.hashid: fut for fut in futures}
         self._hashid = Hash(f'{{}}{ hash_text(self._jsonstr)}')
-        log.debug(f'{self} <= {self._jsonstr}')
         self.add_ready_callback(
             lambda tmpl: tmpl.set_result(tmpl.substitute())  # type: ignore
         )
@@ -114,6 +125,10 @@ class Template(Future):
     @property
     def hashid(self) -> Hash:
         return self._hashid
+
+    @property
+    def spec(self) -> str:
+        return self._jsonstr
 
     def has_futures(self) -> bool:
         return bool(self._futures)
@@ -132,7 +147,7 @@ class Template(Future):
 
     @classmethod
     def from_object(cls, obj: Any) -> 'Template':
-        futures: Set[Future] = set()
+        futures: Set[HashedFuture] = set()
         jsonstr = json.dumps(
             obj,
             sort_keys=True,
@@ -146,7 +161,7 @@ class Template(Future):
         return cls(jsonstr, futures)
 
 
-class Indexor(Future):
+class Indexor(HashedFuture):
     def __init__(self, task: 'Task', keys: List[Union[str, int]]) -> None:
         super().__init__([task])
         self._task = task
@@ -161,6 +176,10 @@ class Indexor(Future):
 
     @property
     def hashid(self) -> Hash:
+        return self._hashid
+
+    @property
+    def spec(self) -> str:
         return self._hashid
 
     def resolve(self) -> Any:
@@ -185,14 +204,13 @@ def wrap_output(obj: Any) -> Any:
     return obj
 
 
-class Task(Future):
-    def __init__(self, f: Callable, *args: Future,
+class Task(HashedFuture):
+    def __init__(self, f: Callable, *args: HashedFuture,
                  default: Any = None, label: str = None) -> None:
         super().__init__(args)
-        hash_obj = [get_fullname(f), *(fut.hashid for fut in args)]
-        self._hashid = hash_text(json.dumps(hash_obj, sort_keys=True))
         self._f = f
         self._args = args
+        self._hashid = hash_text(self.spec)
         self.children: List['Task'] = []
         self._future_result: Any = FutureNotDone
         self._default = default
@@ -209,6 +227,11 @@ class Task(Future):
     @property
     def hashid(self) -> Hash:
         return self._hashid
+
+    @property
+    def spec(self) -> str:
+        obj = [get_fullname(self._f), *(fut.hashid for fut in self._args)]
+        return json.dumps(obj, sort_keys=True)
 
     @property
     def label(self) -> Optional[str]:
@@ -270,7 +293,6 @@ class Session:
         except KeyError:
             pass
         task.register()
-        log.info(f'{task} <= ...')
         self._pending.add(task)
         if self._task_tape is not None:
             self._task_tape.append(task)
