@@ -46,13 +46,13 @@ class HashedFuture(Future[_T], ABC):
         )
 
     def __str__(self) -> str:
-        return self.hashid
+        return self.hashid[:6]
 
     def register(self: _HFut) -> bool:
-        if super().register():
+        registered = super().register()
+        if registered:
             log.debug(f'registered: {self!r}')
-            return True
-        return False
+        return registered
 
 
 def ensure_future(obj: Any) -> HashedFuture[Any]:
@@ -85,6 +85,12 @@ class Task(HashedFuture[_T]):
 
     def get(self, key: Any, default: Any = NoResult._) -> 'Indexor[Any]':
         return Indexor(self, [key], default)  # type: ignore
+
+    def __str__(self) -> str:
+        s = super().__str__()
+        if self.label is not None:
+            s = f'{self.label}(s)'
+        return s
 
     @property
     def func(self) -> Callable[..., _T]:
@@ -145,7 +151,7 @@ class Template(HashedFuture[_T]):
         super().__init__(futures)
         self._jsonstr = jsonstr
         self._futures = {fut.hashid: fut for fut in futures}
-        self._hashid = Hash(f'{{}}{hash_text(self._jsonstr)}')
+        self._hashid = hash_text(self._jsonstr)
         self.add_ready_callback(
             lambda tmpl: tmpl.set_result(tmpl.substitute())
         )
@@ -157,6 +163,13 @@ class Template(HashedFuture[_T]):
     @property
     def spec(self) -> str:
         return self._jsonstr
+
+    def __str__(self) -> str:
+        s = super().__str__()
+        spec = self._jsonstr
+        if len(spec) > 40:
+            spec = f'{spec[:37]}...'
+        return f'"{spec}"({s})'
 
     def has_futures(self) -> bool:
         return bool(self._futures)
@@ -198,7 +211,7 @@ class Indexor(HashedFuture[_T]):
         self._task = task
         self._keys = keys
         self._default = default
-        self._hashid = Hash('/'.join(['@' + task.hashid, *map(str, keys)]))
+        self._hashid = hash_text(self.spec)
         self.add_ready_callback(
             lambda idx: idx.set_result(idx.resolve())
         )
@@ -213,9 +226,15 @@ class Indexor(HashedFuture[_T]):
     def hashid(self) -> Hash:
         return self._hashid
 
+    def _spec(self, root: str) -> str:
+        return '/'.join(['@' + root, *map(str, self._keys)])
+
     @property
     def spec(self) -> str:
-        return self._hashid
+        return self._spec(self._task.hashid)
+
+    def __str__(self) -> str:
+        return self._spec(super().__str__())
 
     def resolve(self) -> _T:
         obj = self._task.result()

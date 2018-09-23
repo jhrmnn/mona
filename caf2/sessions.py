@@ -99,14 +99,11 @@ class Session:
         assert not task.done()
         if check_ready:
             assert task.ready()
-        log.debug(f'{task}: will run')
         args = [arg.result(check_done=check_ready) for arg in task.args]
         with self.record(task.children):
             result = task.func(*args)
         if task.children:
-            log.info(
-                f'{task}: created children: {[c.hashid for c in task.children]}'
-            )
+            log.debug(f'{task}: created children: {list(map(str, task.children))}')
         if not task.ready():
             return result
         fut: Optional[HashedFuture[_T]] = None
@@ -118,7 +115,7 @@ class Session:
                 fut = template
         if fut:
             assert not fut.done()
-            log.info(f'{task}: has run, pending: {fut}')
+            log.debug(f'{task}: has run, pending: {fut}')
             task.set_future_result(fut)
             fut.add_done_callback(lambda fut: task.set_result(fut.result()))
             fut.register()
@@ -144,6 +141,7 @@ class Session:
         while queue:
             task = queue.popleft()
             assert not task.has_run()
+            log.info(f'{task}: will run')
             self.run_task(task)
             if not task.done():
                 process_future(task.future_result())
