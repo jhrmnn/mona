@@ -19,11 +19,11 @@ def init_db(path: str) -> sqlite3.Connection:
     db.execute(dedent(
         """\
         CREATE TABLE IF NOT EXISTS tasks (
-            hashid   TEXT,
+            taskid   TEXT,
             label    TEXT,
             created  TEXT,
             result   BLOB,
-            PRIMARY KEY (hashid)
+            PRIMARY KEY (taskid)
         )
         """
     ))
@@ -32,8 +32,8 @@ def init_db(path: str) -> sqlite3.Connection:
     #     CREATE TABLE IF NOT EXISTS task_children (
     #         parent   TEXT,
     #         child    TEXT,
-    #         FOREIGN KEY(parent) REFERENCES builds(hashid),
-    #         FOREIGN KEY(child)  REFERENCES tasks(hashid)
+    #         FOREIGN KEY(parent) REFERENCES builds(taskid),
+    #         FOREIGN KEY(child)  REFERENCES tasks(taskid)
     #     )
     #     """
     # ))
@@ -52,7 +52,7 @@ class CachedSession(Session):
         if task in self._processed_tasks:
             return task
         row: Optional[Tuple[Optional[bytes]]] = self._db.execute(
-            'SELECT result FROM tasks WHERE hashid = ?', (task.hashid,)
+            'SELECT result FROM tasks WHERE taskid = ?', (task.hashid,)
         ).fetchone()
         if not row:
             self._db.execute(
@@ -69,7 +69,7 @@ class CachedSession(Session):
 
     def _store_result(self, task: Task[Any]) -> None:
         self._db.execute(
-            'UPDATE tasks SET result = ? WHERE hashid = ?',
+            'UPDATE tasks SET result = ? WHERE taskid = ?',
             (pickle.dumps(task.result()), task.hashid)
         )
         self._db.commit()

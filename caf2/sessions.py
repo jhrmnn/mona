@@ -64,7 +64,9 @@ class Session:
                 if task.state < State.HAS_RUN
             ]
             if tasks_not_run:
-                warnings.warn(f'tasks were never run: {tasks_not_run}', RuntimeWarning)
+                warnings.warn(
+                    f'tasks were never run: {tasks_not_run}', RuntimeWarning
+                )
         self._tasks.clear()
 
     def __contains__(self, task: Task[Any]) -> bool:
