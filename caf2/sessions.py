@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from typing import Set, Any, Dict, Callable, Optional, List, Deque, \
     TypeVar, Iterator
 
-from .futures import Future, CafError
+from .futures import Future, CafError, FutureNotDone
 from .tasks import Task, Hash, HashedFuture, Template, ensure_future
 from .collections import HashedDeque
 
@@ -40,6 +40,10 @@ class ArgNotInSession(CafError):
     pass
 
 
+class DependencyCycle(CafError):
+    pass
+
+
 class Session:
     _active: Optional['Session'] = None
 
@@ -54,7 +58,7 @@ class Session:
 
     def __exit__(self, *args: Any) -> None:
         Session._active = None
-        tasks_not_run = [task for task in self._tasks.values() if not task.done()]
+        tasks_not_run = [task for task in self._tasks.values() if not task.has_run()]
         if tasks_not_run:
             warnings.warn(f'tasks were never run: {tasks_not_run}', RuntimeWarning)
         self._tasks.clear()
@@ -145,7 +149,12 @@ class Session:
             self.run_task(task)
             if not task.done():
                 process_future(task.future_result())
-        return fut.result()
+        try:
+            return fut.result()
+        except FutureNotDone as e:
+            raise DependencyCycle(
+                [task for task in self._tasks.values() if not task.done()]
+            ) from e
 
     @classmethod
     def active(cls) -> 'Session':

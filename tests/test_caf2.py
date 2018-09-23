@@ -57,6 +57,16 @@ def test_fut_not_in_session():
             fib(task)
 
 
+def test_dependency_cycle():
+    with pytest.raises(caf.sessions.DependencyCycle):
+        @caf.rule
+        def f(x):
+            return f(x)
+
+        with caf.Session() as sess:
+            sess.eval(f(1))
+
+
 def test_identical_futures():
     @caf.rule
     def f(x, y):
