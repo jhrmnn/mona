@@ -6,7 +6,7 @@ import logging
 import json
 from abc import ABC, abstractmethod
 from typing import Set, Any, NewType, Callable, Optional, List, TypeVar, \
-    Union, Collection, cast, Tuple, Mapping
+    Union, Collection, cast, Tuple, Mapping, Iterable
 
 from .futures import Future, Maybe, NoResult, CafError, State
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
@@ -38,13 +38,17 @@ def shorten_text(s: str, n: int) -> str:
 # dispatching all futures via a session in the same way that tasks are.
 # See test_identical_futures() for an example of what wouldn't work.
 class HashedFuture(Future[_T], ABC):
-    @property
-    @abstractmethod
-    def hashid(self) -> Hash: ...
+    def __init__(self: _HFut, parents: Iterable['HashedFuture[Any]']) -> None:
+        super().__init__(parents)
+        self._hashid = hash_text(self.spec)
 
     @property
     @abstractmethod
     def spec(self) -> str: ...
+
+    @property
+    def hashid(self) -> Hash:
+        return self._hashid
 
     def __repr__(self) -> str:
         return (
@@ -73,12 +77,11 @@ class TaskIsDone(CafError):
 class Task(HashedFuture[_T]):
     def __init__(self, func: Callable[..., _T], *args: Any, label: str = None
                  ) -> None:
+        self._func = func
         self._args = tuple(map(ensure_future, args))
         super().__init__(self._args)
-        self._func = func
         self._label = label
         self.children: List[Task[Any]] = []
-        self._hashid = hash_text(self.spec)
         self._future_result: Optional[HashedFuture[_T]] = None
 
     def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
@@ -100,10 +103,6 @@ class Task(HashedFuture[_T]):
     @property
     def args(self) -> Tuple[HashedFuture[Any], ...]:
         return self._args
-
-    @property
-    def hashid(self) -> Hash:
-        return self._hashid
 
     @property
     def spec(self) -> str:
@@ -144,17 +143,12 @@ class Task(HashedFuture[_T]):
 class TaskComposite(HashedFuture[_T]):
     def __init__(self, jsonstr: str, futures: Collection[HashedFuture[Any]]
                  ) -> None:
-        super().__init__(futures)
         self._jsonstr = jsonstr
+        super().__init__(futures)
         self._futures = {fut.hashid: fut for fut in futures}
-        self._hashid = hash_text(self._jsonstr)
         self.add_ready_callback(
             lambda comp: comp.set_result(comp.resolve())
         )
-
-    @property
-    def hashid(self) -> Hash:
-        return self._hashid
 
     @property
     def spec(self) -> str:
@@ -199,11 +193,10 @@ class TaskComposite(HashedFuture[_T]):
 class TaskComponent(HashedFuture[_T]):
     def __init__(self, task: Task[Mapping[Any, Any]], keys: List[Any],
                  default: Maybe[_T] = NoResult._) -> None:
-        super().__init__([task])
         self._task = task
         self._keys = keys
+        super().__init__([task])
         self._default = default
-        self._hashid = hash_text(self.spec)
         self.add_ready_callback(
             lambda idx: idx.set_result(idx.resolve())
         )
@@ -213,10 +206,6 @@ class TaskComponent(HashedFuture[_T]):
 
     def get(self, key: Any, default: Any = NoResult._) -> 'TaskComponent[Any]':
         return TaskComponent(self._task, self._keys + [key], default)
-
-    @property
-    def hashid(self) -> Hash:
-        return self._hashid
 
     def _spec(self, root: str) -> str:
         return '/'.join(['@' + root, *map(str, self._keys)])
