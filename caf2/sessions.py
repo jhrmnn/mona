@@ -49,6 +49,7 @@ class Session:
 
     def __init__(self) -> None:
         self._tasks: Dict[Hash, Task[Any]] = {}
+        self._graph: Dict[Hash, Set[Hash]] = {}
         self._task_tape: Optional[List[Task[Any]]] = None
 
     def __enter__(self) -> 'Session':
@@ -68,6 +69,7 @@ class Session:
                     f'tasks were never run: {tasks_not_run}', RuntimeWarning
                 )
         self._tasks.clear()
+        self._graph.clear()
 
     def __contains__(self, task: Task[Any]) -> bool:
         return task.hashid in self._tasks
@@ -92,16 +94,20 @@ class Session:
         finally:
             if self._task_tape is not None:
                 self._task_tape.append(task)
+        parents: Set[Hash] = set()
         for arg in task.args:
             if isinstance(arg, Task):
+                parents.add(arg.hashid)
                 if arg not in self:
                     raise ArgNotInSession(repr(arg))
             else:
                 for arg_task in extract_tasks(arg):
+                    parents.add(arg_task.hashid)
                     if arg_task not in self:
                         raise ArgNotInSession(f'{arg!r} -> {arg_task!r}')
         task.register()
         self._tasks[task.hashid] = task
+        self._graph[task.hashid] = parents
         return task
 
     def run_task(self, task: Task[_T], check_ready: bool = True
@@ -164,6 +170,16 @@ class Session:
             raise DependencyCycle(
                 [task for task in self._tasks.values() if not task.done()]
             ) from e
+
+    def dot_graph(self) -> Any:
+        from graphviz import Digraph  # type: ignore
+
+        dot = Digraph()
+        for child, parents in self._graph.items():
+            dot.node(child)
+            for parent in parents:
+                dot.edge(child, parent)
+        return dot
 
     @classmethod
     def active(cls) -> 'Session':
