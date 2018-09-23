@@ -8,7 +8,7 @@ from typing import Set, Any, Dict, Callable, Optional, List, Deque, \
     TypeVar, Iterator
 
 from .futures import Future, CafError, FutureNotDone
-from .tasks import Task, Hash, HashedFuture, Template, ensure_future
+from .tasks import Task, Hash, HashedFuture, TaskComposite, ensure_future
 from .collections import HashedDeque
 
 log = logging.getLogger(__name__)
@@ -114,9 +114,9 @@ class Session:
         if isinstance(result, HashedFuture):
             fut = result
         else:
-            template = Template.from_object(result)
-            if template.has_futures():
-                fut = template
+            comp = TaskComposite.from_object(result)
+            if comp.has_futures():
+                fut = comp
         if fut:
             if fut.done():
                 task.set_result(fut.result())

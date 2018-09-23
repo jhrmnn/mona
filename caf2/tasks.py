@@ -6,7 +6,7 @@ import logging
 import json
 from abc import ABC, abstractmethod
 from typing import Set, Any, NewType, Callable, Optional, List, TypeVar, \
-    Union, Collection, cast, Type, Tuple, Mapping
+    Union, Collection, cast, Tuple, Mapping
 
 from .futures import Future, Maybe, NoResult, CafError, State
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
@@ -59,7 +59,7 @@ class HashedFuture(Future[_T], ABC):
 def ensure_future(obj: Any) -> HashedFuture[Any]:
     if isinstance(obj, HashedFuture):
         return obj
-    return Template.from_object(obj)
+    return TaskComposite.from_object(obj)
 
 
 class TaskHasNotRun(CafError):
@@ -81,11 +81,11 @@ class Task(HashedFuture[_T]):
         self._hashid = hash_text(self.spec)
         self._future_result: Optional[HashedFuture[_T]] = None
 
-    def __getitem__(self, key: Any) -> 'Indexor[Any]':
+    def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
         return self.get(key)
 
-    def get(self, key: Any, default: Any = NoResult._) -> 'Indexor[Any]':
-        return Indexor(self, [key], default)  # type: ignore
+    def get(self, key: Any, default: Any = NoResult._) -> 'TaskComponent[Any]':
+        return TaskComponent(self, [key], default)  # type: ignore
 
     def __str__(self) -> str:
         s = super().__str__()
@@ -149,7 +149,7 @@ class Task(HashedFuture[_T]):
         return self.done() or self._future_result is not None
 
 
-class Template(HashedFuture[_T]):
+class TaskComposite(HashedFuture[_T]):
     def __init__(self, jsonstr: str, futures: Collection[HashedFuture[Any]]
                  ) -> None:
         super().__init__(futures)
@@ -157,7 +157,7 @@ class Template(HashedFuture[_T]):
         self._futures = {fut.hashid: fut for fut in futures}
         self._hashid = hash_text(self._jsonstr)
         self.add_ready_callback(
-            lambda tmpl: tmpl.set_result(tmpl.substitute())
+            lambda comp: comp.set_result(comp.resolve())
         )
 
     @property
@@ -174,21 +174,21 @@ class Template(HashedFuture[_T]):
     def has_futures(self) -> bool:
         return bool(self._futures)
 
-    def substitute(self, check_done: bool = True) -> _T:
+    def resolve(self, check_done: bool = True) -> _T:
         return cast(_T, json.loads(
             self._jsonstr,
             classes={
                 cls: lambda dct: self._futures[dct['hashid']].result(check_done)
-                for cls in [Task, Indexor]
+                for cls in [Task, TaskComponent]
             },
             cls=ClassJSONDecoder
         ))
 
     def default_result(self) -> _T:
-        return self.substitute(check_done=False)
+        return self.resolve(check_done=False)
 
     @classmethod
-    def from_object(cls: Type['Template[_T]'], obj: _T) -> 'Template[_T]':
+    def from_object(cls, obj: _T) -> 'TaskComposite[_T]':
         assert not isinstance(obj, HashedFuture)
         futures: Set[HashedFuture[Any]] = set()
         jsonstr = json.dumps(
@@ -197,14 +197,14 @@ class Template(HashedFuture[_T]):
             tape=futures,
             classes={
                 Task: lambda fut: {'hashid': fut.hashid},
-                Indexor: lambda fut: {'hashid': fut.hashid},
+                TaskComponent: lambda fut: {'hashid': fut.hashid},
             },
             cls=ClassJSONEncoder
         )
         return cls(jsonstr, futures)
 
 
-class Indexor(HashedFuture[_T]):
+class TaskComponent(HashedFuture[_T]):
     def __init__(self, task: Task[Mapping[Any, Any]], keys: List[Any],
                  default: Maybe[_T] = NoResult._) -> None:
         super().__init__([task])
@@ -216,11 +216,11 @@ class Indexor(HashedFuture[_T]):
             lambda idx: idx.set_result(idx.resolve())
         )
 
-    def __getitem__(self, key: Any) -> 'Indexor[Any]':
+    def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
         return self.get(key)
 
-    def get(self, key: Any, default: Any = NoResult._) -> 'Indexor[Any]':
-        return Indexor(self._task, self._keys + [key], default)
+    def get(self, key: Any, default: Any = NoResult._) -> 'TaskComponent[Any]':
+        return TaskComponent(self._task, self._keys + [key], default)
 
     @property
     def hashid(self) -> Hash:
