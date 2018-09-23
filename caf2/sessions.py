@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
+import warnings
 from contextlib import contextmanager
 from typing import Set, Any, Dict, Callable, Optional, List, Deque, \
     TypeVar, Iterator
@@ -53,6 +54,9 @@ class Session:
 
     def __exit__(self, *args: Any) -> None:
         Session._active = None
+        tasks_not_run = [task for task in self._tasks.values() if not task.done()]
+        if tasks_not_run:
+            warnings.warn(f'tasks were never run: {tasks_not_run}', RuntimeWarning)
         self._tasks.clear()
 
     def __contains__(self, task: Task[Any]) -> bool:

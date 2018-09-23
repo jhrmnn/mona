@@ -39,6 +39,7 @@ def test_no_session():
         fib(10)
 
 
+@pytest.mark.filterwarnings("ignore:tasks were never run")
 def test_arg_not_in_session():
     with pytest.raises(caf.sessions.ArgNotInSession):
         with caf.Session():
@@ -47,6 +48,7 @@ def test_arg_not_in_session():
             fib(task[0])
 
 
+@pytest.mark.filterwarnings("ignore:tasks were never run")
 def test_fut_not_in_session():
     with pytest.raises(caf.sessions.ArgNotInSession):
         with caf.Session():
@@ -107,10 +109,11 @@ def test_recursion():
 
 
 def test_tasks_not_run():
-    with caf.Session() as sess:
-        fib(10)
-        sess.eval(fib(1))
-        assert len(sess._tasks) == 2
+    with pytest.warns(RuntimeWarning):
+        with caf.Session() as sess:
+            fib(10)
+            sess.eval(fib(1))
+            assert len(sess._tasks) == 2
 
 
 @caf.rule
@@ -151,6 +154,7 @@ def test_db(db):
         assert len(sess._tasks) == 2
 
 
+@pytest.mark.filterwarnings("ignore:tasks were never run")
 def test_partial_eval():
     with caf.Session() as sess:
         sess.run_task(calcs())
