@@ -118,11 +118,13 @@ class Session:
             if template.has_futures():
                 fut = template
         if fut:
-            assert not fut.done()
-            log.debug(f'{task}: has run, pending: {fut}')
-            task.set_future_result(fut)
-            fut.add_done_callback(lambda fut: task.set_result(fut.result()))
-            fut.register()
+            if fut.done():
+                task.set_result(fut.result())
+            else:
+                log.debug(f'{task}: has run, pending: {fut}')
+                task.set_future_result(fut)
+                fut.add_done_callback(lambda fut: task.set_result(fut.result()))
+                fut.register()
         else:
             task.set_result(result)
         return None

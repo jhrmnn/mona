@@ -67,6 +67,18 @@ def test_dependency_cycle():
             sess.eval(f(1))
 
 
+def test_returned_done_future():
+    @caf.rule
+    def f(x):
+        if x < 0:
+            return x
+        return f(-x)
+
+    with caf.Session() as sess:
+        sess.eval(f(-4))
+        assert sess.eval(f(4)) == -4
+
+
 def test_identical_futures():
     @caf.rule
     def f(x, y):
