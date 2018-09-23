@@ -121,11 +121,11 @@ def calcs():
             '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
             {'input': str(dist).encode()},
             label=str(dist)
-        )['STDOUT']
+        ).get('STDOUT', b'0')
     ) for dist in range(0, 5)]
 
 
-@caf.rule(default=0)
+@caf.rule
 def analysis(results):
     return sum(int(res) for _, res in results)
 
@@ -155,7 +155,7 @@ def test_partial_eval():
     with caf.Session() as sess:
         sess.run_task(calcs())
         sess.run_task(calcs().children[3])
-        assert sess.run_task(analysis(calcs()), allow_unfinished=True) == 6
+        assert sess.run_task(analysis(calcs()), check_ready=False) == 6
 
 
 def test_json_utils():

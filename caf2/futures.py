@@ -4,7 +4,7 @@
 import logging
 from enum import Enum
 from typing import Iterable, Set, Callable, List, TypeVar, Union, Iterator, \
-    Generic, cast
+    Generic
 from typing import Any  # noqa
 
 log = logging.getLogger(__name__)
@@ -35,6 +35,10 @@ class CafError(Exception):
 
 
 class FutureNotDone(CafError):
+    pass
+
+
+class FutureHasNoDefault(CafError):
     pass
 
 
@@ -92,14 +96,17 @@ class Future(Generic[_T]):
         assert not self.done()
         self._done_callbacks.append(callback)
 
-    def default_result(self, default: Any) -> _T:
-        return cast(_T, default)
+    def default_result(self) -> Maybe[_T]:
+        return NoResult._
 
-    def result(self, default: Maybe[_T] = _NoResult) -> _T:
+    def result(self, check_done: bool = True) -> _T:
         if not isinstance(self._result, NoResult):  # mypy limitation
             return self._result
-        if not isinstance(default, NoResult):  # mypy limitation
-            return self.default_result(default)
+        if not check_done:
+            result = self.default_result()
+            if isinstance(result, NoResult):
+                raise FutureHasNoDefault(repr(self))
+            return result
         raise FutureNotDone(repr(self))
 
     def parent_done(self: _Fut, fut: 'Future[Any]') -> None:

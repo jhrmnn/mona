@@ -68,19 +68,21 @@ class TaskIsDone(CafError):
 
 
 class Task(HashedFuture[_T]):
-    def __init__(self, func: Callable[..., _T], *args: Any,
-                 default: Maybe[_T] = NoResult._, label: str = None) -> None:
+    def __init__(self, func: Callable[..., _T], *args: Any, label: str = None
+                 ) -> None:
         self._args = tuple(map(ensure_future, args))
         super().__init__(self._args)
         self._func = func
-        self._default = default  # TODO resolve this
         self._label = label
         self.children: List[Task[Any]] = []
         self._hashid = hash_text(self.spec)
         self._future_result: Optional[HashedFuture[_T]] = None
 
     def __getitem__(self, key: Any) -> 'Indexor[Any]':
-        return Indexor(self, [key])  # type: ignore
+        return self.get(key)
+
+    def get(self, key: Any, default: Any = NoResult._) -> 'Indexor[Any]':
+        return Indexor(self, [key], default)  # type: ignore
 
     @property
     def func(self) -> Callable[..., _T]:
@@ -110,10 +112,10 @@ class Task(HashedFuture[_T]):
             state = State.HAS_RUN
         return state
 
-    def default_result(self, default: Any) -> _T:
+    def default_result(self) -> Maybe[_T]:
         if self._future_result:
-            return self._future_result.default_result(default)
-        return super().default_result(default)
+            return self._future_result.default_result()
+        return NoResult._
 
     def set_result(self, result: _T) -> None:
         super().set_result(result)
@@ -157,17 +159,18 @@ class Template(HashedFuture[_T]):
     def has_futures(self) -> bool:
         return bool(self._futures)
 
-    def substitute(self, default: Maybe[_T] = _NoResult) -> _T:
+    def substitute(self, check_done: bool = True) -> _T:
         return cast(_T, json.loads(
             self._jsonstr,
             classes={
-                Task: lambda dct: self._futures[dct['hashid']].result(default),
-                Indexor: lambda dct: self._futures[dct['hashid']].result(default),
+                cls: lambda dct: self._futures[dct['hashid']].result(check_done)
+                for cls in [Task, Indexor]
             },
             cls=ClassJSONDecoder
         ))
 
-    default_result = substitute
+    def default_result(self) -> _T:
+        return self.substitute(check_done=False)
 
     @classmethod
     def from_object(cls: Type['Template[_T]'], obj: _T) -> 'Template[_T]':
@@ -187,17 +190,22 @@ class Template(HashedFuture[_T]):
 
 
 class Indexor(HashedFuture[_T]):
-    def __init__(self, task: Task[Mapping[Any, Any]], keys: List[Any]) -> None:
+    def __init__(self, task: Task[Mapping[Any, Any]], keys: List[Any],
+                 default: Maybe[_T] = NoResult._) -> None:
         super().__init__([task])
         self._task = task
         self._keys = keys
+        self._default = default
         self._hashid = Hash('/'.join(['@' + task.hashid, *map(str, keys)]))
         self.add_ready_callback(
             lambda idx: idx.set_result(idx.resolve())
         )
 
     def __getitem__(self, key: Any) -> 'Indexor[Any]':
-        return Indexor(self._task, self._keys + [key])
+        return self.get(key)
+
+    def get(self, key: Any, default: Any = NoResult._) -> 'Indexor[Any]':
+        return Indexor(self._task, self._keys + [key], default)
 
     @property
     def hashid(self) -> Hash:
@@ -212,3 +220,6 @@ class Indexor(HashedFuture[_T]):
         for key in self._keys:
             obj = obj[key]
         return cast(_T, obj)
+
+    def default_result(self) -> Maybe[_T]:
+        return self._default

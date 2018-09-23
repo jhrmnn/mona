@@ -90,13 +90,13 @@ class Session:
         self._tasks[task.hashid] = task
         return task
 
-    def run_task(self, task: Task[_T], allow_unfinished: bool = False
+    def run_task(self, task: Task[_T], check_ready: bool = True
                  ) -> Optional[_T]:
         assert not task.done()
-        if not allow_unfinished:
+        if check_ready:
             assert task.ready()
         log.debug(f'{task}: will run')
-        args = [arg.result(task._default) for arg in task.args]
+        args = [arg.result(check_done=check_ready) for arg in task.args]
         with self.record(task.children):
             result = task.func(*args)
         if task.children:
