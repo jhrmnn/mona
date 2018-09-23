@@ -56,14 +56,15 @@ class Session:
         Session._active = self
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, exc_type: Any, *args: Any) -> None:
         Session._active = None
-        tasks_not_run = [
-            task for task in self._tasks.values()
-            if task.state < State.HAS_RUN
-        ]
-        if tasks_not_run:
-            warnings.warn(f'tasks were never run: {tasks_not_run}', RuntimeWarning)
+        if exc_type is None:
+            tasks_not_run = [
+                task for task in self._tasks.values()
+                if task.state < State.HAS_RUN
+            ]
+            if tasks_not_run:
+                warnings.warn(f'tasks were never run: {tasks_not_run}', RuntimeWarning)
         self._tasks.clear()
 
     def __contains__(self, task: Task[Any]) -> bool:
