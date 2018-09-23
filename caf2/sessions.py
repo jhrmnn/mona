@@ -3,8 +3,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 from contextlib import contextmanager
-from typing import Set, Any, Dict, Callable, Optional, \
-    List, Deque, TypeVar, Iterator
+from typing import Set, Any, Dict, Callable, Optional, List, Deque, \
+    TypeVar, Iterator
 
 from .futures import Future, CafError
 from .tasks import Task, Hash, HashedFuture, Template, ensure_future
@@ -26,9 +26,8 @@ def extract_tasks(fut: Future[Any]) -> Set[Task[Any]]:
         if isinstance(fut, Task):
             tasks.add(fut)
         for parent in fut.pending:
-            if parent in visited:
-                continue
-            queue.append(parent)
+            if parent not in visited:
+                queue.append(parent)
     return tasks
 
 
@@ -59,6 +58,14 @@ class Session:
     def __contains__(self, task: Task[Any]) -> bool:
         return task.hashid in self._tasks
 
+    @contextmanager
+    def record(self, tape: List[Task[Any]]) -> Iterator[None]:
+        self._task_tape = tape
+        try:
+            yield
+        finally:
+            self._task_tape = None
+
     def create_task(self, func: Callable[..., _T], *args: Any, **kwargs: Any
                     ) -> Task[_T]:
         task = Task(func, *args, **kwargs)
@@ -79,7 +86,6 @@ class Session:
                 for arg_task in extract_tasks(arg):
                     if arg_task not in self:
                         raise ArgNotInSession(f'{arg!r} -> {arg_task!r}')
-            arg.register()
         task.register()
         self._tasks[task.hashid] = task
         return task
@@ -91,9 +97,12 @@ class Session:
             assert task.ready()
         log.debug(f'{task}: will run')
         args = [arg.result(task._default) for arg in task.args]
-        result = task.func(*args)
+        with self.record(task.children):
+            result = task.func(*args)
         if task.children:
-            log.info(f'{task}: created children: {[c.hashid for c in task.children]}')
+            log.info(
+                f'{task}: created children: {[c.hashid for c in task.children]}'
+            )
         if not task.ready():
             return result
         fut: Optional[HashedFuture[_T]] = None
@@ -113,14 +122,6 @@ class Session:
             task.set_result(result)
         return None
 
-    @contextmanager
-    def record(self, tape: List[Task[Any]]) -> Iterator[None]:
-        self._task_tape = tape
-        try:
-            yield
-        finally:
-            self._task_tape = None
-
     def eval(self, obj: Any) -> Any:
         fut = ensure_future(obj)
         fut.register()
@@ -139,8 +140,7 @@ class Session:
         while queue:
             task = queue.popleft()
             assert not task.has_run()
-            with self.record(task.children):
-                self.run_task(task)
+            self.run_task(task)
             if not task.done():
                 process_future(task.future_result())
         return fut.result()

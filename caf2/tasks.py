@@ -73,11 +73,11 @@ class Task(HashedFuture[_T]):
         self._args = tuple(map(ensure_future, args))
         super().__init__(self._args)
         self._func = func
-        self._hashid = hash_text(self.spec)
-        self.children: List[Task[Any]] = []
-        self._future_result: Optional[HashedFuture[_T]] = None
         self._default = default  # TODO resolve this
         self._label = label
+        self.children: List[Task[Any]] = []
+        self._hashid = hash_text(self.spec)
+        self._future_result: Optional[HashedFuture[_T]] = None
 
     def __getitem__(self, key: Any) -> 'Indexor[Any]':
         return Indexor(self, [key])  # type: ignore
@@ -90,14 +90,6 @@ class Task(HashedFuture[_T]):
     def args(self) -> Tuple[HashedFuture[Any], ...]:
         return self._args
 
-    def default_result(self, default: Any) -> _T:
-        if self._future_result:
-            return self._future_result.default_result(default)
-        return super().default_result(default)
-
-    def set_future_result(self, result: HashedFuture[Any]) -> None:
-        self._future_result = result
-
     @property
     def hashid(self) -> Hash:
         return self._hashid
@@ -106,6 +98,29 @@ class Task(HashedFuture[_T]):
     def spec(self) -> str:
         obj = [get_fullname(self._func), *(fut.hashid for fut in self._args)]
         return json.dumps(obj, sort_keys=True)
+
+    @property
+    def label(self) -> Optional[str]:
+        return self._label
+
+    @property
+    def state(self) -> State:
+        state = super().state
+        if state is State.READY and self.has_run():
+            state = State.HAS_RUN
+        return state
+
+    def default_result(self, default: Any) -> _T:
+        if self._future_result:
+            return self._future_result.default_result(default)
+        return super().default_result(default)
+
+    def set_result(self, result: _T) -> None:
+        super().set_result(result)
+        self._future_result = None
+
+    def set_future_result(self, result: HashedFuture[Any]) -> None:
+        self._future_result = result
 
     def future_result(self) -> HashedFuture[_T]:
         if not self.has_run():
@@ -116,23 +131,8 @@ class Task(HashedFuture[_T]):
         assert self._future_result
         return self._future_result
 
-    @property
-    def label(self) -> Optional[str]:
-        return self._label
-
     def has_run(self) -> bool:
         return self.done() or self._future_result is not None
-
-    def set_result(self, result: _T) -> None:
-        super().set_result(result)
-        self._future_result = None
-
-    @property
-    def state(self) -> State:
-        state = super().state
-        if state is State.READY and self.has_run():
-            state = State.HAS_RUN
-        return state
 
 
 class Template(HashedFuture[_T]):
@@ -153,13 +153,6 @@ class Template(HashedFuture[_T]):
     @property
     def spec(self) -> str:
         return self._jsonstr
-
-    def register(self) -> bool:
-        if super().register():
-            for fut in self.pending:
-                fut.register()
-            return True
-        return False
 
     def has_futures(self) -> bool:
         return bool(self._futures)

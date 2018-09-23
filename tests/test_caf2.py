@@ -153,10 +153,8 @@ def test_db(db):
 
 def test_partial_eval():
     with caf.Session() as sess:
-        calc_tasks = []
-        with sess.record(calc_tasks):
-            sess.run_task(calcs())
-        sess.run_task(calc_tasks[4])
+        sess.run_task(calcs())
+        sess.run_task(calcs().children[3])
         assert sess.run_task(analysis(calcs()), allow_unfinished=True) == 6
 
 
