@@ -28,6 +28,12 @@ def hash_text(text: Union[str, bytes]) -> Hash:
     return Hash(hashlib.sha1(text).hexdigest())
 
 
+def shorten_text(s: str, n: int) -> str:
+    if len(s) < n:
+        return s
+    return f'{s[:n-3]}...'
+
+
 # Although this class could be hashable in principle, this would require
 # tracking all futures in a session in the same way that tasks are
 class HashedFuture(Future[_T], ABC):
@@ -106,8 +112,11 @@ class Task(HashedFuture[_T]):
 
     @property
     def spec(self) -> str:
-        obj = [get_fullname(self._func), *(fut.hashid for fut in self._args)]
-        return json.dumps(obj, sort_keys=True)
+        lines = [get_fullname(self._func)]
+        lines.extend(
+            f'{fut.hashid}  # {shorten_text(fut.spec, 20)}' for fut in self._args
+        )
+        return '\n'.join(lines)
 
     @property
     def label(self) -> Optional[str]:
@@ -165,11 +174,7 @@ class Template(HashedFuture[_T]):
         return self._jsonstr
 
     def __str__(self) -> str:
-        s = super().__str__()
-        spec = self._jsonstr
-        if len(spec) > 40:
-            spec = f'{spec[:37]}...'
-        return f'"{spec}"({s})'
+        return f'"{shorten_text(self._jsonstr, 40)}"({super().__str__()})'
 
     def has_futures(self) -> bool:
         return bool(self._futures)
