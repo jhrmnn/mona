@@ -135,7 +135,7 @@ class Session:
         queue = HashedDeque[Task[Any]]()
 
         def schedule(task: Task[Any]) -> None:
-            if task not in queue:
+            if not task.has_run() and task not in queue:
                 queue.append(task)
 
         def process_future(fut: HashedFuture[Any]) -> None:
@@ -146,7 +146,8 @@ class Session:
         process_future(fut)
         while queue:
             task = queue.popleft()
-            assert not task.has_run()
+            if task.has_run():
+                continue
             log.info(f'{task}: will run')
             self.run_task(task)
             if not task.done():
