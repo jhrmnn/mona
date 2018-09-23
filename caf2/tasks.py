@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Set, Any, NewType, Callable, Optional, List, TypeVar, \
     Union, Collection, cast, Type, Tuple, Mapping
 
-from .futures import Future, Maybe, _NoResult, CafError, State
+from .futures import Future, Maybe, NoResult, CafError, State
 from .json_utils import ClassJSONEncoder, ClassJSONDecoder
 
 log = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class TaskIsDone(CafError):
 
 class Task(HashedFuture[_T]):
     def __init__(self, func: Callable[..., _T], *args: Any,
-                 default: Maybe[_T] = _NoResult, label: str = None) -> None:
+                 default: Maybe[_T] = NoResult._, label: str = None) -> None:
         self._args = tuple(map(ensure_future, args))
         super().__init__(self._args)
         self._func = func

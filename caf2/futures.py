@@ -15,7 +15,7 @@ Callback = Callable[[_T], None]
 
 
 class NoResult(Enum):
-    TOKEN = 0
+    _ = 0
 
 
 class State(Enum):
@@ -27,7 +27,6 @@ class State(Enum):
     DONE = 4
 
 
-_NoResult = NoResult.TOKEN
 Maybe = Union[_T, NoResult]
 
 
@@ -46,7 +45,7 @@ class Future(Generic[_T]):
             if not fut.done():
                 self._pending.add(fut)
         self._children: Set['Future[Any]'] = set()
-        self._result: Maybe[_T] = _NoResult
+        self._result: Maybe[_T] = NoResult._
         self._registered = False
         self._done_callbacks: List[Callback[_Fut]] = []
         self._ready_callbacks: List[Callback[_Fut]] = []
@@ -55,7 +54,7 @@ class Future(Generic[_T]):
         return not self._pending
 
     def done(self) -> bool:
-        return self._result is not _NoResult
+        return self._result is not NoResult._
 
     @property
     def state(self) -> State:
@@ -112,7 +111,7 @@ class Future(Generic[_T]):
 
     def set_result(self: _Fut, result: _T) -> None:
         assert self.ready()
-        assert self._result is _NoResult
+        assert self._result is NoResult._
         self._result = result
         log.debug(f'{self}: done')
         for fut in self._children:
