@@ -77,14 +77,13 @@ class Future(Generic[_T]):
     def add_child(self, fut: 'Future[Any]') -> None:
         self._children.add(fut)
 
-    def register(self: _Fut) -> bool:
+    def register(self: _Fut) -> None:
         if not self._registered:
             self._registered = True
+            log.debug(f'registered: {self!r}')
             for fut in self._pending:
                 fut.register()
                 fut.add_child(self)
-            return True
-        return False
 
     def add_ready_callback(self: _Fut, callback: Callback[_Fut]) -> None:
         if self.ready():

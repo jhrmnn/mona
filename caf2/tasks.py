@@ -55,12 +55,6 @@ class HashedFuture(Future[_T], ABC):
     def __str__(self) -> str:
         return self.hashid[:6]
 
-    def register(self: _HFut) -> bool:
-        registered = super().register()
-        if registered:
-            log.debug(f'registered: {self!r}')
-        return registered
-
 
 def ensure_future(obj: Any) -> HashedFuture[Any]:
     if isinstance(obj, HashedFuture):
