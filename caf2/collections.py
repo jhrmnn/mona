@@ -18,6 +18,7 @@ class HashedDeque(Generic[_T]):
         return item in self._deque_set
 
     def append(self, item: _T) -> None:
+        assert item not in self
         self._deque.append(item)
         self._deque_set.add(item)
 

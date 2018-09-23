@@ -28,6 +28,8 @@ def hash_text(text: Union[str, bytes]) -> Hash:
     return Hash(hashlib.sha1(text).hexdigest())
 
 
+# Although this class could be hashable in principle, this would require
+# tracking all futures in a session in the same way that tasks are
 class HashedFuture(Future[_T], ABC):
     @property
     @abstractmethod
