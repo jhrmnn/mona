@@ -9,7 +9,7 @@ from typing import Set, Any, NewType, Callable, Optional, List, TypeVar, \
     Union, Collection, cast, Tuple, Mapping, Iterable
 
 from .futures import Future, Maybe, NoResult, CafError, State
-from .json import ClassJSONEncoder, ClassJSONDecoder
+from .json import ClassJSONEncoder, ClassJSONDecoder, validate
 
 log = logging.getLogger(__name__)
 
@@ -176,6 +176,7 @@ class TaskComposite(HashedFuture[_T]):
     @classmethod
     def from_object(cls, obj: _T) -> 'TaskComposite[_T]':
         assert not isinstance(obj, HashedFuture)
+        validate(obj, (Task, TaskComponent))
         futures: Set[HashedFuture[Any]] = set()
         jsonstr = json.dumps(
             obj,

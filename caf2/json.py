@@ -9,6 +9,8 @@ from typing import Any, Set, Type, Dict, Callable, overload, Sequence, \
     Union, cast, Tuple
 from typing_extensions import Protocol
 
+from .futures import CafError
+
 
 class _JSONArray(Protocol):
     def __getitem__(self, idx: int) -> 'JSONLike': ...
@@ -42,6 +44,27 @@ default_classes: Dict[Type[Any], Tuple[JSONConvertor, JSONDeconvertor]] = {
         lambda dct: Path(assert_str(dct['path']))
     )
 }
+
+
+class InvalidComposite(CafError):
+    pass
+
+
+def validate(obj: Any, extra: Tuple[Type[Any], ...] = ()) -> None:
+    if obj is None or isinstance(obj, (str, int, float, bool)):
+        return
+    if isinstance(obj, tuple(default_classes) + extra):
+        pass
+    elif isinstance(obj, list):
+        for x in obj:
+            validate(x, extra)
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            if not isinstance(k, str):
+                raise InvalidComposite('Dict keys must be strings')
+            validate(v, extra)
+    else:
+        raise InvalidComposite(f'Unknown object: {obj!r}')
 
 
 class ClassJSONEncoder(json.JSONEncoder):

@@ -153,14 +153,14 @@ def test_tasks_not_run():
 
 @caf.rule
 def calcs():
-    return [(
+    return [[
         dist,
         dir_task(
             '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
             {'input': str(dist).encode()},
             label=str(dist)
         ).get('STDOUT', b'0')
-    ) for dist in range(0, 5)]
+    ] for dist in range(0, 5)]
 
 
 @caf.rule
