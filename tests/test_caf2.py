@@ -22,12 +22,12 @@ def test_pass_through():
         assert sess.eval(10) == 10
 
 
-@caf.rule
+@caf.Rule
 def add(x, y):
     return x + y
 
 
-@caf.rule
+@caf.Rule
 def fib(n):
     if n < 2:
         return n
@@ -59,7 +59,7 @@ def test_fut_not_in_session():
 
 def test_dependency_cycle():
     with pytest.raises(caf.sessions.DependencyCycle):
-        @caf.rule
+        @caf.Rule
         def f(x):
             return f(x)
 
@@ -68,7 +68,7 @@ def test_dependency_cycle():
 
 
 def test_returned_done_future():
-    @caf.rule
+    @caf.Rule
     def f(x):
         if x < 0:
             return x
@@ -80,7 +80,7 @@ def test_returned_done_future():
 
 
 def test_identical_futures():
-    @caf.rule
+    @caf.Rule
     def f(x, y):
         x, y = x[0], y[0]
         m = min(x, y)
@@ -107,11 +107,11 @@ def test_fibonacci2():
 
 
 def test_fibonacci3():
-    @caf.rule
+    @caf.Rule
     def total(xs):
         return sum(xs)
 
-    @caf.rule
+    @caf.Rule
     def fib(n):
         if n < 2:
             return n
@@ -122,7 +122,7 @@ def test_fibonacci3():
 
 
 def test_fibonacci4():
-    @caf.rule
+    @caf.Rule
     def fib(n):
         if n < 2:
             return [[n]]
@@ -133,7 +133,7 @@ def test_fibonacci4():
 
 
 def test_recursion():
-    @caf.rule
+    @caf.Rule
     def recurse(i):
         if i < 5:
             return recurse(i+1)
@@ -151,7 +151,7 @@ def test_tasks_not_run():
             assert len(sess._tasks) == 2
 
 
-@caf.rule
+@caf.Rule
 def calcs():
     return [[
         dist,
@@ -163,7 +163,7 @@ def calcs():
     ] for dist in range(0, 5)]
 
 
-@caf.rule
+@caf.Rule
 def analysis(results):
     return sum(int(res) for _, res in results)
 
