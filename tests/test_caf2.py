@@ -7,7 +7,7 @@ import json
 import pytest  # type: ignore
 
 import caf2 as caf
-from caf2.files import bash
+from caf2.files import dir_task
 from caf2.json_utils import ClassJSONDecoder, ClassJSONEncoder
 
 debug_level = os.environ.get('CAF_DEBUG')
@@ -117,8 +117,8 @@ def test_tasks_not_run():
 def calcs():
     return [(
         dist,
-        bash(
-            'expr $(cat input) "*" 2; true'.encode(),
+        dir_task(
+            '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
             {'input': str(dist).encode()},
             label=str(dist)
         )['STDOUT']
