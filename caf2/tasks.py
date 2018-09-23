@@ -9,7 +9,7 @@ from typing import Set, Any, NewType, Callable, Optional, List, TypeVar, \
     Union, Collection, cast, Tuple, Mapping, Iterable
 
 from .futures import Future, Maybe, NoResult, CafError, State
-from .json_utils import ClassJSONEncoder, ClassJSONDecoder
+from .json import ClassJSONEncoder, ClassJSONDecoder
 
 log = logging.getLogger(__name__)
 
