@@ -57,6 +57,19 @@ def test_fut_not_in_session():
             fib(task)
 
 
+def test_identical_futures():
+    @caf.rule
+    def f(x, y):
+        x, y = x[0], y[0]
+        m = min(x, y)
+        if m < 0:
+            return [0]
+        return [f([m], [max(x, y)-1])[0]]
+
+    with caf.Session() as sess:
+        assert sess.eval(f([f([1], [1])[0]], [f([1], [1])[0]])[0]) == 0
+
+
 def test_fibonacci():
     with caf.Session() as sess:
         assert sess.eval(fib(10)) == 55

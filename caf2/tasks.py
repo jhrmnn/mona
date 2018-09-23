@@ -35,7 +35,8 @@ def shorten_text(s: str, n: int) -> str:
 
 
 # Although this class could be hashable in principle, this would require
-# tracking all futures in a session in the same way that tasks are
+# dispatching all futures via a session in the same way that tasks are.
+# See test_identical_futures() for an example of what wouldn't work.
 class HashedFuture(Future[_T], ABC):
     @property
     @abstractmethod
