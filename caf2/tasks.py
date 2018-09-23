@@ -163,7 +163,7 @@ class TaskComposite(HashedFuture[_T]):
     def resolve(self, check_done: bool = True) -> _T:
         return cast(_T, json.loads(
             self._jsonstr,
-            classes={
+            hooks={
                 cls: lambda dct: self._futures[dct['hashid']].result(check_done)
                 for cls in [Task, TaskComponent]
             },
@@ -181,9 +181,9 @@ class TaskComposite(HashedFuture[_T]):
             obj,
             sort_keys=True,
             tape=futures,
-            classes={
-                Task: lambda fut: {'hashid': fut.hashid},
-                TaskComponent: lambda fut: {'hashid': fut.hashid},
+            defaults={
+                cls: lambda fut: {'hashid': fut.hashid}
+                for cls in [Task, TaskComponent]
             },
             cls=ClassJSONEncoder
         )
