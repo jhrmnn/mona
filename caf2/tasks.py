@@ -117,13 +117,6 @@ class Task(HashedFuture[_T]):
     def label(self) -> Optional[str]:
         return self._label
 
-    @property
-    def state(self) -> State:
-        state = super().state
-        if state is State.READY and self.has_run():
-            state = State.HAS_RUN
-        return state
-
     def default_result(self) -> Maybe[_T]:
         if self._future_result:
             return self._future_result.default_result()
@@ -134,19 +127,18 @@ class Task(HashedFuture[_T]):
         self._future_result = None
 
     def set_future_result(self, result: HashedFuture[Any]) -> None:
+        assert self.state == State.READY
+        self._state = State.HAS_RUN
         self._future_result = result
 
     def future_result(self) -> HashedFuture[_T]:
-        if not self.has_run():
+        if self.state is not State.HAS_RUN:
             raise TaskHasNotRun(repr(self))
         if self.done():
             assert self._future_result is None
             raise TaskIsDone(repr(self))
         assert self._future_result
         return self._future_result
-
-    def has_run(self) -> bool:
-        return self.done() or self._future_result is not None
 
 
 class TaskComposite(HashedFuture[_T]):

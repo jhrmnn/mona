@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Iterable, Set, Callable, List, TypeVar, Union, Iterator, \
     Generic
 from typing import Any  # noqa
@@ -18,8 +18,7 @@ class NoResult(Enum):
     _ = 0
 
 
-class State(Enum):
-    UNREGISTERED = -1
+class State(IntEnum):
     PENDING = 0
     READY = 1
     RUNNING = 2
@@ -50,31 +49,24 @@ class Future(Generic[_T]):
                 self._pending.add(fut)
         self._children: Set['Future[Any]'] = set()
         self._result: Maybe[_T] = NoResult._
-        self._registered = False
         self._done_callbacks: List[Callback[_Fut]] = []
         self._ready_callbacks: List[Callback[_Fut]] = []
-
-    def ready(self) -> bool:
-        return not self._pending
-
-    def done(self) -> bool:
-        return self._result is not NoResult._
+        self._registered = False
+        self._state: State = State.PENDING if self._pending else State.READY
 
     @property
     def state(self) -> State:
-        if self.done():
-            return State.DONE
-        if self.ready():
-            return State.READY
-        if self._registered:
-            return State.PENDING
-        return State.UNREGISTERED
+        return self._state
+
+    def done(self) -> bool:
+        return self._state is State.DONE
 
     @property
     def pending(self) -> Iterator['Future[Any]']:
         yield from self._pending
 
     def add_child(self, fut: 'Future[Any]') -> None:
+        assert not self.done()
         self._children.add(fut)
 
     def register(self: _Fut) -> None:
@@ -86,7 +78,7 @@ class Future(Generic[_T]):
                 fut.add_child(self)
 
     def add_ready_callback(self: _Fut, callback: Callback[_Fut]) -> None:
-        if self.ready():
+        if self.state >= State.READY:
             callback(self)
         else:
             self._ready_callbacks.append(callback)
@@ -96,6 +88,7 @@ class Future(Generic[_T]):
         self._done_callbacks.append(callback)
 
     def default_result(self) -> Maybe[_T]:
+        assert not self.done()
         return NoResult._
 
     def result(self, check_done: bool = True) -> _T:
@@ -109,16 +102,18 @@ class Future(Generic[_T]):
         raise FutureNotDone(repr(self))
 
     def parent_done(self: _Fut, fut: 'Future[Any]') -> None:
+        assert self.state is State.PENDING
         self._pending.remove(fut)
-        if self.ready():
+        if not self._pending:
+            self._state = State.READY
             log.debug(f'{self}: ready')
             for callback in self._ready_callbacks:
                 callback(self)
 
     def set_result(self: _Fut, result: _T) -> None:
-        assert self.ready()
-        assert self._result is NoResult._
+        assert State.READY <= self._state < State.DONE
         self._result = result
+        self._state = State.DONE
         log.debug(f'{self}: done')
         for fut in self._children:
             fut.parent_done(self)

@@ -8,7 +8,7 @@ from typing import Set, Any, Dict, Callable, Optional, List, Deque, \
     TypeVar, Iterator
 
 from .futures import Future, CafError, FutureNotDone
-from .tasks import Task, Hash, HashedFuture, TaskComposite, ensure_future
+from .tasks import Task, Hash, HashedFuture, TaskComposite, ensure_future, State
 from .collections import HashedDeque
 
 log = logging.getLogger(__name__)
@@ -58,7 +58,10 @@ class Session:
 
     def __exit__(self, *args: Any) -> None:
         Session._active = None
-        tasks_not_run = [task for task in self._tasks.values() if not task.has_run()]
+        tasks_not_run = [
+            task for task in self._tasks.values()
+            if task.state < State.HAS_RUN
+        ]
         if tasks_not_run:
             warnings.warn(f'tasks were never run: {tasks_not_run}', RuntimeWarning)
         self._tasks.clear()
@@ -102,13 +105,13 @@ class Session:
                  ) -> Optional[_T]:
         assert not task.done()
         if check_ready:
-            assert task.ready()
+            assert task.state > State.PENDING
         args = [arg.result(check_done=check_ready) for arg in task.args]
         with self.record(task.children):
             result = task.func(*args)
         if task.children:
             log.debug(f'{task}: created children: {list(map(str, task.children))}')
-        if not task.ready():
+        if task.state is State.PENDING:
             return result
         fut: Optional[HashedFuture[_T]] = None
         if isinstance(result, HashedFuture):
@@ -135,18 +138,18 @@ class Session:
         queue = HashedDeque[Task[Any]]()
 
         def schedule(task: Task[Any]) -> None:
-            if not task.has_run() and task not in queue:
+            if task.state < State.HAS_RUN and task not in queue:
                 queue.append(task)
 
         def process_future(fut: HashedFuture[Any]) -> None:
             for task in extract_tasks(fut):
-                if not task.has_run():
+                if task.state < State.HAS_RUN:
                     task.add_ready_callback(schedule)
 
         process_future(fut)
         while queue:
             task = queue.popleft()
-            if task.has_run():
+            if task.state > State.READY:
                 continue
             log.info(f'{task}: will run')
             self.run_task(task)
