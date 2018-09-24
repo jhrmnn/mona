@@ -193,7 +193,9 @@ def test_db(db):
 def test_partial_eval():
     with caf.Session() as sess:
         sess.run_task(calcs())
-        sess.run_task(calcs().side_effects[3])
+        stdouts = dict(calcs().future_result().resolve())
+        assert stdouts[3].task == calcs().side_effects[3]
+        sess.run_task(stdouts[3].task)
         assert sess.run_task(analysis(calcs()), check_ready=False) == 6
 
 

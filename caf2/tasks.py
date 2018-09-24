@@ -187,6 +187,10 @@ class TaskComponent(HashedFuture[_T]):
     def label(self) -> str:
         return self._label
 
+    @property
+    def task(self) -> Task[Any]:
+        return self._task
+
     def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
         return self.get(key)
 
