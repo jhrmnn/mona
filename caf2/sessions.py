@@ -176,7 +176,7 @@ class Session:
 
         dot = Digraph()
         for child, parents in self._graph.items():
-            dot.node(child)
+            dot.node(child, str(self._tasks[child]))
             for parent in parents:
                 dot.edge(child, parent)
         return dot

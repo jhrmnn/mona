@@ -47,17 +47,22 @@ class HashedFuture(Future[_T], ABC):
     def spec(self) -> str: ...
 
     @property
+    @abstractmethod
+    def label(self) -> str: ...
+
+    @property
     def hashid(self) -> Hash:
         return self._hashid
 
     def __repr__(self) -> str:
-        return (
-            f'<{self.__class__.__name__} hashid={self.hashid} spec={self.spec!r} '
-            f'state={self.state.name}>'
-        )
+        return f'<{self.__class__.__name__} {self} state={self.state.name}>'
+
+    @property
+    def tag(self) -> str:
+        return self.hashid[:6]
 
     def __str__(self) -> str:
-        return self.hashid[:6]
+        return f'{self.tag}: {self.label}'
 
 
 def ensure_future(obj: Any) -> HashedFuture[Any]:
@@ -79,8 +84,12 @@ class Task(HashedFuture[_T]):
                  ) -> None:
         self._func = func
         self._args = tuple(map(ensure_future, args))
+        if label:
+            self._label = label
+        else:
+            self._label = self._func.__qualname__ + \
+                '(' + ', '.join(a.label for a in self._args) + ')'
         super().__init__(self._args)
-        self._label = label
         self.children: List[Task[Any]] = []
         self._future_result: Optional[HashedFuture[_T]] = None
 
@@ -89,12 +98,6 @@ class Task(HashedFuture[_T]):
 
     def get(self, key: Any, default: Any = NoResult._) -> 'TaskComponent[Any]':
         return TaskComponent(self, [key], default)  # type: ignore
-
-    def __str__(self) -> str:
-        s = super().__str__()
-        if self.label is not None:
-            s = f'{self.label}(s)'
-        return s
 
     @property
     def func(self) -> Callable[..., _T]:
@@ -113,7 +116,7 @@ class Task(HashedFuture[_T]):
         return '\n'.join(lines)
 
     @property
-    def label(self) -> Optional[str]:
+    def label(self) -> str:
         return self._label
 
     def default_result(self) -> Maybe[_T]:
@@ -121,7 +124,7 @@ class Task(HashedFuture[_T]):
             return self._future_result.default_result()
         return NoResult._
 
-    def set_result(self, result: _T) -> None:
+    def set_result(self, result: _T, _log: bool = True) -> None:
         super().set_result(result)
         self._future_result = None
 
@@ -144,31 +147,39 @@ class TaskComposite(HashedFuture[_T]):
     def __init__(self, jsonstr: str, futures: Collection[HashedFuture[Any]]
                  ) -> None:
         self._jsonstr = jsonstr
-        super().__init__(futures)
         self._futures = {fut.hashid: fut for fut in futures}
-        self.add_ready_callback(
-            lambda comp: comp.set_result(comp.resolve())
-        )
+        self._label = repr(self._resolve(lambda fut: fut.tag))
+        super().__init__(futures)
+        if not futures:
+            self.set_result(self.resolve(), _log=False)
+        else:
+            self.add_ready_callback(
+                lambda comp: comp.set_result(comp.resolve())
+            )
 
     @property
     def spec(self) -> str:
         return self._jsonstr
 
-    def __str__(self) -> str:
-        return f'"{shorten_text(self._jsonstr, 40)}"({super().__str__()})'
+    @property
+    def label(self) -> str:
+        return self._label
 
     def has_futures(self) -> bool:
         return bool(self._futures)
 
-    def resolve(self, check_done: bool = True) -> _T:
+    def _resolve(self, handler: Callable[[HashedFuture[Any]], Any]) -> _T:
         return cast(_T, json.loads(
             self._jsonstr,
             hooks={
-                cls: lambda dct: self._futures[dct['hashid']].result(check_done)
+                cls: lambda dct: handler(self._futures[dct['hashid']])
                 for cls in [Task, TaskComponent]
             },
             cls=ClassJSONDecoder
         ))
+
+    def resolve(self, check_done: bool = True) -> _T:
+        return self._resolve(lambda fut: fut.result(check_done))
 
     def default_result(self) -> _T:
         return self.resolve(check_done=False)
@@ -196,6 +207,7 @@ class TaskComponent(HashedFuture[_T]):
                  default: Maybe[_T] = NoResult._) -> None:
         self._task = task
         self._keys = keys
+        self._label = ''.join([self._task.tag, *(f'[{k}]' for k in self._keys)])
         super().__init__([task])
         self._default = default
         self.add_ready_callback(
@@ -208,15 +220,17 @@ class TaskComponent(HashedFuture[_T]):
     def get(self, key: Any, default: Any = NoResult._) -> 'TaskComponent[Any]':
         return TaskComponent(self._task, self._keys + [key], default)
 
-    def _spec(self, root: str) -> str:
-        return '/'.join(['@' + root, *map(str, self._keys)])
-
     @property
     def spec(self) -> str:
-        return self._spec(self._task.hashid)
+        return json.dumps([self._task.hashid] + self._keys)
 
-    def __str__(self) -> str:
-        return self._spec(super().__str__())
+    @property
+    def tag(self) -> str:
+        return self._label
+
+    @property
+    def label(self) -> str:
+        return self._label
 
     def resolve(self) -> _T:
         obj = self._task.result()
