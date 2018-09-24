@@ -7,7 +7,7 @@ from abc import abstractmethod
 from typing import Any, Callable, Optional, List, TypeVar, Collection, cast, Tuple
 
 from .futures import Future, Maybe, Empty, CafError, State
-from .json import json_validate, InvalidJSON
+from .json import JSONValidator, InvalidJSONObject
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
 from .utils import get_fullname
 
@@ -23,8 +23,8 @@ def maybe_future(obj: Any) -> Optional['HashedFuture[Any]']:
     if isinstance(obj, HashedFuture):
         return obj
     try:
-        json_validate(obj, lambda x: isinstance(x, (Task, TaskComponent)))
-    except InvalidJSON:
+        JSONValidator(lambda x: isinstance(x, (Task, TaskComponent)))(obj)
+    except InvalidJSONObject:
         return None
     jsonstr, components = TaskComposite.parse_object(obj)
     if any(isinstance(comp, HashedFuture) for comp in components):
@@ -35,7 +35,7 @@ def maybe_future(obj: Any) -> Optional['HashedFuture[Any]']:
 def ensure_hashed(obj: Any) -> Hashed[Any]:
     if isinstance(obj, HashedFuture):
         return obj
-    json_validate(obj, lambda x: isinstance(x, (Task, TaskComponent)))
+    JSONValidator(lambda x: isinstance(x, (Task, TaskComponent)))(obj)
     jsonstr, components = TaskComposite.parse_object(obj)
     if any(isinstance(comp, HashedFuture) for comp in components):
         return TaskComposite(jsonstr, components)

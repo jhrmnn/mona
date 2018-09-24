@@ -32,27 +32,32 @@ registered_classes: ClassRegister = {
 }
 
 
-class InvalidJSON(CafError):
+class InvalidJSONObject(CafError):
     pass
 
 
-def json_validate(obj: Any, hook: Callable[[Any], bool] = None) -> None:
-    if obj is None or isinstance(obj, (str, int, float, bool)):
-        return
-    if isinstance(obj, tuple(registered_classes)):
-        return
-    if hook and hook(obj):
-        return
-    elif isinstance(obj, list):
-        for x in obj:
-            json_validate(x, hook)
-    elif isinstance(obj, dict):
-        for k, v in obj.items():
-            if not isinstance(k, str):
-                raise InvalidJSON('Dict keys must be strings')
-            json_validate(v, hook)
-    else:
-        raise InvalidJSON(f'Unknown object: {obj!r}')
+class JSONValidator:
+    def __init__(self, hook: Callable[[Any], bool] = None) -> None:
+        self._hook = hook
+        self._classes = tuple(registered_classes)
+
+    def __call__(self, obj: Any) -> None:
+        if obj is None or isinstance(obj, (str, int, float, bool)):
+            return
+        if isinstance(obj, self._classes):
+            return
+        if self._hook and self._hook(obj):
+            return
+        elif isinstance(obj, list):
+            for x in obj:
+                self(x)
+        elif isinstance(obj, dict):
+            for k, v in obj.items():
+                if not isinstance(k, str):
+                    raise InvalidJSONObject('Dict keys must be strings')
+                self(v)
+        else:
+            raise InvalidJSONObject(f'Unknown object: {obj!r}')
 
 
 class ClassJSONEncoder(json.JSONEncoder):
