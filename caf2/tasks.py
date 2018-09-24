@@ -141,6 +141,15 @@ class Task(HashedFuture[_T]):
         assert self._future_result
         return self._future_result
 
+    def call(self) -> _T:
+        args = [
+            arg.result(check_done=False)
+            if isinstance(arg, HashedFuture)
+            else arg.value
+            for arg in self.args
+        ]
+        return self.func(*args)
+
 
 class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
     def __init__(self, jsonstr: str, components: Collection[Hashed[Any]]

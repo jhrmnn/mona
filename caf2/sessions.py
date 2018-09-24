@@ -31,10 +31,6 @@ class DependencyCycle(CafError):
     pass
 
 
-class TaskNotReady(CafError):
-    pass
-
-
 class Graph(NamedTuple):
     deps: Dict[Hash, Set[Hash]]
     side_effects: Dict[Hash, Set[Hash]]
@@ -103,14 +99,10 @@ class Session:
         self._graph.deps[task.hashid] = set(task.hashid for task in parents)
         return task
 
-    def run_task(self, task: Task[_T], check_ready: bool = True) -> _T:
-        assert not task.state > State.READY
-        if check_ready and task.state < State.READY:
-            raise TaskNotReady(repr(task))
+    def run_task(self, task: Task[_T]) -> None:
+        assert task.state is State.READY
         args = [
-            arg.result(check_done=check_ready)
-            if isinstance(arg, HashedFuture)
-            else arg.value
+            arg.result() if isinstance(arg, HashedFuture) else arg.value
             for arg in task.args
         ]
         with self.record(task.add_side_effect):
@@ -122,8 +114,6 @@ class Session:
                 f'{task}: created children: '
                 f'{list(map(Literal, task.side_effects))}'
             )
-        if task.state is not State.READY:
-            return result
         fut = maybe_future(result)
         if fut:
             if fut.done():
@@ -135,7 +125,6 @@ class Session:
                 fut.register()
         else:
             task.set_result(result)
-        return result
 
     def eval(self, obj: Any) -> Any:
         fut = maybe_future(obj)

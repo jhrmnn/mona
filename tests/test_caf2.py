@@ -196,7 +196,7 @@ def test_partial_eval():
         stdouts = dict(calcs().future_result().resolve())
         assert stdouts[3].task == calcs().side_effects[3]
         sess.run_task(stdouts[3].task)
-        assert sess.run_task(analysis(calcs()), check_ready=False) == 6
+        assert analysis(calcs()).call() == 6
 
 
 def test_json_utils():
