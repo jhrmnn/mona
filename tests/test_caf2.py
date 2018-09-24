@@ -213,13 +213,15 @@ def test_json_utils():
     jsonstr = json.dumps(
         obj,
         tape=tape,
-        defaults={MyClass: lambda x: {'x': x.x}},
+        default=lambda x:
+        ('MyClass', {'x': x.x}) if isinstance(x, MyClass) else None,
         cls=ClassJSONEncoder
     )
     assert len(tape) == 2
     obj2 = json.loads(
         jsonstr,
-        hooks={MyClass: lambda dct: MyClass(dct['x'])},
+        hook=lambda type_tag, dct:
+        MyClass(dct['x']) if type_tag == 'MyClass' else dct,
         cls=ClassJSONDecoder
     )
     assert obj == obj2

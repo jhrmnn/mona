@@ -176,10 +176,12 @@ class TaskComposite(HashedFuture[_T]):
     def _resolve(self, handler: Callable[[HashedFuture[Any]], Any]) -> _T:
         return cast(_T, json.loads(
             self._jsonstr,
-            hooks={
-                cls: lambda dct: handler(self._futures[dct['hashid']])
-                for cls in [Task, TaskComponent]
-            },
+            hook=(
+                lambda type_tag, dct:
+                handler(self._futures[dct['hashid']])
+                if type_tag == 'HashedFuture'
+                else dct
+            ),
             cls=ClassJSONDecoder
         ))
 
@@ -198,10 +200,12 @@ class TaskComposite(HashedFuture[_T]):
             obj,
             sort_keys=True,
             tape=futures,
-            defaults={
-                cls: lambda fut: {'hashid': fut.hashid}
-                for cls in [Task, TaskComponent]
-            },
+            default=(
+                lambda fut:
+                ('HashedFuture', {'hashid': fut.hashid})
+                if isinstance(fut, HashedFuture)
+                else None
+            ),
             cls=ClassJSONEncoder
         )
         return cls(jsonstr, futures)

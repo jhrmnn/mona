@@ -6,7 +6,7 @@ import base64
 from pathlib import Path
 
 from typing import Any, Set, Type, Dict, Callable, overload, Sequence, \
-    Union, cast, Tuple
+    Union, cast, Tuple, Optional
 from typing_extensions import Protocol
 
 from .futures import CafError
@@ -32,6 +32,8 @@ class _JSONDict(Protocol):
 JSONLike = Union[str, int, float, bool, None, _JSONArray, _JSONDict]
 JSONConvertor = Callable[[Any], Dict[str, JSONLike]]
 JSONDeconvertor = Callable[[Dict[str, JSONLike]], Any]
+DefaultConvertor = Callable[[Any], Optional[Tuple[str, Dict[str, JSONLike]]]]
+DefaultDeconvertor = Callable[[str, Dict[str, JSONLike]], Optional[Any]]
 
 
 default_classes: Dict[Type[Any], Tuple[JSONConvertor, JSONDeconvertor]] = {
@@ -68,25 +70,28 @@ def validate(obj: Any, extra: Tuple[Type[Any], ...] = ()) -> None:
 
 
 class ClassJSONEncoder(json.JSONEncoder):
-    def __init__(self, *args: Any, tape: Set[Any] = None,
-                 defaults: Dict[Type[Any], JSONConvertor] = None,
+    def __init__(self, *args: Any, tape: Set[Any], default: DefaultConvertor,
                  **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        defaults = defaults or {}
-        self._tape_classes = tuple(defaults)
-        self._defaults = {cls: enc for cls, (enc, dec) in default_classes.items()}
-        self._defaults.update(defaults)
-        self._classes = tuple(self._defaults)
+        self._default = default
         self._tape = tape
+        self._classes = tuple(default_classes)
+        self._default_encs = {
+            cls: enc for cls, (enc, dec) in default_classes.items()
+        }
 
     def default(self, o: Any) -> JSONLike:
+        type_tag: Optional[str] = None
         if isinstance(o, self._classes):
-            if self._tape is not None and isinstance(o, self._tape_classes):
+            dct = self._default_encs[o.__class__](o)
+            type_tag = o.__class__.__name__
+        else:
+            encoded = self._default(o)
+            if encoded is not None:
+                type_tag, dct = encoded
                 self._tape.add(o)
-            return {
-                '_type': o.__class__.__name__,
-                **self._defaults[o.__class__](o)
-            }
+        if type_tag is not None:
+            return {'_type': type_tag, **dct}
         return cast(JSONLike, super().default(o))
 
 
@@ -96,19 +101,21 @@ def assert_str(obj: Any) -> str:
 
 
 class ClassJSONDecoder(json.JSONDecoder):
-    def __init__(self, *args: Any,
-                 hooks: Dict[Type[Any], JSONDeconvertor] = None,
-                 **kwargs: Any) -> None:
+    def __init__(self, *args: Any, hook: DefaultDeconvertor, **kwargs: Any
+                 ) -> None:
         assert 'object_hook' not in kwargs
         kwargs['object_hook'] = self._my_object_hook
         super().__init__(*args, **kwargs)
-        _hooks = {cls: dec for cls, (enc, dec) in default_classes.items()}
-        _hooks.update(hooks or {})
-        self._hooks = {class_.__name__: f for class_, f in _hooks.items()}
+        self._hook = hook
+        self._default_decs = {
+            cls.__name__: dec for cls, (enc, dec) in default_classes.items()
+        }
 
-    def _my_object_hook(self, o: Dict[str, JSONLike]) -> Any:
+    def _my_object_hook(self, dct: Dict[str, JSONLike]) -> Any:
         try:
-            type_tag = assert_str(o.pop('_type'))
+            type_tag = assert_str(dct.pop('_type'))
         except KeyError:
-            return o
-        return self._hooks[type_tag](o)
+            return dct
+        if type_tag in self._default_decs:
+            return self._default_decs[type_tag](dct)
+        return self._hook(type_tag, dct)
