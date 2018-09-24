@@ -4,7 +4,7 @@
 import logging
 from enum import IntEnum
 from typing import Iterable, Set, Callable, List, TypeVar, Iterator, Generic, \
-    NoReturn
+    NoReturn, FrozenSet
 from typing import Any  # noqa
 
 from .utils import CafError, Maybe, Empty
@@ -34,10 +34,8 @@ class FutureHasNoDefault(CafError):
 
 class Future(Generic[_T]):
     def __init__(self: _Fut, parents: Iterable['Future[Any]']) -> None:
-        self._pending: Set['Future[Any]'] = set()
-        for fut in parents:
-            if not fut.done():
-                self._pending.add(fut)
+        self._parents = frozenset(parents)
+        self._pending = set(fut for fut in self._parents if not fut.done())
         self._children: Set['Future[Any]'] = set()
         self._result: Maybe[_T] = Empty._
         self._done_callbacks: List[Callback[_Fut]] = []
@@ -56,8 +54,12 @@ class Future(Generic[_T]):
         return self._state is State.DONE
 
     @property
-    def pending(self) -> Iterator['Future[Any]']:
-        yield from self._pending
+    def pending(self) -> FrozenSet['Future[Any]']:
+        return frozenset(self._pending)
+
+    @property
+    def parents(self) -> FrozenSet['Future[Any]']:
+        return self._parents
 
     def add_child(self, fut: 'Future[Any]') -> None:
         assert not self.done()
@@ -72,7 +74,7 @@ class Future(Generic[_T]):
                 fut.add_child(self)
 
     def add_ready_callback(self: _Fut, callback: Callback[_Fut]) -> None:
-        if self.state >= State.READY:
+        if self._state >= State.READY:
             callback(self)
         else:
             self._ready_callbacks.append(callback)
@@ -81,12 +83,13 @@ class Future(Generic[_T]):
         assert not self.done()
         self._done_callbacks.append(callback)
 
+    # can be overriden by derived classes
     def default_result(self) -> Maybe[_T]:
         assert not self.done()
         return Empty._
 
     def result(self, check_done: bool = True) -> _T:
-        if not isinstance(self._result, Empty):  # mypy limitation
+        if not isinstance(self._result, Empty):
             return self._result
         if not check_done:
             result = self.default_result()
@@ -96,7 +99,7 @@ class Future(Generic[_T]):
         raise FutureNotDone(repr(self))
 
     def parent_done(self: _Fut, fut: 'Future[Any]') -> None:
-        assert self.state is State.PENDING
+        assert self._state is State.PENDING
         self._pending.remove(fut)
         if not self._pending:
             self._state = State.READY

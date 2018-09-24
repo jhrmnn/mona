@@ -60,7 +60,8 @@ class HashedCompositeLike(Hashed[Composite]):
 
     @property
     @abstractmethod
-    def value(self) -> Composite: ...
+    def value(self) -> Composite:
+        pass
 
     @property
     def spec(self) -> str:

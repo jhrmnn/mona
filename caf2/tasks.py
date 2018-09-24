@@ -4,8 +4,7 @@
 import logging
 import json
 from abc import abstractmethod
-from typing import Any, Callable, Optional, List, TypeVar, Collection, \
-    cast, Tuple, Iterable
+from typing import Any, Callable, Optional, List, TypeVar, Collection, cast, Tuple
 
 from .futures import Future, Maybe, Empty, CafError, State
 from .json import json_validate, InvalidJSON
@@ -47,10 +46,6 @@ def ensure_hashed(obj: Any) -> Hashed[Any]:
 # dispatching all futures via a session in the same way that tasks are.
 # See test_identical_futures() for an example of what wouldn't work.
 class HashedFuture(Hashed[_T], Future[_T]):
-    def __init__(self: _HFut, parents: Iterable['HashedFuture[Any]']) -> None:
-        Hashed.__init__(self)
-        Future.__init__(self, parents)
-
     @property
     @abstractmethod
     def spec(self) -> str: ...
@@ -83,13 +78,14 @@ class Task(HashedFuture[_T]):
                  ) -> None:
         self._func = func
         self._args = tuple(map(ensure_hashed, args))
-        HashedFuture.__init__(
+        Hashed.__init__(self)
+        Future.__init__(
             self, (arg for arg in self._args if isinstance(arg, HashedFuture))
         )
         self._label = label or \
             f'{self._func.__qualname__}({", ".join(a.label for a in self._args)})'
         self._future_result: Optional[HashedFuture[_T]] = None
-        self.side_effects: List[Task[Any]] = []  # TODO make private
+        self._side_effects: List[Task[Any]] = []
 
     @property
     def spec(self) -> str:
@@ -114,6 +110,13 @@ class Task(HashedFuture[_T]):
 
     def get(self, key: Any, default: Any = Empty._) -> 'TaskComponent[Any]':
         return TaskComponent(self, [key], default)
+
+    @property
+    def side_effects(self) -> Tuple['Task[Any]', ...]:
+        return tuple(self._side_effects)
+
+    def add_side_effect(self, task: 'Task[Any]') -> None:
+        self._side_effects.append(task)
 
     def default_result(self) -> Maybe[_T]:
         if self._future_result:
@@ -144,10 +147,10 @@ class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: igno
                  ) -> None:
         futures = [comp for comp in components if isinstance(comp, HashedFuture)]
         assert futures
+        Future.__init__(self, futures)
         HashedCompositeLike.__init__(self, jsonstr, components)
-        HashedFuture.__init__(self, futures)
         self.add_ready_callback(
-            lambda comp: comp.set_result(comp.resolve(lambda comp: comp.value))
+            lambda self: self.set_result(self.resolve(lambda comp: comp.value))
         )
 
     # override abstract property in HashedCompositeLike
@@ -166,13 +169,14 @@ class TaskComponent(HashedFuture[_T]):
                  default: Maybe[_T] = Empty._) -> None:
         self._task = task
         self._keys = keys
-        HashedFuture.__init__(self, [task])
+        Hashed.__init__(self)
+        Future.__init__(self, [task])
         self._label = ''.join([
             self._task.label, *(f'[{k!r}]' for k in self._keys)
         ])
         self._default = default
         self.add_ready_callback(
-            lambda idx: idx.set_result(idx.resolve())
+            lambda self: self.set_result(self.resolve())
         )
 
     @property

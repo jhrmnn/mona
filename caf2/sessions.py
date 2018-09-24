@@ -4,7 +4,7 @@
 import logging
 import warnings
 from contextlib import contextmanager
-from typing import Set, Any, Dict, Callable, Optional, List, Deque, \
+from typing import Set, Any, Dict, Callable, Optional, Deque, \
     TypeVar, Iterator, NamedTuple
 
 from .futures import Future, CafError, FutureNotDone
@@ -60,7 +60,7 @@ class Session:
     def __init__(self) -> None:
         self._tasks: Dict[Hash, Task[Any]] = {}
         self._graph = Graph({}, {}, {})
-        self._task_tape: Optional[List[Task[Any]]] = None
+        self._task_tape: Optional[Callable[[Task[Any]], None]] = None
 
     def __enter__(self) -> 'Session':
         assert Session._active is None
@@ -85,7 +85,7 @@ class Session:
         return task.hashid in self._tasks
 
     @contextmanager
-    def record(self, tape: List[Task[Any]]) -> Iterator[None]:
+    def record(self, tape: Callable[[Task[Any]], None]) -> Iterator[None]:
         self._task_tape = tape
         try:
             yield
@@ -103,9 +103,9 @@ class Session:
             return task
         finally:
             if self._task_tape is not None:
-                self._task_tape.append(task)
+                self._task_tape(task)
         parents: Set[Hash] = set()
-        for arg in task.pending:  # TODO this should be all args, even finished futures
+        for arg in task.parents:
             if isinstance(arg, Task):
                 parents.add(arg.hashid)
                 if arg not in self:
@@ -131,7 +131,7 @@ class Session:
             else arg.value
             for arg in task.args
         ]
-        with self.record(task.side_effects):
+        with self.record(task.add_side_effect):
             result = task.func(*args)
         if task.side_effects:
             self._graph.side_effects[task.hashid] = \
