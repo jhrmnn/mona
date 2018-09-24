@@ -4,13 +4,14 @@
 import logging
 import warnings
 from contextlib import contextmanager
+from itertools import chain
 from typing import Set, Any, Dict, Callable, Optional, Deque, \
     TypeVar, Iterator, NamedTuple
 
 from .futures import Future, CafError, FutureNotDone
 from .hashing import Hash
 from .tasks import Task, HashedFuture, State, maybe_future
-from .collections import HashedDeque
+from .collections import HashedDeque, traverse
 from .utils import Literal
 
 log = logging.getLogger(__name__)
@@ -104,20 +105,16 @@ class Session:
         finally:
             if self._task_tape is not None:
                 self._task_tape(task)
-        parents: Set[Hash] = set()
-        for arg in task.parents:
-            if isinstance(arg, Task):
-                parents.add(arg.hashid)
-                if arg not in self:
-                    raise ArgNotInSession(repr(arg))
-            else:
-                for arg_task in extract_tasks(arg):
-                    parents.add(arg_task.hashid)
-                    if arg_task not in self:
-                        raise ArgNotInSession(f'{arg!r} -> {arg_task!r}')
+        parent_futures = set(chain.from_iterable(traverse(
+            parent, lambda f: f.parents, lambda f: isinstance(f, Task)
+        ) for parent in task.parents))
+        parents = [f for f in parent_futures if isinstance(f, Task)]
+        for parent in parents:
+            if parent not in self:
+                raise ArgNotInSession(repr(parent))
         task.register()
         self._tasks[task.hashid] = task
-        self._graph.deps[task.hashid] = parents
+        self._graph.deps[task.hashid] = set(task.hashid for task in parents)
         return task
 
     def run_task(self, task: Task[_T], check_ready: bool = True
