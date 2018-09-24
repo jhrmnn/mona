@@ -5,7 +5,7 @@ import logging
 import warnings
 from contextlib import contextmanager
 from itertools import chain
-from typing import Set, Any, Dict, Callable, Optional, Deque, \
+from typing import Set, Any, Dict, Callable, Optional, \
     TypeVar, Iterator, NamedTuple
 
 from .futures import Future, CafError, FutureNotDone
@@ -19,24 +19,6 @@ log = logging.getLogger(__name__)
 _T = TypeVar('_T')
 
 
-def extract_tasks(fut: Future[Any], shallow: bool = False) -> Set[Task[Any]]:
-    tasks: Set[Task[Any]] = set()
-    visited: Set[Future[Any]] = set()
-    queue = Deque[Future[Any]]()
-    queue.append(fut)
-    while queue:
-        fut = queue.popleft()
-        visited.add(fut)
-        if isinstance(fut, Task):
-            tasks.add(fut)
-            if shallow:
-                continue
-        for parent in fut.parents:
-            if parent not in visited:
-                queue.append(parent)
-    return tasks
-
-
 class NoActiveSession(CafError):
     pass
 
@@ -46,6 +28,10 @@ class ArgNotInSession(CafError):
 
 
 class DependencyCycle(CafError):
+    pass
+
+
+class TaskNotReady(CafError):
     pass
 
 
@@ -117,11 +103,10 @@ class Session:
         self._graph.deps[task.hashid] = set(task.hashid for task in parents)
         return task
 
-    def run_task(self, task: Task[_T], check_ready: bool = True
-                 ) -> Optional[_T]:
-        assert not task.done()
-        if check_ready:
-            assert task.state > State.PENDING
+    def run_task(self, task: Task[_T], check_ready: bool = True) -> _T:
+        assert not task.state > State.READY
+        if check_ready and task.state < State.READY:
+            raise TaskNotReady(repr(task))
         args = [
             arg.result(check_done=check_ready)
             if isinstance(arg, HashedFuture)
@@ -133,8 +118,11 @@ class Session:
         if task.side_effects:
             self._graph.side_effects[task.hashid] = \
                 set(created_task.hashid for created_task in task.side_effects)
-            log.debug(f'{task}: created children: {list(map(Literal, task.side_effects))}')
-        if task.state is State.PENDING:
+            log.debug(
+                f'{task}: created children: '
+                f'{list(map(Literal, task.side_effects))}'
+            )
+        if task.state is not State.READY:
             return result
         fut = maybe_future(result)
         if fut:
@@ -147,7 +135,7 @@ class Session:
                 fut.register()
         else:
             task.set_result(result)
-        return None
+        return result
 
     def eval(self, obj: Any) -> Any:
         fut = maybe_future(obj)
@@ -160,10 +148,21 @@ class Session:
             if task.state < State.HAS_RUN and task not in queue:
                 queue.append(task)
 
-        def process_future(fut: HashedFuture[Any]) -> None:
-            for task in extract_tasks(fut):
+        def process_future(fut: Future[Any]) -> Set[Task[Any]]:
+            parents = traverse(
+                fut, lambda f: f.parents, lambda f: isinstance(f, Task)
+            )
+            tasks = set(f for f in parents if isinstance(f, Task))
+            unqueued_tasks = chain.from_iterable(traverse(
+                task,
+                lambda t: (self._tasks[h] for h in self._graph.deps[t.hashid]),
+                lambda t: t in queue,
+                False
+            ) for task in tasks)
+            for task in unqueued_tasks:
                 if task.state < State.HAS_RUN:
                     task.add_ready_callback(schedule)
+            return tasks
 
         process_future(fut)
         while queue:
@@ -173,12 +172,9 @@ class Session:
             log.info(f'{task}: will run')
             self.run_task(task)
             if not task.done():
-                process_future(task.future_result())
-                self._graph.backflow[task.hashid] = set(
-                    t.hashid for t in extract_tasks(
-                        task.future_result(), shallow=True
-                    )
-                )
+                backflow = process_future(task.future_result())
+                self._graph.backflow[task.hashid] = \
+                    set(t.hashid for t in backflow)
         try:
             return fut.result()
         except FutureNotDone as e:
