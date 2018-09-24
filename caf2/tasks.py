@@ -3,11 +3,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 import json
+import pickle
 from abc import abstractmethod
-from typing import Any, Callable, Optional, List, TypeVar, Collection, cast, Tuple
+from typing import Any, Callable, Optional, List, TypeVar, \
+    Collection, cast, Union, Tuple
 
 from .futures import Future, Maybe, Empty, CafError, State
-from .json import JSONValidator, InvalidJSONObject
+from .json import JSONValidator
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
 from .utils import get_fullname
 
@@ -19,17 +21,17 @@ _HFut = TypeVar('_HFut', bound='HashedFuture')  # type: ignore
 _TC = TypeVar('_TC', bound='TaskComposite')
 
 
-def maybe_future(obj: Any) -> Optional['HashedFuture[Any]']:
+def maybe_future(obj: Any) -> Union['HashedFuture[Any]', bytes]:
     if isinstance(obj, HashedFuture):
         return obj
     try:
-        JSONValidator(lambda x: isinstance(x, (Task, TaskComponent)))(obj)
-    except InvalidJSONObject:
-        return None
+        return pickle.dumps(obj)
+    except CafError:
+        pass
+    JSONValidator(lambda x: isinstance(x, (Task, TaskComponent)))(obj)
     jsonstr, components = TaskComposite.parse_object(obj)
-    if any(isinstance(comp, HashedFuture) for comp in components):
-        return TaskComposite(jsonstr, components)
-    return None
+    assert any(isinstance(comp, HashedFuture) for comp in components)
+    return TaskComposite(jsonstr, components)
 
 
 def ensure_hashed(obj: Any) -> Hashed[Any]:

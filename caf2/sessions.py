@@ -115,7 +115,9 @@ class Session:
                 f'{list(map(Literal, task.side_effects))}'
             )
         fut = maybe_future(result)
-        if fut:
+        if isinstance(fut, bytes):
+            task.set_result(result)
+        else:
             if fut.done():
                 task.set_result(fut.result())
             else:
@@ -123,12 +125,10 @@ class Session:
                 task.set_future_result(fut)
                 fut.add_done_callback(lambda fut: task.set_result(fut.result()))
                 fut.register()
-        else:
-            task.set_result(result)
 
     def eval(self, obj: Any) -> Any:
         fut = maybe_future(obj)
-        if not fut:
+        if isinstance(fut, bytes):
             return obj
         fut.register()
         queue = HashedDeque[Task[Any]]()
