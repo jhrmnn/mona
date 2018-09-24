@@ -1,7 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import TypeVar, Generic, Deque, Set
+from typing import TypeVar, Generic, Deque, Set, Callable, Iterable
 
 _T = TypeVar('_T')
 
@@ -26,3 +26,20 @@ class HashedDeque(Generic[_T]):
         item = self._deque.popleft()
         self._deque_set.remove(item)
         return item
+
+
+def traverse(start: _T, parents: Callable[[_T], Iterable[_T]],
+             sentinel: Callable[[_T], bool] = None) -> Set[_T]:
+    visited: Set[_T] = set()
+    queue = Deque[_T]()
+    queue.append(start)
+    while queue:
+        node = queue.popleft()
+        visited.add(node)
+        if sentinel and sentinel(node):
+            continue
+        for parent in parents(node):
+            if parent not in visited:
+                queue.append(parent)
+    return visited
+
