@@ -104,7 +104,7 @@ class Session:
             if self._task_tape is not None:
                 self._task_tape.append(task)
         parents: Set[Hash] = set()
-        for arg in task.args:
+        for arg in task.pending:
             if isinstance(arg, Task):
                 parents.add(arg.hashid)
                 if arg not in self:
@@ -124,7 +124,12 @@ class Session:
         assert not task.done()
         if check_ready:
             assert task.state > State.PENDING
-        args = [arg.result(check_done=check_ready) for arg in task.args]
+        args = [
+            arg.result(check_done=check_ready)
+            if isinstance(arg, HashedFuture)
+            else arg.value
+            for arg in task.args
+        ]
         with self.record(task.side_effects):
             result = task.func(*args)
         if task.side_effects:

@@ -9,7 +9,7 @@ from typing import Set, Any, Callable, Optional, List, TypeVar, \
 
 from .futures import Future, Maybe, NoResult, CafError, State
 from .json import ClassJSONEncoder, ClassJSONDecoder, validate
-from .hashing import Hash, hash_text, get_fullname
+from .hashing import Hash, Hashed, hash_text, get_fullname
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +40,10 @@ class HashedFuture(Future[_T], ABC):
     def label(self) -> str: ...
 
     @property
+    def value(self) -> _T:
+        return self.result()
+
+    @property
     def hashid(self) -> Hash:
         return self._hashid
 
@@ -52,6 +56,12 @@ class HashedFuture(Future[_T], ABC):
 
     def __str__(self) -> str:
         return f'{self.tag}: {self.label}'
+
+
+def ensure_hashed(obj: Any) -> Hashed[Any]:
+    if isinstance(obj, HashedFuture):
+        return obj
+    return TaskComposite.from_object(obj)
 
 
 def ensure_future(obj: Any) -> HashedFuture[Any]:
@@ -72,13 +82,13 @@ class Task(HashedFuture[_T]):
     def __init__(self, func: Callable[..., _T], *args: Any, label: str = None
                  ) -> None:
         self._func = func
-        self._args = tuple(map(ensure_future, args))
+        self._args = tuple(map(ensure_hashed, args))
         if label:
             self._label = label
         else:
             self._label = self._func.__qualname__ + \
                 '(' + ', '.join(a.label for a in self._args) + ')'
-        super().__init__(self._args)
+        super().__init__(arg for arg in self._args if isinstance(arg, HashedFuture))
         self.side_effects: List[Task[Any]] = []
         self._future_result: Optional[HashedFuture[_T]] = None
 
@@ -93,14 +103,14 @@ class Task(HashedFuture[_T]):
         return self._func
 
     @property
-    def args(self) -> Tuple[HashedFuture[Any], ...]:
+    def args(self) -> Tuple[Hashed[Any], ...]:
         return self._args
 
     @property
     def spec(self) -> str:
         lines = [get_fullname(self._func)]
         lines.extend(
-            f'{fut.hashid}  # {shorten_text(fut.spec, 20)}' for fut in self._args
+            f'{fut.hashid}  # {fut.label}' for fut in self._args
         )
         return '\n'.join(lines)
 
