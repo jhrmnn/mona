@@ -1,31 +1,20 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import hashlib
 import logging
 import json
 from abc import ABC, abstractmethod
-from typing import Set, Any, NewType, Callable, Optional, List, TypeVar, \
-    Union, Collection, cast, Tuple, Mapping, Iterable
+from typing import Set, Any, Callable, Optional, List, TypeVar, \
+    Collection, cast, Tuple, Mapping, Iterable
 
 from .futures import Future, Maybe, NoResult, CafError, State
 from .json import ClassJSONEncoder, ClassJSONDecoder, validate
+from .hashing import Hash, hash_text, get_fullname
 
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
-Hash = NewType('Hash', str)
 _HFut = TypeVar('_HFut', bound='HashedFuture')  # type: ignore
-
-
-def get_fullname(obj: Any) -> str:
-    return f'{obj.__module__}:{obj.__qualname__}'
-
-
-def hash_text(text: Union[str, bytes]) -> Hash:
-    if isinstance(text, str):
-        text = text.encode()
-    return Hash(hashlib.sha1(text).hexdigest())
 
 
 def shorten_text(s: str, n: int) -> str:
