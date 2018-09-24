@@ -30,7 +30,7 @@ def extract_tasks(fut: Future[Any], shallow: bool = False) -> Set[Task[Any]]:
             tasks.add(fut)
             if shallow:
                 continue
-        for parent in fut.pending:
+        for parent in fut.parents:
             if parent not in visited:
                 queue.append(parent)
     return tasks

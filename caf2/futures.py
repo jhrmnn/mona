@@ -54,10 +54,6 @@ class Future(Generic[_T]):
         return self._state is State.DONE
 
     @property
-    def pending(self) -> FrozenSet['Future[Any]']:
-        return frozenset(self._pending)
-
-    @property
     def parents(self) -> FrozenSet['Future[Any]']:
         return self._parents
 
