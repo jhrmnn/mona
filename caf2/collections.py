@@ -29,15 +29,18 @@ class HashedDeque(Generic[_T]):
 
 
 def traverse(start: _T, parents: Callable[[_T], Iterable[_T]],
-             sentinel: Callable[[_T], bool] = None) -> Set[_T]:
+             sentinel: Callable[[_T], bool] = None, inclusive: bool = True
+             ) -> Set[_T]:
     visited: Set[_T] = set()
     queue = Deque[_T]()
     queue.append(start)
     while queue:
         node = queue.popleft()
-        visited.add(node)
         if sentinel and sentinel(node):
+            if inclusive:
+                visited.add(node)
             continue
+        visited.add(node)
         for parent in parents(node):
             if parent not in visited:
                 queue.append(parent)
