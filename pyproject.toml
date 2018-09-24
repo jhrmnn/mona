@@ -31,6 +31,8 @@ pytest = "^3.8"
 coverage = "^4.5"
 mypy = "^0.630.0"
 lxml = "^4.2"
+sphinx = "^1.8"
+toml = "^0.9.6"
 
 [tool.poetry.scripts]
 caf = "caf.cli:main"

@@ -9,12 +9,15 @@ _T = TypeVar('_T')
 Maybe = Union[_T, 'Empty']
 
 
-class Empty(Enum):
-    _ = 0
-
-
 class CafError(Exception):
     pass
+
+
+# Ideally Empty.EMPTY could be used directly, but mypy doesn't understand that
+# yet, so isisntance() it is.
+class Empty(Enum):
+    """Absence of a value."""
+    _ = 0
 
 
 def get_fullname(obj: Callable[[Any], Any]) -> str:

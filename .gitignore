@@ -6,3 +6,4 @@
 /htmlcov/
 /dist/
 /pyproject.lock
+/docs/build/
