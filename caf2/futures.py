@@ -104,12 +104,11 @@ class Future(Generic[_T]):
             for callback in self._ready_callbacks:
                 callback(self)
 
-    def set_result(self: _Fut, result: _T, _log: bool = True) -> None:
+    def set_result(self: _Fut, result: _T) -> None:
         assert State.READY <= self._state < State.DONE
         self._result = result
         self._state = State.DONE
-        if _log:
-            log.debug(f'{self}: done')
+        log.debug(f'{self}: done')
         for fut in self._children:
             fut.parent_done(self)
         for callback in self._done_callbacks:

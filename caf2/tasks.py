@@ -120,7 +120,7 @@ class Task(HashedFuture[_T]):
             return self._future_result.default_result()
         return Empty._
 
-    def set_result(self, result: _T, _log: bool = True) -> None:
+    def set_result(self, result: _T) -> None:
         super().set_result(result)
         self._future_result = None
 
@@ -172,7 +172,7 @@ class TaskComponent(HashedFuture[_T]):
         ])
         self._default = default
         self.add_ready_callback(
-            lambda idx: idx.set_result(idx.resolve(), _log=False)
+            lambda idx: idx.set_result(idx.resolve())
         )
 
     @property
