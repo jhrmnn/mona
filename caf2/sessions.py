@@ -5,10 +5,11 @@ import logging
 import warnings
 from contextlib import contextmanager
 from typing import Set, Any, Dict, Callable, Optional, List, Deque, \
-    TypeVar, Iterator
+    TypeVar, Iterator, NamedTuple
 
 from .futures import Future, CafError, FutureNotDone
-from .tasks import Task, Hash, HashedFuture, TaskComposite, ensure_future, State
+from .tasks import Task, Hash, HashedFuture, TaskComposite, ensure_future, \
+    State, Literal
 from .collections import HashedDeque
 
 log = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ log = logging.getLogger(__name__)
 _T = TypeVar('_T')
 
 
-def extract_tasks(fut: Future[Any]) -> Set[Task[Any]]:
+def extract_tasks(fut: Future[Any], shallow: bool = False) -> Set[Task[Any]]:
     tasks: Set[Task[Any]] = set()
     visited: Set[Future[Any]] = set()
     queue = Deque[Future[Any]]()
@@ -26,6 +27,8 @@ def extract_tasks(fut: Future[Any]) -> Set[Task[Any]]:
         visited.add(fut)
         if isinstance(fut, Task):
             tasks.add(fut)
+            if shallow:
+                continue
         for parent in fut.pending:
             if parent not in visited:
                 queue.append(parent)
@@ -44,12 +47,18 @@ class DependencyCycle(CafError):
     pass
 
 
+class Graph(NamedTuple):
+    deps: Dict[Hash, Set[Hash]]
+    side_effects: Dict[Hash, Set[Hash]]
+    backflow: Dict[Hash, Set[Hash]]
+
+
 class Session:
     _active: Optional['Session'] = None
 
     def __init__(self) -> None:
         self._tasks: Dict[Hash, Task[Any]] = {}
-        self._graph: Dict[Hash, Set[Hash]] = {}
+        self._graph = Graph({}, {}, {})
         self._task_tape: Optional[List[Task[Any]]] = None
 
     def __enter__(self) -> 'Session':
@@ -69,7 +78,7 @@ class Session:
                     f'tasks were never run: {tasks_not_run}', RuntimeWarning
                 )
         self._tasks.clear()
-        self._graph.clear()
+        self._graph = Graph({}, {}, {})
 
     def __contains__(self, task: Task[Any]) -> bool:
         return task.hashid in self._tasks
@@ -107,7 +116,7 @@ class Session:
                         raise ArgNotInSession(f'{arg!r} -> {arg_task!r}')
         task.register()
         self._tasks[task.hashid] = task
-        self._graph[task.hashid] = parents
+        self._graph.deps[task.hashid] = parents
         return task
 
     def run_task(self, task: Task[_T], check_ready: bool = True
@@ -116,10 +125,12 @@ class Session:
         if check_ready:
             assert task.state > State.PENDING
         args = [arg.result(check_done=check_ready) for arg in task.args]
-        with self.record(task.children):
+        with self.record(task.side_effects):
             result = task.func(*args)
-        if task.children:
-            log.debug(f'{task}: created children: {list(map(str, task.children))}')
+        if task.side_effects:
+            self._graph.side_effects[task.hashid] = \
+                set(created_task.hashid for created_task in task.side_effects)
+            log.debug(f'{task}: created children: {list(map(Literal, task.side_effects))}')
         if task.state is State.PENDING:
             return result
         fut: Optional[HashedFuture[_T]] = None
@@ -164,6 +175,11 @@ class Session:
             self.run_task(task)
             if not task.done():
                 process_future(task.future_result())
+                self._graph.backflow[task.hashid] = set(
+                    t.hashid for t in extract_tasks(
+                        task.future_result(), shallow=True
+                    )
+                )
         try:
             return fut.result()
         except FutureNotDone as e:
@@ -171,14 +187,23 @@ class Session:
                 [task for task in self._tasks.values() if not task.done()]
             ) from e
 
-    def dot_graph(self) -> Any:
+    def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
         from graphviz import Digraph  # type: ignore
 
-        dot = Digraph()
-        for child, parents in self._graph.items():
+        dot = Digraph(*args, **kwargs)
+        for child, parents in self._graph.deps.items():
             dot.node(child, str(self._tasks[child]))
             for parent in parents:
                 dot.edge(child, parent)
+        for origin, tasks in self._graph.side_effects.items():
+            for task in tasks:
+                dot.edge(origin, task, style='dotted')
+        for target, tasks in self._graph.backflow.items():
+            for task in tasks:
+                dot.edge(
+                    task, target,
+                    style='tapered', penwidth='7', dir='back', arrowtail='none'
+                )
         return dot
 
     @classmethod

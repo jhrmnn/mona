@@ -90,7 +90,7 @@ class Task(HashedFuture[_T]):
             self._label = self._func.__qualname__ + \
                 '(' + ', '.join(a.label for a in self._args) + ')'
         super().__init__(self._args)
-        self.children: List[Task[Any]] = []
+        self.side_effects: List[Task[Any]] = []
         self._future_result: Optional[HashedFuture[_T]] = None
 
     def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
@@ -143,18 +143,23 @@ class Task(HashedFuture[_T]):
         return self._future_result
 
 
+class Literal(str):
+    def __repr__(self) -> str:
+        return self
+
+
 class TaskComposite(HashedFuture[_T]):
     def __init__(self, jsonstr: str, futures: Collection[HashedFuture[Any]]
                  ) -> None:
         self._jsonstr = jsonstr
         self._futures = {fut.hashid: fut for fut in futures}
-        self._label = repr(self._resolve(lambda fut: fut.tag))
+        self._label = repr(self._resolve(lambda fut: Literal(fut.label)))
         super().__init__(futures)
         if not futures:
             self.set_result(self.resolve(), _log=False)
         else:
             self.add_ready_callback(
-                lambda comp: comp.set_result(comp.resolve())
+                lambda comp: comp.set_result(comp.resolve(), _log=False)
             )
 
     @property
@@ -207,11 +212,14 @@ class TaskComponent(HashedFuture[_T]):
                  default: Maybe[_T] = NoResult._) -> None:
         self._task = task
         self._keys = keys
-        self._label = ''.join([self._task.tag, *(f'[{k}]' for k in self._keys)])
+        self._label = ''.join([
+            self._task.label,
+            *(f'[{k!r}]' for k in self._keys)
+        ])
         super().__init__([task])
         self._default = default
         self.add_ready_callback(
-            lambda idx: idx.set_result(idx.resolve())
+            lambda idx: idx.set_result(idx.resolve(), _log=False)
         )
 
     def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
@@ -223,10 +231,6 @@ class TaskComponent(HashedFuture[_T]):
     @property
     def spec(self) -> str:
         return json.dumps([self._task.hashid] + self._keys)
-
-    @property
-    def tag(self) -> str:
-        return self._label
 
     @property
     def label(self) -> str:

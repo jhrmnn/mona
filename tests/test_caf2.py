@@ -158,7 +158,7 @@ def calcs():
         dir_task(
             '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
             {'input': str(dist).encode()},
-            label=str(dist)
+            label=f'/calcs/dist={dist}'
         ).get('STDOUT', b'0')
     ] for dist in range(0, 5)]
 
@@ -193,7 +193,7 @@ def test_db(db):
 def test_partial_eval():
     with caf.Session() as sess:
         sess.run_task(calcs())
-        sess.run_task(calcs().children[3])
+        sess.run_task(calcs().side_effects[3])
         assert sess.run_task(analysis(calcs()), check_ready=False) == 6
 
 
