@@ -8,9 +8,10 @@ from typing import Set, Any, Dict, Callable, Optional, List, Deque, \
     TypeVar, Iterator, NamedTuple
 
 from .futures import Future, CafError, FutureNotDone
-from .tasks import Task, Hash, HashedFuture, TaskComposite, ensure_future, \
-    State, Literal
+from .hashing import Hash
+from .tasks import Task, HashedFuture, State, maybe_future
 from .collections import HashedDeque
+from .utils import Literal
 
 log = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ class Session:
             if self._task_tape is not None:
                 self._task_tape.append(task)
         parents: Set[Hash] = set()
-        for arg in task.pending:
+        for arg in task.pending:  # TODO this should be all args, even finished futures
             if isinstance(arg, Task):
                 parents.add(arg.hashid)
                 if arg not in self:
@@ -138,13 +139,7 @@ class Session:
             log.debug(f'{task}: created children: {list(map(Literal, task.side_effects))}')
         if task.state is State.PENDING:
             return result
-        fut: Optional[HashedFuture[_T]] = None
-        if isinstance(result, HashedFuture):
-            fut = result
-        else:
-            comp = TaskComposite.from_object(result)
-            if comp.has_futures():
-                fut = comp
+        fut = maybe_future(result)
         if fut:
             if fut.done():
                 task.set_result(fut.result())
@@ -158,7 +153,9 @@ class Session:
         return None
 
     def eval(self, obj: Any) -> Any:
-        fut = ensure_future(obj)
+        fut = maybe_future(obj)
+        if not fut:
+            return obj
         fut.register()
         queue = HashedDeque[Task[Any]]()
 

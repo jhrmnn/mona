@@ -2,10 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
-from enum import Enum, IntEnum
-from typing import Iterable, Set, Callable, List, TypeVar, Union, Iterator, \
-    Generic
+from enum import IntEnum
+from typing import Iterable, Set, Callable, List, TypeVar, Iterator, Generic, \
+    NoReturn
 from typing import Any  # noqa
+
+from .utils import CafError, Maybe, Empty
 
 log = logging.getLogger(__name__)
 
@@ -14,23 +16,12 @@ _Fut = TypeVar('_Fut', bound='Future')  # type: ignore
 Callback = Callable[[_T], None]
 
 
-class NoResult(Enum):
-    _ = 0
-
-
 class State(IntEnum):
     PENDING = 0
     READY = 1
     RUNNING = 2
     HAS_RUN = 3
     DONE = 4
-
-
-Maybe = Union[_T, NoResult]
-
-
-class CafError(Exception):
-    pass
 
 
 class FutureNotDone(CafError):
@@ -48,11 +39,14 @@ class Future(Generic[_T]):
             if not fut.done():
                 self._pending.add(fut)
         self._children: Set['Future[Any]'] = set()
-        self._result: Maybe[_T] = NoResult._
+        self._result: Maybe[_T] = Empty._
         self._done_callbacks: List[Callback[_Fut]] = []
         self._ready_callbacks: List[Callback[_Fut]] = []
         self._registered = False
         self._state: State = State.PENDING if self._pending else State.READY
+
+    def __getstate__(self) -> NoReturn:
+        raise CafError('Future objects cannot be pickled')
 
     @property
     def state(self) -> State:
@@ -89,14 +83,14 @@ class Future(Generic[_T]):
 
     def default_result(self) -> Maybe[_T]:
         assert not self.done()
-        return NoResult._
+        return Empty._
 
     def result(self, check_done: bool = True) -> _T:
-        if not isinstance(self._result, NoResult):  # mypy limitation
+        if not isinstance(self._result, Empty):  # mypy limitation
             return self._result
         if not check_done:
             result = self.default_result()
-            if isinstance(result, NoResult):
+            if isinstance(result, Empty):
                 raise FutureHasNoDefault(repr(self))
             return result
         raise FutureNotDone(repr(self))

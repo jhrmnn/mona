@@ -3,33 +3,53 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 import json
-from abc import ABC, abstractmethod
-from typing import Set, Any, Callable, Optional, List, TypeVar, \
-    Collection, cast, Tuple, Mapping, Iterable
+from abc import abstractmethod
+from typing import Any, Callable, Optional, List, TypeVar, Collection, \
+    cast, Tuple, Iterable
 
-from .futures import Future, Maybe, NoResult, CafError, State
-from .json import ClassJSONEncoder, ClassJSONDecoder, validate
-from .hashing import Hash, Hashed, hash_text, get_fullname
+from .futures import Future, Maybe, Empty, CafError, State
+from .json import json_validate, InvalidJSON
+from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
+from .utils import get_fullname
 
 log = logging.getLogger(__name__)
 
+_K = TypeVar('_K')
 _T = TypeVar('_T')
 _HFut = TypeVar('_HFut', bound='HashedFuture')  # type: ignore
+_TC = TypeVar('_TC', bound='TaskComposite')
 
 
-def shorten_text(s: str, n: int) -> str:
-    if len(s) < n:
-        return s
-    return f'{s[:n-3]}...'
+def maybe_future(obj: Any) -> Optional['HashedFuture[Any]']:
+    if isinstance(obj, HashedFuture):
+        return obj
+    try:
+        json_validate(obj, lambda x: isinstance(x, (Task, TaskComponent)))
+    except InvalidJSON:
+        return None
+    jsonstr, components = TaskComposite.parse_object(obj)
+    if any(isinstance(comp, HashedFuture) for comp in components):
+        return TaskComposite(jsonstr, components)
+    return None
+
+
+def ensure_hashed(obj: Any) -> Hashed[Any]:
+    if isinstance(obj, HashedFuture):
+        return obj
+    json_validate(obj, lambda x: isinstance(x, (Task, TaskComponent)))
+    jsonstr, components = TaskComposite.parse_object(obj)
+    if any(isinstance(comp, HashedFuture) for comp in components):
+        return TaskComposite(jsonstr, components)
+    return HashedComposite(jsonstr, components)
 
 
 # Although this class could be hashable in principle, this would require
 # dispatching all futures via a session in the same way that tasks are.
 # See test_identical_futures() for an example of what wouldn't work.
-class HashedFuture(Future[_T], ABC):
+class HashedFuture(Hashed[_T], Future[_T]):
     def __init__(self: _HFut, parents: Iterable['HashedFuture[Any]']) -> None:
-        super().__init__(parents)
-        self._hashid = hash_text(self.spec)
+        Hashed.__init__(self)
+        Future.__init__(self, parents)
 
     @property
     @abstractmethod
@@ -43,31 +63,11 @@ class HashedFuture(Future[_T], ABC):
     def value(self) -> _T:
         return self.result()
 
-    @property
-    def hashid(self) -> Hash:
-        return self._hashid
-
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} {self} state={self.state.name}>'
 
-    @property
-    def tag(self) -> str:
-        return self.hashid[:6]
-
     def __str__(self) -> str:
         return f'{self.tag}: {self.label}'
-
-
-def ensure_hashed(obj: Any) -> Hashed[Any]:
-    if isinstance(obj, HashedFuture):
-        return obj
-    return TaskComposite.from_object(obj)
-
-
-def ensure_future(obj: Any) -> HashedFuture[Any]:
-    if isinstance(obj, HashedFuture):
-        return obj
-    return TaskComposite.from_object(obj)
 
 
 class TaskHasNotRun(CafError):
@@ -83,20 +83,23 @@ class Task(HashedFuture[_T]):
                  ) -> None:
         self._func = func
         self._args = tuple(map(ensure_hashed, args))
-        if label:
-            self._label = label
-        else:
-            self._label = self._func.__qualname__ + \
-                '(' + ', '.join(a.label for a in self._args) + ')'
-        super().__init__(arg for arg in self._args if isinstance(arg, HashedFuture))
-        self.side_effects: List[Task[Any]] = []
+        HashedFuture.__init__(
+            self, (arg for arg in self._args if isinstance(arg, HashedFuture))
+        )
+        self._label = label or \
+            f'{self._func.__qualname__}({", ".join(a.label for a in self._args)})'
         self._future_result: Optional[HashedFuture[_T]] = None
+        self.side_effects: List[Task[Any]] = []  # TODO make private
 
-    def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
-        return self.get(key)
+    @property
+    def spec(self) -> str:
+        lines = [get_fullname(self.func)]
+        lines.extend(f'{fut.hashid}  # {fut.label}' for fut in self.args)
+        return '\n'.join(lines)
 
-    def get(self, key: Any, default: Any = NoResult._) -> 'TaskComponent[Any]':
-        return TaskComponent(self, [key], default)  # type: ignore
+    @property
+    def label(self) -> str:
+        return self._label
 
     @property
     def func(self) -> Callable[..., _T]:
@@ -106,28 +109,22 @@ class Task(HashedFuture[_T]):
     def args(self) -> Tuple[Hashed[Any], ...]:
         return self._args
 
-    @property
-    def spec(self) -> str:
-        lines = [get_fullname(self._func)]
-        lines.extend(
-            f'{fut.hashid}  # {fut.label}' for fut in self._args
-        )
-        return '\n'.join(lines)
+    def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
+        return self.get(key)
 
-    @property
-    def label(self) -> str:
-        return self._label
+    def get(self, key: Any, default: Any = Empty._) -> 'TaskComponent[Any]':
+        return TaskComponent(self, [key], default)
 
     def default_result(self) -> Maybe[_T]:
         if self._future_result:
             return self._future_result.default_result()
-        return NoResult._
+        return Empty._
 
     def set_result(self, result: _T, _log: bool = True) -> None:
         super().set_result(result)
         self._future_result = None
 
-    def set_future_result(self, result: HashedFuture[Any]) -> None:
+    def set_future_result(self, result: HashedFuture[_T]) -> None:
         assert self.state == State.READY
         self._state = State.HAS_RUN
         self._future_result = result
@@ -142,94 +139,41 @@ class Task(HashedFuture[_T]):
         return self._future_result
 
 
-class Literal(str):
-    def __repr__(self) -> str:
-        return self
-
-
-class TaskComposite(HashedFuture[_T]):
-    def __init__(self, jsonstr: str, futures: Collection[HashedFuture[Any]]
+class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
+    def __init__(self, jsonstr: str, components: Collection[Hashed[Any]]
                  ) -> None:
-        self._jsonstr = jsonstr
-        self._futures = {fut.hashid: fut for fut in futures}
-        self._label = repr(self._resolve(lambda fut: Literal(fut.label)))
-        super().__init__(futures)
-        if not futures:
-            self.set_result(self.resolve(), _log=False)
-        else:
-            self.add_ready_callback(
-                lambda comp: comp.set_result(comp.resolve(), _log=False)
-            )
-
-    @property
-    def spec(self) -> str:
-        return self._jsonstr
-
-    @property
-    def label(self) -> str:
-        return self._label
-
-    def has_futures(self) -> bool:
-        return bool(self._futures)
-
-    def _resolve(self, handler: Callable[[HashedFuture[Any]], Any]) -> _T:
-        return cast(_T, json.loads(
-            self._jsonstr,
-            hook=(
-                lambda type_tag, dct:
-                handler(self._futures[dct['hashid']])
-                if type_tag == 'HashedFuture'
-                else dct
-            ),
-            cls=ClassJSONDecoder
-        ))
-
-    def resolve(self, check_done: bool = True) -> _T:
-        return self._resolve(lambda fut: fut.result(check_done))
-
-    def default_result(self) -> _T:
-        return self.resolve(check_done=False)
-
-    @classmethod
-    def from_object(cls, obj: _T) -> 'TaskComposite[_T]':
-        assert not isinstance(obj, HashedFuture)
-        validate(obj, (Task, TaskComponent))
-        futures: Set[HashedFuture[Any]] = set()
-        jsonstr = json.dumps(
-            obj,
-            sort_keys=True,
-            tape=futures,
-            default=(
-                lambda fut:
-                ('HashedFuture', {'hashid': fut.hashid})
-                if isinstance(fut, HashedFuture)
-                else None
-            ),
-            cls=ClassJSONEncoder
+        futures = [comp for comp in components if isinstance(comp, HashedFuture)]
+        assert futures
+        HashedCompositeLike.__init__(self, jsonstr, components)
+        HashedFuture.__init__(self, futures)
+        self.add_ready_callback(
+            lambda comp: comp.set_result(comp.resolve(lambda comp: comp.value))
         )
-        return cls(jsonstr, futures)
+
+    # override abstract property in HashedCompositeLike
+    value = HashedFuture.value  # type: ignore
+
+    def default_result(self) -> Composite:
+        return self.resolve(
+            lambda comp:
+            comp.result(check_done=False) if isinstance(comp, HashedFuture)
+            else comp.value
+        )
 
 
 class TaskComponent(HashedFuture[_T]):
-    def __init__(self, task: Task[Mapping[Any, Any]], keys: List[Any],
-                 default: Maybe[_T] = NoResult._) -> None:
+    def __init__(self, task: Task[Any], keys: List[Any],
+                 default: Maybe[_T] = Empty._) -> None:
         self._task = task
         self._keys = keys
+        HashedFuture.__init__(self, [task])
         self._label = ''.join([
-            self._task.label,
-            *(f'[{k!r}]' for k in self._keys)
+            self._task.label, *(f'[{k!r}]' for k in self._keys)
         ])
-        super().__init__([task])
         self._default = default
         self.add_ready_callback(
             lambda idx: idx.set_result(idx.resolve(), _log=False)
         )
-
-    def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
-        return self.get(key)
-
-    def get(self, key: Any, default: Any = NoResult._) -> 'TaskComponent[Any]':
-        return TaskComponent(self._task, self._keys + [key], default)
 
     @property
     def spec(self) -> str:
@@ -238,6 +182,12 @@ class TaskComponent(HashedFuture[_T]):
     @property
     def label(self) -> str:
         return self._label
+
+    def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
+        return self.get(key)
+
+    def get(self, key: Any, default: Any = Empty._) -> 'TaskComponent[Any]':
+        return TaskComponent(self._task, self._keys + [key], default)
 
     def resolve(self) -> _T:
         obj = self._task.result()

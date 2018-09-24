@@ -42,7 +42,7 @@ def init_db(path: str) -> sqlite3.Connection:
 
 class CachedSession(Session):
     def __init__(self, db: sqlite3.Connection) -> None:
-        super().__init__()
+        Session.__init__(self)
         self._db = db
         self._processed_tasks: Set[Task[Any]] = set()
 
