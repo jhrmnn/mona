@@ -3,15 +3,14 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 import json
-import pickle
 from abc import abstractmethod
 from typing import Any, Callable, Optional, List, TypeVar, \
-    Collection, cast, Union, Tuple
+    Collection, cast, Tuple
 
 from .futures import Future, Maybe, Empty, CafError, State
-from .json import validate_json
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
 from .utils import get_fullname
+from .json import InvalidJSONObject
 
 log = logging.getLogger(__name__)
 
@@ -21,27 +20,20 @@ _HFut = TypeVar('_HFut', bound='HashedFuture')  # type: ignore
 _TC = TypeVar('_TC', bound='TaskComposite')
 
 
-def maybe_future(obj: Any) -> Union['HashedFuture[Any]', bytes]:
-    if isinstance(obj, HashedFuture):
-        return obj
-    try:
-        return pickle.dumps(obj)
-    except CafError:
-        pass
-    validate_json(obj, lambda x: isinstance(x, (Task, TaskComponent)))
-    jsonstr, components = TaskComposite.parse_object(obj)
-    assert any(isinstance(comp, HashedFuture) for comp in components)
-    return TaskComposite(jsonstr, components)
-
-
 def ensure_hashed(obj: Any) -> Hashed[Any]:
     if isinstance(obj, HashedFuture):
         return obj
-    validate_json(obj, lambda x: isinstance(x, (Task, TaskComponent)))
     jsonstr, components = TaskComposite.parse_object(obj)
     if any(isinstance(comp, HashedFuture) for comp in components):
         return TaskComposite(jsonstr, components)
     return HashedComposite(jsonstr, components)
+
+
+def maybe_hashed(obj: Any) -> Optional['Hashed[Any]']:
+    try:
+        return ensure_hashed(obj)
+    except InvalidJSONObject:
+        return None
 
 
 # Although this class could be hashable in principle, this would require
@@ -156,28 +148,6 @@ class Task(HashedFuture[_T]):
         return self.func(*args)
 
 
-class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
-    def __init__(self, jsonstr: str, components: Collection[Hashed[Any]]
-                 ) -> None:
-        futures = [comp for comp in components if isinstance(comp, HashedFuture)]
-        assert futures
-        Future.__init__(self, futures)
-        HashedCompositeLike.__init__(self, jsonstr, components)
-        self.add_ready_callback(
-            lambda self: self.set_result(self.resolve(lambda comp: comp.value))
-        )
-
-    # override abstract property in HashedCompositeLike
-    value = HashedFuture.value  # type: ignore
-
-    def default_result(self) -> Composite:
-        return self.resolve(
-            lambda comp:
-            comp.result(check_done=False) if isinstance(comp, HashedFuture)
-            else comp.value
-        )
-
-
 class TaskComponent(HashedFuture[_T]):
     def __init__(self, task: Task[Any], keys: List[Any],
                  default: Maybe[_T] = Empty._) -> None:
@@ -219,3 +189,27 @@ class TaskComponent(HashedFuture[_T]):
 
     def default_result(self) -> Maybe[_T]:
         return self._default
+
+
+class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
+    extra_classes = (Task, TaskComponent)
+
+    def __init__(self, jsonstr: str, components: Collection[Hashed[Any]]
+                 ) -> None:
+        futures = [comp for comp in components if isinstance(comp, HashedFuture)]
+        assert futures
+        Future.__init__(self, futures)
+        HashedCompositeLike.__init__(self, jsonstr, components)
+        self.add_ready_callback(
+            lambda self: self.set_result(self.resolve(lambda comp: comp.value))
+        )
+
+    # override abstract property in HashedCompositeLike
+    value = HashedFuture.value  # type: ignore
+
+    def default_result(self) -> Composite:
+        return self.resolve(
+            lambda comp:
+            comp.result(check_done=False) if isinstance(comp, HashedFuture)
+            else comp.value
+        )

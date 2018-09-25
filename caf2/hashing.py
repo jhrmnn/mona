@@ -5,9 +5,9 @@ import json
 import hashlib
 from abc import ABC, abstractmethod
 from typing import Any, NewType, Union, Generic, TypeVar, Dict, cast, \
-    Iterable, Set, Callable, Tuple
+    Iterable, Set, Callable, Tuple, Type
 
-from .json import ClassJSONEncoder, ClassJSONDecoder, JSONValue
+from .json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
 from .utils import Literal
 
 _T = TypeVar('_T')
@@ -58,6 +58,8 @@ class Hashed(ABC, Generic[_T]):
 
 
 class HashedCompositeLike(Hashed[Composite]):
+    extra_classes: Tuple[Type[Any], ...] = ()
+
     def __init__(self, jsonstr: str, components: Iterable[Hashed[Any]]) -> None:
         self._jsonstr = jsonstr
         Hashed.__init__(self)
@@ -86,8 +88,9 @@ class HashedCompositeLike(Hashed[Composite]):
         obj = json.loads(self._jsonstr, hook=hook, cls=ClassJSONDecoder)
         return cast(Composite, obj)
 
-    @staticmethod
-    def parse_object(obj: HashableValue) -> Tuple[str, Set[Hashed[Any]]]:
+    @classmethod
+    def parse_object(cls, obj: HashableValue) -> Tuple[str, Set[Hashed[Any]]]:
+        validate_json(obj, lambda x: isinstance(x, cls.extra_classes))
         components: Set[Hashed[Any]] = set()
         jsonstr = json.dumps(
             obj,

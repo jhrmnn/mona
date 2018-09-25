@@ -9,7 +9,7 @@ from typing import Set, Any, Dict, Callable, Optional, MutableSequence, \
 
 from .futures import CafError, FutureNotDone
 from .hashing import Hash, Hashed
-from .tasks import Task, HashedFuture, State, maybe_future
+from .tasks import Task, HashedFuture, State, maybe_hashed
 from .graph import traverse, traverse_execute
 from .utils import Literal, split
 
@@ -131,8 +131,8 @@ class Session:
                 f'{task}: created children: '
                 f'{list(map(Literal, task.side_effects))}'
             )
-        fut = maybe_future(result)
-        if isinstance(fut, bytes):
+        fut = maybe_hashed(result)
+        if not isinstance(fut, HashedFuture):
             task.set_result(result)
         else:
             if fut.done():
@@ -161,8 +161,8 @@ class Session:
 
     def eval(self, obj: Any, depth: bool = False, eager_traverse: bool = False
              ) -> Any:
-        fut = maybe_future(obj)
-        if isinstance(fut, bytes):
+        fut = maybe_hashed(obj)
+        if not isinstance(fut, HashedFuture):
             return obj
         fut.register()
         traverse_execute(
