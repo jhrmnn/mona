@@ -27,9 +27,13 @@ def get_fullname(obj: Callable[[Any], Any]) -> str:
 
 
 def shorten_text(s: Union[str, bytes], n: int) -> str:
-    if len(s) < n:
-        return str(s)
-    return f'{s[:n-3]}...'
+    if len(s) > n:
+        s = s[:n-3]
+        shortened = True
+    else:
+        shortened = False
+    text = s.decode() if isinstance(s, bytes) else s
+    return f'{text.rstrip()}...' if shortened else text
 
 
 class Literal(str):
