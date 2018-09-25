@@ -32,7 +32,7 @@ class Hashed(ABC, Generic[_T]):
 
     @property
     @abstractmethod
-    def spec(self) -> str: ...
+    def spec(self) -> Union[str, bytes]: ...
 
     @property
     @abstractmethod
