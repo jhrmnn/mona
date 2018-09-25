@@ -137,12 +137,6 @@ class Task(HashedFuture[_T]):
     def args(self) -> Tuple[Hashed[Any], ...]:
         return self._args
 
-    def __str__(self) -> str:
-        s = super().__str__()
-        if self.done():
-            s += f' => {self.result()}'
-        return s
-
     def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
         return self.get(key)
 
