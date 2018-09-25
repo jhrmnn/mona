@@ -78,7 +78,8 @@ class HashedBytes(Hashed[bytes]):
 
 class HashedCompositeLike(Hashed[Composite]):
     extra_classes: Tuple[Type[Any], ...] = (bytes,)
-    type_swaps = {bytes: HashedBytes}
+    # actually is Dict[Type[_T], Type[Hashed[_T]]]
+    type_swaps: Dict[Type[Any], Type[Hashed[Any]]] = {bytes: HashedBytes}
 
     def __init__(self, jsonstr: str, components: Iterable[Hashed[Any]]) -> None:
         self._jsonstr = jsonstr
@@ -113,9 +114,14 @@ class HashedCompositeLike(Hashed[Composite]):
         return cast(Composite, obj)
 
     @classmethod
-    def _default(cls, o: Any) -> Optional[Tuple[Any, str, Dict[str, JSONValue]]]:
+    def swap_type(cls, o: Any) -> Any:
         if o.__class__ in cls.type_swaps:
-            o = cls.type_swaps[o.__class__](o)
+            return cls.type_swaps[o.__class__](o)
+        return o
+
+    @classmethod
+    def _default(cls, o: Any) -> Optional[Tuple[Any, str, Dict[str, JSONValue]]]:
+        o = cls.swap_type(o)
         if isinstance(o, Hashed):
             return (o, 'Hashed', {'hashid': o.hashid})
         return None
