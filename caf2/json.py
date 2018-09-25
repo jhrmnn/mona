@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import json
-import base64
 from pathlib import Path
 
 from typing import Any, Set, Type, Dict, Callable, cast, Tuple, Optional, \
@@ -22,10 +21,6 @@ JSONHook = Callable[[str, Dict[str, JSONValue]], Union[_T, Dict[str, JSONValue]]
 ClassRegister = Dict[Type[Any], Tuple[JSONConverter[Any], JSONAdapter[Any]]]
 
 registered_classes: ClassRegister = {
-    bytes: (
-        lambda b: {'bytes': base64.b64encode(b).decode()},
-        lambda dct: base64.b64decode(cast(str, dct['bytes']).encode())
-    ),
     Path: (
         lambda p: {'path': str(p)},
         lambda dct: Path(cast(str, dct['path']))

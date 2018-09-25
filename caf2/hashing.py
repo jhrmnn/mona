@@ -5,10 +5,10 @@ import json
 import hashlib
 from abc import ABC, abstractmethod
 from typing import Any, NewType, Union, Generic, TypeVar, Dict, cast, \
-    Iterable, Set, Callable, Tuple, Type
+    Iterable, Set, Callable, Tuple, Type, Optional
 
 from .json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
-from .utils import Literal
+from .utils import Literal, shorten_text
 
 _T = TypeVar('_T')
 _HCL = TypeVar('_HCL', bound='HashedCompositeLike')
@@ -57,8 +57,27 @@ class Hashed(ABC, Generic[_T]):
         return self.hashid[:6]
 
 
+class HashedBytes(Hashed[bytes]):
+    def __init__(self, content: bytes) -> None:
+        self._content: bytes = content
+        Hashed.__init__(self)
+        self._label = repr(shorten_text(content, 20))
+
+    @property
+    def spec(self) -> bytes:
+        return self.value
+
+    @property
+    def label(self) -> str:
+        return self._label
+
+    @property
+    def value(self) -> bytes:
+        return self._content
+
+
 class HashedCompositeLike(Hashed[Composite]):
-    extra_classes: Tuple[Type[Any], ...] = ()
+    extra_classes: Tuple[Type[Any], ...] = (bytes,)
     type_swaps = {bytes: HashedBytes}
 
     def __init__(self, jsonstr: str, components: Iterable[Hashed[Any]]) -> None:
