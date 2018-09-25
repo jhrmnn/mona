@@ -8,7 +8,7 @@ from itertools import chain
 from typing import Set, Any, Dict, Callable, Optional, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple
 
-from .futures import Future, CafError, FutureNotDone
+from .futures import CafError, FutureNotDone
 from .hashing import Hash, Hashed
 from .tasks import Task, HashedFuture, State, maybe_future
 from .collections import HashedDeque, traverse
