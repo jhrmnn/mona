@@ -21,7 +21,13 @@ _TC = TypeVar('_TC', bound='TaskComposite')
 
 
 def ensure_hashed(obj: Any) -> Hashed[Any]:
-    if isinstance(obj, HashedFuture):
+    """Turn any object into a Hashed object.
+
+    Returns Hashed objects without change. Wraps composites into
+    a TaskComposite or a HashedComposite. Raises InvalidJSONObject when
+    not possible.
+    """
+    if isinstance(obj, Hashed):
         return obj
     jsonstr, components = TaskComposite.parse_object(obj)
     if any(isinstance(comp, HashedFuture) for comp in components):
@@ -30,6 +36,7 @@ def ensure_hashed(obj: Any) -> Hashed[Any]:
 
 
 def maybe_hashed(obj: Any) -> Optional['Hashed[Any]']:
+    """Wraps maybe_hashed() with return value None on error."""
     try:
         return ensure_hashed(obj)
     except InvalidJSONObject:
@@ -48,6 +55,12 @@ class FutureHasNoDefault(CafError):
 # dispatching all futures via a session in the same way that tasks are.
 # See test_identical_futures() for an example of what wouldn't work.
 class HashedFuture(Hashed[_T], Future):
+    """
+    Represents a hashed future.
+
+    Inherits abstract methods spec() and label() from Hashed, implements
+    abstract property value and adds abstract method get_result().
+    """
     @property
     @abstractmethod
     def spec(self) -> str: ...
