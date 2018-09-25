@@ -5,11 +5,11 @@ import logging
 import json
 from abc import abstractmethod
 from typing import Any, Callable, Optional, List, TypeVar, \
-    Collection, cast, Tuple
+    Collection, cast, Tuple, Union
 
-from .futures import Future, Maybe, Empty, CafError, State
+from .futures import Future, CafError, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
-from .utils import get_fullname
+from .utils import get_fullname, Maybe, Empty
 from .json import InvalidJSONObject
 
 log = logging.getLogger(__name__)
@@ -36,10 +36,18 @@ def maybe_hashed(obj: Any) -> Optional['Hashed[Any]']:
         return None
 
 
+class FutureNotDone(CafError):
+    pass
+
+
+class FutureHasNoDefault(CafError):
+    pass
+
+
 # Although this class could be hashable in principle, this would require
 # dispatching all futures via a session in the same way that tasks are.
 # See test_identical_futures() for an example of what wouldn't work.
-class HashedFuture(Hashed[_T], Future[_T]):
+class HashedFuture(Hashed[_T], Future):
     @property
     @abstractmethod
     def spec(self) -> str: ...
@@ -48,9 +56,23 @@ class HashedFuture(Hashed[_T], Future[_T]):
     @abstractmethod
     def label(self) -> str: ...
 
+    @abstractmethod
+    def get_result(self) -> _T:
+        pass
+
     @property
     def value(self) -> _T:
         return self.result()
+
+    def default_result(self) -> _T:
+        raise FutureHasNoDefault()
+
+    def result(self, check_done: bool = True) -> _T:
+        if self.done():
+            return self.get_result()
+        if not check_done:
+            return self.default_result()
+        raise FutureNotDone(repr(self))
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} {self} state={self.state.name}>'
@@ -75,8 +97,8 @@ class Task(HashedFuture[_T]):
         )
         self._label = label or \
             f'{self._func.__qualname__}({", ".join(a.label for a in self._args)})'
-        self._future_result: Optional[HashedFuture[_T]] = None
         self._side_effects: List[Task[Any]] = []
+        self._result: Union[_T, Hashed[_T], Empty] = Empty._
 
     @property
     def spec(self) -> str:
@@ -87,6 +109,12 @@ class Task(HashedFuture[_T]):
     @property
     def label(self) -> str:
         return self._label
+
+    def get_result(self) -> _T:
+        assert not isinstance(self._result, Empty)
+        if isinstance(self._result, Hashed):
+            return self._result.value
+        return self._result
 
     @property
     def func(self) -> Callable[..., _T]:
@@ -115,28 +143,27 @@ class Task(HashedFuture[_T]):
     def add_side_effect(self, task: 'Task[Any]') -> None:
         self._side_effects.append(task)
 
-    def default_result(self) -> Maybe[_T]:
-        if self._future_result:
-            return self._future_result.default_result()
-        return Empty._
+    def default_result(self) -> _T:
+        if isinstance(self._result, HashedFuture):
+            return cast(_T, self._result.default_result())
+        raise FutureHasNoDefault()
 
     def set_result(self, result: _T) -> None:
-        super().set_result(result)
-        self._future_result = None
+        self._result = result
+        super().set_done()
 
     def set_future_result(self, result: HashedFuture[_T]) -> None:
         assert self.state == State.READY
         self._state = State.HAS_RUN
-        self._future_result = result
+        self._result = result
 
     def future_result(self) -> HashedFuture[_T]:
         if self.state is not State.HAS_RUN:
             raise TaskHasNotRun(repr(self))
         if self.done():
-            assert self._future_result is None
             raise TaskIsDone(repr(self))
-        assert self._future_result
-        return self._future_result
+        assert isinstance(self._result, HashedFuture)
+        return self._result
 
     def call(self) -> _T:
         args = [
@@ -159,9 +186,7 @@ class TaskComponent(HashedFuture[_T]):
             self._task.label, *(f'[{k!r}]' for k in self._keys)
         ])
         self._default = default
-        self.add_ready_callback(
-            lambda self: self.set_result(self.resolve())
-        )
+        self.add_ready_callback(lambda self: self.set_done())
 
     @property
     def spec(self) -> str:
@@ -170,6 +195,9 @@ class TaskComponent(HashedFuture[_T]):
     @property
     def label(self) -> str:
         return self._label
+
+    def get_result(self) -> _T:
+        return self.resolve(self._task.get_result())
 
     @property
     def task(self) -> Task[Any]:
@@ -181,13 +209,16 @@ class TaskComponent(HashedFuture[_T]):
     def get(self, key: Any, default: Any = Empty._) -> 'TaskComponent[Any]':
         return TaskComponent(self._task, self._keys + [key], default)
 
-    def resolve(self) -> _T:
-        obj = self._task.result()
+    def resolve(self, obj: Any) -> _T:
         for key in self._keys:
             obj = obj[key]
         return cast(_T, obj)
 
-    def default_result(self) -> Maybe[_T]:
+    def default_result(self) -> _T:
+        if isinstance(self._default, Empty):
+            if self._task.state is State.HAS_RUN:
+                return self.resolve(self._task.future_result().default_result())
+            raise FutureHasNoDefault()
         return self._default
 
 
@@ -200,12 +231,13 @@ class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: igno
         assert futures
         Future.__init__(self, futures)
         HashedCompositeLike.__init__(self, jsonstr, components)
-        self.add_ready_callback(
-            lambda self: self.set_result(self.resolve(lambda comp: comp.value))
-        )
+        self.add_ready_callback(lambda self: self.set_done())
 
     # override abstract property in HashedCompositeLike
     value = HashedFuture.value  # type: ignore
+
+    def get_result(self) -> Composite:
+        return self.resolve(lambda comp: comp.value)
 
     def default_result(self) -> Composite:
         return self.resolve(

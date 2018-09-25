@@ -3,16 +3,15 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 from enum import IntEnum
-from typing import Iterable, Set, Callable, List, TypeVar, Generic, \
-    NoReturn, FrozenSet
+from typing import Iterable, Set, Callable, List, TypeVar, NoReturn, FrozenSet
 from typing import Any  # noqa
 
-from .utils import CafError, Maybe, Empty
+from .utils import CafError
 
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
-_Fut = TypeVar('_Fut', bound='Future')  # type: ignore
+_Fut = TypeVar('_Fut', bound='Future')
 Callback = Callable[[_T], None]
 
 
@@ -24,20 +23,11 @@ class State(IntEnum):
     DONE = 4
 
 
-class FutureNotDone(CafError):
-    pass
-
-
-class FutureHasNoDefault(CafError):
-    pass
-
-
-class Future(Generic[_T]):
+class Future:
     def __init__(self: _Fut, parents: Iterable[_Fut]) -> None:
         self._parents = frozenset(parents)
         self._pending = set(fut for fut in self._parents if not fut.done())
-        self._children: Set['Future[Any]'] = set()
-        self._result: Maybe[_T] = Empty._
+        self._children: Set['Future'] = set()
         self._done_callbacks: List[Callback[_Fut]] = []
         self._ready_callbacks: List[Callback[_Fut]] = []
         self._registered = False
@@ -57,7 +47,7 @@ class Future(Generic[_T]):
     def parents(self) -> FrozenSet[_Fut]:
         return self._parents
 
-    def add_child(self, fut: 'Future[Any]') -> None:
+    def add_child(self, fut: 'Future') -> None:
         assert not self.done()
         self._children.add(fut)
 
@@ -79,21 +69,6 @@ class Future(Generic[_T]):
         assert not self.done()
         self._done_callbacks.append(callback)
 
-    # can be overriden by derived classes
-    def default_result(self) -> Maybe[_T]:
-        assert not self.done()
-        return Empty._
-
-    def result(self, check_done: bool = True) -> _T:
-        if not isinstance(self._result, Empty):
-            return self._result
-        if not check_done:
-            result = self.default_result()
-            if isinstance(result, Empty):
-                raise FutureHasNoDefault(repr(self))
-            return result
-        raise FutureNotDone(repr(self))
-
     def parent_done(self: _Fut, fut: _Fut) -> None:
         assert self._state is State.PENDING
         self._pending.remove(fut)
@@ -103,9 +78,8 @@ class Future(Generic[_T]):
             for callback in self._ready_callbacks:
                 callback(self)
 
-    def set_result(self: _Fut, result: _T) -> None:
+    def set_done(self: _Fut) -> None:
         assert State.READY <= self._state < State.DONE
-        self._result = result
         self._state = State.DONE
         log.debug(f'{self}: done')
         for fut in self._children:

@@ -7,9 +7,9 @@ from contextlib import contextmanager
 from typing import Set, Any, Dict, Callable, Optional, MutableSequence, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple
 
-from .futures import CafError, FutureNotDone
+from .futures import CafError
 from .hashing import Hash, Hashed
-from .tasks import Task, HashedFuture, State, maybe_hashed
+from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
 from .graph import traverse, traverse_execute
 from .utils import Literal, split
 
