@@ -8,6 +8,7 @@ from typing import Any, Callable, TypeVar, Union, List, Tuple, Iterable
 
 _T = TypeVar('_T')
 Maybe = Union[_T, 'Empty']
+Pathable = Union[str, bytes, 'os.PathLike[Any]']
 
 
 class CafError(Exception):
@@ -25,9 +26,9 @@ def get_fullname(obj: Callable[[Any], Any]) -> str:
     return f'{obj.__module__}:{obj.__qualname__}'
 
 
-def shorten_text(s: str, n: int) -> str:
+def shorten_text(s: Union[str, bytes], n: int) -> str:
     if len(s) < n:
-        return s
+        return str(s)
     return f'{s[:n-3]}...'
 
 
@@ -36,9 +37,17 @@ class Literal(str):
         return self
 
 
-def make_executable(path: str) -> None:
+def make_executable(path: Pathable) -> None:
     st = os.stat(path)
     os.chmod(path, st.st_mode | stat.S_IEXEC)
+
+
+def make_nonwritable(path: Pathable) -> None:
+    os.chmod(
+        path,
+        stat.S_IMODE(os.lstat(path).st_mode) &
+        ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
+    )
 
 
 def split(iterable: Iterable[_T], first: Callable[[_T], bool]
