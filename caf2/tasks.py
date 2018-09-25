@@ -161,7 +161,7 @@ class Task(HashedFuture[_T]):
             return cast(_T, self._result.default_result())
         raise FutureHasNoDefault()
 
-    def set_result(self, result: _T) -> None:
+    def set_result(self, result: Union[_T, Hashed[_T]]) -> None:
         self._result = result
         super().set_done()
 

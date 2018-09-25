@@ -131,10 +131,13 @@ class Session:
                 f'{task}: created children: '
                 f'{list(map(Literal, task.side_effects))}'
             )
-        fut = maybe_hashed(result)
-        if not isinstance(fut, HashedFuture):
+        hashed = maybe_hashed(result)
+        if hashed is None:
             task.set_result(result)
+        elif not isinstance(hashed, HashedFuture):
+            task.set_result(hashed)
         else:
+            fut = hashed
             if fut.done():
                 task.set_result(fut.result())
             else:
