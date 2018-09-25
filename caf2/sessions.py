@@ -8,7 +8,7 @@ from typing import Set, Any, Dict, Callable, Optional, MutableSequence, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple
 
 from .futures import CafError
-from .hashing import Hash, Hashed
+from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
 from .graph import traverse, traverse_execute
 from .utils import Literal, split
@@ -80,7 +80,9 @@ class Session:
         objs = list(traverse(
             objs,
             lambda o: (
-                cast(Iterable[Hashed[Any]], o.parents)
+                o.components
+                if isinstance(o, HashedCompositeLike)
+                else cast(Iterable[Hashed[Any]], o.parents)
                 if isinstance(o, HashedFuture)
                 else []
             ),

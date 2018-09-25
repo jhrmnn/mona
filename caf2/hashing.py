@@ -80,6 +80,10 @@ class HashedCompositeLike(Hashed[Composite]):
     def label(self) -> str:
         return self._label
 
+    @property
+    def components(self) -> Iterable[Hashed[Any]]:
+        return self._components.values()
+
     def resolve(self, comp_handler: Callable[[Hashed[Any]], Any] = lambda x: x
                 ) -> Composite:
         def hook(type_tag: str, dct: Dict[str, JSONValue]) -> Any:
