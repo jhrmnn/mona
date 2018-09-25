@@ -6,9 +6,10 @@ import base64
 from pathlib import Path
 
 from typing import Any, Set, Type, Dict, Callable, cast, Tuple, Optional, \
-    NewType, Union, TypeVar
+    NewType, Union, TypeVar, Iterable
 
 from .futures import CafError
+from .graph import traverse_id
 
 _T = TypeVar('_T')
 # JSONContainer should be Union[List[JSONValue], Dict[str, JSONValue]]
@@ -36,28 +37,27 @@ class InvalidJSONObject(CafError):
     pass
 
 
-class JSONValidator:
-    def __init__(self, hook: Callable[[Any], bool] = None) -> None:
-        self._hook = hook
-        self._classes = tuple(registered_classes)
+def validate_json(obj: Any, hook: Callable[[Any], bool] = None) -> None:
+    classes = tuple(registered_classes)
 
-    def __call__(self, obj: Any) -> None:
+    def parents(obj: Any) -> Iterable[Any]:
         if obj is None or isinstance(obj, (str, int, float, bool)):
-            return
-        if isinstance(obj, self._classes):
-            return
-        if self._hook and self._hook(obj):
-            return
+            return ()
+        if isinstance(obj, classes):
+            return ()
+        if hook and hook(obj):
+            return ()
         elif isinstance(obj, list):
-            for x in obj:
-                self(x)
+            return obj
         elif isinstance(obj, dict):
-            for k, v in obj.items():
-                if not isinstance(k, str):
+            for key in obj:
+                if not isinstance(key, str):
                     raise InvalidJSONObject('Dict keys must be strings')
-                self(v)
+            return obj.values()
         else:
             raise InvalidJSONObject(f'Unknown object: {obj!r}')
+
+    traverse_id([obj], parents)
 
 
 class ClassJSONEncoder(json.JSONEncoder):

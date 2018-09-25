@@ -9,7 +9,7 @@ from typing import Any, Callable, Optional, List, TypeVar, \
     Collection, cast, Union, Tuple
 
 from .futures import Future, Maybe, Empty, CafError, State
-from .json import JSONValidator
+from .json import validate_json
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
 from .utils import get_fullname
 
@@ -28,7 +28,7 @@ def maybe_future(obj: Any) -> Union['HashedFuture[Any]', bytes]:
         return pickle.dumps(obj)
     except CafError:
         pass
-    JSONValidator(lambda x: isinstance(x, (Task, TaskComponent)))(obj)
+    validate_json(obj, lambda x: isinstance(x, (Task, TaskComponent)))
     jsonstr, components = TaskComposite.parse_object(obj)
     assert any(isinstance(comp, HashedFuture) for comp in components)
     return TaskComposite(jsonstr, components)
@@ -37,7 +37,7 @@ def maybe_future(obj: Any) -> Union['HashedFuture[Any]', bytes]:
 def ensure_hashed(obj: Any) -> Hashed[Any]:
     if isinstance(obj, HashedFuture):
         return obj
-    JSONValidator(lambda x: isinstance(x, (Task, TaskComponent)))(obj)
+    validate_json(obj, lambda x: isinstance(x, (Task, TaskComponent)))
     jsonstr, components = TaskComposite.parse_object(obj)
     if any(isinstance(comp, HashedFuture) for comp in components):
         return TaskComposite(jsonstr, components)
