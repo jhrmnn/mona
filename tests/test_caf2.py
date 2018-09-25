@@ -216,7 +216,7 @@ def test_json_utils():
         obj,
         tape=tape,
         default=lambda x:
-        ('MyClass', {'x': x.x}) if isinstance(x, MyClass) else None,
+        (x, 'MyClass', {'x': x.x}) if isinstance(x, MyClass) else None,
         cls=ClassJSONEncoder
     )
     assert len(tape) == 2

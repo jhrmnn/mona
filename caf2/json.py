@@ -17,7 +17,7 @@ JSONContainer = NewType('JSONContainer', object)
 JSONValue = Union[None, bool, int, float, str, JSONContainer]
 JSONConverter = Callable[[_T], Dict[str, JSONValue]]
 JSONAdapter = Callable[[Dict[str, JSONValue]], _T]
-JSONDefault = Callable[[_T], Optional[Tuple[str, Dict[str, JSONValue]]]]
+JSONDefault = Callable[[_T], Optional[Tuple[Any, str, Dict[str, JSONValue]]]]
 JSONHook = Callable[[str, Dict[str, JSONValue]], Union[_T, Dict[str, JSONValue]]]
 ClassRegister = Dict[Type[Any], Tuple[JSONConverter[Any], JSONAdapter[Any]]]
 
@@ -79,7 +79,7 @@ class ClassJSONEncoder(json.JSONEncoder):
         else:
             encoded = self._default(o)
             if encoded is not None:
-                type_tag, dct = encoded
+                o, type_tag, dct = encoded
                 self._tape.add(o)
         if type_tag is not None:
             return cast(JSONContainer, {'_type': type_tag, **dct})

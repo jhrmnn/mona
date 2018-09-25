@@ -59,6 +59,7 @@ class Hashed(ABC, Generic[_T]):
 
 class HashedCompositeLike(Hashed[Composite]):
     extra_classes: Tuple[Type[Any], ...] = ()
+    type_swaps = {bytes: HashedBytes}
 
     def __init__(self, jsonstr: str, components: Iterable[Hashed[Any]]) -> None:
         self._jsonstr = jsonstr
@@ -89,6 +90,14 @@ class HashedCompositeLike(Hashed[Composite]):
         return cast(Composite, obj)
 
     @classmethod
+    def _default(cls, o: Any) -> Optional[Tuple[Any, str, Dict[str, JSONValue]]]:
+        if o.__class__ in cls.type_swaps:
+            o = cls.type_swaps[o.__class__](o)
+        if isinstance(o, Hashed):
+            return (o, 'Hashed', {'hashid': o.hashid})
+        return None
+
+    @classmethod
     def parse_object(cls, obj: HashableValue) -> Tuple[str, Set[Hashed[Any]]]:
         validate_json(obj, lambda x: isinstance(x, cls.extra_classes))
         components: Set[Hashed[Any]] = set()
@@ -96,12 +105,7 @@ class HashedCompositeLike(Hashed[Composite]):
             obj,
             sort_keys=True,
             tape=components,
-            default=(
-                lambda comp:
-                ('Hashed', {'hashid': comp.hashid})
-                if isinstance(comp, Hashed)
-                else None
-            ),
+            default=cls._default,
             cls=ClassJSONEncoder
         )
         return jsonstr, components
