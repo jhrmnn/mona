@@ -42,6 +42,12 @@ class Hashed(ABC, Generic[_T]):
     @abstractmethod
     def value(self) -> _T: ...
 
+    def __str__(self) -> str:
+        return f'{self.tag}: {self.label}'
+
+    def __repr__(self) -> str:
+        return f'<{self.__class__.__name__} {self}>'
+
     @property
     def hashid(self) -> Hash:
         return self._hashid

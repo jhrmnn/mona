@@ -63,9 +63,6 @@ class HashedFuture(Hashed[_T], Future[_T]):
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} {self} state={self.state.name}>'
 
-    def __str__(self) -> str:
-        return f'{self.tag}: {self.label}'
-
 
 class TaskHasNotRun(CafError):
     pass
