@@ -44,6 +44,7 @@ class Session:
         self._objects: Dict[Hash, Hashed[Any]] = {}
         self._graph = Graph({}, {}, {})
         self._task_tape: Optional[Callable[[Task[Any]], None]] = None
+        self.storage: Dict[str, Any] = {}
 
     def __enter__(self) -> 'Session':
         assert Session._active is None
@@ -64,6 +65,7 @@ class Session:
         self._tasks.clear()
         self._objects.clear()
         self._graph = Graph({}, {}, {})
+        self.storage.clear()
 
     @contextmanager
     def record(self, tape: Callable[[Task[Any]], None]) -> Iterator[None]:
