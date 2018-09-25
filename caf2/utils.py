@@ -38,7 +38,7 @@ def shorten_text(s: Union[str, bytes], n: int) -> str:
 
 class Literal(str):
     def __repr__(self) -> str:
-        return self
+        return str.__repr__(self)[1:-1]
 
 
 def make_executable(path: Pathable) -> None:

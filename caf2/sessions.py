@@ -190,7 +190,7 @@ class Session:
 
         dot = Digraph(*args, **kwargs)
         for child, parents in self._graph.deps.items():
-            dot.node(child, str(self._tasks[child]))
+            dot.node(child, repr(Literal(self._tasks[child])))
             for parent in parents:
                 dot.edge(child, parent)
         for origin, tasks in self._graph.side_effects.items():
