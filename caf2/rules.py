@@ -11,6 +11,7 @@ from .tasks import Task
 from .sessions import Session
 
 _T = TypeVar('_T')
+TaskFactory = Callable[..., Task[Any]]
 
 
 class Rule(Generic[_T]):
@@ -25,6 +26,10 @@ class Rule(Generic[_T]):
         return Session.active().create_task(
             self._func, *args, **self._kwargs, **kwargs
         )
+
+    @property
+    def func(self) -> Callable[..., _T]:
+        return self._func
 
 
 @Rule
