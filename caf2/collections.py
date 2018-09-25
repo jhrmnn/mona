@@ -28,12 +28,12 @@ class HashedDeque(Generic[_T]):
         return item
 
 
-def traverse(start: _T, parents: Callable[[_T], Iterable[_T]],
+def traverse(leaves: Iterable[_T], parents: Callable[[_T], Iterable[_T]],
              sentinel: Callable[[_T], bool] = None, inclusive: bool = True
              ) -> Set[_T]:
     visited: Set[_T] = set()
     queue = Deque[_T]()
-    queue.append(start)
+    queue.extend(leaves)
     while queue:
         node = queue.popleft()
         if sentinel and sentinel(node):
@@ -45,4 +45,3 @@ def traverse(start: _T, parents: Callable[[_T], Iterable[_T]],
             if parent not in visited:
                 queue.append(parent)
     return visited
-

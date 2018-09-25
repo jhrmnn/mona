@@ -181,7 +181,7 @@ class TaskComponent(HashedFuture[_T]):
         self._task = task
         self._keys = keys
         Hashed.__init__(self)
-        Future.__init__(self, [task])
+        Future.__init__(self, [cast(HashedFuture[Any], task)])
         self._label = ''.join([
             self._task.label, *(f'[{k!r}]' for k in self._keys)
         ])

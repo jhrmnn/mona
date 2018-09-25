@@ -6,13 +6,13 @@ import warnings
 from contextlib import contextmanager
 from itertools import chain
 from typing import Set, Any, Dict, Callable, Optional, \
-    TypeVar, Iterator, NamedTuple
+    TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple
 
 from .futures import Future, CafError, FutureNotDone
-from .hashing import Hash
+from .hashing import Hash, Hashed
 from .tasks import Task, HashedFuture, State, maybe_future
 from .collections import HashedDeque, traverse
-from .utils import Literal
+from .utils import Literal, split
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +42,7 @@ class Session:
 
     def __init__(self) -> None:
         self._tasks: Dict[Hash, Task[Any]] = {}
+        self._objects: Dict[Hash, Hashed[Any]] = {}
         self._graph = Graph({}, {}, {})
         self._task_tape: Optional[Callable[[Task[Any]], None]] = None
 
@@ -62,6 +63,7 @@ class Session:
                     f'tasks were never run: {tasks_not_run}', RuntimeWarning
                 )
         self._tasks.clear()
+        self._objects.clear()
         self._graph = Graph({}, {}, {})
 
     def __contains__(self, task: Task[Any]) -> bool:
@@ -87,16 +89,26 @@ class Session:
         finally:
             if self._task_tape is not None:
                 self._task_tape(task)
-        parent_futures = set(chain.from_iterable(traverse(
-            parent, lambda f: f.parents, lambda f: isinstance(f, Task)
-        ) for parent in task.parents))
-        parents = [f for f in parent_futures if isinstance(f, Task)]
-        for parent in parents:
-            if parent not in self:
-                raise ArgNotInSession(repr(parent))
+        objs = list(traverse(
+            task.args,
+            lambda o: (
+                cast(Iterable[Hashed[Any]], o.parents)
+                if isinstance(o, HashedFuture)
+                else []
+            ),
+            lambda o: isinstance(o, Task)
+        ))
+        tasks, objs = cast(
+            Tuple[List[Task[Any]], List[Hashed[Any]]],
+            split(objs, lambda o: isinstance(o, Task))
+        )
+        for arg_task in tasks:
+            if arg_task not in self:
+                raise ArgNotInSession(repr(task))
         task.register()
         self._tasks[task.hashid] = task
-        self._graph.deps[task.hashid] = set(task.hashid for task in parents)
+        self._objects.update({o.hashid: o for o in objs})
+        self._graph.deps[task.hashid] = set(t.hashid for t in tasks)
         return task
 
     def run_task(self, task: Task[_T]) -> None:
@@ -139,11 +151,11 @@ class Session:
 
         def process_future(fut: Future[Any]) -> Set[Task[Any]]:
             parents = traverse(
-                fut, lambda f: f.parents, lambda f: isinstance(f, Task)
+                [fut], lambda f: f.parents, lambda f: isinstance(f, Task)
             )
             tasks = set(f for f in parents if isinstance(f, Task))
             unqueued_tasks = chain.from_iterable(traverse(
-                task,
+                [task],
                 lambda t: (self._tasks[h] for h in self._graph.deps[t.hashid]),
                 lambda t: t in queue,
                 False

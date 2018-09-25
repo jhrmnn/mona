@@ -33,7 +33,7 @@ class FutureHasNoDefault(CafError):
 
 
 class Future(Generic[_T]):
-    def __init__(self: _Fut, parents: Iterable['Future[Any]']) -> None:
+    def __init__(self: _Fut, parents: Iterable[_Fut]) -> None:
         self._parents = frozenset(parents)
         self._pending = set(fut for fut in self._parents if not fut.done())
         self._children: Set['Future[Any]'] = set()
@@ -54,7 +54,7 @@ class Future(Generic[_T]):
         return self._state is State.DONE
 
     @property
-    def parents(self) -> FrozenSet['Future[Any]']:
+    def parents(self) -> FrozenSet[_Fut]:
         return self._parents
 
     def add_child(self, fut: 'Future[Any]') -> None:
@@ -94,7 +94,7 @@ class Future(Generic[_T]):
             return result
         raise FutureNotDone(repr(self))
 
-    def parent_done(self: _Fut, fut: 'Future[Any]') -> None:
+    def parent_done(self: _Fut, fut: _Fut) -> None:
         assert self._state is State.PENDING
         self._pending.remove(fut)
         if not self._pending:

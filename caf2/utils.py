@@ -2,8 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from enum import Enum
-from typing import Any, Callable, TypeVar, Union
-
+from typing import Any, Callable, TypeVar, Union, List, Tuple, Iterable
 
 _T = TypeVar('_T')
 Maybe = Union[_T, 'Empty']
@@ -33,3 +32,12 @@ def shorten_text(s: str, n: int) -> str:
 class Literal(str):
     def __repr__(self) -> str:
         return self
+
+
+def split(iterable: Iterable[_T], first: Callable[[_T], bool]
+          ) -> Tuple[List[_T], List[_T]]:
+    left: List[_T] = []
+    right: List[_T] = []
+    for item in iterable:
+        (left if first(item) else right).append(item)
+    return left, right
