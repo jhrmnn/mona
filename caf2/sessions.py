@@ -99,9 +99,9 @@ class Session:
             self._objects.update({o.hashid: o for o in objs})
         return tasks
 
-    def create_task(self, func: Callable[..., _T], *args: Any, **kwargs: Any
-                    ) -> Task[_T]:
-        task = Task(func, *args, **kwargs)
+    def create_task(self, func: Callable[..., _T], *args: Any,
+                    label: str = None) -> Task[_T]:
+        task = Task(func, *args, label=label)
         try:
             task = self._tasks[task.hashid]
         except KeyError:
