@@ -65,9 +65,6 @@ class Session:
         self._objects.clear()
         self._graph = Graph({}, {}, {})
 
-    def __contains__(self, task: Task[Any]) -> bool:
-        return task.hashid in self._tasks
-
     @contextmanager
     def record(self, tape: Callable[[Task[Any]], None]) -> Iterator[None]:
         self._task_tape = tape
@@ -92,7 +89,7 @@ class Session:
             split(objs, lambda o: isinstance(o, Task))
         )
         for task in tasks:
-            if task not in self:
+            if task.hashid not in self._tasks:
                 raise ArgNotInSession(repr(task))
         if save:
             self._objects.update({o.hashid: o for o in objs})
