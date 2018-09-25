@@ -7,7 +7,7 @@ import json
 import pytest  # type: ignore
 
 import caf2 as caf
-from caf2.files import dir_task
+from caf2.rules import dir_task
 from caf2.json import ClassJSONDecoder, ClassJSONEncoder
 
 debug_level = os.environ.get('CAF_DEBUG')

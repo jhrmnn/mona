@@ -1,6 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import os
+import stat
 from enum import Enum
 from typing import Any, Callable, TypeVar, Union, List, Tuple, Iterable
 
@@ -32,6 +34,11 @@ def shorten_text(s: str, n: int) -> str:
 class Literal(str):
     def __repr__(self) -> str:
         return self
+
+
+def make_executable(path: str) -> None:
+    st = os.stat(path)
+    os.chmod(path, st.st_mode | stat.S_IEXEC)
 
 
 def split(iterable: Iterable[_T], first: Callable[[_T], bool]
