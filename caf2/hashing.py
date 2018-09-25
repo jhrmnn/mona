@@ -20,15 +20,15 @@ HashableContainer = NewType('HashableContainer', object)
 HashableValue = Union[None, bool, int, float, str, HashableContainer]
 
 
-def hash_text(text: Union[str, bytes]) -> Hash:
+def _hash_text(text: Union[str, bytes]) -> Hash:
     if isinstance(text, str):
         text = text.encode()
     return Hash(hashlib.sha1(text).hexdigest())
 
 
 class Hashed(ABC, Generic[_T]):
-    def __init__(self) -> None:
-        self._hashid = hash_text(self.spec)
+    def __init__(self, hashid: Hash = None) -> None:
+        self._hashid = hashid or _hash_text(self.spec)
 
     @property
     @abstractmethod
