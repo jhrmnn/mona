@@ -77,6 +77,28 @@ class Session:
         finally:
             self._task_tape = None
 
+    def _process_objects(self, objs: Iterable[Hashed[Any]], save: bool = True
+                         ) -> List[Task[Any]]:
+        objs = list(traverse(
+            objs,
+            lambda o: (
+                cast(Iterable[Hashed[Any]], o.parents)
+                if isinstance(o, HashedFuture)
+                else []
+            ),
+            lambda o: isinstance(o, Task)
+        ))
+        tasks, objs = cast(
+            Tuple[List[Task[Any]], List[Hashed[Any]]],
+            split(objs, lambda o: isinstance(o, Task))
+        )
+        for task in tasks:
+            if task not in self:
+                raise ArgNotInSession(repr(task))
+        if save:
+            self._objects.update({o.hashid: o for o in objs})
+        return tasks
+
     def create_task(self, func: Callable[..., _T], *args: Any, **kwargs: Any
                     ) -> Task[_T]:
         task = Task(func, *args, **kwargs)
@@ -89,25 +111,9 @@ class Session:
         finally:
             if self._task_tape is not None:
                 self._task_tape(task)
-        objs = list(traverse(
-            task.args,
-            lambda o: (
-                cast(Iterable[Hashed[Any]], o.parents)
-                if isinstance(o, HashedFuture)
-                else []
-            ),
-            lambda o: isinstance(o, Task)
-        ))
-        tasks, objs = cast(
-            Tuple[List[Task[Any]], List[Hashed[Any]]],
-            split(objs, lambda o: isinstance(o, Task))
-        )
-        for arg_task in tasks:
-            if arg_task not in self:
-                raise ArgNotInSession(repr(task))
         task.register()
         self._tasks[task.hashid] = task
-        self._objects.update({o.hashid: o for o in objs})
+        tasks = self._process_objects(task.args)
         self._graph.deps[task.hashid] = set(t.hashid for t in tasks)
         return task
 
@@ -149,11 +155,9 @@ class Session:
             if task.state < State.HAS_RUN and task not in queue:
                 queue.append(task)
 
-        def process_future(fut: Future[Any]) -> Set[Task[Any]]:
-            parents = traverse(
-                [fut], lambda f: f.parents, lambda f: isinstance(f, Task)
-            )
-            tasks = set(f for f in parents if isinstance(f, Task))
+        def process_future(fut: HashedFuture[Any], *, save: bool
+                           ) -> List[Task[Any]]:
+            tasks = self._process_objects([fut], save)
             unqueued_tasks = chain.from_iterable(traverse(
                 [task],
                 lambda t: (self._tasks[h] for h in self._graph.deps[t.hashid]),
@@ -165,7 +169,7 @@ class Session:
                     task.add_ready_callback(schedule)
             return tasks
 
-        process_future(fut)
+        process_future(fut, save=False)
         while queue:
             task = queue.popleft()
             if task.state > State.READY:
@@ -173,7 +177,7 @@ class Session:
             log.info(f'{task}: will run')
             self.run_task(task)
             if not task.done():
-                backflow = process_future(task.future_result())
+                backflow = process_future(task.future_result(), save=True)
                 self._graph.backflow[task.hashid] = \
                     set(t.hashid for t in backflow)
         try:
