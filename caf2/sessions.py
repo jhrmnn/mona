@@ -4,14 +4,13 @@
 import logging
 import warnings
 from contextlib import contextmanager
-from itertools import chain
-from typing import Set, Any, Dict, Callable, Optional, \
+from typing import Set, Any, Dict, Callable, Optional, MutableSequence, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple
 
 from .futures import CafError, FutureNotDone
 from .hashing import Hash, Hashed
 from .tasks import Task, HashedFuture, State, maybe_future
-from .collections import HashedDeque, traverse
+from .graph import traverse, traverse_execute
 from .utils import Literal, split
 
 log = logging.getLogger(__name__)
@@ -144,42 +143,36 @@ class Session:
                 fut.add_done_callback(lambda fut: task.set_result(fut.result()))
                 fut.register()
 
-    def eval(self, obj: Any) -> Any:
+    def _task_parents(self, task: Task[Any], queue: MutableSequence[Task[Any]]
+                      ) -> Iterable[Task[Any]]:
+        assert task.state <= State.READY
+        task.add_ready_callback(lambda task: queue.append(task))
+        return (self._tasks[h] for h in self._graph.deps[task.hashid])
+
+    def _execute_task(self, task: Task[Any]) -> Iterable[Task[Any]]:
+        assert task.state is State.READY
+        log.info(f'{task}: will run')
+        self.run_task(task)
+        if task.done():
+            return ()
+        backflow = self._process_objects([task.future_result()], save=True)
+        self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
+        return backflow
+
+    def eval(self, obj: Any, depth: bool = False, eager_traverse: bool = False
+             ) -> Any:
         fut = maybe_future(obj)
         if isinstance(fut, bytes):
             return obj
         fut.register()
-        queue = HashedDeque[Task[Any]]()
-
-        def schedule(task: Task[Any]) -> None:
-            if task.state < State.HAS_RUN and task not in queue:
-                queue.append(task)
-
-        def process_future(fut: HashedFuture[Any], *, save: bool
-                           ) -> List[Task[Any]]:
-            tasks = self._process_objects([fut], save)
-            unqueued_tasks = chain.from_iterable(traverse(
-                [task],
-                lambda t: (self._tasks[h] for h in self._graph.deps[t.hashid]),
-                lambda t: t in queue,
-                False
-            ) for task in tasks)
-            for task in unqueued_tasks:
-                if task.state < State.HAS_RUN:
-                    task.add_ready_callback(schedule)
-            return tasks
-
-        process_future(fut, save=False)
-        while queue:
-            task = queue.popleft()
-            if task.state > State.READY:
-                continue
-            log.info(f'{task}: will run')
-            self.run_task(task)
-            if not task.done():
-                backflow = process_future(task.future_result(), save=True)
-                self._graph.backflow[task.hashid] = \
-                    set(t.hashid for t in backflow)
+        traverse_execute(
+            self._process_objects([fut], save=False),
+            self._task_parents,
+            self._execute_task,
+            lambda task: task.state > State.READY,
+            depth,
+            eager_traverse,
+        )
         try:
             return fut.result()
         except FutureNotDone as e:
