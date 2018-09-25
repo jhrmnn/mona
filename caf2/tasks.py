@@ -9,7 +9,7 @@ from typing import Any, Callable, Optional, List, TypeVar, \
 
 from .futures import Future, CafError, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
-from .utils import get_fullname, Maybe, Empty
+from .utils import get_fullname, Maybe, Empty, swap_type
 from .json import InvalidJSONObject
 
 log = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ def ensure_hashed(obj: Any) -> Hashed[Any]:
     a TaskComposite or a HashedComposite. Raises InvalidJSONObject when
     not possible.
     """
-    obj = TaskComposite.swap_type(obj)
+    obj = swap_type(obj, TaskComposite.type_swaps)
     if isinstance(obj, Hashed):
         return obj
     jsonstr, components = TaskComposite.parse_object(obj)

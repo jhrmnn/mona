@@ -4,11 +4,13 @@
 import os
 import stat
 from enum import Enum
-from typing import Any, Callable, TypeVar, Union, List, Tuple, Iterable
+from typing import Any, Callable, TypeVar, Union, List, Tuple, \
+    Iterable, Dict, Type
 
 _T = TypeVar('_T')
 Maybe = Union[_T, 'Empty']
 Pathable = Union[str, bytes, 'os.PathLike[Any]']
+TypeSwaps = Dict[Type[Any], Callable[[Any], Any]]
 
 
 class CafError(Exception):
@@ -39,6 +41,12 @@ def shorten_text(s: Union[str, bytes], n: int) -> str:
 class Literal(str):
     def __repr__(self) -> str:
         return str.__repr__(self)[1:-1]
+
+
+def swap_type(o: Any, swaps: TypeSwaps) -> Any:
+    if o.__class__ in swaps:
+        return swaps[o.__class__](o)
+    return o
 
 
 def make_executable(path: Pathable) -> None:

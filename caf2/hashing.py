@@ -8,7 +8,7 @@ from typing import Any, NewType, Union, Generic, TypeVar, Dict, cast, \
     Iterable, Set, Callable, Tuple, Type, Optional
 
 from .json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
-from .utils import Literal, shorten_text
+from .utils import Literal, shorten_text, TypeSwaps, swap_type
 
 _T = TypeVar('_T')
 _HCL = TypeVar('_HCL', bound='HashedCompositeLike')
@@ -78,8 +78,7 @@ class HashedBytes(Hashed[bytes]):
 
 class HashedCompositeLike(Hashed[Composite]):
     extra_classes: Tuple[Type[Any], ...] = (bytes,)
-    # actually is Dict[Type[_T], Type[Hashed[_T]]]
-    type_swaps: Dict[Type[Any], Type[Hashed[Any]]] = {bytes: HashedBytes}
+    type_swaps: TypeSwaps = {bytes: HashedBytes}
 
     def __init__(self, jsonstr: str, components: Iterable[Hashed[Any]]) -> None:
         self._jsonstr = jsonstr
@@ -114,14 +113,8 @@ class HashedCompositeLike(Hashed[Composite]):
         return cast(Composite, obj)
 
     @classmethod
-    def swap_type(cls, o: Any) -> Any:
-        if o.__class__ in cls.type_swaps:
-            return cls.type_swaps[o.__class__](o)
-        return o
-
-    @classmethod
     def _default(cls, o: Any) -> Optional[Tuple[Any, str, Dict[str, JSONValue]]]:
-        o = cls.swap_type(o)
+        o = swap_type(o, cls.type_swaps)
         if isinstance(o, Hashed):
             return (o, 'Hashed', {'hashid': o.hashid})
         return None
