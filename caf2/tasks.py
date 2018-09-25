@@ -112,6 +112,7 @@ class Task(HashedFuture[_T]):
             f'{self._func.__qualname__}({", ".join(a.label for a in self._args)})'
         self._side_effects: List[Task[Any]] = []
         self._result: Union[_T, Hashed[_T], Empty] = Empty._
+        self._hook: Optional[Callable[[_T], _T]] = None
 
     @property
     def spec(self) -> str:
@@ -180,6 +181,14 @@ class Task(HashedFuture[_T]):
             for arg in self.args
         ]
         return self.func(*args)
+
+    def add_hook(self, hook: Callable[[_T], _T]) -> None:
+        self._hook = hook
+
+    def hook(self, result: _T) -> _T:
+        if self._hook:
+            result = self._hook(result)
+        return result
 
 
 class TaskComponent(HashedFuture[_T]):

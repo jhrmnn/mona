@@ -123,6 +123,7 @@ class Session:
         ]
         with self.record(task.add_side_effect):
             result = task.func(*args)
+        result = task.hook(result)
         if task.side_effects:
             self._graph.side_effects[task.hashid] = \
                 set(created_task.hashid for created_task in task.side_effects)
