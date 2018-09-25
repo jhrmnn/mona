@@ -27,6 +27,7 @@ def ensure_hashed(obj: Any) -> Hashed[Any]:
     a TaskComposite or a HashedComposite. Raises InvalidJSONObject when
     not possible.
     """
+    obj = TaskComposite.swap_type(obj)
     if isinstance(obj, Hashed):
         return obj
     jsonstr, components = TaskComposite.parse_object(obj)
