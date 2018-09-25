@@ -240,8 +240,6 @@ class TaskComponent(HashedFuture[_T]):
 
 
 class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
-    extra_classes = HashedCompositeLike.extra_classes + (Task, TaskComponent)
-
     def __init__(self, jsonstr: str, components: Collection[Hashed[Any]]
                  ) -> None:
         futures = [comp for comp in components if isinstance(comp, HashedFuture)]

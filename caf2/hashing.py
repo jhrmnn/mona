@@ -77,7 +77,6 @@ class HashedBytes(Hashed[bytes]):
 
 
 class HashedCompositeLike(Hashed[Composite]):
-    extra_classes: Tuple[Type[Any], ...] = (bytes,)
     type_swaps: TypeSwaps = {bytes: HashedBytes}
 
     def __init__(self, jsonstr: str, components: Iterable[Hashed[Any]]) -> None:
@@ -121,7 +120,8 @@ class HashedCompositeLike(Hashed[Composite]):
 
     @classmethod
     def parse_object(cls, obj: HashableValue) -> Tuple[str, Set[Hashed[Any]]]:
-        validate_json(obj, lambda x: isinstance(x, cls.extra_classes))
+        classes = (Hashed,) + tuple(cls.type_swaps)
+        validate_json(obj, lambda x: isinstance(x, classes))
         components: Set[Hashed[Any]] = set()
         jsonstr = json.dumps(
             obj,
