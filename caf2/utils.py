@@ -9,7 +9,7 @@ from typing import Any, Callable, TypeVar, Union, List, Tuple, \
 
 _T = TypeVar('_T')
 Maybe = Union[_T, 'Empty']
-Pathable = Union[str, bytes, 'os.PathLike[Any]']
+Pathable = Union[str, 'os.PathLike[str]']
 TypeSwaps = Dict[Type[Any], Callable[[Any], Any]]
 
 
