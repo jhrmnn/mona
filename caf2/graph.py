@@ -9,6 +9,9 @@ PopFunction = Callable[[MutableSequence[_T]], _T]
 
 
 class MergedQueue(Generic[_T]):
+    """
+    Pops from the first nonempty given queue
+    """
     def __init__(
             self, queues: Iterable[Tuple[MutableSequence[_T], PopFunction[_T]]]
     ) -> None:
@@ -32,6 +35,18 @@ def traverse(start: Iterable[_T],
              execute: Callable[[_T], Iterable[_T]] = None,
              depth: bool = False,
              eager_execute: bool = False) -> Set[_T]:
+    """
+    Traverse a self-extending dynamic DAG and return visited nodes.
+
+    :param start: Starting nodes
+    :param edge_from: Returns nodes with incoming edge from the given node
+    :param sentinal: Should traversal stop at the given node?
+    :param register: Registers the given node for execution (not run on sentinels)
+    :param execute: Executes the given node and returns new nodes with
+                    incoming edge from it (run only on registered nodes)
+    :param depth: Traverse depth-first if true, breadth-first otherwise
+    :param eager_execute: Prioritize execution before traversal if true
+    """
     execute = execute or (lambda n: ())
     visited: Set[_T] = set()
     traverse_queue, execution_queue = Deque[_T](), Deque[_T]()
