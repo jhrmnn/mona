@@ -67,11 +67,9 @@ def traverse(start: Iterable[_T],
                 continue
             if register:
                 register(n, execution_queue)
-            for m in edge_from(n):
-                if m not in visited:
-                    traverse_queue.append(m)
+            traverse_queue.extend(m for m in edge_from(n) if m not in visited)
         else:
-            traverse_queue.extend(execute(n))
+            traverse_queue.extend(m for m in execute(n) if m not in visited)
     return visited
 
 
