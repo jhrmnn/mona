@@ -4,13 +4,13 @@
 import logging
 import warnings
 from contextlib import contextmanager
-from typing import Set, Any, Dict, Callable, Optional, MutableSequence, \
+from typing import Set, Any, Dict, Callable, Optional, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple
 
 from .futures import CafError
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
-from .graph import traverse, traverse_execute
+from .graph import traverse
 from .utils import Literal, split
 
 log = logging.getLogger(__name__)
@@ -156,23 +156,18 @@ class Session:
         self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
         return backflow
 
-    def _task_parents(self, task: Task[Any], queue: MutableSequence[Task[Any]]
-                      ) -> Iterable[Task[Any]]:
-        assert task.state <= State.READY
-        task.add_ready_callback(lambda task: queue.append(task))
-        return (self._tasks[h] for h in self._graph.deps[task.hashid])
-
     def eval(self, obj: Any, depth: bool = False, eager_traverse: bool = False
              ) -> Any:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
         fut.register()
-        traverse_execute(
+        traverse(
             self._process_objects([fut], save=False),
-            self._task_parents,
-            self.run_task,
+            lambda task: (self._tasks[h] for h in self._graph.deps[task.hashid]),
             lambda task: task.state > State.READY,
+            lambda task, queue: task.add_ready_callback(lambda t: queue.append(t)),
+            self.run_task,
             depth,
             eager_traverse,
         )

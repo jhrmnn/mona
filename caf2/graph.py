@@ -2,56 +2,69 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import TypeVar, Deque, Set, Callable, Iterable, \
-    MutableSequence, Dict, Optional
+    MutableSequence, Dict, Generic, Tuple
 
 _T = TypeVar('_T')
+PopFunction = Callable[[MutableSequence[_T]], _T]
 
 
-def traverse_execute(start: Iterable[_T],
-                     edge_from: Callable[[_T, MutableSequence[_T]], Iterable[_T]],
-                     execute: Callable[[_T], Iterable[_T]],
-                     sentinel: Callable[[_T], bool] = None,
-                     depth: bool = False,
-                     eager_traverse: bool = False,
-                     ) -> Set[_T]:
-    visited: Set[_T] = set()
-    traverse_queue = Deque[_T]()
-    execution_queue = Deque[_T]()
-    traverse_queue.extend(start)
-    while traverse_queue or execution_queue:
-        if (eager_traverse or not execution_queue) and traverse_queue:
-            n = traverse_queue.pop() if depth else traverse_queue.popleft()
-            visited.add(n)
-            if sentinel and sentinel(n):
-                continue
-            for m in edge_from(n, execution_queue):
-                if m not in visited:
-                    traverse_queue.append(m)
+class MergedQueue(Generic[_T]):
+    def __init__(
+            self, queues: Iterable[Tuple[MutableSequence[_T], PopFunction[_T]]]
+    ) -> None:
+        self._queues = list(queues)
+
+    def __bool__(self) -> bool:
+        return any(q for q, _ in self._queues)
+
+    def pop(self) -> Tuple[_T, MutableSequence[_T]]:
+        for queue, pop in self._queues:
+            if queue:
+                return pop(queue), queue
         else:
-            n = execution_queue.popleft()
-            traverse_queue.extend(execute(n))
-    return visited
+            raise IndexError('pop from empty MergedQueue')
 
 
 def traverse(start: Iterable[_T],
              edge_from: Callable[[_T], Iterable[_T]],
              sentinel: Callable[[_T], bool] = None,
+             register: Callable[[_T, MutableSequence[_T]], None] = None,
+             execute: Callable[[_T], Iterable[_T]] = None,
              depth: bool = False,
-             ) -> Set[_T]:
-    return traverse_execute(
-        start, (lambda n, _: edge_from(n)), (lambda n: ()), sentinel, depth,
-        eager_traverse=True,
-    )
+             eager_execute: bool = False) -> Set[_T]:
+    execute = execute or (lambda n: ())
+    visited: Set[_T] = set()
+    traverse_queue, execution_queue = Deque[_T](), Deque[_T]()
+    traverse_queue.extend(start)
+    queues = [
+        (traverse_queue, (lambda q: q.pop()) if depth else (lambda q: q.popleft()))
+    ]
+    if execute:
+        queues.append((execution_queue, lambda q: q.popleft()))
+        if eager_execute:
+            queues.reverse()
+    queue = MergedQueue(queues)
+    while queue:
+        n, q = queue.pop()
+        if q is traverse_queue:
+            visited.add(n)
+            if sentinel and sentinel(n):
+                continue
+            if register:
+                register(n, execution_queue)
+            for m in edge_from(n):
+                if m not in visited:
+                    traverse_queue.append(m)
+        else:
+            traverse_queue.extend(execute(n))
+    return visited
 
 
-def traverse_id(start: Iterable[_T],
-                edge_from: Callable[[_T], Iterable[_T]],
-                sentinel: Callable[[_T], bool] = None,
-                depth: bool = False,
+def traverse_id(start: Iterable[_T], edge_from: Callable[[_T], Iterable[_T]]
                 ) -> Iterable[_T]:
     table: Dict[int, _T] = {}
-    start_id = {id(x): x for x in start}
-    table.update(start_id)
+    id_start = {id(x): x for x in start}
+    table.update(id_start)
 
     def edge_from_id(n: int) -> Iterable[int]:
         xs = edge_from(table[n])
@@ -59,12 +72,5 @@ def traverse_id(start: Iterable[_T],
         table.update(update)
         return update.keys()
 
-    sentinel_id: Optional[Callable[[int], bool]]
-    if sentinel:
-        def sentinel_id(n: int) -> bool:
-            return sentinel(table[n])  # type: ignore
-    else:
-        sentinel_id = None
-
-    visited_id = traverse(start_id.keys(), edge_from_id, sentinel_id, depth)
+    visited_id = traverse(id_start.keys(), edge_from_id)
     return (table[n] for n in visited_id)
