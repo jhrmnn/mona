@@ -11,27 +11,46 @@ from .tasks import Task
 from .sessions import Session
 
 _T = TypeVar('_T')
-TaskFactory = Callable[..., Task[Any]]
 
 
 class Rule(Generic[_T]):
-    def __init__(self, func: Callable[..., _T], **kwargs: Any) -> None:
+    def __init__(self, func: Callable[..., _T]) -> None:
         self._func = func
-        self._kwargs = kwargs
 
     def __repr__(self) -> str:
-        return f'<Rule func={self._func!r} kwargs={self._kwargs!r}>'
+        return f'<{self.__class__.__name__} func={self.func!r}>'
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
-        return Session.active().create_task(
-            self._func, *args, **self._kwargs, **kwargs
-        )
+        return Session.active().create_task(self.func, *args, **kwargs)
 
     @property
     def func(self) -> Callable[..., _T]:
         return self._func
 
 
+class PluginRule(Rule[_T]):
+    def __init__(self, func: Callable[..., _T], plugin: str) -> None:
+        Rule.__init__(self, func)
+        self._plugin = plugin
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
+        hooks = Session.active().storage.get(f'plugin:{self._plugin}')
+        if hooks:
+            pre_hook, post_hook = hooks
+            args = pre_hook(args)
+        task = Rule.__call__(self, *args, **kwargs)
+        if hooks:
+            task.add_hook(post_hook)
+        return task
+
+
+def plugin(name: str) -> Callable[[Rule[_T]], PluginRule[_T]]:
+    def decorator(rule: Rule[_T]) -> PluginRule[_T]:
+        return PluginRule(rule.func, name)
+    return decorator
+
+
+@plugin('dir_task')
 @Rule
 def dir_task(script: bytes, inputs: Dict[str, Union[bytes, Path]]
              ) -> Dict[str, bytes]:
