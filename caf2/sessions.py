@@ -166,8 +166,8 @@ class Session:
             self._process_objects([fut], save=False),
             lambda task: (self._tasks[h] for h in self._graph.deps[task.hashid]),
             lambda task: task.state > State.READY,
-            lambda task, queue: task.add_ready_callback(lambda t: queue.append(t)),
-            self.run_task,
+            lambda task, reg: task.add_ready_callback(lambda t: reg((t,))),
+            lambda task, reg: reg(task, self.run_task(task)),
             depth,
             eager_traverse,
         )
