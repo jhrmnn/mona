@@ -100,6 +100,10 @@ class TaskIsDone(CafError):
     pass
 
 
+class TaskHookChangedHash(CafError):
+    pass
+
+
 class Task(HashedFuture[_T]):
     def __init__(self, func: Callable[..., _T], *args: Any, label: str = None
                  ) -> None:
@@ -186,10 +190,15 @@ class Task(HashedFuture[_T]):
     def add_hook(self, hook: Callable[[_T], _T]) -> None:
         self._hook = hook
 
-    def hook(self, result: _T) -> _T:
-        if self._hook:
-            result = self._hook(result)
-        return result
+    def has_hook(self) -> bool:
+        return bool(self._hook)
+
+    def run_hook(self, result: Hashed[_T]) -> Hashed[_T]:
+        assert self._hook
+        hooked_result = ensure_hashed(self._hook(result.value))
+        if hooked_result.hashid != result.hashid:
+            raise TaskHookChangedHash(self._hook)
+        return hooked_result
 
 
 class TaskComponent(HashedFuture[_T]):

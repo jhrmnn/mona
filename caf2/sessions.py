@@ -126,7 +126,6 @@ class Session:
         ]
         with self.record(task.add_side_effect):
             result = task.func(*args)
-        result = task.hook(result)
         if task.side_effects:
             self._graph.side_effects[task.hashid] = \
                 set(created_task.hashid for created_task in task.side_effects)
@@ -136,9 +135,13 @@ class Session:
             )
         hashed = maybe_hashed(result)
         if hashed is None:
+            if task.has_hook():
+                raise CafError(f'{task} has hook and unhashable result {result}')
             task.set_result(result)
-        elif not isinstance(hashed, HashedFuture):
             return ()
+        if task.has_hook():
+            hashed = task.run_hook(hashed)
+        if not isinstance(hashed, HashedFuture):
             task.set_result(hashed)
         else:
             fut = hashed
