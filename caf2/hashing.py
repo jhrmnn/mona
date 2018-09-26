@@ -5,7 +5,7 @@ import json
 import hashlib
 from abc import ABC, abstractmethod
 from typing import Any, NewType, Union, Generic, TypeVar, Dict, cast, \
-    Iterable, Set, Callable, Tuple, Type, Optional
+    Iterable, Set, Callable, Tuple, Optional
 
 from .json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
 from .utils import Literal, shorten_text, TypeSwaps, swap_type
@@ -28,6 +28,7 @@ def _hash_text(text: Union[str, bytes]) -> Hash:
 
 class Hashed(ABC, Generic[_T]):
     def __init__(self, hashid: Hash = None) -> None:
+        assert not hasattr(self, '_hashid')
         self._hashid = hashid or _hash_text(self.spec)
 
     @property
