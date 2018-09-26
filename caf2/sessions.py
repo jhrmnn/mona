@@ -75,7 +75,7 @@ class Session:
         finally:
             self._task_tape = None
 
-    def _process_objects(self, objs: Iterable[Hashed[Any]], save: bool = True
+    def _process_objects(self, objs: Iterable[Hashed[Any]], *, save: bool
                          ) -> List[Task[Any]]:
         objs = list(traverse(
             objs,
@@ -113,7 +113,7 @@ class Session:
                 self._task_tape(task)
         task.register()
         self._tasks[task.hashid] = task
-        tasks = self._process_objects(task.args)
+        tasks = self._process_objects(task.args, save=True)
         self._graph.deps[task.hashid] = set(t.hashid for t in tasks)
         return task
 
