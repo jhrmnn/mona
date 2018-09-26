@@ -117,8 +117,9 @@ class Session:
         self._graph.deps[task.hashid] = set(t.hashid for t in tasks)
         return task
 
-    def run_task(self, task: Task[_T]) -> None:
+    def run_task(self, task: Task[_T]) -> Iterable[Task[Any]]:
         assert task.state is State.READY
+        log.info(f'{task}: will run')
         args = [
             arg.result() if isinstance(arg, HashedFuture) else arg.value
             for arg in task.args
@@ -137,6 +138,7 @@ class Session:
         if hashed is None:
             task.set_result(result)
         elif not isinstance(hashed, HashedFuture):
+            return ()
             task.set_result(hashed)
         else:
             fut = hashed
@@ -147,22 +149,15 @@ class Session:
                 task.set_future_result(fut)
                 fut.add_done_callback(lambda fut: task.set_result(fut.result()))
                 fut.register()
+        backflow = self._process_objects([hashed], save=True)
+        self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
+        return backflow
 
     def _task_parents(self, task: Task[Any], queue: MutableSequence[Task[Any]]
                       ) -> Iterable[Task[Any]]:
         assert task.state <= State.READY
         task.add_ready_callback(lambda task: queue.append(task))
         return (self._tasks[h] for h in self._graph.deps[task.hashid])
-
-    def _execute_task(self, task: Task[Any]) -> Iterable[Task[Any]]:
-        assert task.state is State.READY
-        log.info(f'{task}: will run')
-        self.run_task(task)
-        if task.done():
-            return ()
-        backflow = self._process_objects([task.future_result()], save=True)
-        self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
-        return backflow
 
     def eval(self, obj: Any, depth: bool = False, eager_traverse: bool = False
              ) -> Any:
@@ -173,7 +168,7 @@ class Session:
         traverse_execute(
             self._process_objects([fut], save=False),
             self._task_parents,
-            self._execute_task,
+            self.run_task,
             lambda task: task.state > State.READY,
             depth,
             eager_traverse,
