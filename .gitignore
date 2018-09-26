@@ -4,6 +4,7 @@
 /.pytest_cache/
 /.coverage
 /htmlcov/
+/report/
 /dist/
 /pyproject.lock
 /docs/build/
