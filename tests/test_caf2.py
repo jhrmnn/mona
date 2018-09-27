@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
 import json
+from pathlib import Path
 
 import pytest  # type: ignore
 
@@ -157,7 +158,7 @@ def calcs():
         dist,
         dir_task(
             '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
-            {'input': str(dist).encode()},
+            {'data': str(dist).encode(), 'input': Path('data')},
             label=f'/calcs/dist={dist}'
         ).get('STDOUT', b'0')
     ] for dist in range(0, 5)]

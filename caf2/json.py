@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import json
-from pathlib import Path
+from pathlib import PosixPath
 
 from typing import Any, Set, Type, Dict, Callable, cast, Tuple, Optional, \
     NewType, Union, TypeVar, Iterable
@@ -21,9 +21,9 @@ JSONHook = Callable[[str, Dict[str, JSONValue]], Union[_T, Dict[str, JSONValue]]
 ClassRegister = Dict[Type[Any], Tuple[JSONConverter[Any], JSONAdapter[Any]]]
 
 registered_classes: ClassRegister = {
-    Path: (
+    PosixPath: (
         lambda p: {'path': str(p)},
-        lambda dct: Path(cast(str, dct['path']))
+        lambda dct: PosixPath(cast(str, dct['path']))
     )
 }
 
