@@ -37,8 +37,8 @@ class FileManager:
         return hashid in self._cache or self._path(hashid).is_file()
 
     def __call__(self, sess: Session) -> None:
-        sess.storage['file_manager'] = self
-        sess.storage['plugin:dir_task'] = self._dir_task_hooks
+        sess.storage['file_manager:self'] = self
+        sess.storage['hook:dir_task'] = self._dir_task_hooks
 
     def get_bytes(self, hashid: Hash) -> bytes:
         content = self._cache.get(hashid)
@@ -81,4 +81,4 @@ class FileManager:
 
     @staticmethod
     def active() -> 'FileManager':
-        return cast(FileManager, Session.active().storage['file_manager'])
+        return cast(FileManager, Session.active().storage['file_manager:self'])
