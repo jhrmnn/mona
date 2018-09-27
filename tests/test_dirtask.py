@@ -26,6 +26,9 @@ def analysis(results):
 
 def test_calc():
     with Session() as sess:
+        sess.run_task(calcs())
+        calcs()[0].task
+        assert int(calcs()[0][1].default_result()) == 0
         assert sess.eval(analysis(calcs())) == 20
 
 

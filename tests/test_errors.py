@@ -19,6 +19,12 @@ def test_missing_default():
             identity(identity(1)).call()
 
 
+def test_missing_default2():
+    with pytest.raises(FutureHasNoDefault):
+        with Session():
+            identity(identity(1)[0]).call()
+
+
 def test_future_result():
     with pytest.raises(TaskHasNotRun):
         with Session():
