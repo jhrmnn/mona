@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pytest  # type: ignore
-
 from caf2 import Rule, Session
 from caf2.rules import dir_task
 
