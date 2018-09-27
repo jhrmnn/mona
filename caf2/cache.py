@@ -14,7 +14,7 @@ from typing import Callable, Any, Optional, Tuple, Set, TypeVar
 _T = TypeVar('_T')
 
 
-def init_db(path: str) -> sqlite3.Connection:
+def init_cafdb(path: str) -> sqlite3.Connection:
     db = sqlite3.connect(path)
     db.execute(dedent(
         """\
