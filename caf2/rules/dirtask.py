@@ -1,13 +1,11 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import os
 import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from abc import abstractmethod
-from typing import TypeVar, Dict, Union, TYPE_CHECKING
-from typing_extensions import Protocol, runtime
+from abc import ABC, abstractmethod
+from typing import TypeVar, Dict, Union
 
 from ..utils import make_executable
 from ..sessions import Session
@@ -16,22 +14,20 @@ from ..errors import InvalidFileTarget
 from ..rules import Rule, with_hook
 
 _T = TypeVar('_T')
-HashedPathOrBytes = Union['HashedPath', bytes]
-if TYPE_CHECKING:
-    PathLike = os.PathLike[str]
-else:
-    from os import PathLike
 
 
-class HashedPath(PathLike):
+class HashedPath(ABC):
     @property
     @abstractmethod
     def hashid(self) -> Hash: ...
+    @property
+    @abstractmethod
+    def path(self) -> Path: ...
 
 
-@runtime
-class FileManager(Protocol):
-    def store_path(self, path: Path) -> HashedPath: ...
+class FileManager(ABC):
+    @abstractmethod
+    def store_from_path(self, path: Path) -> HashedPath: ...
 
 
 @with_hook('dir_task')
@@ -46,8 +42,10 @@ def dir_task(exe: Union[HashedPath, bytes],
         for filename, target in inputs.items():
             if isinstance(target, bytes):
                 (root/filename).write_bytes(target)
-            elif isinstance(target, (HashedPath, Path)):
-                (root/filename).symlink_to(Path(target))
+            elif isinstance(target, (Path, HashedPath)):
+                if not isinstance(target, Path):
+                    target = target.path
+                (root/filename).symlink_to(target)
             else:
                 raise InvalidFileTarget(repr(target))
         make_executable(exefile)
@@ -63,5 +61,5 @@ def dir_task(exe: Union[HashedPath, bytes],
             relpath = path.relative_to(root)
             if str(relpath) not in inputs and path.is_file():
                 outputs[str(relpath)] = \
-                    fmngr.store_path(path) if fmngr else path.read_bytes()
+                    fmngr.store_from_path(path) if fmngr else path.read_bytes()
     return outputs
