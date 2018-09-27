@@ -2,6 +2,7 @@ import pytest  # type: ignore
 
 from caf2 import Rule, Session
 from caf2.sessions import NoActiveSession, ArgNotInSession, DependencyCycle
+from caf2.rules import dir_task, InvalidFileTarget
 
 from tests.test_core import identity
 
@@ -37,3 +38,9 @@ def test_dependency_cycle():
     with pytest.raises(DependencyCycle):
         with Session() as sess:
             sess.eval(f(1))
+
+
+def test_invalid_file():
+    with pytest.raises(InvalidFileTarget):
+        with Session() as sess:
+            sess.eval(dir_task('', {}))

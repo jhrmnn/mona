@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, TypeVar, Generic, Dict, Union
 
-from .utils import make_executable
+from .utils import make_executable, CafError
 from .tasks import Task
 from .sessions import Session
 
@@ -16,9 +16,6 @@ _T = TypeVar('_T')
 class Rule(Generic[_T]):
     def __init__(self, func: Callable[..., _T]) -> None:
         self._func = func
-
-    def __repr__(self) -> str:
-        return f'<{self.__class__.__name__} func={self.func!r}>'
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
         return Session.active().create_task(self.func, *args, **kwargs)
@@ -50,24 +47,30 @@ def plugin(name: str) -> Callable[[Rule[_T]], PluginRule[_T]]:
     return decorator
 
 
+class InvalidFileTarget(CafError):
+    pass
+
+
 @plugin('dir_task')
 @Rule
-def dir_task(script: bytes, inputs: Dict[str, Union[bytes, Path]]
+def dir_task(exe: bytes, inputs: Dict[str, Union[bytes, Path]]
              ) -> Dict[str, bytes]:
-    inputs = {'SCRIPT': script, **inputs}
+    inputs = {'EXE': exe, **inputs}
     with TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
-        scriptfile = str(root/'SCRIPT')
+        exefile = str(root/'EXE')
         for filename, target in inputs.items():
             if isinstance(target, bytes):
                 (root/filename).write_bytes(target)
             elif isinstance(target, Path):
                 (root/filename).symlink_to(target)
-        make_executable(scriptfile)
+            else:
+                raise InvalidFileTarget(repr(target))
+        make_executable(exefile)
         with (root/'STDOUT').open('w') as stdout, \
                 (root/'STDERR').open('w') as stderr:
             subprocess.run(
-                [scriptfile], stdout=stdout, stderr=stderr, cwd=root, check=True,
+                [exefile], stdout=stdout, stderr=stderr, cwd=root, check=True,
             )
         outputs = {}
         for path in root.glob('**/*'):
