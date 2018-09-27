@@ -2,8 +2,8 @@ import pytest  # type: ignore
 
 import json
 
-from caf2.json import ClassJSONDecoder, ClassJSONEncoder, validate_json, \
-    InvalidJSONObject
+from caf2.json import ClassJSONDecoder, ClassJSONEncoder, validate_json
+from caf2.errors import InvalidJSONObject
 
 
 class K:

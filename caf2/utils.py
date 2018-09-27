@@ -13,10 +13,6 @@ Pathable = Union[str, 'os.PathLike[str]']
 TypeSwaps = Dict[Type[Any], Callable[[Any], Any]]
 
 
-class CafError(Exception):
-    pass
-
-
 # Ideally Empty.EMPTY could be used directly, but mypy doesn't understand that
 # yet, so isisntance() it is.
 class Empty(Enum):

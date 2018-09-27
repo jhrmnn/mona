@@ -6,9 +6,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, TypeVar, Generic, Dict, Union
 
-from .utils import make_executable, CafError
+from .utils import make_executable
 from .tasks import Task
 from .sessions import Session
+from .errors import InvalidFileTarget
 
 _T = TypeVar('_T')
 
@@ -45,10 +46,6 @@ def plugin(name: str) -> Callable[[Rule[_T]], PluginRule[_T]]:
     def decorator(rule: Rule[_T]) -> PluginRule[_T]:
         return PluginRule(rule.func, name)
     return decorator
-
-
-class InvalidFileTarget(CafError):
-    pass
 
 
 @plugin('dir_task')

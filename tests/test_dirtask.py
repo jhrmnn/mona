@@ -1,7 +1,10 @@
 from pathlib import Path
 
+import pytest  # type: ignore
+
 from caf2 import Rule, Session
 from caf2.rules import dir_task
+from caf2.errors import InvalidFileTarget
 
 
 @Rule
@@ -24,3 +27,9 @@ def analysis(results):
 def test_calc():
     with Session() as sess:
         assert sess.eval(analysis(calcs())) == 20
+
+
+def test_invalid_file():
+    with pytest.raises(InvalidFileTarget):
+        with Session() as sess:
+            sess.eval(dir_task('', {}))

@@ -6,7 +6,7 @@ from enum import IntEnum
 from typing import Iterable, Set, Callable, List, TypeVar, NoReturn, FrozenSet
 from typing import Any  # noqa
 
-from .utils import CafError
+from .errors import CafError
 
 log = logging.getLogger(__name__)
 

@@ -7,8 +7,8 @@ from pathlib import PosixPath
 from typing import Any, Set, Type, Dict, Callable, cast, Tuple, Optional, \
     NewType, Union, TypeVar, Iterable
 
-from .futures import CafError
 from .graph import traverse_id
+from .errors import InvalidJSONObject
 
 _T = TypeVar('_T')
 # JSONContainer should be Union[List[JSONValue], Dict[str, JSONValue]]
@@ -26,10 +26,6 @@ registered_classes: ClassRegister = {
         lambda dct: PosixPath(cast(str, dct['path']))
     )
 }
-
-
-class InvalidJSONObject(CafError):
-    pass
 
 
 def validate_json(obj: Any, hook: Callable[[Any], bool] = None) -> None:

@@ -7,10 +7,12 @@ from abc import abstractmethod
 from typing import Any, Callable, Optional, List, TypeVar, \
     Collection, cast, Tuple, Union
 
-from .futures import Future, CafError, State
+from .futures import Future, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
 from .utils import get_fullname, Maybe, Empty, swap_type
 from .json import InvalidJSONObject
+from .errors import FutureHasNoDefault, FutureNotDone, TaskHasNotRun, \
+    TaskAlreadyDone, TaskHookChangedHash
 
 log = logging.getLogger(__name__)
 
@@ -42,14 +44,6 @@ def maybe_hashed(obj: Any) -> Optional['Hashed[Any]']:
         return ensure_hashed(obj)
     except InvalidJSONObject:
         return None
-
-
-class FutureNotDone(CafError):
-    pass
-
-
-class FutureHasNoDefault(CafError):
-    pass
 
 
 # Although this class could be hashable in principle, this would require
@@ -90,18 +84,6 @@ class HashedFuture(Hashed[_T], Future):
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} {self} state={self.state.name}>'
-
-
-class TaskHasNotRun(CafError):
-    pass
-
-
-class TaskIsDone(CafError):
-    pass
-
-
-class TaskHookChangedHash(CafError):
-    pass
 
 
 class Task(HashedFuture[_T]):
@@ -177,7 +159,7 @@ class Task(HashedFuture[_T]):
         if self.state is not State.HAS_RUN:
             raise TaskHasNotRun(repr(self))
         if self.done():
-            raise TaskIsDone(repr(self))
+            raise TaskAlreadyDone(repr(self))
         assert isinstance(self._result, HashedFuture)
         return self._result
 

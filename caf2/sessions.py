@@ -7,27 +7,15 @@ from contextlib import contextmanager
 from typing import Set, Any, Dict, Callable, Optional, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple
 
-from .futures import CafError
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
 from .graph import traverse
 from .utils import Literal, split, Empty, Maybe
+from .errors import CafError, ArgNotInSession, DependencyCycle, NoActiveSession
 
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
-
-
-class NoActiveSession(CafError):
-    pass
-
-
-class ArgNotInSession(CafError):
-    pass
-
-
-class DependencyCycle(CafError):
-    pass
 
 
 class Graph(NamedTuple):
