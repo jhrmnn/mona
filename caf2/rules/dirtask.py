@@ -6,14 +6,14 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from abc import abstractmethod
-from typing import Any, Callable, TypeVar, Generic, Dict, Union, TYPE_CHECKING
+from typing import TypeVar, Dict, Union, TYPE_CHECKING
 from typing_extensions import Protocol, runtime
 
-from .utils import make_executable
-from .tasks import Task
-from .sessions import Session
-from .hashing import Hash
-from .errors import InvalidFileTarget
+from ..utils import make_executable
+from ..sessions import Session
+from ..hashing import Hash
+from ..errors import InvalidFileTarget
+from ..rules import Rule, with_hook
 
 _T = TypeVar('_T')
 HashedPathOrBytes = Union['HashedPath', bytes]
@@ -32,40 +32,6 @@ class HashedPath(PathLike):
 @runtime
 class FileManager(Protocol):
     def store_path(self, path: Path) -> HashedPath: ...
-
-
-class Rule(Generic[_T]):
-    def __init__(self, func: Callable[..., _T]) -> None:
-        self._func = func
-
-    def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
-        return Session.active().create_task(self.func, *args, **kwargs)
-
-    @property
-    def func(self) -> Callable[..., _T]:
-        return self._func
-
-
-class HookedRule(Rule[_T]):
-    def __init__(self, func: Callable[..., _T], hook: str) -> None:
-        Rule.__init__(self, func)
-        self._hook = hook
-
-    def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
-        hooks = Session.active().storage.get(f'hook:{self._hook}')
-        if hooks:
-            pre_hook, post_hook = hooks
-            args = pre_hook(args)
-        task = Rule.__call__(self, *args, **kwargs)
-        if hooks:
-            task.add_hook(post_hook)
-        return task
-
-
-def with_hook(name: str) -> Callable[[Rule[_T]], HookedRule[_T]]:
-    def decorator(rule: Rule[_T]) -> HookedRule[_T]:
-        return HookedRule(rule.func, name)
-    return decorator
 
 
 @with_hook('dir_task')
