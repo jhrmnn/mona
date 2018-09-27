@@ -7,7 +7,7 @@ from .hashing import Hash, Hashed, HashedBytes
 from .sessions import Session
 from .rules import dir_task
 from .utils import make_nonwritable, Pathable, split
-from .errors import UnknownFile, UnrecognizedInput, SymlinkIsInput
+from .errors import UnknownFile, UnrecognizedInput, DupliciteInputFile
 from .json import registered_classes
 from .rules.dirtask import FileManager as _FileManager, \
     HashingPath as _HashingPath
@@ -37,10 +37,6 @@ class HashingPath(_HashingPath):
 
     def __repr__(self) -> str:
         return f'<HashingPath hashid={self._hashid[:6]}>'
-
-    @property
-    def hashid(self) -> Hash:
-        return self._hashid
 
     @property
     def path(self) -> Path:
@@ -171,6 +167,8 @@ class FileManager(_FileManager):
             else:
                 raise UnrecognizedInput(repr(item))
             filename = str(Path(filename))  # normalize
+            if filename in hashed_files:
+                raise DupliciteInputFile(filename)
             hashed_files[filename] = self._wrap_target(target)
         return hashed_files
 
@@ -192,7 +190,7 @@ class FileManager(_FileManager):
         stored_inputs.update(self._wrap_inputs(inputs))
         for filename, target in symlinks:
             if filename in stored_inputs:
-                raise SymlinkIsInput(filename)
+                raise DupliciteInputFile(filename)
             stored_inputs[filename] = Path(target)
         return stored_exe, stored_inputs
 

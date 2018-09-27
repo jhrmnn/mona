@@ -67,5 +67,5 @@ class UnrecognizedInput(CafError):
     pass
 
 
-class SymlinkIsInput(CafError):
+class DupliciteInputFile(CafError):
     pass
