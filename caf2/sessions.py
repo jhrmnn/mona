@@ -11,7 +11,7 @@ from typing import Set, Any, Dict, Callable, Optional, \
 
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
-from .graph import traverse
+from .graph import traverse, NodeExecuted
 from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import ArgNotInSession, DependencyCycle, NoActiveSession, \
     UnhookableResult
@@ -109,7 +109,7 @@ class Session:
         self._graph.deps[task.hashid] = set(t.hashid for t in arg_tasks)
         return task
 
-    def run_task(self, task: Task[_T]) -> Iterable[Task[Any]]:
+    def run_task(self, task: Task[_T]) -> Optional[_T]:
         assert task.state is State.READY
         log.info(f'{task}: will run')
         args = [
@@ -130,7 +130,7 @@ class Session:
             if task.has_hook():
                 raise UnhookableResult(f'{result!r} of {task}')
             task.set_result(result)
-            return ()
+            return result
         if task.has_hook():
             hashed = task.run_hook(hashed)
         if not isinstance(hashed, HashedFuture):
@@ -146,7 +146,13 @@ class Session:
                 fut.register()
         backflow = self._process_objects([hashed], save=True)
         self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
-        return backflow
+        return None
+
+    def _execute(self, task: Task[Any], reg: NodeExecuted[Task[Any]]) -> None:
+        self.run_task(task)
+        reg(task, (
+            self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
+        ))
 
     def eval(self, obj: Any, depth: bool = False, eager_traverse: bool = False
              ) -> Any:
@@ -165,7 +171,7 @@ class Session:
                 task.state < State.HAS_RUN,
                 task.add_ready_callback, lambda t: reg((t,))
             ),
-            lambda task, reg: reg(task, self.run_task(task)),
+            self._execute,
             depth,
             eager_traverse,
         )

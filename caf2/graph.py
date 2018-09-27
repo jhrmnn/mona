@@ -6,6 +6,9 @@ from typing import TypeVar, Deque, Set, Callable, Iterable, \
 
 _T = TypeVar('_T')
 PopFunction = Callable[[MutableSequence[_T]], _T]
+NodeRegister = Callable[[_T, Callable[[Iterable[_T]], None]], None]
+NodeExecuted = Callable[[_T, Iterable[_T]], None]
+NodeExecutor = Callable[[_T, NodeExecuted[_T]], None]
 
 
 class MergedQueue(Generic[_T]):
@@ -28,15 +31,13 @@ class MergedQueue(Generic[_T]):
             raise IndexError('pop from empty MergedQueue')
 
 
-def traverse(
-        start: Iterable[_T],
-        edges_from: Callable[[_T], Iterable[_T]],
-        sentinel: Callable[[_T], bool] = None,
-        register: Callable[[_T, Callable[[Iterable[_T]], None]], None] = None,
-        execute: Callable[[_T, Callable[[_T, Iterable[_T]], None]], None] = None,
-        depth: bool = False,
-        eager_execute: bool = False
-) -> Set[_T]:
+def traverse(start: Iterable[_T],
+             edges_from: Callable[[_T], Iterable[_T]],
+             sentinel: Callable[[_T], bool] = None,
+             register: NodeRegister[_T] = None,
+             execute: NodeExecutor[_T] = None,
+             depth: bool = False,
+             eager_execute: bool = False) -> Set[_T]:
     """
     Traverse a self-extending dynamic DAG and return visited nodes.
 
