@@ -1,15 +1,10 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
-import json
 from pathlib import Path
 
 import pytest  # type: ignore
 
 import caf2 as caf
 from caf2.rules import dir_task
-from caf2.json import ClassJSONDecoder, ClassJSONEncoder
 
 debug_level = os.environ.get('CAF_DEBUG')
 if debug_level:
@@ -198,33 +193,3 @@ def test_partial_eval():
         assert stdouts[3].task == calcs().side_effects[3]
         sess.run_task(stdouts[3].task)
         assert analysis(calcs()).call() == 6
-
-
-def test_json_utils():
-    class MyClass:
-        def __init__(self, x):
-            self.x = x
-
-        def __hash__(self):
-            return hash(self.x)
-
-        def __eq__(self, other):
-            return self.x == other.x
-
-    obj = {'x': MyClass(1), 'ys': [MyClass(2)]}
-    tape = set()
-    jsonstr = json.dumps(
-        obj,
-        tape=tape,
-        default=lambda x:
-        (x, 'MyClass', {'x': x.x}) if isinstance(x, MyClass) else None,
-        cls=ClassJSONEncoder
-    )
-    assert len(tape) == 2
-    obj2 = json.loads(
-        jsonstr,
-        hook=lambda type_tag, dct:
-        MyClass(dct['x']) if type_tag == 'MyClass' else dct,
-        cls=ClassJSONDecoder
-    )
-    assert obj == obj2
