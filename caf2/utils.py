@@ -45,6 +45,7 @@ def swap_type(o: Any, swaps: TypeSwaps) -> Any:
     return o
 
 
+# TODO ignore existing permissions
 def make_executable(path: Pathable) -> None:
     st = os.stat(path)
     os.chmod(path, st.st_mode | stat.S_IEXEC)

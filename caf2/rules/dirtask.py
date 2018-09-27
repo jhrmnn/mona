@@ -9,17 +9,14 @@ from typing import TypeVar, Dict, Union
 
 from ..utils import make_executable
 from ..sessions import Session
-from ..hashing import Hash
+from ..hashing import HashedBytes
 from ..errors import InvalidFileTarget
 from ..rules import Rule, with_hook
 
 _T = TypeVar('_T')
 
 
-class HashedPath(ABC):
-    @property
-    @abstractmethod
-    def hashid(self) -> Hash: ...
+class HashingPath(ABC):
     @property
     @abstractmethod
     def path(self) -> Path: ...
@@ -27,14 +24,14 @@ class HashedPath(ABC):
 
 class FileManager(ABC):
     @abstractmethod
-    def store_from_path(self, path: Path) -> HashedPath: ...
+    def store_from_path(self, path: Path) -> HashedBytes: ...
 
 
 @with_hook('dir_task')
 @Rule
-def dir_task(exe: Union[HashedPath, bytes],
-             inputs: Dict[str, Union[HashedPath, bytes, Path]]
-             ) -> Union[Dict[str, bytes], Dict[str, HashedPath]]:
+def dir_task(exe: Union[HashingPath, bytes],
+             inputs: Dict[str, Union[HashingPath, bytes, Path]]
+             ) -> Union[Dict[str, HashedBytes]]:
     inputs = {'EXE': exe, **inputs}
     with TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
@@ -42,7 +39,7 @@ def dir_task(exe: Union[HashedPath, bytes],
         for filename, target in inputs.items():
             if isinstance(target, bytes):
                 (root/filename).write_bytes(target)
-            elif isinstance(target, (Path, HashedPath)):
+            elif isinstance(target, (Path, HashingPath)):
                 if not isinstance(target, Path):
                     target = target.path
                 (root/filename).symlink_to(target)
@@ -60,6 +57,9 @@ def dir_task(exe: Union[HashedPath, bytes],
         for path in root.glob('**/*'):
             relpath = path.relative_to(root)
             if str(relpath) not in inputs and path.is_file():
-                outputs[str(relpath)] = \
-                    fmngr.store_from_path(path) if fmngr else path.read_bytes()
+                if fmngr:
+                    output = fmngr.store_from_path(path)
+                else:
+                    output = HashedBytes(path.read_bytes())
+                outputs[str(relpath)] = output
     return outputs

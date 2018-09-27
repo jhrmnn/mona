@@ -6,13 +6,16 @@ from pathlib import Path
 from .hashing import Hash, Hashed, HashedBytes
 from .sessions import Session
 from .rules import dir_task
-from .utils import make_nonwritable, Pathable
-from .errors import UnknownFile
+from .utils import make_nonwritable, Pathable, split
+from .errors import UnknownFile, UnrecognizedInput, SymlinkIsInput
 from .json import registered_classes
 from .rules.dirtask import FileManager as _FileManager, \
-    HashedPath as _HashedPath
+    HashingPath as _HashingPath
 
-from typing import Dict, Union, cast, Tuple
+from typing import Dict, Union, cast, Tuple, Iterable, List
+
+InputTarget = Union[str, Path, bytes]
+Input = Union[str, Path, Tuple[str, InputTarget]]
 
 _dir_task = dir_task.func
 
@@ -27,10 +30,13 @@ class StoredHashedBytes(HashedBytes):
         return FileManager.active().get_bytes(self._hashid)
 
 
-class HashedPath(_HashedPath):
+class HashingPath(_HashingPath):
     def __init__(self, hashid: Hash, path: Path = None) -> None:
         self._hashid = hashid
-        self._path = path or FileManager.active().get_path(self._hashid)
+        self._path = path
+
+    def __repr__(self) -> str:
+        return f'<HashingPath hashid={self._hashid[:6]}>'
 
     @property
     def hashid(self) -> Hash:
@@ -38,12 +44,34 @@ class HashedPath(_HashedPath):
 
     @property
     def path(self) -> Path:
+        if not self._path:
+            self._path = FileManager.active().get_path(self._hashid)
         return self._path
 
 
-registered_classes[HashedPath] = (
+class HashedPath(Hashed[HashingPath]):
+    def __init__(self, hashid: Hash, label: str, path: Path = None) -> None:
+        hashing_path = HashingPath(hashid, path)
+        self._hashid = hashid
+        self._path = hashing_path
+        self._label = label
+
+    @property
+    def spec(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    def value(self) -> HashingPath:
+        return self._path
+
+    @property
+    def label(self) -> str:
+        return self._label
+
+
+registered_classes[HashingPath] = (
     lambda hp: {'hashid': hp.hashid},
-    lambda dct: HashedPath(cast(Hash, dct['hashid']))
+    lambda dct: HashingPath(cast(Hash, dct['hashid']))
 )
 
 
@@ -51,10 +79,16 @@ class FileManager(_FileManager):
     def __init__(self, root: Union[str, Pathable]) -> None:
         self._root = Path(root)
         self._cache: Dict[Hash, bytes] = {}
-        self._dir_task_hooks = self._wrap_args, self._wrap_files
+        self._source_cache: Dict[Path, HashedPath] = {}
+        self._dir_task_hooks = self._wrap_args, None
 
     def _path(self, hashid: Hash) -> Path:
         return self._root/hashid[:2]/hashid[2:]
+
+    def _path_primed(self, hashid: Hash) -> Path:
+        path = self._path(hashid)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
 
     def __contains__(self, hashid: Hash) -> bool:
         return hashid in self._cache or self._path(hashid).is_file()
@@ -62,6 +96,7 @@ class FileManager(_FileManager):
     def __call__(self, sess: Session) -> None:
         sess.storage['file_manager:self'] = self
         sess.storage['hook:dir_task'] = self._dir_task_hooks
+        sess.storage['dir_task:file_manager'] = self
 
     def get_path(self, hashid: Hash) -> Path:
         path = self._path(hashid)
@@ -80,43 +115,86 @@ class FileManager(_FileManager):
             pass
         raise UnknownFile(hashid)
 
-    def store_from_path(self, path: Path) -> HashedPath:
+    def store_from_path(self, path: Path) -> StoredHashedBytes:
+        # TODO large files could be hashed more efficiently and copied
         hashed = HashedBytes(path.read_bytes())
         hashid = hashed.hashid
         if hashid not in self:
-            stored_path = self._path(hashid)
-            stored_path.parent.mkdir(parents=True, exist_ok=True)
+            stored_path = self._path_primed(hashid)
             path.rename(stored_path)
-            make_nonwritable(path)
-        return HashedPath(hashid, stored_path)
+            make_nonwritable(stored_path)
+        return StoredHashedBytes(hashid, hashed.label)
 
     def _store_bytes(self, content: bytes) -> StoredHashedBytes:
         hashed = HashedBytes(content)
         hashid = hashed.hashid
         if hashid not in self:
             self._cache[hashid] = content
-            path = self._path(hashid)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(content)
-            make_nonwritable(path)
+            stored_path = self._path_primed(hashid)
+            stored_path.write_bytes(content)
+            make_nonwritable(stored_path)
         return StoredHashedBytes(hashid, hashed.label)
 
-    def _wrap_files(self, files: Dict[str, Union[bytes, Path]]
-                    ) -> Dict[str, Union[StoredHashedBytes, Path]]:
-        hashed_files: Dict[str, Union[StoredHashedBytes, Path]] = {}
-        for filename, target in files.items():
-            if isinstance(target, bytes):
-                hashed_files[filename] = self._store_bytes(target)
+    def _store_source(self, path: Path) -> HashedPath:
+        hashed_path = self._source_cache.get(path)
+        if hashed_path:
+            return hashed_path
+        content = path.read_bytes()
+        hashed = HashedBytes(content)
+        hashid = hashed.hashid
+        if hashid not in self:
+            self._cache[hashid] = content
+            stored_path = self._path_primed(hashid)
+            stored_path.write_bytes(content)
+            make_nonwritable(stored_path)
+        hashed_path = HashedPath(hashid, hashed.label, stored_path)
+        return self._source_cache.setdefault(path, hashed_path)
+
+    def _wrap_target(self, target: InputTarget) -> HashedPath:
+        if isinstance(target, (str, Path)):
+            return self._store_source(Path(target))
+        stored_bytes = self._store_bytes(target)
+        return HashedPath(stored_bytes.hashid, stored_bytes.label)
+
+    def _wrap_inputs(self, files: Iterable[Input]) -> Dict[str, HashedPath]:
+        hashed_files: Dict[str, HashedPath] = {}
+        target: InputTarget
+        for item in files:
+            if isinstance(item, str):
+                filename, target = item, Path(item)
+            elif isinstance(item, Path):
+                filename, target = str(item), item
+            elif isinstance(item, tuple) and len(item) == 2 and \
+                    isinstance(item[0], str) and \
+                    isinstance(item[1], (str, Path, bytes)):
+                filename, target = item
             else:
-                hashed_files[filename] = target
+                raise UnrecognizedInput(repr(item))
+            filename = str(Path(filename))  # normalize
+            hashed_files[filename] = self._wrap_target(target)
         return hashed_files
 
-    def _wrap_args(
-            self, args: Tuple[bytes, Dict[str, Union[bytes, Path]]]
-    ) -> Tuple[StoredHashedBytes, Dict[str, Union[StoredHashedBytes, Path]]]:
-        script = self._store_bytes(args[0])
-        inputs = self._wrap_files(args[1])
-        return script, inputs
+    def _wrap_args(self, args: Union[
+            Tuple[InputTarget, Dict[str, Union[bytes, Path]]],
+            Tuple[InputTarget, List[Input]],
+            Tuple[InputTarget, List[Input], Dict[str, Union[str, Path]]]
+    ]) -> Tuple[HashedPath, Dict[str, Union[HashedPath, Path]]]:
+        exe = args[0]
+        inputs = args[1]
+        stored_exe = self._wrap_target(exe)
+        if isinstance(inputs, dict):
+            inputs, symlinks = split(
+                inputs.items(), lambda item: isinstance(item[1], bytes)
+            )
+        else:
+            symlinks = list(args[2].items()) if len(args) == 3 else []
+        stored_inputs: Dict[str, Union[HashedPath, Path]] = {}
+        stored_inputs.update(self._wrap_inputs(inputs))
+        for filename, target in symlinks:
+            if filename in stored_inputs:
+                raise SymlinkIsInput(filename)
+            stored_inputs[filename] = Path(target)
+        return stored_exe, stored_inputs
 
     @staticmethod
     def active() -> 'FileManager':

@@ -53,3 +53,11 @@ class InvalidJSONObject(CafError):
 
 class UnhookableResult(CafError):
     pass
+
+
+class UnrecognizedInput(CafError):
+    pass
+
+
+class SymlinkIsInput(CafError):
+    pass
