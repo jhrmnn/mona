@@ -65,8 +65,7 @@ class HashedFuture(Hashed[_T], Future):
     def label(self) -> str: ...
 
     @abstractmethod
-    def get_result(self) -> _T:
-        pass
+    def get_result(self) -> _T: ...
 
     @property
     def value(self) -> _T:
@@ -148,7 +147,7 @@ class Task(HashedFuture[_T]):
         self._result = result
 
     def future_result(self) -> HashedFuture[_T]:
-        if self.state is not State.HAS_RUN:
+        if self.state < State.HAS_RUN:
             raise TaskHasNotRun(repr(self))
         if self.done():
             raise TaskAlreadyDone(repr(self))
