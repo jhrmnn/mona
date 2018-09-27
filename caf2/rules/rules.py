@@ -30,9 +30,10 @@ class HookedRule(Rule[_T]):
         hooks = Session.active().storage.get(f'hook:{self._hook}')
         if hooks:
             pre_hook, post_hook = hooks
-            args = pre_hook(args)
+            if pre_hook:
+                args = pre_hook(args)
         task = Rule.__call__(self, *args, **kwargs)
-        if hooks:
+        if hooks and post_hook:
             task.add_hook(post_hook)
         return task
 
