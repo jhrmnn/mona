@@ -70,6 +70,6 @@ class CachedSession(Session):
     def _store_result(self, task: Task[Any]) -> None:
         self._db.execute(
             'UPDATE tasks SET result = ? WHERE taskid = ?',
-            (pickle.dumps(task.result()), task.hashid)
+            (pickle.dumps(task.value), task.hashid)
         )
         self._db.commit()

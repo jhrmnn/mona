@@ -54,7 +54,7 @@ class HashedFuture(Hashed[_T], Future):
     Represents a hashed future.
 
     Inherits abstract methods spec() and label() from Hashed, implements
-    abstract property value and adds abstract method get_result().
+    abstract property value and adds abstract method result().
     """
     @property
     @abstractmethod
@@ -65,21 +65,22 @@ class HashedFuture(Hashed[_T], Future):
     def label(self) -> str: ...
 
     @abstractmethod
-    def get_result(self) -> _T: ...
+    def result(self) -> _T: ...
 
     @property
     def value(self) -> _T:
-        return self.result()
+        if self.done():
+            return self.result()
+        raise FutureNotDone(repr(self))
 
     def default_result(self) -> _T:
         raise FutureHasNoDefault()
 
-    def result(self, check_done: bool = True) -> _T:
+    @property
+    def value_or_default(self) -> _T:
         if self.done():
-            return self.get_result()
-        if not check_done:
-            return self.default_result()
-        raise FutureNotDone(repr(self))
+            return self.result()
+        return self.default_result()
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} {self} state={self.state.name}>'
@@ -110,7 +111,7 @@ class Task(HashedFuture[_T]):
     def label(self) -> str:
         return self._label
 
-    def get_result(self) -> _T:
+    def result(self) -> _T:
         assert not isinstance(self._result, Empty)
         if isinstance(self._result, Hashed):
             return self._result.value
@@ -156,7 +157,7 @@ class Task(HashedFuture[_T]):
 
     def call(self) -> _T:
         args = [
-            arg.result(check_done=False)
+            arg.value_or_default
             if isinstance(arg, HashedFuture)
             else arg.value
             for arg in self.args
@@ -198,7 +199,7 @@ class TaskComponent(HashedFuture[_T]):
     def label(self) -> str:
         return self._label
 
-    def get_result(self) -> _T:
+    def result(self) -> _T:
         return self.resolve(lambda task: task.result())
 
     def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
@@ -216,7 +217,7 @@ class TaskComponent(HashedFuture[_T]):
     def default_result(self) -> _T:
         if not isinstance(self._default, Empty):
             return self._default
-        return self.resolve(lambda task: task.result(check_done=False))
+        return self.resolve(lambda task: task.default_result())
 
 
 class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
@@ -231,12 +232,12 @@ class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: igno
     # override abstract property in HashedCompositeLike
     value = HashedFuture.value  # type: ignore
 
-    def get_result(self) -> Composite:
+    def result(self) -> Composite:
         return self.resolve(lambda comp: comp.value)
 
     def default_result(self) -> Composite:
         return self.resolve(
             lambda comp:
-            comp.result(check_done=False) if isinstance(comp, HashedFuture)
+            comp.value_or_default if isinstance(comp, HashedFuture)
             else comp.value
         )

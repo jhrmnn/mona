@@ -112,12 +112,8 @@ class Session:
     def run_task(self, task: Task[_T]) -> Optional[_T]:
         assert task.state is State.READY
         log.info(f'{task}: will run')
-        args = [
-            arg.result() if isinstance(arg, HashedFuture) else arg.value
-            for arg in task.args
-        ]
         with self.record(task):
-            result = task.func(*args)
+            result = task.func(*(arg.value for arg in task.args))
         side_effects = [
             self._tasks[h] for h in self._graph.side_effects[task.hashid]
         ]
@@ -138,11 +134,11 @@ class Session:
         else:
             fut = hashed
             if fut.done():
-                task.set_result(fut.result())
+                task.set_result(fut.value)
             else:
                 log.debug(f'{task}: has run, pending: {fut}')
                 task.set_future_result(fut)
-                fut.add_done_callback(lambda fut: task.set_result(fut.result()))
+                fut.add_done_callback(lambda fut: task.set_result(fut.value))
                 fut.register()
         backflow = self._process_objects([hashed], save=True)
         self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
@@ -177,7 +173,7 @@ class Session:
         )
 
         try:
-            return fut.result()
+            return fut.value
         except FutureNotDone as e:
             tasks_not_done = self._filter_tasks(lambda t: not t.done())
             if tasks_not_done:
