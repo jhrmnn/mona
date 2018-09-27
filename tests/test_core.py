@@ -82,7 +82,6 @@ def test_partial_eval():
         main = multi(5)
         sess.run_task(main)
         tasks = main.future_result().resolve()
-        assert tasks[3] == main.side_effects[3]
         sess.run_task(tasks[3])
         assert total(main).call() == 3
 
