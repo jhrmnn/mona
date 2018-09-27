@@ -8,6 +8,9 @@ from .sessions import Session
 from .rules import dir_task
 from .utils import make_nonwritable, Pathable
 from .errors import UnknownFile
+from .json import registered_classes
+from .rules.dirtask import FileManager as _FileManager, \
+    HashedPath as _HashedPath
 
 from typing import Dict, Union, cast, Tuple
 
@@ -24,7 +27,27 @@ class StoredHashedBytes(HashedBytes):
         return FileManager.active().get_bytes(self._hashid)
 
 
-class FileManager:
+class HashedPath(_HashedPath):
+    def __init__(self, hashid: Hash, path: Path = None) -> None:
+        self._hashid = hashid
+        self._path = path or FileManager.active().get_path(self._hashid)
+
+    @property
+    def hashid(self) -> Hash:
+        return self._hashid
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+
+registered_classes[HashedPath] = (
+    lambda hp: {'hashid': hp.hashid},
+    lambda dct: HashedPath(cast(Hash, dct['hashid']))
+)
+
+
+class FileManager(_FileManager):
     def __init__(self, root: Union[str, Pathable]) -> None:
         self._root = Path(root)
         self._cache: Dict[Hash, bytes] = {}
@@ -40,6 +63,12 @@ class FileManager:
         sess.storage['file_manager:self'] = self
         sess.storage['hook:dir_task'] = self._dir_task_hooks
 
+    def get_path(self, hashid: Hash) -> Path:
+        path = self._path(hashid)
+        if hashid in self._cache or path.is_file():
+            return path
+        raise UnknownFile(hashid)
+
     def get_bytes(self, hashid: Hash) -> bytes:
         content = self._cache.get(hashid)
         if content:
@@ -50,6 +79,16 @@ class FileManager:
         except FileNotFoundError:
             pass
         raise UnknownFile(hashid)
+
+    def store_from_path(self, path: Path) -> HashedPath:
+        hashed = HashedBytes(path.read_bytes())
+        hashid = hashed.hashid
+        if hashid not in self:
+            stored_path = self._path(hashid)
+            stored_path.parent.mkdir(parents=True, exist_ok=True)
+            path.rename(stored_path)
+            make_nonwritable(path)
+        return HashedPath(hashid, stored_path)
 
     def _store_bytes(self, content: bytes) -> StoredHashedBytes:
         hashed = HashedBytes(content)
