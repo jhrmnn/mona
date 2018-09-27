@@ -105,8 +105,8 @@ class TaskHookChangedHash(CafError):
 
 
 class Task(HashedFuture[_T]):
-    def __init__(self, func: Callable[..., _T], *args: Any, label: str = None
-                 ) -> None:
+    def __init__(self, func: Callable[..., _T], *args: Any, label: str = None,
+                 default: Maybe[_T] = Empty._) -> None:
         self._func = func
         self._args = tuple(map(ensure_hashed, args))
         Hashed.__init__(self)
@@ -118,6 +118,7 @@ class Task(HashedFuture[_T]):
         self._side_effects: List[Task[Any]] = []
         self._result: Union[_T, Hashed[_T], Empty] = Empty._
         self._hook: Optional[Callable[[_T], _T]] = None
+        self._default = default
 
     @property
     def spec(self) -> str:
@@ -157,6 +158,8 @@ class Task(HashedFuture[_T]):
         self._side_effects.append(task)
 
     def default_result(self) -> _T:
+        if not isinstance(self._default, Empty):
+            return self._default
         if isinstance(self._result, HashedFuture):
             return cast(_T, self._result.default_result())
         raise FutureHasNoDefault()
@@ -244,7 +247,7 @@ class TaskComponent(HashedFuture[_T]):
         if not isinstance(self._default, Empty):
             return self._default
         if self._task.state is State.HAS_RUN:
-            return self.resolve(self._task.future_result().default_result())
+            return self.resolve(self._task.default_result())
         raise FutureHasNoDefault()
 
 

@@ -11,7 +11,7 @@ from .futures import CafError
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
 from .graph import traverse
-from .utils import Literal, split
+from .utils import Literal, split, Empty, Maybe
 
 log = logging.getLogger(__name__)
 
@@ -100,8 +100,9 @@ class Session:
         return tasks
 
     def create_task(self, func: Callable[..., _T], *args: Any,
-                    label: str = None) -> Task[_T]:
-        task = Task(func, *args, label=label)
+                    label: str = None, default: Maybe[_T] = Empty._
+                    ) -> Task[_T]:
+        task = Task(func, *args, label=label, default=default)
         try:
             task = self._tasks[task.hashid]
         except KeyError:
