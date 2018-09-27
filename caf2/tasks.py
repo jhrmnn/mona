@@ -5,7 +5,7 @@ import logging
 import json
 from abc import abstractmethod
 from typing import Any, Callable, Optional, List, TypeVar, \
-    Collection, cast, Tuple, Union
+    Collection, cast, Tuple, Union, Iterable
 
 from .futures import Future, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
@@ -97,7 +97,6 @@ class Task(HashedFuture[_T]):
         )
         self._label = label or \
             f'{self._func.__qualname__}({", ".join(a.label for a in self._args)})'
-        self._side_effects: List[Task[Any]] = []
         self._result: Union[_T, Hashed[_T], Empty] = Empty._
         self._hook: Optional[Callable[[_T], _T]] = None
         self._default = default
@@ -131,13 +130,6 @@ class Task(HashedFuture[_T]):
 
     def get(self, key: Any, default: Any = Empty._) -> 'TaskComponent[Any]':
         return TaskComponent(self, [key], default)
-
-    @property
-    def side_effects(self) -> Tuple['Task[Any]', ...]:
-        return tuple(self._side_effects)
-
-    def add_side_effect(self, task: 'Task[Any]') -> None:
-        self._side_effects.append(task)
 
     def default_result(self) -> _T:
         if not isinstance(self._default, Empty):

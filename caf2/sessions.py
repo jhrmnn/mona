@@ -4,15 +4,17 @@
 import logging
 import warnings
 from contextlib import contextmanager
+from itertools import chain
+from collections import defaultdict
 from typing import Set, Any, Dict, Callable, Optional, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple
 
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
 from .graph import traverse
-from .utils import Literal, split, Empty, Maybe
-from .errors import CafError, ArgNotInSession, DependencyCycle, \
-    NoActiveSession, UnhookableResult
+from .utils import Literal, split, Empty, Maybe, call_if
+from .errors import ArgNotInSession, DependencyCycle, NoActiveSession, \
+    UnhookableResult
 
 log = logging.getLogger(__name__)
 
@@ -31,8 +33,8 @@ class Session:
     def __init__(self) -> None:
         self._tasks: Dict[Hash, Task[Any]] = {}
         self._objects: Dict[Hash, Hashed[Any]] = {}
-        self._graph = Graph({}, {}, {})
-        self._task_tape: Optional[Callable[[Task[Any]], None]] = None
+        self._graph = Graph({}, defaultdict(set), {})
+        self._parent_task: Optional[Task[Any]] = None
         self.storage: Dict[str, Any] = {}
 
     def __enter__(self) -> 'Session':
@@ -53,16 +55,19 @@ class Session:
                 )
         self._tasks.clear()
         self._objects.clear()
-        self._graph = Graph({}, {}, {})
         self.storage.clear()
+        self._graph.deps.clear()
+        self._graph.side_effects.clear()
+        self._graph.backflow.clear()
 
     @contextmanager
-    def record(self, tape: Callable[[Task[Any]], None]) -> Iterator[None]:
-        self._task_tape = tape
+    def record(self, task: Task[Any]) -> Iterator[None]:
+        assert not self._parent_task
+        self._parent_task = task
         try:
             yield
         finally:
-            self._task_tape = None
+            self._parent_task = None
 
     def _process_objects(self, objs: Iterable[Hashed[Any]], *, save: bool
                          ) -> List[Task[Any]]:
@@ -92,19 +97,16 @@ class Session:
                     label: str = None, default: Maybe[_T] = Empty._
                     ) -> Task[_T]:
         task = Task(func, *args, label=label, default=default)
+        if self._parent_task:
+            self._graph.side_effects[self._parent_task.hashid].add(task.hashid)
         try:
-            task = self._tasks[task.hashid]
+            return self._tasks[task.hashid]
         except KeyError:
             pass
-        else:
-            return task
-        finally:
-            if self._task_tape is not None:
-                self._task_tape(task)
         task.register()
         self._tasks[task.hashid] = task
-        tasks = self._process_objects(task.args, save=True)
-        self._graph.deps[task.hashid] = set(t.hashid for t in tasks)
+        arg_tasks = self._process_objects(task.args, save=True)
+        self._graph.deps[task.hashid] = set(t.hashid for t in arg_tasks)
         return task
 
     def run_task(self, task: Task[_T]) -> Iterable[Task[Any]]:
@@ -114,14 +116,14 @@ class Session:
             arg.result() if isinstance(arg, HashedFuture) else arg.value
             for arg in task.args
         ]
-        with self.record(task.add_side_effect):
+        with self.record(task):
             result = task.func(*args)
-        if task.side_effects:
-            self._graph.side_effects[task.hashid] = \
-                set(created_task.hashid for created_task in task.side_effects)
+        side_effects = [
+            self._tasks[h] for h in self._graph.side_effects[task.hashid]
+        ]
+        if side_effects:
             log.debug(
-                f'{task}: created children: '
-                f'{list(map(Literal, task.side_effects))}'
+                f'{task}: created tasks: {list(map(Literal, side_effects))}'
             )
         hashed = maybe_hashed(result)
         if hashed is None:
