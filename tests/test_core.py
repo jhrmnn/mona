@@ -13,6 +13,11 @@ def total(xs):
     return sum(xs)
 
 
+@Rule
+def multi(n):
+    return [identity(x, default=0) for x in range(n)]
+
+
 def test_pass_through():
     with Session() as sess:
         assert sess.eval(10) == 10
@@ -64,13 +69,17 @@ def test_tasks_not_run():
 
 @pytest.mark.filterwarnings("ignore:tasks were never run")
 def test_partial_eval():
-    @Rule
-    def multi():
-        return [identity(x, default=0) for x in range(5)]
-
     with Session() as sess:
-        sess.run_task(multi())
-        tasks = multi().future_result().resolve()
-        assert tasks[3] == multi().side_effects[3]
+        main = multi(5)
+        sess.run_task(main)
+        tasks = main.future_result().resolve()
+        assert tasks[3] == main.side_effects[3]
         sess.run_task(tasks[3])
-        assert total(multi()).call() == 3
+        assert total(main).call() == 3
+
+
+def test_graphviz():
+    with Session() as sess:
+        sess.eval(identity(multi(5)))
+        dot = sess.dot_graph(format='svg')
+        assert len(dot.source) == 1847
