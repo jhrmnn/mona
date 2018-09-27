@@ -26,13 +26,13 @@ class Rule(Generic[_T]):
         return self._func
 
 
-class PluginRule(Rule[_T]):
-    def __init__(self, func: Callable[..., _T], plugin: str) -> None:
+class HookedRule(Rule[_T]):
+    def __init__(self, func: Callable[..., _T], hook: str) -> None:
         Rule.__init__(self, func)
-        self._plugin = plugin
+        self._hook = hook
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
-        hooks = Session.active().storage.get(f'plugin:{self._plugin}')
+        hooks = Session.active().storage.get(f'hook:{self._hook}')
         if hooks:
             pre_hook, post_hook = hooks
             args = pre_hook(args)
@@ -42,13 +42,13 @@ class PluginRule(Rule[_T]):
         return task
 
 
-def plugin(name: str) -> Callable[[Rule[_T]], PluginRule[_T]]:
-    def decorator(rule: Rule[_T]) -> PluginRule[_T]:
-        return PluginRule(rule.func, name)
+def with_hook(name: str) -> Callable[[Rule[_T]], HookedRule[_T]]:
+    def decorator(rule: Rule[_T]) -> HookedRule[_T]:
+        return HookedRule(rule.func, name)
     return decorator
 
 
-@plugin('dir_task')
+@with_hook('dir_task')
 @Rule
 def dir_task(exe: bytes, inputs: Dict[str, Union[bytes, Path]]
              ) -> Dict[str, bytes]:
