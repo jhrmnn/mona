@@ -18,6 +18,7 @@ log = logging.getLogger(__name__)
 
 _K = TypeVar('_K')
 _T = TypeVar('_T')
+_U = TypeVar('_U')
 _HFut = TypeVar('_HFut', bound='HashedFuture')  # type: ignore
 _TC = TypeVar('_TC', bound='TaskComposite')
 
@@ -112,10 +113,7 @@ class Task(HashedFuture[_T]):
         return self._label
 
     def result(self) -> _T:
-        assert not isinstance(self._result, Empty)
-        if isinstance(self._result, Hashed):
-            return self._result.value
-        return self._result
+        return self.resolve(lambda res: res.value)
 
     @property
     def func(self) -> Callable[..., _T]:
@@ -130,6 +128,14 @@ class Task(HashedFuture[_T]):
 
     def get(self, key: Any, default: Any = Empty._) -> 'TaskComponent[Any]':
         return TaskComponent(self, [key], default)
+
+    def resolve(self, handler: Callable[[Hashed[_T]], _U] = None) -> Union[_U, _T]:
+        if isinstance(self._result, Empty):
+            raise TaskHasNotRun(repr(self))
+        handler = handler or (lambda x: x)  # type: ignore
+        if isinstance(self._result, Hashed):
+            return handler(self._result)  # type: ignore
+        return self._result
 
     def default_result(self) -> _T:
         if not isinstance(self._default, Empty):
@@ -208,7 +214,11 @@ class TaskComponent(HashedFuture[_T]):
     def get(self, key: Any, default: Any = Empty._) -> 'TaskComponent[Any]':
         return TaskComponent(self._task, self._keys + [key], default)
 
-    def resolve(self, handler: Callable[[Task[Any]], Any] = lambda x: x) -> _T:
+    @property
+    def task(self) -> Task[Any]:
+        return self._task
+
+    def resolve(self, handler: Callable[[Task[Any]], Any]) -> _T:
         obj = handler(self._task)
         for key in self._keys:
             obj = obj[key]
