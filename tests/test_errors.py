@@ -2,8 +2,8 @@ import pytest  # type: ignore
 
 from caf2 import Rule, Session
 from caf2.errors import NoActiveSession, ArgNotInSession, DependencyCycle, \
-    UnhookableResult, TaskHookChangedHash, FutureHasNoDefault, TaskAlreadyDone, \
-    TaskHasNotRun
+    UnhookableResult, TaskHookChangedHash, FutureHasNoDefault, \
+    TaskAlreadyDone, TaskHasNotRun
 
 from tests.test_core import identity
 

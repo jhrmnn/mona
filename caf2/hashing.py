@@ -102,11 +102,11 @@ class HashedCompositeLike(Hashed[Composite]):
     def components(self) -> Iterable[Hashed[Any]]:
         return self._components.values()
 
-    def resolve(self, comp_handler: Callable[[Hashed[Any]], Any] = lambda x: x
+    def resolve(self, handler: Callable[['Hashed[Any]'], Any] = lambda x: x
                 ) -> Composite:
         def hook(type_tag: str, dct: Dict[str, JSONValue]) -> Any:
             if type_tag == 'Hashed':
-                return comp_handler(self._components[cast(Hash, dct['hashid'])])
+                return handler(self._components[cast(Hash, dct['hashid'])])
             return dct
         obj = json.loads(self._jsonstr, hook=hook, cls=ClassJSONDecoder)
         return cast(Composite, obj)

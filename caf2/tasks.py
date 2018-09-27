@@ -5,7 +5,7 @@ import logging
 import json
 from abc import abstractmethod
 from typing import Any, Callable, Optional, List, TypeVar, \
-    Collection, cast, Tuple, Union, Iterable
+    Collection, cast, Tuple, Union
 
 from .futures import Future, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
@@ -199,11 +199,7 @@ class TaskComponent(HashedFuture[_T]):
         return self._label
 
     def get_result(self) -> _T:
-        return self.resolve(self._task.get_result())
-
-    @property
-    def task(self) -> Task[Any]:
-        return self._task
+        return self.resolve(lambda task: task.result())
 
     def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
         return self.get(key)
@@ -211,7 +207,8 @@ class TaskComponent(HashedFuture[_T]):
     def get(self, key: Any, default: Any = Empty._) -> 'TaskComponent[Any]':
         return TaskComponent(self._task, self._keys + [key], default)
 
-    def resolve(self, obj: Any) -> _T:
+    def resolve(self, handler: Callable[[Task[Any]], Any] = lambda x: x) -> _T:
+        obj = handler(self._task)
         for key in self._keys:
             obj = obj[key]
         return cast(_T, obj)
@@ -219,9 +216,7 @@ class TaskComponent(HashedFuture[_T]):
     def default_result(self) -> _T:
         if not isinstance(self._default, Empty):
             return self._default
-        if self._task.state is State.HAS_RUN:
-            return self.resolve(self._task.default_result())
-        raise FutureHasNoDefault()
+        return self.resolve(lambda task: task.result(check_done=False))
 
 
 class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
