@@ -241,11 +241,11 @@ class TaskComponent(HashedFuture[_T]):
         return cast(_T, obj)
 
     def default_result(self) -> _T:
-        if isinstance(self._default, Empty):
-            if self._task.state is State.HAS_RUN:
-                return self.resolve(self._task.future_result().default_result())
-            raise FutureHasNoDefault()
-        return self._default
+        if not isinstance(self._default, Empty):
+            return self._default
+        if self._task.state is State.HAS_RUN:
+            return self.resolve(self._task.future_result().default_result())
+        raise FutureHasNoDefault()
 
 
 class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore

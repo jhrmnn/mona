@@ -51,13 +51,13 @@ class Session:
         Session._active = self
         return self
 
+    def _filter_tasks(self, cond: Callable[[Task[Any]], bool]) -> List[Task[Any]]:
+        return list(filter(cond, self._tasks.values()))
+
     def __exit__(self, exc_type: Any, *args: Any) -> None:
         Session._active = None
         if exc_type is None:
-            tasks_not_run = [
-                task for task in self._tasks.values()
-                if task.state < State.HAS_RUN
-            ]
+            tasks_not_run = self._filter_tasks(lambda t: t.state < State.HAS_RUN)
             if tasks_not_run:
                 warnings.warn(
                     f'tasks were never run: {tasks_not_run}', RuntimeWarning
@@ -171,12 +171,14 @@ class Session:
             depth,
             eager_traverse,
         )
+
         try:
             return fut.result()
         except FutureNotDone as e:
-            raise DependencyCycle(
-                [task for task in self._tasks.values() if not task.done()]
-            ) from e
+            tasks_not_done = self._filter_tasks(lambda t: not t.done())
+            if tasks_not_done:
+                raise DependencyCycle(tasks_not_done) from e
+            raise
 
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
         from graphviz import Digraph  # type: ignore
