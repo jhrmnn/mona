@@ -11,7 +11,8 @@ from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
 from .graph import traverse
 from .utils import Literal, split, Empty, Maybe
-from .errors import CafError, ArgNotInSession, DependencyCycle, NoActiveSession
+from .errors import CafError, ArgNotInSession, DependencyCycle, \
+    NoActiveSession, UnhookableResult
 
 log = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ class Session:
         hashed = maybe_hashed(result)
         if hashed is None:
             if task.has_hook():
-                raise CafError(f'{task} has hook and unhashable result {result}')
+                raise UnhookableResult(f'{result!r} of {task}')
             task.set_result(result)
             return ()
         if task.has_hook():

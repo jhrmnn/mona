@@ -1,7 +1,8 @@
 import pytest  # type: ignore
 
 from caf2 import Rule, Session
-from caf2.errors import NoActiveSession, ArgNotInSession, DependencyCycle
+from caf2.errors import NoActiveSession, ArgNotInSession, DependencyCycle, \
+    UnhookableResult, TaskHookChangedHash
 
 from tests.test_core import identity
 
@@ -37,3 +38,23 @@ def test_dependency_cycle():
     with pytest.raises(DependencyCycle):
         with Session() as sess:
             sess.eval(f(1))
+
+
+def test_unhookable():
+    @Rule
+    def f(x):
+        return object()
+
+    with pytest.raises(UnhookableResult):
+        with Session() as sess:
+            task = f(1)
+            task.add_hook(lambda x: x)
+            sess.eval(task)
+
+
+def test_invalid_hook():
+    with pytest.raises(TaskHookChangedHash):
+        with Session() as sess:
+            task = identity(1)
+            task.add_hook(lambda x: 0)
+            sess.eval(task)

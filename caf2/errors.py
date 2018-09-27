@@ -49,3 +49,7 @@ class TaskHookChangedHash(CafError):
 
 class InvalidJSONObject(CafError):
     pass
+
+
+class UnhookableResult(CafError):
+    pass
