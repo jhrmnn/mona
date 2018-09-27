@@ -3,7 +3,7 @@ import pytest  # type: ignore
 from caf2 import Rule, Session
 from caf2.errors import NoActiveSession, ArgNotInSession, DependencyCycle, \
     UnhookableResult, TaskHookChangedHash, FutureHasNoDefault, \
-    TaskAlreadyDone, TaskHasNotRun
+    TaskAlreadyDone, TaskHasNotRun, TaskHasAlreadyRun, TaskNotReady
 
 from tests.test_core import identity
 
@@ -84,3 +84,22 @@ def test_invalid_hook():
             task = identity(1)
             task.add_hook(lambda x: 0)
             sess.eval(task)
+
+
+def test_resolve_unrun():
+    with pytest.raises(TaskHasNotRun):
+        with Session():
+            identity(1).resolve()
+
+
+def test_run_pending():
+    with pytest.raises(TaskNotReady):
+        with Session() as sess:
+            sess.run_task(identity(identity(1)))
+
+
+def test_run_already_run():
+    with Session() as sess:
+        with pytest.raises(TaskHasAlreadyRun):
+            sess.run_task(identity(1))
+            sess.run_task(identity(1))

@@ -7,14 +7,14 @@ from contextlib import contextmanager
 from itertools import chain
 from collections import defaultdict
 from typing import Set, Any, Dict, Callable, Optional, \
-    TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple
+    TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple, Union
 
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
 from .graph import traverse, NodeExecuted
 from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import ArgNotInSession, DependencyCycle, NoActiveSession, \
-    UnhookableResult
+    UnhookableResult, TaskHasAlreadyRun, TaskNotReady
 
 log = logging.getLogger(__name__)
 
@@ -109,8 +109,11 @@ class Session:
         self._graph.deps[task.hashid] = set(t.hashid for t in arg_tasks)
         return task
 
-    def run_task(self, task: Task[_T]) -> Optional[_T]:
-        assert task.state is State.READY
+    def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
+        if task.state < State.READY:
+            raise TaskNotReady(repr(task))
+        if task.state > State.READY:
+            raise TaskHasAlreadyRun(repr(task))
         log.info(f'{task}: will run')
         with self.record(task):
             result = task.func(*(arg.value for arg in task.args))
@@ -142,7 +145,7 @@ class Session:
                 fut.register()
         backflow = self._process_objects([hashed], save=True)
         self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
-        return None
+        return hashed
 
     def _execute(self, task: Task[Any], reg: NodeExecuted[Task[Any]]) -> None:
         self.run_task(task)

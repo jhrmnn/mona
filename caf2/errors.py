@@ -39,6 +39,14 @@ class TaskHasNotRun(CafError):
     pass
 
 
+class TaskHasAlreadyRun(CafError):
+    pass
+
+
+class TaskNotReady(CafError):
+    pass
+
+
 class TaskAlreadyDone(CafError):
     pass
 

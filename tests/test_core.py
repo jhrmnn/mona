@@ -1,6 +1,7 @@
 import pytest  # type: ignore
 
 from caf2 import Rule, Session
+from caf2.rules import with_hook
 
 
 @Rule
@@ -98,3 +99,15 @@ def test_graphviz():
         sess.eval(identity(multi(5)))
         dot = sess.dot_graph(format='svg')
         assert len(dot.source) == 1847
+
+
+def test_with_hook():
+    @with_hook('test')
+    @Rule
+    def f(x):
+        return 1
+
+    with Session() as sess:
+        sess.storage['hook:test'] = None, lambda x: x
+        task = f(1)
+        sess.eval(task)
