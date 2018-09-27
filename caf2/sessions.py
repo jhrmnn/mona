@@ -156,9 +156,15 @@ class Session:
         fut.register()
         traverse(
             self._process_objects([fut], save=False),
-            lambda task: (self._tasks[h] for h in self._graph.deps[task.hashid]),
-            lambda task: task.state > State.READY,
-            lambda task, reg: task.add_ready_callback(lambda t: reg((t,))),
+            lambda task: (self._tasks[h] for h in chain(
+                self._graph.deps[task.hashid],
+                self._graph.backflow.get(task.hashid, ()),
+            )),
+            lambda task: task.done(),
+            lambda task, reg: call_if(
+                task.state < State.HAS_RUN,
+                task.add_ready_callback, lambda t: reg((t,))
+            ),
             lambda task, reg: reg(task, self.run_task(task)),
             depth,
             eager_traverse,
