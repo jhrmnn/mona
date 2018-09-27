@@ -58,6 +58,12 @@ def make_nonwritable(path: Pathable) -> None:
     )
 
 
+def call_if(cond: bool, func: Callable[..., None], *args: Any, **kwargs: Any
+            ) -> None:
+    if cond:
+        func(*args, **kwargs)
+
+
 def split(iterable: Iterable[_T], first: Callable[[_T], bool]
           ) -> Tuple[List[_T], List[_T]]:
     left: List[_T] = []
