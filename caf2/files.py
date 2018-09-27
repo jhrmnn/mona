@@ -19,7 +19,7 @@ _dir_task = dir_task.func
 
 class StoredHashedBytes(HashedBytes):
     def __init__(self, hashid: Hash, label: str) -> None:
-        Hashed.__init__(self, hashid)
+        self._hashid = hashid
         self._label = label
 
     @property

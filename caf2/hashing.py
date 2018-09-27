@@ -27,9 +27,9 @@ def _hash_text(text: Union[str, bytes]) -> Hash:
 
 
 class Hashed(ABC, Generic[_T]):
-    def __init__(self, hashid: Hash = None) -> None:
+    def __init__(self) -> None:
         assert not hasattr(self, '_hashid')
-        self._hashid = hashid or _hash_text(self.spec)
+        self._hashid = _hash_text(self.spec)
 
     @property
     @abstractmethod
