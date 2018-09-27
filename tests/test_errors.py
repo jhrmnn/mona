@@ -2,7 +2,7 @@ import pytest  # type: ignore
 
 from caf2 import Rule, Session
 from caf2.errors import NoActiveSession, ArgNotInSession, DependencyCycle, \
-    UnhookableResult, TaskHookChangedHash
+    UnhookableResult, TaskHookChangedHash, FutureHasNoDefault
 
 from tests.test_core import identity
 
@@ -10,6 +10,12 @@ from tests.test_core import identity
 def test_no_session():
     with pytest.raises(NoActiveSession):
         identity(10)
+
+
+def test_missing_default():
+    with pytest.raises(FutureHasNoDefault):
+        with Session():
+            identity(identity(1)).call()
 
 
 @pytest.mark.filterwarnings("ignore:tasks were never run")

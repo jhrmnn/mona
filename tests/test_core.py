@@ -23,6 +23,15 @@ def test_pass_through():
         assert sess.eval(10) == 10
 
 
+def test_object():
+    @Rule
+    def get_object():
+        return object()
+
+    with Session() as sess:
+        sess.eval(get_object())
+
+
 def test_returned_done_future():
     @Rule
     def f(x):
