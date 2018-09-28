@@ -33,6 +33,19 @@ def running_task() -> Task[Any]:
     return session.running_task
 
 
+class SessionPlugin:
+    name: str
+
+    def __call__(self, sess: 'Session') -> None:
+        sess.register_plugin(self.name, self)
+
+    def post_enter(self, sess: 'Session') -> None:
+        pass
+
+    def pre_exit(self, sess: 'Session') -> None:
+        pass
+
+
 class Graph(NamedTuple):
     deps: Dict[Hash, Set[Hash]]
     side_effects: Dict[Hash, Set[Hash]]
@@ -40,7 +53,7 @@ class Graph(NamedTuple):
 
 
 class Session:
-    def __init__(self) -> None:
+    def __init__(self, plugins: Iterable[SessionPlugin] = None) -> None:
         self._tasks: Dict[Hash, Task[Any]] = {}
         self._objects: Dict[Hash, Hashed[Any]] = {}
         self._graph = Graph({}, defaultdict(set), {})
@@ -48,6 +61,9 @@ class Session:
             ContextVar('running_task')
         self._running_task.set(None)
         self._storage: Dict[str, Any] = {}
+        self._plugins: Dict[str, SessionPlugin] = {}
+        for plugin in plugins or ():
+            plugin(self)
 
     def _check_active(self) -> None:
         sess = _active_session.get()
@@ -59,15 +75,22 @@ class Session:
         self._check_active()
         return self._storage
 
+    def register_plugin(self, name: str, plugin: SessionPlugin) -> None:
+        self._plugins[name] = plugin
+
     def __enter__(self) -> 'Session':
         assert _active_session.get() is None
         self._active_session_token = _active_session.set(self)
+        for plugin in self._plugins.values():
+            plugin.post_enter(self)
         return self
 
     def _filter_tasks(self, cond: Callable[[Task[Any]], bool]) -> List[Task[Any]]:
         return list(filter(cond, self._tasks.values()))
 
     def __exit__(self, exc_type: Any, *args: Any) -> None:
+        for plugin in reversed(list(self._plugins.values())):
+            plugin.pre_exit(self)
         assert _active_session.get() is self
         _active_session.reset(self._active_session_token)
         del self._active_session_token

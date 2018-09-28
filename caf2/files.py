@@ -4,7 +4,7 @@
 from pathlib import Path
 
 from .hashing import Hash, Hashed, HashedBytes
-from .sessions import Session
+from .sessions import Session, SessionPlugin
 from .rules import dir_task
 from .utils import make_nonwritable, Pathable, split
 from .errors import UnknownFile, UnrecognizedInput, DupliciteInputFile
@@ -71,7 +71,9 @@ registered_classes[HashingPath] = (
 )
 
 
-class FileManager(_FileManager):
+class FileManager(_FileManager, SessionPlugin):
+    name = 'file_manager'
+
     def __init__(self, root: Union[str, Pathable]) -> None:
         self._root = Path(root)
         self._cache: Dict[Hash, bytes] = {}
@@ -89,7 +91,7 @@ class FileManager(_FileManager):
     def __contains__(self, hashid: Hash) -> bool:
         return hashid in self._cache or self._path(hashid).is_file()
 
-    def __call__(self, sess: Session) -> None:
+    def post_enter(self, sess: Session) -> None:
         sess.storage['file_manager:self'] = self
         sess.storage['hook:dir_task'] = self._dir_task_hooks
         sess.storage['dir_task:file_manager'] = self

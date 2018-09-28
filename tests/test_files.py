@@ -9,7 +9,7 @@ from caf2.hashing import HashedBytes
 from caf2.files import StoredHashedBytes
 from caf2.errors import UnknownFile, UnrecognizedInput, DupliciteInputFile
 
-from tests.test_dirtask import calcs, analysis
+from tests.test_dirtask import calcs
 
 
 @pytest.fixture(scope='module')
@@ -37,9 +37,7 @@ async def calcs2():
 
 def test_hashing(tmpdir):
     def run(calcs, fmngr=None):
-        with Session() as sess:
-            if fmngr:
-                fmngr(sess)
+        with Session([fmngr] if fmngr else []) as sess:
             sess.run_task(calcs())
             fut = calcs().future_result()
             sess.eval(calcs())
@@ -50,8 +48,7 @@ def test_hashing(tmpdir):
     fmngr = FileManager(tmpdir)
     without_fmngr = run(calcs)
     with_fmngr = run(calcs, fmngr)
-    with Session() as sess:
-        fmngr(sess)
+    with Session([fmngr]) as sess:
         task = dir_task(
             '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
             [('data', str(0).encode())],
@@ -74,8 +71,7 @@ def test_hashing(tmpdir):
 def test_missing_file(tmpdir):
     fmngr = FileManager(tmpdir)
     with pytest.raises(UnknownFile):
-        with Session() as sess:
-            fmngr(sess)
+        with Session([fmngr]) as sess:
             sess.run_task(calcs())
             shutil.rmtree(tmpdir)
             fmngr._cache.clear()
@@ -84,8 +80,7 @@ def test_missing_file(tmpdir):
 
 def test_access(tmpdir):
     fmngr = FileManager(tmpdir)
-    with Session() as sess:
-        fmngr(sess)
+    with Session([fmngr]) as sess:
         sess.run_task(calcs())
         fut = calcs().future_result()
         sess.eval(calcs())
@@ -105,17 +100,13 @@ def test_alt_input(datafile, tmpdir):
             ['data'],
             {'input': 'data'},
         )
-    fmngr = FileManager(tmpdir)
-    with Session() as sess:
-        fmngr(sess)
+    with Session([FileManager(tmpdir)]) as sess:
         sess.run_task(create_task())
         int(create_task().value['STDOUT']) == 4
 
 
 def test_alt_input2(datafile, tmpdir):
-    fmngr = FileManager(tmpdir)
-    with Session() as sess:
-        fmngr(sess)
+    with Session([FileManager(tmpdir)]) as sess:
         assert int(sess.run_task(dir_task(
             '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
             [Path('data')],
@@ -126,9 +117,7 @@ def test_alt_input2(datafile, tmpdir):
 def test_alt_input3(tmpdir):
     tmpdir = Path(tmpdir)
     (tmpdir/'data').write_text('2')
-    fmngr = FileManager(tmpdir)
-    with Session() as sess:
-        fmngr(sess)
+    with Session([FileManager(tmpdir)]):
         with pytest.raises(UnrecognizedInput):
             dir_task(b'', [object()])
         with pytest.raises(DupliciteInputFile):
