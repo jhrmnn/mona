@@ -31,13 +31,13 @@ class MergedQueue(Generic[_T]):
             raise IndexError('pop from empty MergedQueue')
 
 
-def traverse(start: Iterable[_T],
-             edges_from: Callable[[_T], Iterable[_T]],
-             sentinel: Callable[[_T], bool] = None,
-             register: NodeRegister[_T] = None,
-             execute: NodeExecutor[_T] = None,
-             depth: bool = False,
-             eager_execute: bool = False) -> Set[_T]:
+def traverse_exec(start: Iterable[_T],
+                  edges_from: Callable[[_T], Iterable[_T]],
+                  register: NodeRegister[_T],
+                  execute: NodeExecutor[_T],
+                  sentinel: Callable[[_T], bool] = None,
+                  depth: bool = False,
+                  eager_execute: bool = False) -> Set[_T]:
     """
     Traverse a self-extending dynamic DAG and return visited nodes.
 
@@ -51,7 +51,6 @@ def traverse(start: Iterable[_T],
     :param depth: Traverse depth-first if true, breadth-first otherwise
     :param eager_execute: Prioritize execution before traversal if true
     """
-    execute = execute or (lambda n, r: None)
     visited: Set[_T] = set()
     pending: Set[_T] = set()
     traverse_queue, execute_queue = Deque[_T](), Deque[_T]()
@@ -75,12 +74,27 @@ def traverse(start: Iterable[_T],
             visited.add(n)
             if sentinel and sentinel(n):
                 continue
-            if register:
-                register(n, lambda ms: execute_queue.extend(ms))
+            register(n, lambda ms: execute_queue.extend(ms))
             traverse_queue.extend(m for m in edges_from(n) if m not in visited)
         else:
             pending.add(n)
             execute(n, executed)
+    return visited
+
+
+def traverse(start: Iterable[_T],
+             edges_from: Callable[[_T], Iterable[_T]],
+             sentinel: Callable[[_T], bool] = None,
+             depth: bool = False) -> Set[_T]:
+    visited: Set[_T] = set()
+    queue = Deque[_T]()
+    queue.extend(start)
+    while queue:
+        n = queue.pop() if depth else queue.popleft()
+        visited.add(n)
+        if sentinel and sentinel(n):
+            continue
+        queue.extend(m for m in edges_from(n) if m not in visited)
     return visited
 
 

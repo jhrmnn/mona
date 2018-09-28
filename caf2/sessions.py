@@ -11,7 +11,7 @@ from typing import Set, Any, Dict, Callable, Optional, \
 
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
-from .graph import traverse, NodeExecuted
+from .graph import traverse, traverse_exec, NodeExecuted
 from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import ArgNotInSession, DependencyCycle, NoActiveSession, \
     UnhookableResult, TaskHasAlreadyRun, TaskNotReady
@@ -153,26 +153,26 @@ class Session:
             self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
         ))
 
-    def eval(self, obj: Any, depth: bool = False, eager_traverse: bool = False
+    def eval(self, obj: Any, depth: bool = False, eager_execute: bool = False
              ) -> Any:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
         fut.register()
-        traverse(
+        traverse_exec(
             self._process_objects([fut], save=False),
             lambda task: (self._tasks[h] for h in chain(
                 self._graph.deps[task.hashid],
                 self._graph.backflow.get(task.hashid, ()),
             )),
-            lambda task: task.done(),
             lambda task, reg: call_if(
                 task.state < State.HAS_RUN,
                 task.add_ready_callback, lambda t: reg((t,))
             ),
             self._execute,
+            lambda task: task.done(),
             depth,
-            eager_traverse,
+            eager_execute,
         )
 
         try:
