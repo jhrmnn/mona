@@ -172,7 +172,7 @@ class Task(HashedFuture[_T]):
         return self._result
 
     def call(self) -> _T:
-        return asyncio.run(self.call_async())  # type: ignore
+        return asyncio.run(self.call_async())
 
     async def call_async(self) -> _T:
         args = [

@@ -132,7 +132,7 @@ class Session:
         return task
 
     def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
-        return asyncio.run(self.run_task_async(task))  # type: ignore
+        return asyncio.run(self.run_task_async(task))
 
     async def run_task_async(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         if task.state < State.READY:
@@ -175,15 +175,14 @@ class Session:
     async def _execute(self, task: Task[Any], reg: NodeExecuted[Task[Any]]
                        ) -> None:
         await self.run_task_async(task)
-        reg(task, (
+        backflow = (
             self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
-        ))
+        )
+        reg(task, backflow)
 
     def eval(self, obj: Any, depth: bool = False, eager_execute: bool = False
              ) -> Any:
-        return asyncio.run(  # type: ignore
-            self.eval_async(obj, depth, eager_execute)
-        )
+        return asyncio.run(self.eval_async(obj, depth, eager_execute))
 
     async def eval_async(self,
                          obj: Any,

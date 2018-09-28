@@ -16,5 +16,5 @@ async def run_process(*args: str, **kwargs: Any) -> None:
 
 
 async def run_thread(func: Callable[..., _T], *args: Any) -> _T:
-    loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()  # type: ignore
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, func, *args)
