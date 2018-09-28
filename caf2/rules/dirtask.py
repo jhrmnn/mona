@@ -1,18 +1,17 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from abc import ABC, abstractmethod
 from typing import TypeVar, Dict, Union
-import asyncio
 
 from ..utils import make_executable
 from ..sessions import Session
 from ..hashing import HashedBytes
 from ..errors import InvalidFileTarget
 from ..rules import Rule, with_hook
+from ..caf import run_process
 
 _T = TypeVar('_T')
 
@@ -49,12 +48,7 @@ async def dir_task(exe: Union[HashingPath, bytes],
         make_executable(exefile)
         with (root/'STDOUT').open('w') as stdout, \
                 (root/'STDERR').open('w') as stderr:
-            proc = await asyncio.create_subprocess_exec(
-                exefile, stdout=stdout, stderr=stderr, cwd=root
-            )
-            retcode = await proc.wait()
-        if retcode:
-            raise subprocess.CalledProcessError(retcode, [exefile])
+            await run_process(exefile, stdout=stdout, stderr=stderr, cwd=root)
         outputs = {}
         fmngr = Session.active().storage.get('dir_task:file_manager')
         assert not fmngr or isinstance(fmngr, FileManager)
