@@ -60,13 +60,13 @@ async def traverse_exec(start: Iterable[_T],
         traverse_queue.extend(m for m in ms if m not in visited)
 
     traverse_queue.extend(start)
+    traverse_pop = (lambda q: q.pop()) if depth else (lambda q: q.popleft())
     queues = [
-        (traverse_queue, (lambda q: q.pop()) if depth else (lambda q: q.popleft()))
+        (traverse_queue, traverse_pop),
+        (execute_queue, lambda q: q.popleft())
     ]
-    if execute:
-        queues.append((execute_queue, lambda q: q.popleft()))
-        if eager_execute:
-            queues.reverse()
+    if eager_execute:
+        queues.reverse()
     queue = MergedQueue(queues)
     while queue or pending:
         n, q = queue.pop()
