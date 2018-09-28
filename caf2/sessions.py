@@ -17,7 +17,7 @@ from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
 from .graph import traverse, traverse_exec, NodeExecuted
 from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import ArgNotInSession, DependencyCycle, NoActiveSession, \
-    UnhookableResult, TaskHasAlreadyRun, TaskNotReady
+    UnhookableResult, TaskHasAlreadyRun, TaskNotReady, NoRunningTask
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +25,11 @@ _T = TypeVar('_T')
 
 _active_session: ContextVar[Optional['Session']] = \
     ContextVar('active_session', default=None)
+
+
+def running_task() -> Task[Any]:
+    session = Session.active()
+    return session.running_task
 
 
 class Graph(NamedTuple):
@@ -67,6 +72,13 @@ class Session:
         self._graph.deps.clear()
         self._graph.side_effects.clear()
         self._graph.backflow.clear()
+
+    @property
+    def running_task(self) -> Task[Any]:
+        task = self._running_task.get()
+        if task:
+            return task
+        raise NoRunningTask(repr(self))
 
     @contextmanager
     def _running_task_ctx(self, task: Task[Any]) -> Iterator[None]:

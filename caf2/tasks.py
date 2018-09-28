@@ -7,7 +7,7 @@ from abc import abstractmethod
 import asyncio
 import inspect
 from typing import Any, Callable, Optional, List, TypeVar, \
-    Collection, cast, Tuple, Union, Awaitable
+    Collection, cast, Tuple, Union, Awaitable, Dict
 
 from .futures import Future, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
@@ -110,6 +110,7 @@ class Task(HashedFuture[_T]):
         self._result: Union[_T, Hashed[_T], Empty] = Empty._
         self._hook: Optional[Callable[[_T], _T]] = None
         self._default = default
+        self.storage: Dict[str, Any] = {}
 
     @property
     def spec(self) -> str:

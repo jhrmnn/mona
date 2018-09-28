@@ -73,3 +73,7 @@ class DupliciteInputFile(CafError):
 
 class TaskFunctionNotCoroutine(CafError):
     pass
+
+
+class NoRunningTask(CafError):
+    pass

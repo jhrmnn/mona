@@ -1,6 +1,6 @@
 import pytest  # type: ignore
 
-from caf2 import Rule, Session
+from caf2 import Rule, Session, running_task
 from caf2.rules import with_hook
 
 
@@ -111,3 +111,13 @@ def test_with_hook():
         sess.storage['hook:test'] = None, lambda x: x
         task = f(1)
         sess.eval(task)
+
+
+def test_local_storage():
+    @Rule
+    async def f():
+        return running_task().storage['test']
+
+    with Session() as sess:
+        f().storage['test'] = 3
+        assert sess.run_task(f()).value == 3
