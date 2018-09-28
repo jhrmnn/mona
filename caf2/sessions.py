@@ -23,6 +23,9 @@ log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
 
+_active_session: ContextVar[Optional['Session']] = \
+    ContextVar('active_session', default=None)
+
 
 class Graph(NamedTuple):
     deps: Dict[Hash, Set[Hash]]
@@ -31,8 +34,6 @@ class Graph(NamedTuple):
 
 
 class Session:
-    _active: Optional['Session'] = None
-
     def __init__(self) -> None:
         self._tasks: Dict[Hash, Task[Any]] = {}
         self._objects: Dict[Hash, Hashed[Any]] = {}
@@ -43,15 +44,17 @@ class Session:
         self.storage: Dict[str, Any] = {}
 
     def __enter__(self) -> 'Session':
-        assert Session._active is None
-        Session._active = self
+        assert _active_session.get() is None
+        self._active_session_token = _active_session.set(self)
         return self
 
     def _filter_tasks(self, cond: Callable[[Task[Any]], bool]) -> List[Task[Any]]:
         return list(filter(cond, self._tasks.values()))
 
     def __exit__(self, exc_type: Any, *args: Any) -> None:
-        Session._active = None
+        assert _active_session.get() is self
+        _active_session.reset(self._active_session_token)
+        del self._active_session_token
         if exc_type is None:
             tasks_not_run = self._filter_tasks(lambda t: t.state < State.HAS_RUN)
             if tasks_not_run:
@@ -223,6 +226,7 @@ class Session:
 
     @classmethod
     def active(cls) -> 'Session':
-        if cls._active is None:
+        session = _active_session.get()
+        if session is None:
             raise NoActiveSession()
-        return cls._active
+        return session
