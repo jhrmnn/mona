@@ -1,12 +1,16 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, Callable, TypeVar, Generic, Awaitable
+from typing import Any, Callable, TypeVar, Generic, Awaitable, \
+    Tuple, Optional
 
 from ..tasks import Task
 from ..sessions import Session
 
 _T = TypeVar('_T')
+InputHook = Callable[[Tuple[Any, ...]], Tuple[Any, ...]]
+OutputHook = Callable[[_T], _T]
+Hooks = Optional[Tuple[Optional[InputHook], Optional[OutputHook[_T]]]]
 
 
 class Rule(Generic[_T]):
@@ -27,7 +31,7 @@ class HookedRule(Rule[_T]):
         self._hook = hook
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
-        hooks = Session.active().storage.get(f'hook:{self._hook}')
+        hooks: Hooks[_T] = Session.active().storage.get(f'hook:{self._hook}')
         if hooks:
             pre_hook, post_hook = hooks
             if pre_hook:
