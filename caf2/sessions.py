@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from itertools import chain
 from collections import defaultdict
 import asyncio
+from contextvars import ContextVar
 from typing import Set, Any, Dict, Callable, Optional, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple, \
     Union, Awaitable
@@ -36,7 +37,9 @@ class Session:
         self._tasks: Dict[Hash, Task[Any]] = {}
         self._objects: Dict[Hash, Hashed[Any]] = {}
         self._graph = Graph({}, defaultdict(set), {})
-        self._parent_task: Optional[Task[Any]] = None
+        self._running_task: ContextVar[Optional[Task[Any]]] = \
+            ContextVar('running_task')
+        self._running_task.set(None)
         self.storage: Dict[str, Any] = {}
 
     def __enter__(self) -> 'Session':
@@ -63,13 +66,14 @@ class Session:
         self._graph.backflow.clear()
 
     @contextmanager
-    def record(self, task: Task[Any]) -> Iterator[None]:
-        assert not self._parent_task
-        self._parent_task = task
+    def _running_task_ctx(self, task: Task[Any]) -> Iterator[None]:
+        assert not self._running_task.get()
+        self._running_task.set(task)
         try:
             yield
         finally:
-            self._parent_task = None
+            assert self._running_task.get() is task
+            self._running_task.set(None)
 
     def _process_objects(self, objs: Iterable[Hashed[Any]], *, save: bool
                          ) -> List[Task[Any]]:
@@ -99,8 +103,9 @@ class Session:
                     label: str = None, default: Maybe[_T] = Empty._
                     ) -> Task[_T]:
         task = Task(corofunc, *args, label=label, default=default)
-        if self._parent_task:
-            self._graph.side_effects[self._parent_task.hashid].add(task.hashid)
+        parent_task = self._running_task.get()
+        if parent_task:
+            self._graph.side_effects[parent_task.hashid].add(task.hashid)
         try:
             return self._tasks[task.hashid]
         except KeyError:
@@ -120,7 +125,7 @@ class Session:
         if task.state > State.READY:
             raise TaskHasAlreadyRun(repr(task))
         log.info(f'{task}: will run')
-        with self.record(task):
+        with self._running_task_ctx(task):
             result = await task.corofunc(*(arg.value for arg in task.args))
         side_effects = [
             self._tasks[h] for h in self._graph.side_effects[task.hashid]
