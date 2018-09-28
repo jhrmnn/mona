@@ -17,7 +17,8 @@ from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
 from .graph import traverse, traverse_exec, NodeExecuted
 from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import ArgNotInSession, DependencyCycle, NoActiveSession, \
-    UnhookableResult, TaskHasAlreadyRun, TaskNotReady, NoRunningTask
+    UnhookableResult, TaskHasAlreadyRun, TaskNotReady, NoRunningTask, \
+    SessionNotActive
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +47,17 @@ class Session:
         self._running_task: ContextVar[Optional[Task[Any]]] = \
             ContextVar('running_task')
         self._running_task.set(None)
-        self.storage: Dict[str, Any] = {}
+        self._storage: Dict[str, Any] = {}
+
+    def _check_active(self) -> None:
+        sess = _active_session.get()
+        if sess is None or sess is not self:
+            raise SessionNotActive(repr(self))
+
+    @property
+    def storage(self) -> Dict[str, Any]:
+        self._check_active()
+        return self._storage
 
     def __enter__(self) -> 'Session':
         assert _active_session.get() is None
@@ -68,7 +79,7 @@ class Session:
                 )
         self._tasks.clear()
         self._objects.clear()
-        self.storage.clear()
+        self._storage.clear()
         self._graph.deps.clear()
         self._graph.side_effects.clear()
         self._graph.backflow.clear()
@@ -207,7 +218,6 @@ class Session:
             depth,
             eager_execute,
         )
-
         try:
             return fut.value
         except FutureNotDone as e:

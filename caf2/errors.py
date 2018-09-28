@@ -11,6 +11,10 @@ class NoActiveSession(CafError):
     pass
 
 
+class SessionNotActive(CafError):
+    pass
+
+
 class ArgNotInSession(CafError):
     pass
 
