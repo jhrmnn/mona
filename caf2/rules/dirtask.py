@@ -11,7 +11,7 @@ from ..sessions import Session
 from ..hashing import HashedBytes
 from ..errors import InvalidFileTarget
 from ..rules import Rule, with_hook
-from ..caf import run_process
+from ..runners import run_process
 
 _T = TypeVar('_T')
 

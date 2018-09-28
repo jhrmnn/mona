@@ -1,6 +1,8 @@
+import subprocess
+
 import pytest  # type: ignore
 
-from caf2 import Rule, Session, running_task, run_thread
+from caf2 import Rule, Session, running_task, run_thread, run_shell
 from caf2.rules import with_hook
 
 
@@ -130,3 +132,12 @@ def test_run_thread():
 
     with Session() as sess:
         assert sess.run_task(f()).value == 1
+
+
+def test_stderr():
+    @Rule
+    async def f():
+        return await run_shell('echo 5 1>&2', stderr=subprocess.PIPE)
+
+    with Session() as sess:
+        assert int(sess.eval(f()[1])) == 5

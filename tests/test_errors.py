@@ -1,6 +1,8 @@
+import subprocess
+
 import pytest  # type: ignore
 
-from caf2 import Rule, Session
+from caf2 import Rule, Session, run_shell
 from caf2.errors import NoActiveSession, ArgNotInSession, DependencyCycle, \
     UnhookableResult, TaskHookChangedHash, FutureHasNoDefault, \
     TaskAlreadyDone, TaskHasNotRun, TaskHasAlreadyRun, TaskNotReady, \
@@ -124,3 +126,13 @@ def test_no_coroutine():
     with Session():
         with pytest.raises(TaskFunctionNotCoroutine):
             f()
+
+
+def test_process_error():
+    @Rule
+    async def f():
+        return await run_shell('<', stderr=subprocess.PIPE)
+
+    with pytest.raises(subprocess.CalledProcessError):
+        with Session() as sess:
+            sess.eval(f())

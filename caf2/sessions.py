@@ -45,6 +45,12 @@ class SessionPlugin:
     def pre_exit(self, sess: 'Session') -> None:
         pass
 
+    def pre_eval(self, sess: 'Session') -> None:
+        pass
+
+    def post_eval(self, sess: 'Session') -> None:
+        pass
+
 
 class Graph(NamedTuple):
     deps: Dict[Hash, Set[Hash]]
@@ -78,19 +84,24 @@ class Session:
     def register_plugin(self, name: str, plugin: SessionPlugin) -> None:
         self._plugins[name] = plugin
 
+    def _run_plugins(self, func: str, reverse: bool = False) -> None:
+        plugins: Iterable[SessionPlugin] = self._plugins.values()
+        if reverse:
+            plugins = reversed(list(plugins))
+        for plugin in plugins:
+            getattr(plugin, func)(self)
+
     def __enter__(self) -> 'Session':
         assert _active_session.get() is None
         self._active_session_token = _active_session.set(self)
-        for plugin in self._plugins.values():
-            plugin.post_enter(self)
+        self._run_plugins('post_enter')
         return self
 
     def _filter_tasks(self, cond: Callable[[Task[Any]], bool]) -> List[Task[Any]]:
         return list(filter(cond, self._tasks.values()))
 
     def __exit__(self, exc_type: Any, *args: Any) -> None:
-        for plugin in reversed(list(self._plugins.values())):
-            plugin.pre_exit(self)
+        self._run_plugins('pre_exit', reverse=True)
         assert _active_session.get() is self
         _active_session.reset(self._active_session_token)
         del self._active_session_token
@@ -165,8 +176,14 @@ class Session:
         self._graph.deps[task.hashid] = set(t.hashid for t in arg_tasks)
         return task
 
+    async def _run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
+        self._run_plugins('pre_eval')
+        result = await self.run_task_async(task)
+        self._run_plugins('post_eval')
+        return result
+
     def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
-        return asyncio.run(self.run_task_async(task))
+        return asyncio.run(self._run_task(task))
 
     async def run_task_async(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         if task.state < State.READY:
@@ -225,6 +242,7 @@ class Session:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
+        self._run_plugins('pre_eval')
         fut.register()
         await traverse_exec(
             self._process_objects([fut], save=False),
@@ -241,6 +259,7 @@ class Session:
             depth,
             eager_execute,
         )
+        self._run_plugins('post_eval')
         try:
             return fut.value
         except FutureNotDone as e:
