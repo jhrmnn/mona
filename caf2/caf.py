@@ -3,7 +3,9 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import asyncio
 import subprocess
-from typing import Any
+from typing import Any, TypeVar, Callable
+
+_T = TypeVar('_T')
 
 
 async def run_process(*args: str, **kwargs: Any) -> None:
@@ -11,3 +13,8 @@ async def run_process(*args: str, **kwargs: Any) -> None:
     retcode = await proc.wait()
     if retcode:
         raise subprocess.CalledProcessError(retcode, args)
+
+
+async def run_thread(func: Callable[..., _T], *args: Any) -> _T:
+    loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()  # type: ignore
+    return await loop.run_in_executor(None, func, *args)
