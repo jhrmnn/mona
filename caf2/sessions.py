@@ -6,8 +6,10 @@ import warnings
 from contextlib import contextmanager
 from itertools import chain
 from collections import defaultdict
+import asyncio
 from typing import Set, Any, Dict, Callable, Optional, \
-    TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple, Union
+    TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple, \
+    Union, Awaitable
 
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
@@ -93,10 +95,10 @@ class Session:
             self._objects.update({o.hashid: o for o in objs})
         return tasks
 
-    def create_task(self, func: Callable[..., _T], *args: Any,
+    def create_task(self, corofunc: Callable[..., Awaitable[_T]], *args: Any,
                     label: str = None, default: Maybe[_T] = Empty._
                     ) -> Task[_T]:
-        task = Task(func, *args, label=label, default=default)
+        task = Task(corofunc, *args, label=label, default=default)
         if self._parent_task:
             self._graph.side_effects[self._parent_task.hashid].add(task.hashid)
         try:
@@ -110,13 +112,16 @@ class Session:
         return task
 
     def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
+        return asyncio.run(self.run_task_async(task))  # type: ignore
+
+    async def run_task_async(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         if task.state < State.READY:
             raise TaskNotReady(repr(task))
         if task.state > State.READY:
             raise TaskHasAlreadyRun(repr(task))
         log.info(f'{task}: will run')
         with self.record(task):
-            result = task.func(*(arg.value for arg in task.args))
+            result = await task.corofunc(*(arg.value for arg in task.args))
         side_effects = [
             self._tasks[h] for h in self._graph.side_effects[task.hashid]
         ]
@@ -147,19 +152,28 @@ class Session:
         self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
         return hashed
 
-    def _execute(self, task: Task[Any], reg: NodeExecuted[Task[Any]]) -> None:
-        self.run_task(task)
+    async def _execute(self, task: Task[Any], reg: NodeExecuted[Task[Any]]
+                       ) -> None:
+        await self.run_task_async(task)
         reg(task, (
             self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
         ))
 
     def eval(self, obj: Any, depth: bool = False, eager_execute: bool = False
              ) -> Any:
+        return asyncio.run(  # type: ignore
+            self.eval_async(obj, depth, eager_execute)
+        )
+
+    async def eval_async(self,
+                         obj: Any,
+                         depth: bool = False,
+                         eager_execute: bool = False) -> Any:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
         fut.register()
-        traverse_exec(
+        await traverse_exec(
             self._process_objects([fut], save=False),
             lambda task: (self._tasks[h] for h in chain(
                 self._graph.deps[task.hashid],

@@ -3,7 +3,8 @@ import pytest  # type: ignore
 from caf2 import Rule, Session
 from caf2.errors import NoActiveSession, ArgNotInSession, DependencyCycle, \
     UnhookableResult, TaskHookChangedHash, FutureHasNoDefault, \
-    TaskAlreadyDone, TaskHasNotRun, TaskHasAlreadyRun, TaskNotReady
+    TaskAlreadyDone, TaskHasNotRun, TaskHasAlreadyRun, TaskNotReady, \
+    TaskFunctionNotCoroutine
 
 from tests.test_core import identity
 
@@ -58,7 +59,7 @@ def test_arg_not_in_session():
 
 def test_dependency_cycle():
     @Rule
-    def f(x):
+    async def f(x):
         return f(x)
 
     with pytest.raises(DependencyCycle):
@@ -68,7 +69,7 @@ def test_dependency_cycle():
 
 def test_unhookable():
     @Rule
-    def f(x):
+    async def f(x):
         return object()
 
     with pytest.raises(UnhookableResult):
@@ -103,3 +104,13 @@ def test_run_already_run():
         with pytest.raises(TaskHasAlreadyRun):
             sess.run_task(identity(1))
             sess.run_task(identity(1))
+
+
+def test_no_coroutine():
+    @Rule
+    def f():
+        pass
+
+    with Session():
+        with pytest.raises(TaskFunctionNotCoroutine):
+            f()

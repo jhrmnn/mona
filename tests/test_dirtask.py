@@ -8,7 +8,7 @@ from caf2.errors import InvalidFileTarget
 
 
 @Rule
-def calcs():
+async def calcs():
     return [[
         dist,
         dir_task(
@@ -20,7 +20,7 @@ def calcs():
 
 
 @Rule
-def analysis(results):
+async def analysis(results):
     return sum(int(res) for _, res in results)
 
 

@@ -23,7 +23,7 @@ def datafile():
 
 
 @Rule
-def calcs2():
+async def calcs2():
     return [[
         dist,
         dir_task(

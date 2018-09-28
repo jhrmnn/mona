@@ -1,7 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, Callable, TypeVar, Generic
+from typing import Any, Callable, TypeVar, Generic, Awaitable
 
 from ..tasks import Task
 from ..sessions import Session
@@ -10,20 +10,20 @@ _T = TypeVar('_T')
 
 
 class Rule(Generic[_T]):
-    def __init__(self, func: Callable[..., _T]) -> None:
-        self._func = func
+    def __init__(self, corofunc: Callable[..., Awaitable[_T]]) -> None:
+        self._corofunc = corofunc
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
-        return Session.active().create_task(self.func, *args, **kwargs)
+        return Session.active().create_task(self._corofunc, *args, **kwargs)
 
     @property
-    def func(self) -> Callable[..., _T]:
-        return self._func
+    def func(self) -> Callable[..., Awaitable[_T]]:
+        return self._corofunc
 
 
 class HookedRule(Rule[_T]):
-    def __init__(self, func: Callable[..., _T], hook: str) -> None:
-        Rule.__init__(self, func)
+    def __init__(self, corofunc: Callable[..., Awaitable[_T]], hook: str) -> None:
+        Rule.__init__(self, corofunc)
         self._hook = hook
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:

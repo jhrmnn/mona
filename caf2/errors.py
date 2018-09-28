@@ -69,3 +69,7 @@ class UnrecognizedInput(CafError):
 
 class DupliciteInputFile(CafError):
     pass
+
+
+class TaskFunctionNotCoroutine(CafError):
+    pass

@@ -4,15 +4,17 @@
 import logging
 import json
 from abc import abstractmethod
+import asyncio
+import inspect
 from typing import Any, Callable, Optional, List, TypeVar, \
-    Collection, cast, Tuple, Union
+    Collection, cast, Tuple, Union, Awaitable
 
 from .futures import Future, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
 from .utils import get_fullname, Maybe, Empty, swap_type
 from .json import InvalidJSONObject
 from .errors import FutureHasNoDefault, FutureNotDone, TaskHasNotRun, \
-    TaskAlreadyDone, TaskHookChangedHash
+    TaskAlreadyDone, TaskHookChangedHash, TaskFunctionNotCoroutine
 
 log = logging.getLogger(__name__)
 
@@ -88,23 +90,30 @@ class HashedFuture(Hashed[_T], Future):
 
 
 class Task(HashedFuture[_T]):
-    def __init__(self, func: Callable[..., _T], *args: Any, label: str = None,
+    def __init__(self,
+                 corofunc: Callable[..., Awaitable[_T]],
+                 *args: Any,
+                 label: str = None,
                  default: Maybe[_T] = Empty._) -> None:
-        self._func = func
+        if not inspect.iscoroutinefunction(corofunc):
+            raise TaskFunctionNotCoroutine(repr(corofunc))
+        self._corofunc = corofunc
         self._args = tuple(map(ensure_hashed, args))
         Hashed.__init__(self)
         Future.__init__(
             self, (arg for arg in self._args if isinstance(arg, HashedFuture))
         )
-        self._label = label or \
-            f'{self._func.__qualname__}({", ".join(a.label for a in self._args)})'
+        self._label = label or (
+            f'{self._corofunc.__qualname__}'
+            f'({", ".join(a.label for a in self._args)})'
+        )
         self._result: Union[_T, Hashed[_T], Empty] = Empty._
         self._hook: Optional[Callable[[_T], _T]] = None
         self._default = default
 
     @property
     def spec(self) -> str:
-        lines = [get_fullname(self.func)]
+        lines = [get_fullname(self._corofunc)]
         lines.extend(f'{fut.hashid}  # {fut.label}' for fut in self.args)
         return '\n'.join(lines)
 
@@ -116,8 +125,8 @@ class Task(HashedFuture[_T]):
         return self.resolve(lambda res: res.value)
 
     @property
-    def func(self) -> Callable[..., _T]:
-        return self._func
+    def corofunc(self) -> Callable[..., Awaitable[_T]]:
+        return self._corofunc
 
     @property
     def args(self) -> Tuple[Hashed[Any], ...]:
@@ -162,13 +171,16 @@ class Task(HashedFuture[_T]):
         return self._result
 
     def call(self) -> _T:
+        return asyncio.run(self.call_async())  # type: ignore
+
+    async def call_async(self) -> _T:
         args = [
             arg.value_or_default
             if isinstance(arg, HashedFuture)
             else arg.value
             for arg in self.args
         ]
-        return self.func(*args)
+        return await self._corofunc(*args)
 
     def add_hook(self, hook: Callable[[_T], _T]) -> None:
         self._hook = hook

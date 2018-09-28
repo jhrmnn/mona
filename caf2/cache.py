@@ -10,7 +10,7 @@ from .tasks import Task
 from .utils import Empty, Maybe
 from caf.Utils import get_timestamp
 
-from typing import Callable, Any, Optional, Tuple, Set, TypeVar
+from typing import Callable, Any, Optional, Tuple, Set, TypeVar, Awaitable
 
 _T = TypeVar('_T')
 
@@ -47,10 +47,10 @@ class CachedSession(Session):
         self._db = db
         self._processed_tasks: Set[Task[Any]] = set()
 
-    def create_task(self, coro: Callable[..., _T], *args: Any,
+    def create_task(self, corofunc: Callable[..., Awaitable[_T]], *args: Any,
                     label: str = None, default: Maybe[_T] = Empty._
                     ) -> Task[_T]:
-        task = super().create_task(coro, *args, label=label, default=default)
+        task = super().create_task(corofunc, *args, label=label, default=default)
         if task in self._processed_tasks:
             return task
         row: Optional[Tuple[Optional[bytes]]] = self._db.execute(

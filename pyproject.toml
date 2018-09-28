@@ -18,7 +18,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7"
 typing_extensions = "^3.6"
 mypy_extensions = "^0.4.1"
 graphviz = {version = "^0.9.0",optional = true}

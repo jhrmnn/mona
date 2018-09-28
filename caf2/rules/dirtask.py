@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from abc import ABC, abstractmethod
 from typing import TypeVar, Dict, Union
+import asyncio
 
 from ..utils import make_executable
 from ..sessions import Session
@@ -29,9 +30,9 @@ class FileManager(ABC):
 
 @with_hook('dir_task')
 @Rule
-def dir_task(exe: Union[HashingPath, bytes],
-             inputs: Dict[str, Union[HashingPath, bytes, Path]]
-             ) -> Union[Dict[str, HashedBytes]]:
+async def dir_task(exe: Union[HashingPath, bytes],
+                   inputs: Dict[str, Union[HashingPath, bytes, Path]]
+                   ) -> Union[Dict[str, HashedBytes]]:
     inputs = {'EXE': exe, **inputs}
     with TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
@@ -48,9 +49,12 @@ def dir_task(exe: Union[HashingPath, bytes],
         make_executable(exefile)
         with (root/'STDOUT').open('w') as stdout, \
                 (root/'STDERR').open('w') as stderr:
-            subprocess.run(
-                [exefile], stdout=stdout, stderr=stderr, cwd=root, check=True,
+            proc = await asyncio.create_subprocess_exec(
+                exefile, stdout=stdout, stderr=stderr, cwd=root
             )
+            retcode = await proc.wait()
+        if retcode:
+            raise subprocess.CalledProcessError(retcode, [exefile])
         outputs = {}
         fmngr = Session.active().storage.get('dir_task:file_manager')
         assert not fmngr or isinstance(fmngr, FileManager)

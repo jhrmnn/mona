@@ -2,13 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from typing import TypeVar, Deque, Set, Callable, Iterable, \
-    MutableSequence, Dict, Generic, Tuple
+    MutableSequence, Dict, Generic, Tuple, Awaitable
 
 _T = TypeVar('_T')
 PopFunction = Callable[[MutableSequence[_T]], _T]
 NodeRegister = Callable[[_T, Callable[[Iterable[_T]], None]], None]
 NodeExecuted = Callable[[_T, Iterable[_T]], None]
-NodeExecutor = Callable[[_T, NodeExecuted[_T]], None]
+NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[None]]
 
 
 class MergedQueue(Generic[_T]):
@@ -31,13 +31,13 @@ class MergedQueue(Generic[_T]):
             raise IndexError('pop from empty MergedQueue')
 
 
-def traverse_exec(start: Iterable[_T],
-                  edges_from: Callable[[_T], Iterable[_T]],
-                  register: NodeRegister[_T],
-                  execute: NodeExecutor[_T],
-                  sentinel: Callable[[_T], bool] = None,
-                  depth: bool = False,
-                  eager_execute: bool = False) -> Set[_T]:
+async def traverse_exec(start: Iterable[_T],
+                        edges_from: Callable[[_T], Iterable[_T]],
+                        register: NodeRegister[_T],
+                        execute: NodeExecutor[_T],
+                        sentinel: Callable[[_T], bool] = None,
+                        depth: bool = False,
+                        eager_execute: bool = False) -> Set[_T]:
     """
     Traverse a self-extending dynamic DAG and return visited nodes.
 
@@ -78,7 +78,7 @@ def traverse_exec(start: Iterable[_T],
             traverse_queue.extend(m for m in edges_from(n) if m not in visited)
         else:
             pending.add(n)
-            execute(n, executed)
+            await execute(n, executed)
     return visited
 
 
