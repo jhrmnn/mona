@@ -4,7 +4,7 @@ from caf2 import Rule, Session
 from caf2.errors import NoActiveSession, ArgNotInSession, DependencyCycle, \
     UnhookableResult, TaskHookChangedHash, FutureHasNoDefault, \
     TaskAlreadyDone, TaskHasNotRun, TaskHasAlreadyRun, TaskNotReady, \
-    TaskFunctionNotCoroutine
+    TaskFunctionNotCoroutine, NoRunningTask, SessionNotActive
 
 from tests.test_core import identity
 
@@ -37,6 +37,16 @@ def test_future_result2():
         with Session() as sess:
             sess.run_task(identity(1))
             identity(1).future_result()
+
+
+def test_not_active():
+    with pytest.raises(SessionNotActive):
+        Session().storage['a'] = 1
+
+
+def test_no_running_task():
+    with pytest.raises(NoRunningTask):
+        Session().running_task
 
 
 @pytest.mark.filterwarnings("ignore:tasks were never run")
