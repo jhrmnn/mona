@@ -14,7 +14,8 @@ from typing import Set, Any, Dict, Callable, Optional, \
 
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed
-from .graph import traverse, traverse_exec, NodeExecuted
+from .graph import traverse, traverse_async, NodeExecuted, \
+    Action, Priority, default_priority
 from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import SessionError, TaskError, FutureError, CafError
 
@@ -183,7 +184,6 @@ class Session:
             raise TaskError(f'Not ready: {task!r}', task)
         if task.state > State.READY:
             raise TaskError(f'Task already run: {task!r}', task)
-        log.info(f'{task}: will run')
         with self._running_task_ctx(task):
             result = await task.corofunc(*(arg.value for arg in task.args))
         side_effects = [
@@ -222,37 +222,45 @@ class Session:
         backflow = (
             self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
         )
-        reg(task, backflow)
+        reg(backflow)
 
-    def eval(self, obj: Any, depth: bool = False, eager_execute: bool = False
-             ) -> Any:
-        return asyncio.run(self.eval_async(obj, depth, eager_execute))
+    def eval(self,
+             obj: Any,
+             depth: bool = False,
+             priority: Priority = default_priority) -> Any:
+        return asyncio.run(self.eval_async(obj, depth, priority))
 
     async def eval_async(self,
                          obj: Any,
                          depth: bool = False,
-                         eager_execute: bool = False) -> Any:
+                         priority: Priority = default_priority) -> Any:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
         self._run_plugins('pre_eval')
         fut.register()
-        await traverse_exec(
-            self._process_objects([fut], save=False),
-            lambda task: (self._tasks[h] for h in chain(
-                self._graph.deps[task.hashid],
-                self._graph.backflow.get(task.hashid, ()),
-            )),
-            lambda task, reg: call_if(
-                task.state < State.HAS_RUN,
-                task.add_ready_callback, lambda t: reg((t,))
-            ),
-            self._execute,
-            lambda task: task.done(),
-            depth,
-            eager_execute,
-        )
-        self._run_plugins('post_eval')
+        async for action, task, progress in traverse_async(
+                self._process_objects([fut], save=False),
+                lambda task: (self._tasks[h] for h in chain(
+                    self._graph.deps[task.hashid],
+                    self._graph.backflow.get(task.hashid, ()),
+                )),
+                lambda task, reg: call_if(
+                    task.state < State.HAS_RUN,
+                    task.add_ready_callback, lambda t: reg(t)
+                ),
+                execute,
+                lambda task: task.done(),
+                depth,
+                priority,
+        ):
+            tag = action.name
+            if task:
+                tag += f': {task}'
+            log.debug(f'{tag}, progress: {progress}')
+            if action is Action.EXECUTE:
+                log.info(f'{task}: will run')
+        log.info('Finished')
         try:
             return fut.value
         except FutureError as e:

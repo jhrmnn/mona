@@ -1,108 +1,148 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import asyncio
+from enum import Enum
 from typing import TypeVar, Deque, Set, Callable, Iterable, \
-    MutableSequence, Dict, Generic, Tuple, Awaitable
+    MutableSequence, Dict, Awaitable, Container, Iterator, \
+    AsyncIterator, Tuple, cast, Optional, Any
 
 _T = TypeVar('_T')
-PopFunction = Callable[[MutableSequence[_T]], _T]
-NodeRegister = Callable[[_T, Callable[[Iterable[_T]], None]], None]
-NodeExecuted = Callable[[_T, Iterable[_T]], None]
+NodeScheduler = Callable[[_T, Callable[[_T], None]], None]
+NodeExecuted = Callable[[Iterable[_T]], None]
 NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[None]]
+Priority = Tuple['Action', 'Action', 'Action']
+Step = Tuple['Action', Optional[_T], Dict[str, int]]
 
 
-class MergedQueue(Generic[_T]):
+def extend_from(src: Iterable[_T],
+                seq: MutableSequence[_T], *,
+                filter: Container[_T]) -> None:
+    seq.extend(x for x in src if x not in filter)
+
+
+class Action(Enum):
+    RESULTS = 0
+    EXECUTE = 1
+    TRAVERSE = 2
+
+
+default_priority = cast(Priority, tuple(Action))
+
+
+# only limited override for use in traverse_async()
+class SetDeque(Deque[_T]):
+    def __init__(self, *args: Any) -> None:
+        super().__init__(*args)
+        self._set: Set[_T] = set()
+
+    def extend(self, xs: Iterable[_T]) -> None:
+        xs = set(xs)
+        super().extend(xs - self._set)
+        self._set.update(xs)
+
+    def pop(self) -> _T:  # type: ignore
+        x = super().pop()
+        self._set.remove(x)
+        return x
+
+    def popleft(self) -> _T:
+        x = super().popleft()
+        self._set.remove(x)
+        return x
+
+
+async def traverse_async(start: Iterable[_T],
+                         edges_from: Callable[[_T], Iterable[_T]],
+                         schedule: NodeScheduler[_T],
+                         execute: NodeExecutor[_T],
+                         sentinel: Callable[[_T], bool] = None,
+                         depth: bool = False,
+                         priority: Priority = default_priority
+                         ) -> AsyncIterator[Step[_T]]:
     """
-    Pops from the first nonempty given queue
-    """
-    def __init__(
-            self, queues: Iterable[Tuple[MutableSequence[_T], PopFunction[_T]]]
-    ) -> None:
-        self._queues = list(queues)
-
-    def __bool__(self) -> bool:
-        return any(q for q, _ in self._queues)
-
-    def pop(self) -> Tuple[_T, MutableSequence[_T]]:
-        for queue, pop in self._queues:
-            if queue:
-                return pop(queue), queue
-        else:
-            raise IndexError('pop from empty MergedQueue')
-
-
-async def traverse_exec(start: Iterable[_T],
-                        edges_from: Callable[[_T], Iterable[_T]],
-                        register: NodeRegister[_T],
-                        execute: NodeExecutor[_T],
-                        sentinel: Callable[[_T], bool] = None,
-                        depth: bool = False,
-                        eager_execute: bool = False) -> Set[_T]:
-    """
-    Traverse a self-extending dynamic DAG and return visited nodes.
+    Traverse a self-extending DAG, yield steps.
 
     :param start: Starting nodes
     :param edges_from: Returns nodes with incoming edge from the given node
-    :param sentinal: Should traversal stop at the given node?
-    :param register: Registers the given node for execution (not run on sentinels)
-    :param execute: Executes the given node and announces execution and
-                    new generated nodes with incoming edge from it
-                    (run only on registered nodes)
+    :param schedule: Schedule the given node for execution (not run on sentinels)
+    :param execute: Execute the given node and return new generated nodes
+                    with incoming edge from it (run only on scheduled nodes)
+    :param sentinel: Should traversal stop at the given node?
     :param depth: Traverse depth-first if true, breadth-first otherwise
-    :param eager_execute: Prioritize execution before traversal if true
+    :param priority: Priorize steps in order
     """
     visited: Set[_T] = set()
-    pending: Set[_T] = set()
-    traverse_queue, execute_queue = Deque[_T](), Deque[_T]()
-
-    def executed(n: _T, ms: Iterable[_T]) -> None:
-        pending.remove(n)
-        traverse_queue.extend(m for m in ms if m not in visited)
-
-    traverse_queue.extend(start)
-    traverse_pop = (lambda q: q.pop()) if depth else (lambda q: q.popleft())
-    queues = [
-        (traverse_queue, traverse_pop),
-        (execute_queue, lambda q: q.popleft())
-    ]
-    if eager_execute:
-        queues.reverse()
-    queue = MergedQueue(queues)
-    while queue or pending:
-        n, q = queue.pop()
-        if q is traverse_queue:
-            visited.add(n)
-            if sentinel and sentinel(n):
-                continue
-            register(n, lambda ms: execute_queue.extend(ms))
-            traverse_queue.extend(m for m in edges_from(n) if m not in visited)
+    to_visit, to_execute = SetDeque[_T](), Deque[_T]()
+    done: 'asyncio.Queue[Iterable[_T]]' = asyncio.Queue()
+    executing, executed = 0, 0
+    actionable: Dict[Action, Callable[[], bool]] = {
+        Action.RESULTS: lambda: not done.empty(),
+        Action.EXECUTE: lambda: bool(to_execute),
+        Action.TRAVERSE: lambda: bool(to_visit),
+    }
+    to_visit.extend(start)
+    while True:
+        for action in priority:
+            if actionable[action]():
+                break
         else:
-            pending.add(n)
-            await execute(n, executed)
-    return visited
+            if executing == 0:
+                break
+            action = Action.RESULTS
+        progress = {
+            'executing': executing-done.qsize(),
+            'to_execute': len(to_execute),
+            'to_visit': len(to_visit),
+            'with_result': done.qsize(),
+            'done': executed,
+            'visited': len(visited)
+        }
+        if action is Action.TRAVERSE:
+            node = to_visit.pop() if depth else to_visit.popleft()
+            yield action, node, progress
+            visited.add(node)
+            if sentinel and sentinel(node):
+                continue
+            schedule(node, to_execute.append)
+            extend_from(edges_from(node), to_visit, filter=visited)
+        elif action is Action.EXECUTE:
+            node = to_execute.popleft()
+            yield action, node, progress
+            executing += 1
+            await execute(node, done.put_nowait)
+        elif action is Action.RESULTS:
+            yield action, None, progress
+            extend_from(await done.get(), to_visit, filter=visited)
+            executing -= 1
+            executed += 1
 
 
 def traverse(start: Iterable[_T],
              edges_from: Callable[[_T], Iterable[_T]],
              sentinel: Callable[[_T], bool] = None,
-             depth: bool = False) -> Set[_T]:
+             depth: bool = False) -> Iterator[_T]:
+    """Traverse a DAG, yield visited notes."""
     visited: Set[_T] = set()
     queue = Deque[_T]()
     queue.extend(start)
     while queue:
         n = queue.pop() if depth else queue.popleft()
         visited.add(n)
+        yield n
         if sentinel and sentinel(n):
             continue
         queue.extend(m for m in edges_from(n) if m not in visited)
-    return visited
 
 
-def traverse_id(start: Iterable[_T], edges_from: Callable[[_T], Iterable[_T]]
-                ) -> Iterable[_T]:
+def traverse_id(start: Iterable[_T],
+                edges_from: Callable[[_T], Iterable[_T]]) -> Iterable[_T]:
     table: Dict[int, _T] = {}
-    id_start = {id(x): x for x in start}
-    table.update(id_start)
+
+    def ids_from(ns: Iterable[_T]) -> Iterable[int]:
+        update = {id(n): n for n in ns}
+        table.update(update)
+        return update.keys()
 
     def edges_from_id(n: int) -> Iterable[int]:
         xs = edges_from(table[n])
@@ -110,5 +150,5 @@ def traverse_id(start: Iterable[_T], edges_from: Callable[[_T], Iterable[_T]]
         table.update(update)
         return update.keys()
 
-    visited_id = traverse(id_start.keys(), edges_from_id)
-    return (table[n] for n in visited_id)
+    for n in traverse(ids_from(start), edges_from_id):
+        yield table[n]

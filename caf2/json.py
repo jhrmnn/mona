@@ -48,7 +48,8 @@ def validate_json(obj: Any, hook: Callable[[Any], bool] = None) -> None:
         else:
             raise CompositeError(f'Unknown object: {o!r}')
 
-    traverse_id([obj], parents)
+    for o in traverse_id([obj], parents):
+        pass
 
 
 class ClassJSONEncoder(json.JSONEncoder):
