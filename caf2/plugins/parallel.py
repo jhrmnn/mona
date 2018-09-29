@@ -6,7 +6,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Callable, Awaitable, Any, TypeVar, AsyncGenerator
 
-from ..sessions import Session, SessionPlugin
+from ..sessions import Session, SessionPlugin, TaskExecute
 
 _T = TypeVar('_T')
 
@@ -20,9 +20,14 @@ class Parallel(SessionPlugin):
     def post_enter(self, sess: Session) -> None:
         sess.storage['scheduler'] = self.run_coro
 
-    def pre_eval(self, sess: Session) -> None:
+    def pre_run(self, sess: Session) -> None:
         self._sem = asyncio.BoundedSemaphore(self._ncores)
         self._lock = asyncio.Lock()
+
+    def wrap_execute(self, execute: TaskExecute) -> TaskExecute:
+        async def _execute(*args: Any) -> None:
+            asyncio.create_task(execute(*args))
+        return _execute
 
     @asynccontextmanager
     async def _acquire(self, ncores: int) -> AsyncGenerator[None, None]:

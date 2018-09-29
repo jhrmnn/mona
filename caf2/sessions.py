@@ -22,6 +22,7 @@ from .errors import SessionError, TaskError, FutureError, CafError
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
+TaskExecute = Callable[[Task[Any], NodeExecuted[Task[Any]]], Awaitable[None]]
 
 _active_session: ContextVar[Optional['Session']] = \
     ContextVar('active_session', default=None)
@@ -39,11 +40,14 @@ class SessionPlugin:
     def pre_exit(self, sess: 'Session') -> None:
         pass
 
-    def pre_eval(self, sess: 'Session') -> None:
+    def pre_run(self, sess: 'Session') -> None:
         pass
 
-    def post_eval(self, sess: 'Session') -> None:
+    def post_run(self, sess: 'Session') -> None:
         pass
+
+    def wrap_execute(self, exe: TaskExecute) -> TaskExecute:
+        return exe
 
 
 class Graph(NamedTuple):
@@ -171,9 +175,9 @@ class Session:
         return task
 
     async def _run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
-        self._run_plugins('pre_eval')
+        self._run_plugins('pre_run')
         result = await self.run_task_async(task)
-        self._run_plugins('post_eval')
+        self._run_plugins('post_run')
         return result
 
     def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
@@ -237,7 +241,10 @@ class Session:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
-        self._run_plugins('pre_eval')
+        self._run_plugins('pre_run')
+        execute = self._execute
+        for plugin in self._plugins.values():
+            execute = plugin.wrap_execute(execute)  # type: ignore
         fut.register()
         async for action, task, progress in traverse_async(
                 self._process_objects([fut], save=False),
@@ -261,6 +268,7 @@ class Session:
             if action is Action.EXECUTE:
                 log.info(f'{task}: will run')
         log.info('Finished')
+        self._run_plugins('post_run')
         try:
             return fut.value
         except FutureError as e:
