@@ -26,11 +26,6 @@ _active_session: ContextVar[Optional['Session']] = \
     ContextVar('active_session', default=None)
 
 
-def running_task() -> Task[Any]:
-    session = Session.active()
-    return session.running_task
-
-
 class SessionPlugin:
     name: str
 

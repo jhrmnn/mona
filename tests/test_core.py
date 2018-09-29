@@ -2,7 +2,7 @@ import subprocess
 
 import pytest  # type: ignore
 
-from caf2 import Rule, Session, running_task, run_thread, run_shell
+from caf2 import Rule, Session, run_thread, run_shell
 from caf2.rules import with_hook
 
 
@@ -118,7 +118,7 @@ def test_with_hook():
 def test_local_storage():
     @Rule
     async def f():
-        return running_task().storage['test']
+        return Session.active().running_task.storage['test']
 
     with Session() as sess:
         f().storage['test'] = 3

@@ -6,7 +6,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Callable, Awaitable, Any, TypeVar, AsyncGenerator
 
-from ..sessions import Session, SessionPlugin, running_task
+from ..sessions import Session, SessionPlugin
 
 _T = TypeVar('_T')
 
@@ -39,6 +39,6 @@ class Parallel(SessionPlugin):
                        corofunc: Callable[..., Awaitable[_T]],
                        *args: Any,
                        **kwargs: Any) -> _T:
-        ncores = running_task().storage.get('ncores', 1)
+        ncores = Session.active().running_task.storage.get('ncores', 1)
         async with self._acquire(ncores):
             return await corofunc(*args, **kwargs)

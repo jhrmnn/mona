@@ -43,11 +43,6 @@ def test_not_active():
         Session().storage['a'] = 1
 
 
-def test_no_running_task():
-    with pytest.raises(SessionError):
-        Session().running_task
-
-
 @pytest.mark.filterwarnings("ignore:tasks were never run")
 def test_fut_not_in_session():
     with pytest.raises(TaskError):
