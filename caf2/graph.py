@@ -5,11 +5,12 @@ import asyncio
 from enum import Enum
 from typing import TypeVar, Deque, Set, Callable, Iterable, \
     MutableSequence, Dict, Awaitable, Container, Iterator, \
-    AsyncIterator, Tuple, cast, Optional, Any
+    AsyncIterator, Tuple, cast, Optional, Any, Union
 
 _T = TypeVar('_T')
 NodeScheduler = Callable[[_T, Callable[[_T], None]], None]
-NodeExecuted = Callable[[Iterable[_T]], None]
+NodeResult = Tuple[Optional[Exception], Iterable[_T]]
+NodeExecuted = Callable[[NodeResult[_T]], None]
 NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[None]]
 Priority = Tuple['Action', 'Action', 'Action']
 Step = Tuple['Action', Optional[_T], Dict[str, int]]
@@ -59,7 +60,7 @@ async def traverse_async(start: Iterable[_T],
                          sentinel: Callable[[_T], bool] = None,
                          depth: bool = False,
                          priority: Priority = default_priority
-                         ) -> AsyncIterator[Step[_T]]:
+                         ) -> AsyncIterator[Union[Step[_T], Exception]]:
     """
     Traverse a self-extending DAG, yield steps.
 
@@ -74,7 +75,7 @@ async def traverse_async(start: Iterable[_T],
     """
     visited: Set[_T] = set()
     to_visit, to_execute = SetDeque[_T](), Deque[_T]()
-    done: 'asyncio.Queue[Iterable[_T]]' = asyncio.Queue()
+    done: 'asyncio.Queue[NodeResult[_T]]' = asyncio.Queue()
     executing, executed = 0, 0
     actionable: Dict[Action, Callable[[], bool]] = {
         Action.RESULTS: lambda: not done.empty(),
@@ -113,7 +114,10 @@ async def traverse_async(start: Iterable[_T],
             await execute(node, done.put_nowait)
         elif action is Action.RESULTS:
             yield action, None, progress
-            extend_from(await done.get(), to_visit, filter=visited)
+            exc, nodes = await done.get()
+            if exc:
+                yield exc
+            extend_from(nodes, to_visit, filter=visited)
             executing -= 1
             executed += 1
 

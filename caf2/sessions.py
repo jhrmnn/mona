@@ -201,11 +201,16 @@ class Session(Pluggable):
 
     async def _execute(self, task: Task[Any], reg: NodeExecuted[Task[Any]]
                        ) -> None:
-        await self.run_task_async(task)
+        try:
+            await self.run_task_async(task)
+        except Exception as e:
+            exc: Optional[Exception] = e
+        else:
+            exc = None
         backflow = (
             self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
         )
-        reg(backflow)
+        reg((exc, backflow))
 
     def eval(self,
              obj: Any,
@@ -222,7 +227,7 @@ class Session(Pluggable):
             return obj
         self.run_plugins('pre_run')
         fut.register()
-        async for action, task, progress in traverse_async(
+        async for step in traverse_async(
                 self._process_objects([fut], save=False),
                 lambda task: (self._tasks[h] for h in chain(
                     self._graph.deps[task.hashid],
@@ -237,6 +242,10 @@ class Session(Pluggable):
                 depth,
                 priority,
         ):
+            if isinstance(step, Exception):
+                self.run_plugins('task_error')
+                raise step
+            action, task, progress = step
             tag = action.name
             if task:
                 tag += f': {task}'

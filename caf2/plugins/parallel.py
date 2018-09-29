@@ -4,7 +4,7 @@
 import os
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Callable, Awaitable, Any, TypeVar, AsyncGenerator
+from typing import Callable, Awaitable, Any, TypeVar, AsyncGenerator, List
 
 from ..sessions import Session, SessionPlugin, TaskExecute
 
@@ -16,6 +16,7 @@ class Parallel(SessionPlugin):
 
     def __init__(self, ncores: int = None) -> None:
         self._ncores = ncores or os.cpu_count() or 1
+        self._asyncio_tasks: List[asyncio.Task[Any]] = []
 
     def post_enter(self, sess: Session) -> None:
         sess.storage['scheduler'] = self.run_coro
@@ -28,6 +29,10 @@ class Parallel(SessionPlugin):
         async def _execute(*args: Any) -> None:
             asyncio.create_task(execute(*args))
         return _execute
+
+    def task_error(self) -> None:
+        for task in self._asyncio_tasks:
+            task.cancel()
 
     @asynccontextmanager
     async def _acquire(self, ncores: int) -> AsyncGenerator[None, None]:
