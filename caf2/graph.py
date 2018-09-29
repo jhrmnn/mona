@@ -38,10 +38,14 @@ class SetDeque(Deque[_T]):
         super().__init__(*args)
         self._set: Set[_T] = set()
 
+    def append(self, x: _T) -> None:
+        if x not in self._set:
+            self._set.add(x)
+            super().append(x)
+
     def extend(self, xs: Iterable[_T]) -> None:
-        xs = set(xs)
-        super().extend(xs - self._set)
-        self._set.update(xs)
+        for x in xs:
+            self.append(x)
 
     def pop(self) -> _T:  # type: ignore
         x = super().pop()
