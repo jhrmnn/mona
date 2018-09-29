@@ -206,6 +206,8 @@ class Session(Pluggable):
         self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
         return hashed
 
+    # this eats all exceptions and sends them to traverse_async(), which
+    # yields them back
     async def _execute(self, task: Task[Any], reg: NodeExecuted[Task[Any]]
                        ) -> None:
         try:
@@ -258,10 +260,11 @@ class Session(Pluggable):
             if isinstance(step, Exception):
                 raise step
             action, task, progress = step
+            progress_line = ' '.join(f'{k}={v}' for k, v in progress.items())
             tag = action.name
             if task:
-                tag += f': {task}'
-            log.debug(f'{tag}, progress: {progress}')
+                tag += f': {task.label}'
+            log.debug(f'{tag}, progress: {progress_line}')
             if action is Action.EXECUTE:
                 log.info(f'{task}: will run')
         log.info('Finished')

@@ -245,6 +245,9 @@ class TaskComponent(HashedFuture[_T]):
         return self.resolve(lambda task: task.default_result())
 
 
+# the semantics may imply that the component is taken immediately after
+# execution, but it is only taken by the child task, so that if the component
+# does not exist, the exception is raised only later
 class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
     def __init__(self, jsonstr: str, components: Collection[Hashed[Any]]
                  ) -> None:
