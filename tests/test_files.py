@@ -3,10 +3,11 @@ from pathlib import Path
 
 import pytest  # type: ignore
 
-from caf2 import Rule, Session, FileManager
+from caf2 import Rule, Session
 from caf2.rules import dir_task
 from caf2.hashing import HashedBytes
-from caf2.files import StoredHashedBytes
+from caf2.plugins import FileManager
+from caf2.plugins.files import StoredHashedBytes
 from caf2.errors import FilesError, InvalidInput
 
 from tests.test_dirtask import calcs

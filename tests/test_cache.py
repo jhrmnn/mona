@@ -1,6 +1,7 @@
 import pytest  # type: ignore
 
-from caf2 import CachedSession, init_cafdb
+from caf2.plugins import CachedSession
+from caf2.plugins.cache import init_cafdb
 
 from tests.test_dirtask import analysis, calcs
 

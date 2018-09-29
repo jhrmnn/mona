@@ -3,13 +3,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from pathlib import Path
 
-from .hashing import Hash, Hashed, HashedBytes
-from .sessions import Session, SessionPlugin
-from .rules import dir_task
-from .utils import make_nonwritable, Pathable, split
-from .errors import FilesError, InvalidInput
-from .json import registered_classes
-from .rules.dirtask import FileManager as _FileManager, \
+from ..hashing import Hash, Hashed, HashedBytes
+from ..sessions import Session, SessionPlugin
+from ..rules import dir_task
+from ..utils import make_nonwritable, Pathable, split
+from ..errors import FilesError, InvalidInput
+from ..json import registered_classes
+from ..rules.dirtask import FileManager as _FileManager, \
     HashingPath as _HashingPath
 
 from typing import Dict, Union, cast, Tuple, Iterable, List
