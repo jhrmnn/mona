@@ -31,15 +31,21 @@ class Parallel(SessionPlugin):
         self._lock = asyncio.Lock()
 
     async def post_run(self) -> None:
+        if not self._asyncio_tasks:
+            return
         log.info(f'Cancelling {len(self._asyncio_tasks)} running tasks...')
         for task in self._asyncio_tasks:
             task.cancel()
         await asyncio.gather(*self._asyncio_tasks)
+        assert not self._asyncio_tasks
         log.info('All tasks cancelled')
 
     async def _run_execute(self, execute: TaskExecute, *args: Any) -> None:
-        # execute() never throws because Session._execute() eats all exceptions
-        await execute(*args)
+        exc_result = await execute(*args)
+        if exc_result:
+            exc, reg = exc_result
+            if not isinstance(exc, asyncio.CancelledError):
+                reg((exc, None))
         current_task = asyncio.current_task()
         assert current_task
         self._asyncio_tasks.remove(current_task)

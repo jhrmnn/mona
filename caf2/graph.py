@@ -5,13 +5,14 @@ import asyncio
 from enum import Enum
 from typing import TypeVar, Deque, Set, Callable, Iterable, \
     MutableSequence, Dict, Awaitable, Container, Iterator, \
-    AsyncIterator, Tuple, cast, Optional, Any, Union
+    AsyncIterator, Tuple, cast, Optional, Any
 
 _T = TypeVar('_T')
 NodeScheduler = Callable[[_T, Callable[[_T], None]], None]
 NodeResult = Tuple[Optional[Exception], Iterable[_T]]
 NodeExecuted = Callable[[NodeResult[_T]], None]
-NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[None]]
+NodeException = Optional[Tuple[Exception, NodeExecuted[_T]]]
+NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[NodeException[_T]]]
 Priority = Tuple['Action', 'Action', 'Action']
 Step = Tuple['Action', Optional[_T], Dict[str, int]]
 
@@ -60,7 +61,7 @@ async def traverse_async(start: Iterable[_T],
                          sentinel: Callable[[_T], bool] = None,
                          depth: bool = False,
                          priority: Priority = default_priority
-                         ) -> AsyncIterator[Union[Step[_T], Exception]]:
+                         ) -> AsyncIterator[Step[_T]]:
     """
     Traverse a self-extending DAG, yield steps.
 
@@ -111,12 +112,14 @@ async def traverse_async(start: Iterable[_T],
             node = to_execute.popleft()
             yield action, node, progress
             executing += 1
-            await execute(node, done.put_nowait)
+            exc_result = await execute(node, done.put_nowait)
+            if exc_result:
+                raise exc_result[0]
         elif action is Action.RESULTS:
             yield action, None, progress
             exc, nodes = await done.get()
             if exc:
-                yield exc
+                raise exc
             extend_from(nodes, to_visit, filter=visited)
             executing -= 1
             executed += 1

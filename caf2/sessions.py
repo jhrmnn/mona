@@ -15,7 +15,7 @@ from typing import Set, Any, Dict, Callable, Optional, \
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed
 from .graph import traverse, traverse_async, NodeExecuted, \
-    Action, Priority, default_priority
+    Action, Priority, default_priority, NodeException
 from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import SessionError, TaskError, FutureError, CafError
 from .pluggable import Plugin, Pluggable
@@ -206,20 +206,17 @@ class Session(Pluggable):
         self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
         return hashed
 
-    # this eats all exceptions and sends them to traverse_async(), which
-    # yields them back
     async def _execute(self, task: Task[Any], reg: NodeExecuted[Task[Any]]
-                       ) -> None:
+                       ) -> NodeException[Any]:
         try:
             await self.run_task_async(task)
         except Exception as e:
-            exc: Optional[Exception] = e
-        else:
-            exc = None
+            return e, reg
         backflow = (
             self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
         )
-        reg((exc, backflow))
+        reg((None, backflow))
+        return None
 
     def eval(self,
              obj: Any,
@@ -242,7 +239,7 @@ class Session(Pluggable):
         if not isinstance(fut, HashedFuture):
             return obj
         fut.register()
-        async for step in traverse_async(
+        async for action, task, progress in traverse_async(
                 self._process_objects([fut], save=False),
                 lambda task: (self._tasks[h] for h in chain(
                     self._graph.deps[task.hashid],
@@ -257,9 +254,6 @@ class Session(Pluggable):
                 depth,
                 priority,
         ):
-            if isinstance(step, Exception):
-                raise step
-            action, task, progress = step
             progress_line = ' '.join(f'{k}={v}' for k, v in progress.items())
             tag = action.name
             if task:
