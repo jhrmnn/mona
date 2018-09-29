@@ -3,14 +3,14 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 import warnings
-from contextlib import contextmanager
 from itertools import chain
 from collections import defaultdict
 import asyncio
 from contextvars import ContextVar
+from contextlib import contextmanager, asynccontextmanager
 from typing import Set, Any, Dict, Callable, Optional, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple, \
-    Union, Awaitable
+    Union, Awaitable, AsyncGenerator
 
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed
@@ -33,14 +33,14 @@ class SessionPlugin(Plugin):
     def post_enter(self, sess: 'Session') -> None:
         pass
 
-    def pre_run(self) -> None:
+    async def pre_run(self) -> None:
+        pass
+
+    async def post_run(self) -> None:
         pass
 
     def wrap_execute(self, exe: TaskExecute) -> TaskExecute:
         return exe
-
-    def task_error(self) -> None:
-        pass
 
 
 class Graph(NamedTuple):
@@ -73,7 +73,7 @@ class Session(Pluggable):
     def __enter__(self) -> 'Session':
         assert _active_session.get() is None
         self._active_session_token = _active_session.set(self)
-        self.run_plugins('post_enter', self)
+        self.run_plugins('post_enter', self, start=None)
         return self
 
     def _filter_tasks(self, cond: Callable[[Task[Any]], bool]) -> List[Task[Any]]:
@@ -154,10 +154,17 @@ class Session(Pluggable):
         self._graph.deps[task.hashid] = set(t.hashid for t in arg_tasks)
         return task
 
+    @asynccontextmanager
+    async def run_context(self) -> AsyncGenerator[None, None]:
+        await self.run_plugins_async('pre_run', start=None)
+        try:
+            yield
+        finally:
+            await self.run_plugins_async('post_run', start=None)
+
     async def _run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
-        self.run_plugins('pre_run')
-        result = await self.run_task_async(task)
-        return result
+        async with self.run_context():
+            return await self.run_task_async(task)
 
     def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         return asyncio.run(self._run_task(task))
@@ -222,10 +229,16 @@ class Session(Pluggable):
                          obj: Any,
                          depth: bool = False,
                          priority: Priority = default_priority) -> Any:
+        async with self.run_context():
+            return await self._eval_async(obj, depth, priority)
+
+    async def _eval_async(self,
+                          obj: Any,
+                          depth: bool = False,
+                          priority: Priority = default_priority) -> Any:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
-        self.run_plugins('pre_run')
         fut.register()
         async for step in traverse_async(
                 self._process_objects([fut], save=False),
@@ -237,13 +250,12 @@ class Session(Pluggable):
                     task.state < State.HAS_RUN,
                     task.add_ready_callback, lambda t: reg(t)
                 ),
-                self.run_plugins_accum('wrap_execute', self._execute),
+                self.run_plugins('wrap_execute', start=self._execute),
                 lambda task: task.done(),
                 depth,
                 priority,
         ):
             if isinstance(step, Exception):
-                self.run_plugins('task_error')
                 raise step
             action, task, progress = step
             tag = action.name
