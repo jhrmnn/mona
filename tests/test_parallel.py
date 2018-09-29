@@ -1,3 +1,7 @@
+import asyncio
+
+import pytest  # type: ignore
+
 from caf2 import Session, Rule, run_shell, run_process, run_thread
 from caf2.rules import dir_task
 from caf2.plugins import Parallel
@@ -18,11 +22,11 @@ async def process():
 
 
 @Rule
-async def calcs():
+async def calcs(n):
     return [[
         dist,
         dir_task(
-            '#!/bin/bash\nexpr $(cat data) "*" 2; true'.encode(),
+            f'#!/bin/bash\nexpr $(cat data) "*" 2; sleep {n}; true'.encode(),
             {'data': str(dist).encode()},
             label=f'/calcs/dist={dist}'
         )['STDOUT']
@@ -50,4 +54,16 @@ def test_thread():
 
 def test_calc():
     with Session([Parallel()]) as sess:
-        assert sess.eval(analysis(calcs())) == 20
+        assert sess.eval(analysis(calcs(0))) == 20
+
+
+def test_cancelling():
+    async def main():
+        with Session([Parallel()]) as sess:
+            task = asyncio.create_task(sess.eval_async(analysis(calcs(1))))
+            await asyncio.sleep(0.05)
+            task.cancel()
+            await task
+
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(main())
