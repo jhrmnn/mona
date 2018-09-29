@@ -56,7 +56,12 @@ async def _run_process(args: Union[str, Tuple[str, ...]],
     else:
         assert isinstance(args, tuple)
         proc = await asyncio.create_subprocess_exec(*args, **kwargs)
-    stdout, stderr = await proc.communicate(input)
+    try:
+        stdout, stderr = await proc.communicate(input)
+    except asyncio.CancelledError:
+        proc.terminate()
+        await proc.wait()
+        raise
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.returncode, args)
     if stderr is None:
