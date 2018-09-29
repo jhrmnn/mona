@@ -155,11 +155,5 @@ def traverse_id(start: Iterable[_T],
         table.update(update)
         return update.keys()
 
-    def edges_from_id(n: int) -> Iterable[int]:
-        xs = edges_from(table[n])
-        update = {id(x): x for x in xs}
-        table.update(update)
-        return update.keys()
-
-    for n in traverse(ids_from(start), edges_from_id):
+    for n in traverse(ids_from(start), lambda n: ids_from(edges_from(table[n]))):
         yield table[n]
