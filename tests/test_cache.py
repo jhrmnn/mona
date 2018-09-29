@@ -1,20 +1,20 @@
 import pytest  # type: ignore
 
-from caf2.plugins import CachedSession
-from caf2.plugins.cache import init_cafdb
+from caf2 import Session
+from caf2.plugins import Cache
 
 from tests.test_dirtask import analysis, calcs
 
 
 @pytest.fixture
 def db(tmpdir):
-    conn = init_cafdb(tmpdir.join('test.db'))
-    yield conn
-    conn.close()
+    cache = Cache.from_path(tmpdir.join('test.db'))
+    yield cache.db
+    cache.db.close()
 
 
 def test_db(db):
-    sess = CachedSession(db)
+    sess = Session([Cache(db)])
     with sess:
         assert sess.eval(analysis(calcs())) == 20
     with sess:

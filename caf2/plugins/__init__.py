@@ -1,3 +1,3 @@
 from .parallel import Parallel
-from .cache import CachedSession
+from .cache import Cache
 from .files import FileManager

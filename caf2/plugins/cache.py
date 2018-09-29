@@ -5,52 +5,28 @@ import sqlite3
 from textwrap import dedent
 import pickle
 
-from ..sessions import Session
+from ..sessions import SessionPlugin
 from ..tasks import Task
-from ..utils import Empty, Maybe
+from ..utils import Pathable
 from caf.Utils import get_timestamp
 
-from typing import Callable, Any, Optional, Tuple, Set, TypeVar, Awaitable
+from typing import Any, Optional, Tuple, Set, TypeVar
 
 _T = TypeVar('_T')
 
 
-def init_cafdb(path: str) -> sqlite3.Connection:
-    db = sqlite3.connect(path)
-    db.execute(dedent(
-        """\
-        CREATE TABLE IF NOT EXISTS tasks (
-            taskid   TEXT,
-            label    TEXT,
-            created  TEXT,
-            result   BLOB,
-            PRIMARY KEY (taskid)
-        )
-        """
-    ))
-    # db.execute(dedent(
-    #     """\
-    #     CREATE TABLE IF NOT EXISTS task_children (
-    #         parent   TEXT,
-    #         child    TEXT,
-    #         FOREIGN KEY(parent) REFERENCES builds(taskid),
-    #         FOREIGN KEY(child)  REFERENCES tasks(taskid)
-    #     )
-    #     """
-    # ))
-    return db
+class Cache(SessionPlugin):
+    name = 'db_cache'
 
-
-class CachedSession(Session):
     def __init__(self, db: sqlite3.Connection) -> None:
-        Session.__init__(self)
         self._db = db
         self._processed_tasks: Set[Task[Any]] = set()
 
-    def create_task(self, corofunc: Callable[..., Awaitable[_T]], *args: Any,
-                    label: str = None, default: Maybe[_T] = Empty._
-                    ) -> Task[_T]:
-        task = super().create_task(corofunc, *args, label=label, default=default)
+    @property
+    def db(self) -> sqlite3.Connection:
+        return self._db
+
+    def post_create(self, task: Task[_T]) -> Task[_T]:
         if task in self._processed_tasks:
             return task
         row: Optional[Tuple[Optional[bytes]]] = self._db.execute(
@@ -75,3 +51,29 @@ class CachedSession(Session):
             (pickle.dumps(task.value), task.hashid)
         )
         self._db.commit()
+
+    @classmethod
+    def from_path(cls, path: Pathable) -> 'Cache':
+        db = sqlite3.connect(path)
+        db.execute(dedent(
+            """\
+            CREATE TABLE IF NOT EXISTS tasks (
+                taskid   TEXT,
+                label    TEXT,
+                created  TEXT,
+                result   BLOB,
+                PRIMARY KEY (taskid)
+            )
+            """
+        ))
+        # db.execute(dedent(
+        #     """\
+        #     CREATE TABLE IF NOT EXISTS task_children (
+        #         parent   TEXT,
+        #         child    TEXT,
+        #         FOREIGN KEY(parent) REFERENCES builds(taskid),
+        #         FOREIGN KEY(child)  REFERENCES tasks(taskid)
+        #     )
+        #     """
+        # ))
+        return Cache(db)
