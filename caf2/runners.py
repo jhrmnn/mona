@@ -59,8 +59,12 @@ async def _run_process(args: Union[str, Tuple[str, ...]],
     try:
         stdout, stderr = await proc.communicate(input)
     except asyncio.CancelledError:
-        proc.terminate()
-        await proc.wait()
+        try:
+            proc.terminate()
+        except ProcessLookupError:
+            pass
+        else:
+            await proc.wait()
         raise
     if proc.returncode:
         raise subprocess.CalledProcessError(proc.returncode, args)
