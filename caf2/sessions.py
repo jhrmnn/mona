@@ -18,6 +18,7 @@ from .graph import traverse, traverse_async, NodeExecuted, \
     Action, Priority, default_priority
 from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import SessionError, TaskError, FutureError, CafError
+from .pluggable import Plugin, Pluggable
 
 log = logging.getLogger(__name__)
 
@@ -28,26 +29,18 @@ _active_session: ContextVar[Optional['Session']] = \
     ContextVar('active_session', default=None)
 
 
-class SessionPlugin:
-    name: str
-
-    def __call__(self, sess: 'Session') -> None:
-        sess.register_plugin(self.name, self)
-
+class SessionPlugin(Plugin):
     def post_enter(self, sess: 'Session') -> None:
         pass
 
-    def pre_exit(self, sess: 'Session') -> None:
-        pass
-
-    def pre_run(self, sess: 'Session') -> None:
-        pass
-
-    def post_run(self, sess: 'Session') -> None:
+    def pre_run(self) -> None:
         pass
 
     def wrap_execute(self, exe: TaskExecute) -> TaskExecute:
         return exe
+
+    def task_error(self) -> None:
+        pass
 
 
 class Graph(NamedTuple):
@@ -56,8 +49,9 @@ class Graph(NamedTuple):
     backflow: Dict[Hash, Set[Hash]]
 
 
-class Session:
+class Session(Pluggable):
     def __init__(self, plugins: Iterable[SessionPlugin] = None) -> None:
+        Pluggable.__init__(self, plugins)
         self._tasks: Dict[Hash, Task[Any]] = {}
         self._objects: Dict[Hash, Hashed[Any]] = {}
         self._graph = Graph({}, defaultdict(set), {})
@@ -65,9 +59,6 @@ class Session:
             ContextVar('running_task')
         self._running_task.set(None)
         self._storage: Dict[str, Any] = {}
-        self._plugins: Dict[str, SessionPlugin] = {}
-        for plugin in plugins or ():
-            plugin(self)
 
     def _check_active(self) -> None:
         sess = _active_session.get()
@@ -79,27 +70,16 @@ class Session:
         self._check_active()
         return self._storage
 
-    def register_plugin(self, name: str, plugin: SessionPlugin) -> None:
-        self._plugins[name] = plugin
-
-    def _run_plugins(self, func: str, reverse: bool = False) -> None:
-        plugins: Iterable[SessionPlugin] = self._plugins.values()
-        if reverse:
-            plugins = reversed(list(plugins))
-        for plugin in plugins:
-            getattr(plugin, func)(self)
-
     def __enter__(self) -> 'Session':
         assert _active_session.get() is None
         self._active_session_token = _active_session.set(self)
-        self._run_plugins('post_enter')
+        self.run_plugins('post_enter', self)
         return self
 
     def _filter_tasks(self, cond: Callable[[Task[Any]], bool]) -> List[Task[Any]]:
         return list(filter(cond, self._tasks.values()))
 
     def __exit__(self, exc_type: Any, *args: Any) -> None:
-        self._run_plugins('pre_exit', reverse=True)
         assert _active_session.get() is self
         _active_session.reset(self._active_session_token)
         del self._active_session_token
@@ -175,9 +155,8 @@ class Session:
         return task
 
     async def _run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
-        self._run_plugins('pre_run')
+        self.run_plugins('pre_run')
         result = await self.run_task_async(task)
-        self._run_plugins('post_run')
         return result
 
     def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
@@ -241,10 +220,7 @@ class Session:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
-        self._run_plugins('pre_run')
-        execute = self._execute
-        for plugin in self._plugins.values():
-            execute = plugin.wrap_execute(execute)  # type: ignore
+        self.run_plugins('pre_run')
         fut.register()
         async for action, task, progress in traverse_async(
                 self._process_objects([fut], save=False),
@@ -256,7 +232,7 @@ class Session:
                     task.state < State.HAS_RUN,
                     task.add_ready_callback, lambda t: reg(t)
                 ),
-                execute,
+                self.run_plugins_accum('wrap_execute', self._execute),
                 lambda task: task.done(),
                 depth,
                 priority,
@@ -268,7 +244,6 @@ class Session:
             if action is Action.EXECUTE:
                 log.info(f'{task}: will run')
         log.info('Finished')
-        self._run_plugins('post_run')
         try:
             return fut.value
         except FutureError as e:

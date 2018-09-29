@@ -20,7 +20,7 @@ class Parallel(SessionPlugin):
     def post_enter(self, sess: Session) -> None:
         sess.storage['scheduler'] = self.run_coro
 
-    def pre_run(self, sess: Session) -> None:
+    def pre_run(self) -> None:
         self._sem = asyncio.BoundedSemaphore(self._ncores)
         self._lock = asyncio.Lock()
 
