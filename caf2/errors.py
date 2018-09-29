@@ -1,83 +1,42 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from typing import Any, TYPE_CHECKING  # noqa
+if TYPE_CHECKING:
+    from .futures import Future  # noqa
+    from .tasks import Task  # noqa
+    from .sessions import Session  # noqa
 
 
 class CafError(Exception):
     pass
 
 
-class NoActiveSession(CafError):
+class FutureError(CafError):
+    def __init__(self, msg: str, fut: 'Future') -> None:
+        super().__init__(msg)
+        self.future = fut
+
+
+class TaskError(CafError):
+    def __init__(self, msg: str, task: 'Task[Any]') -> None:
+        super().__init__(msg)
+        self.task = task
+
+
+class CompositeError(CafError):
     pass
 
 
-class SessionNotActive(CafError):
+class SessionError(CafError):
+    def __init__(self, msg: str, sess: 'Session') -> None:
+        super().__init__(msg)
+        self.session = sess
+
+
+class InvalidInput(CafError):
     pass
 
 
-class ArgNotInSession(CafError):
-    pass
-
-
-class DependencyCycle(CafError):
-    pass
-
-
-class InvalidFileTarget(CafError):
-    pass
-
-
-class UnknownFile(CafError):
-    pass
-
-
-class FutureNotDone(CafError):
-    pass
-
-
-class FutureHasNoDefault(CafError):
-    pass
-
-
-class TaskHasNotRun(CafError):
-    pass
-
-
-class TaskHasAlreadyRun(CafError):
-    pass
-
-
-class TaskNotReady(CafError):
-    pass
-
-
-class TaskAlreadyDone(CafError):
-    pass
-
-
-class TaskHookChangedHash(CafError):
-    pass
-
-
-class InvalidJSONObject(CafError):
-    pass
-
-
-class UnhookableResult(CafError):
-    pass
-
-
-class UnrecognizedInput(CafError):
-    pass
-
-
-class DupliciteInputFile(CafError):
-    pass
-
-
-class TaskFunctionNotCoroutine(CafError):
-    pass
-
-
-class NoRunningTask(CafError):
+class FilesError(CafError):
     pass

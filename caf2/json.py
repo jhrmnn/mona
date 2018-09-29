@@ -8,7 +8,7 @@ from typing import Any, Set, Type, Dict, Callable, cast, Tuple, Optional, \
     NewType, Union, TypeVar, Iterable
 
 from .graph import traverse_id
-from .errors import InvalidJSONObject
+from .errors import CompositeError
 
 _T = TypeVar('_T')
 # JSONContainer should be Union[List[JSONValue], Dict[str, JSONValue]]
@@ -31,22 +31,22 @@ registered_classes: ClassRegister = {
 def validate_json(obj: Any, hook: Callable[[Any], bool] = None) -> None:
     classes = tuple(registered_classes)
 
-    def parents(obj: Any) -> Iterable[Any]:
-        if obj is None or isinstance(obj, (str, int, float, bool)):
+    def parents(o: Any) -> Iterable[Any]:
+        if o is None or isinstance(o, (str, int, float, bool)):
             return ()
-        if isinstance(obj, classes):
+        if isinstance(o, classes):
             return ()
-        if hook and hook(obj):
+        if hook and hook(o):
             return ()
-        elif isinstance(obj, list):
-            return obj
-        elif isinstance(obj, dict):
-            for key in obj:
+        elif isinstance(o, list):
+            return o
+        elif isinstance(o, dict):
+            for key in o:
                 if not isinstance(key, str):
-                    raise InvalidJSONObject('Dict keys must be strings')
-            return obj.values()
+                    raise CompositeError('Dict keys must be strings')
+            return o.values()
         else:
-            raise InvalidJSONObject(f'Unknown object: {obj!r}')
+            raise CompositeError(f'Unknown object: {o!r}')
 
     traverse_id([obj], parents)
 

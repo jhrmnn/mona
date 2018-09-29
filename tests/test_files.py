@@ -7,7 +7,7 @@ from caf2 import Rule, Session, FileManager
 from caf2.rules import dir_task
 from caf2.hashing import HashedBytes
 from caf2.files import StoredHashedBytes
-from caf2.errors import UnknownFile, UnrecognizedInput, DupliciteInputFile
+from caf2.errors import FilesError, InvalidInput
 
 from tests.test_dirtask import calcs
 
@@ -70,7 +70,7 @@ def test_hashing(tmpdir):
 
 def test_missing_file(tmpdir):
     fmngr = FileManager(tmpdir)
-    with pytest.raises(UnknownFile):
+    with pytest.raises(FilesError):
         with Session([fmngr]) as sess:
             sess.run_task(calcs())
             shutil.rmtree(tmpdir)
@@ -89,7 +89,7 @@ def test_access(tmpdir):
         assert int(output.value) == 0
         shutil.rmtree(tmpdir)
         fmngr._cache.clear()
-        with pytest.raises(UnknownFile):
+        with pytest.raises(FilesError):
             output.value
 
 
@@ -118,9 +118,9 @@ def test_alt_input3(tmpdir):
     tmpdir = Path(tmpdir)
     (tmpdir/'data').write_text('2')
     with Session([FileManager(tmpdir)]):
-        with pytest.raises(UnrecognizedInput):
+        with pytest.raises(InvalidInput):
             dir_task(b'', [object()])
-        with pytest.raises(DupliciteInputFile):
+        with pytest.raises(InvalidInput):
             dir_task(b'', [('data', b''), ('data', b'')])
-        with pytest.raises(DupliciteInputFile):
+        with pytest.raises(InvalidInput):
             dir_task(b'', [('data', b'')], {'data': 'data'})

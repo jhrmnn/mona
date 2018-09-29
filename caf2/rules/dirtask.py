@@ -9,7 +9,7 @@ from typing import TypeVar, Dict, Union
 from ..utils import make_executable
 from ..sessions import Session
 from ..hashing import HashedBytes
-from ..errors import InvalidFileTarget
+from ..errors import InvalidInput
 from ..rules import Rule, with_hook
 from ..runners import run_process
 
@@ -44,7 +44,7 @@ async def dir_task(exe: Union[HashingPath, bytes],
                     target = target.path
                 (root/filename).symlink_to(target)
             else:
-                raise InvalidFileTarget(repr(target))
+                raise InvalidInput(f'Invalid target {target!r}')
         make_executable(exefile)
         with (root/'STDOUT').open('w') as stdout, \
                 (root/'STDERR').open('w') as stderr:

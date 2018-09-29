@@ -7,7 +7,7 @@ from .hashing import Hash, Hashed, HashedBytes
 from .sessions import Session, SessionPlugin
 from .rules import dir_task
 from .utils import make_nonwritable, Pathable, split
-from .errors import UnknownFile, UnrecognizedInput, DupliciteInputFile
+from .errors import FilesError, InvalidInput
 from .json import registered_classes
 from .rules.dirtask import FileManager as _FileManager, \
     HashingPath as _HashingPath
@@ -100,7 +100,7 @@ class FileManager(_FileManager, SessionPlugin):
         path = self._path(hashid)
         if hashid in self._cache or path.is_file():
             return path
-        raise UnknownFile(hashid)
+        raise FilesError(f'Missing in manager: {hashid}')
 
     def get_bytes(self, hashid: Hash) -> bytes:
         content = self._cache.get(hashid)
@@ -111,7 +111,7 @@ class FileManager(_FileManager, SessionPlugin):
             return self._cache.setdefault(hashid, path.read_bytes())
         except FileNotFoundError:
             pass
-        raise UnknownFile(hashid)
+        raise FilesError(f'Missing in manager: {hashid}')
 
     def store_from_path(self, path: Path) -> StoredHashedBytes:
         # TODO large files could be hashed more efficiently and copied
@@ -167,10 +167,10 @@ class FileManager(_FileManager, SessionPlugin):
                     isinstance(item[1], (str, Path, bytes)):
                 filename, target = item
             else:
-                raise UnrecognizedInput(repr(item))
+                raise InvalidInput('Unknown input type: {item!r}')
             filename = str(Path(filename))  # normalize
             if filename in hashed_files:
-                raise DupliciteInputFile(filename)
+                raise InvalidInput('Duplicite input: {filename}')
             hashed_files[filename] = self._wrap_target(target)
         return hashed_files
 
@@ -192,7 +192,7 @@ class FileManager(_FileManager, SessionPlugin):
         stored_inputs.update(self._wrap_inputs(inputs))
         for filename, target in symlinks:
             if filename in stored_inputs:
-                raise DupliciteInputFile(filename)
+                raise InvalidInput('Duplicite input: {filename}')
             stored_inputs[filename] = Path(target)
         return stored_exe, stored_inputs
 

@@ -4,7 +4,7 @@ import pytest  # type: ignore
 
 from caf2 import Rule, Session
 from caf2.rules import dir_task
-from caf2.errors import InvalidFileTarget
+from caf2.errors import InvalidInput
 
 
 @Rule
@@ -32,6 +32,6 @@ def test_calc():
 
 
 def test_invalid_file():
-    with pytest.raises(InvalidFileTarget):
+    with pytest.raises(InvalidInput):
         with Session() as sess:
             sess.eval(dir_task('', {}))

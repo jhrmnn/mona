@@ -13,12 +13,10 @@ from typing import Set, Any, Dict, Callable, Optional, \
     Union, Awaitable
 
 from .hashing import Hash, Hashed, HashedCompositeLike
-from .tasks import Task, HashedFuture, State, maybe_hashed, FutureNotDone
+from .tasks import Task, HashedFuture, State, maybe_hashed
 from .graph import traverse, traverse_exec, NodeExecuted
 from .utils import Literal, split, Empty, Maybe, call_if
-from .errors import ArgNotInSession, DependencyCycle, NoActiveSession, \
-    UnhookableResult, TaskHasAlreadyRun, TaskNotReady, NoRunningTask, \
-    SessionNotActive
+from .errors import SessionError, TaskError, FutureError, CafError
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +72,7 @@ class Session:
     def _check_active(self) -> None:
         sess = _active_session.get()
         if sess is None or sess is not self:
-            raise SessionNotActive(repr(self))
+            raise SessionError(f'Not active: {self!r}', self)
 
     @property
     def storage(self) -> Dict[str, Any]:
@@ -123,7 +121,7 @@ class Session:
         task = self._running_task.get()
         if task:
             return task
-        raise NoRunningTask(repr(self))
+        raise SessionError(f'No running task: {self!r}', self)
 
     @contextmanager
     def _running_task_ctx(self, task: Task[Any]) -> Iterator[None]:
@@ -154,7 +152,7 @@ class Session:
         )
         for task in tasks:
             if task.hashid not in self._tasks:
-                raise ArgNotInSession(repr(task))
+                raise TaskError(f'Not in session: {task!r}', task)
         if save:
             self._objects.update({o.hashid: o for o in objs})
         return tasks
@@ -187,9 +185,9 @@ class Session:
 
     async def run_task_async(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         if task.state < State.READY:
-            raise TaskNotReady(repr(task))
+            raise TaskError(f'Not ready: {task!r}', task)
         if task.state > State.READY:
-            raise TaskHasAlreadyRun(repr(task))
+            raise TaskError(f'Task already run: {task!r}', task)
         log.info(f'{task}: will run')
         with self._running_task_ctx(task):
             result = await task.corofunc(*(arg.value for arg in task.args))
@@ -203,7 +201,7 @@ class Session:
         hashed = maybe_hashed(result)
         if hashed is None:
             if task.has_hook():
-                raise UnhookableResult(f'{result!r} of {task}')
+                raise TaskError(f'{result!r} cannot be hooked', task)
             task.set_result(result)
             return result
         if task.has_hook():
@@ -262,10 +260,11 @@ class Session:
         self._run_plugins('post_eval')
         try:
             return fut.value
-        except FutureNotDone as e:
+        except FutureError as e:
             tasks_not_done = self._filter_tasks(lambda t: not t.done())
             if tasks_not_done:
-                raise DependencyCycle(tasks_not_done) from e
+                msg = f'Task dependency cycle: {tasks_not_done}'
+                raise CafError(msg) from e
             raise
 
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
@@ -291,5 +290,5 @@ class Session:
     def active(cls) -> 'Session':
         session = _active_session.get()
         if session is None:
-            raise NoActiveSession()
+            raise CafError('No active session')
         return session

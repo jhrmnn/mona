@@ -12,9 +12,7 @@ from typing import Any, Callable, Optional, List, TypeVar, \
 from .futures import Future, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
 from .utils import get_fullname, Maybe, Empty, swap_type
-from .json import InvalidJSONObject
-from .errors import FutureHasNoDefault, FutureNotDone, TaskHasNotRun, \
-    TaskAlreadyDone, TaskHookChangedHash, TaskFunctionNotCoroutine
+from .errors import CafError, FutureError, TaskError, CompositeError
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +43,7 @@ def maybe_hashed(obj: Any) -> Optional['Hashed[Any]']:
     """Wraps maybe_hashed() with return value None on error."""
     try:
         return ensure_hashed(obj)
-    except InvalidJSONObject:
+    except CompositeError:
         return None
 
 
@@ -74,10 +72,10 @@ class HashedFuture(Hashed[_T], Future):
     def value(self) -> _T:
         if self.done():
             return self.result()
-        raise FutureNotDone(repr(self))
+        raise FutureError(f'Not done: {self!r}', self)
 
     def default_result(self) -> _T:
-        raise FutureHasNoDefault()
+        raise FutureError(f'No default: {self!r}', self)
 
     @property
     def value_or_default(self) -> _T:
@@ -96,7 +94,7 @@ class Task(HashedFuture[_T]):
                  label: str = None,
                  default: Maybe[_T] = Empty._) -> None:
         if not inspect.iscoroutinefunction(corofunc):
-            raise TaskFunctionNotCoroutine(repr(corofunc))
+            raise CafError(f'Task function is not a coroutine: {corofunc}')
         self._corofunc = corofunc
         self._args = tuple(map(ensure_hashed, args))
         Hashed.__init__(self)
@@ -141,7 +139,7 @@ class Task(HashedFuture[_T]):
 
     def resolve(self, handler: Callable[[Hashed[_T]], _U] = None) -> Union[_U, _T]:
         if isinstance(self._result, Empty):
-            raise TaskHasNotRun(repr(self))
+            raise TaskError(f'Has not run: {self!r}', self)
         handler = handler or (lambda x: x)  # type: ignore
         if isinstance(self._result, Hashed):
             return handler(self._result)  # type: ignore
@@ -152,7 +150,7 @@ class Task(HashedFuture[_T]):
             return self._default
         if isinstance(self._result, HashedFuture):
             return cast(_T, self._result.default_result())
-        raise FutureHasNoDefault()
+        raise TaskError(f'Has no defualt: {self!r}', self)
 
     def set_result(self, result: Union[_T, Hashed[_T]]) -> None:
         self._result = result
@@ -165,9 +163,9 @@ class Task(HashedFuture[_T]):
 
     def future_result(self) -> HashedFuture[_T]:
         if self.state < State.HAS_RUN:
-            raise TaskHasNotRun(repr(self))
+            raise TaskError(f'Has not run: {self!r}', self)
         if self.done():
-            raise TaskAlreadyDone(repr(self))
+            raise TaskError(f'Has already run: {self!r}', self)
         assert isinstance(self._result, HashedFuture)
         return self._result
 
@@ -193,7 +191,7 @@ class Task(HashedFuture[_T]):
         assert self._hook
         hooked_result = ensure_hashed(self._hook(result.value))
         if hooked_result.hashid != result.hashid:
-            raise TaskHookChangedHash(self._hook)
+            raise TaskError(f'Hook {self._hook!r} changed hash', self)
         return hooked_result
 
 

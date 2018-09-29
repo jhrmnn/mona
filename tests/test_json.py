@@ -3,7 +3,7 @@ import pytest  # type: ignore
 import json
 
 from caf2.json import ClassJSONDecoder, ClassJSONEncoder, validate_json
-from caf2.errors import InvalidJSONObject
+from caf2.errors import CompositeError
 
 
 class K:
@@ -38,9 +38,9 @@ def test_encoder_decoder():
 
 
 def test_validation_errors():
-    with pytest.raises(InvalidJSONObject):
+    with pytest.raises(CompositeError):
         validate_json({1: 2})
-    with pytest.raises(InvalidJSONObject):
+    with pytest.raises(CompositeError):
         validate_json({"1": object()})
 
 
