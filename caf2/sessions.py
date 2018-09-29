@@ -42,6 +42,9 @@ class SessionPlugin(Plugin):
     def wrap_execute(self, exe: TaskExecute) -> TaskExecute:
         return exe
 
+    def post_create(self, task: Task[_T]) -> Task[_T]:
+        return task
+
 
 class Graph(NamedTuple):
     deps: Dict[Hash, Set[Hash]]
@@ -152,7 +155,7 @@ class Session(Pluggable):
         self._tasks[task.hashid] = task
         arg_tasks = self._process_objects(task.args, save=True)
         self._graph.deps[task.hashid] = set(t.hashid for t in arg_tasks)
-        return task
+        return self.run_plugins('post_create', start=task)
 
     @asynccontextmanager
     async def run_context(self) -> AsyncGenerator[None, None]:
