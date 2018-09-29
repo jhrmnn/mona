@@ -24,6 +24,16 @@ async def analysis(results):
     return sum(int(res) for _, res in results)
 
 
+@Rule
+async def python():
+    return dir_task(
+        '#!/usr/bin/env python\n'
+        'import coverage\n'
+        'print(coverage.__name__)'.encode(),
+        {}
+    )['STDOUT']
+
+
 def test_calc():
     with Session() as sess:
         sess.run_task(calcs())
@@ -35,3 +45,8 @@ def test_invalid_file():
     with pytest.raises(InvalidInput):
         with Session() as sess:
             sess.eval(dir_task('', {}))
+
+
+def test_python():
+    with Session() as sess:
+        assert sess.eval(python()).decode().rstrip() == 'coverage'

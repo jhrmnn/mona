@@ -108,7 +108,7 @@ class Task(HashedFuture[_T]):
         self._result: Union[_T, Hashed[_T], Empty] = Empty._
         self._hook: Optional[Callable[[_T], _T]] = None
         self._default = default
-        self.storage: Dict[str, Any] = {}
+        self._storage: Dict[str, Any] = {}
 
     @property
     def spec(self) -> str:
@@ -130,6 +130,10 @@ class Task(HashedFuture[_T]):
     @property
     def args(self) -> Tuple[Hashed[Any], ...]:
         return self._args
+
+    @property
+    def storage(self) -> Dict[str, Any]:
+        return self._storage
 
     def __getitem__(self, key: Any) -> 'TaskComponent[Any]':
         return self.get(key)
