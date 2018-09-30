@@ -14,7 +14,8 @@ class Plugin:
     name: str
 
     def __call__(self, obj: 'Pluggable') -> None:
-        obj.register_plugin(self.name, self)
+        name = getattr(self, 'name', self.__class__.__name__)
+        obj.register_plugin(name, self)
 
 
 class Pluggable:

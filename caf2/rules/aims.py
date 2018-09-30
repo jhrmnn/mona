@@ -34,8 +34,6 @@ class Aims(Pluggable):
 
 
 class SpeciesDir(AimsPlugin):
-    name = 'species_dir'
-
     def __init__(self) -> None:
         self._speciesdirs: Dict[Tuple[str, str], Path] = {}
 
@@ -55,8 +53,6 @@ class SpeciesDir(AimsPlugin):
 
 
 class Basis(AimsPlugin):
-    name = 'basis'
-
     def __init__(self) -> None:
         self._basis_defs: Dict[Tuple[Path, str], str] = {}
 
@@ -75,8 +71,6 @@ class Basis(AimsPlugin):
 
 
 class Tags(AimsPlugin):
-    name = 'tags'
-
     def process(self, task: Dict[str, Any]) -> None:
         lines = []
         for tag, value in task.pop('tags').items():
@@ -94,15 +88,11 @@ class Tags(AimsPlugin):
 
 
 class Geom(AimsPlugin):
-    name = 'geom'
-
     def process(self, task: Dict[str, Any]) -> None:
         task['geometry'] = task.pop('geom').dumps('aims')
 
 
 class Core(AimsPlugin):
-    name = 'core'
-
     def process(self, task: Dict[str, Any]) -> None:
         control = '\n\n'.join([task.pop('control'), *task.pop('basis')])
         task['inputs'] = [
@@ -112,8 +102,6 @@ class Core(AimsPlugin):
 
 
 class Script(AimsPlugin):
-    name = 'script'
-
     def process(self, task: Dict[str, Any]) -> None:
         aims, check = task.pop('aims'), task.pop('check', True)
         lines = [
@@ -129,8 +117,6 @@ class Script(AimsPlugin):
 
 
 class UncommentTier(AimsPlugin):
-    name = 'uncomment_tier'
-
     def __init__(self) -> None:
         self._tiers_cache: Dict[Tuple[str, int], str] = {}
 
