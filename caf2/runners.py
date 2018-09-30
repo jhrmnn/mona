@@ -1,12 +1,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import logging
 import asyncio
 import subprocess
 from typing import Any, TypeVar, Callable, Awaitable, Optional, Tuple, Union
 from typing_extensions import Protocol, runtime
 
 from .sessions import Session
+
+log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
 ProcessOutput = Union[bytes, Tuple[bytes, bytes]]
@@ -67,6 +70,7 @@ async def _run_process(args: Union[str, Tuple[str, ...]],
             await proc.wait()
         raise
     if proc.returncode:
+        log.error(f'Got nonzero exit code in {args!r}')
         raise subprocess.CalledProcessError(proc.returncode, args)
     if stderr is None:
         return stdout
