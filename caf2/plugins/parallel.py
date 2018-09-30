@@ -5,7 +5,8 @@ import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Callable, Awaitable, Any, TypeVar, AsyncGenerator, Set
+from typing import Callable, Awaitable, Any, TypeVar, AsyncGenerator, \
+    Optional, Set
 
 from ..graph import NodeExecuted
 from ..tasks import Task
@@ -23,6 +24,7 @@ class Parallel(SessionPlugin):
         self._ncores = ncores or os.cpu_count() or 1
         self._available = self._ncores
         self._asyncio_tasks: Set[asyncio.Task[Any]] = set()
+        self._pending: Optional[int] = None
 
     def post_enter(self, sess: Session) -> None:
         sess.storage['scheduler'] = self.run_coro
@@ -40,6 +42,26 @@ class Parallel(SessionPlugin):
         await asyncio.gather(*self._asyncio_tasks)
         assert not self._asyncio_tasks
         log.info('All tasks cancelled')
+
+    def _release(self, ncores: int) -> None:
+        if self._pending is None:
+            for _ in range(ncores):
+                self._sem.release()
+            self._available += ncores
+        else:
+            self._pending += ncores
+
+    def stop(self) -> None:
+        assert self._pending is None
+        self._pending = 0
+        log.info(f'Stopping scheduler')
+
+    def resume(self) -> None:
+        assert self._pending is not None
+        log.info(f'Resuming scheduler with {self._pending} cores')
+        pending = self._pending
+        self._pending = None
+        self._release(pending)
 
     def wrap_execute(self, execute: TaskExecute) -> TaskExecute:
         async def _execute(task: Task[Any], reg: NodeExecuted[Task[Any]]) -> None:
@@ -67,10 +89,11 @@ class Parallel(SessionPlugin):
                 self._available -= 1
         try:
             yield
+        except Exception as e:
+            self.stop()
+            raise
         finally:
-            for _ in range(ncores):
-                self._sem.release()
-            self._available += ncores
+            self._release(ncores)
 
     async def run_coro(self,
                        corofunc: Callable[..., Awaitable[_T]],
@@ -79,11 +102,14 @@ class Parallel(SessionPlugin):
         task = Session.active().running_task
         n = task.storage.get('ncores', 1)
         if n > self._available:
-            log.debug(f'{self._available}/{n} cores available for "{task}"')
+            log.debug(
+                f'Waiting for {n-self._available}/{n} '
+                f'unavailable cores for "{task}"'
+            )
             waited = True
         else:
             waited = False
         async with self._acquire(n):
             if waited:
-                log.debug(f'All cores available for "{task}", calling')
+                log.debug(f'All {n} cores available for "{task}", resuming')
             return await corofunc(*args, **kwargs)
