@@ -9,7 +9,7 @@ from typing import Dict, Any, Tuple, Iterable
 
 from .dirtask import dir_task, DirTaskResult
 from ..tasks import Task
-from ..errors import CafError
+from ..errors import CafError, InvalidInput
 from ..pluggable import Plugin, Pluggable
 from caf.Tools.convert import p2f
 
@@ -26,10 +26,10 @@ class Aims(Pluggable):
 
     def __call__(self, *, label: str = None, **task: Any) -> Task[DirTaskResult]:
         self.run_plugins('process', task, start=None)
-        inputs = {
-            fname: content.encode() for fname, content in task['inputs']
-        }
-        script = f'#!/bin/bash\n{task["command"]}'.encode()
+        script = task.pop('script').encode()
+        inputs = {name: cont.encode() for name, cont in task.pop('inputs')}
+        if task:
+            raise InvalidInput(f'Unknown Aims kwargs: {list(task.keys())}')
         return dir_task(script, inputs, label=label)
 
 
@@ -37,22 +37,41 @@ class SpeciesDir(AimsPlugin):
     name = 'species_dir'
 
     def __init__(self) -> None:
-        self.speciedirs: Dict[Tuple[str, str], Path] = {}
+        self._speciesdirs: Dict[Tuple[str, str], Path] = {}
 
     def process(self, task: Dict[str, Any]) -> None:
         basis_key = aims, basis = task['aims'], task.pop('basis')
-        if basis_key in self.speciedirs:
-            speciedir = self.speciedirs[basis_key]
-        else:
+        speciesdir = self._speciesdirs.get(basis_key)
+        if not speciesdir:
             pathname = shutil.which(aims)
             if not pathname:
                 pathname = shutil.which('aims-master')
             if not pathname:
                 raise CafError(f'Aims "{aims}" not found')
             path = Path(pathname)
-            speciedir = path.parents[1]/'aimsfiles/species_defaults'/basis
-            self.speciedirs[basis_key] = speciedir
-        task['speciedir'] = speciedir
+            speciesdir = path.parents[1]/'aimsfiles/species_defaults'/basis
+            self._speciesdirs[basis_key] = speciesdir  # type: ignore
+        task['speciesdir'] = speciesdir
+
+
+class Basis(AimsPlugin):
+    name = 'basis'
+
+    def __init__(self) -> None:
+        self._basis_defs: Dict[Tuple[Path, str], str] = {}
+
+    def process(self, task: Dict[str, Any]) -> None:
+        speciesdir = task.pop('speciesdir')
+        all_species = set([(a.number, a.specie) for a in task['geom'].centers])
+        basis = []
+        for Z, species in sorted(all_species):
+            if (speciesdir, species) not in self._basis_defs:
+                basis_def = (speciesdir/f'{Z:02d}_{species}_default').read_text()
+                self._basis_defs[speciesdir, species] = basis_def
+            else:
+                basis_def = self._basis_defs[speciesdir, species]
+            basis.append(basis_def)
+        task['basis'] = basis
 
 
 class Tags(AimsPlugin):
@@ -74,37 +93,39 @@ class Tags(AimsPlugin):
         task['control'] = '\n'.join(lines)
 
 
-class Command(AimsPlugin):
-    name = 'command'
+class Geom(AimsPlugin):
+    name = 'geom'
+
+    def process(self, task: Dict[str, Any]) -> None:
+        task['geometry'] = task.pop('geom').dumps('aims')
+
+
+class Core(AimsPlugin):
+    name = 'core'
+
+    def process(self, task: Dict[str, Any]) -> None:
+        control = '\n\n'.join([task.pop('control'), *task.pop('basis')])
+        task['inputs'] = [
+            ('control.in', control),
+            ('geometry.in', task.pop('geometry')),
+        ]
+
+
+class Script(AimsPlugin):
+    name = 'script'
 
     def process(self, task: Dict[str, Any]) -> None:
         aims, check = task.pop('aims'), task.pop('check', True)
-        command = f'AIMS={aims} run_aims'
+        lines = [
+            '#!/bin/bash',
+            'set -e',
+            f'AIMS={aims} run_aims',
+        ]
         if check:
-            command += (
-                ' && egrep "Have a nice day|stop_if_parser" STDOUT >/dev/null'
+            lines.append(
+                'egrep "Have a nice day|stop_if_parser" STDOUT >/dev/null'
             )
-        task['command'] = command
-
-
-class Basis(AimsPlugin):
-    name = 'basis'
-
-    def __init__(self) -> None:
-        self.basis_defs: Dict[Tuple[Path, str], str] = {}
-
-    def process(self, task: Dict[str, Any]) -> None:
-        speciedir = task.pop('speciedir')
-        species = set([(a.number, a.specie) for a in task['geom'].centers])
-        basis = []
-        for number, specie in sorted(species):
-            if (speciedir, specie) not in self.basis_defs:
-                basis_def = (speciedir/f'{number:02d}_{specie}_default').read_text()
-                self.basis_defs[speciedir, specie] = basis_def
-            else:
-                basis_def = self.basis_defs[speciedir, specie]
-            basis.append(basis_def)
-        task['basis'] = basis
+        task['script'] = '\n'.join(lines)
 
 
 class UncommentTier(AimsPlugin):
@@ -146,24 +167,6 @@ class UncommentTier(AimsPlugin):
             self._tiers_cache[cache_key] = buffer
 
 
-class Geom(AimsPlugin):
-    name = 'geom'
-
-    def process(self, task: Dict[str, Any]) -> None:
-        task['geometry'] = task.pop('geom').dumps('aims')
-
-
-class Core(AimsPlugin):
-    name = 'core'
-
-    def process(self, task: Dict[str, Any]) -> None:
-        control = '\n\n'.join([task.pop('control'), *task.pop('basis')])
-        task['inputs'] = [
-            ('control.in', control),
-            ('geometry.in', task.pop('geometry')),
-        ]
-
-
 default_plugins = [
-    SpeciesDir, Tags, Command, Basis, UncommentTier, Geom, Core
+    SpeciesDir, Basis, UncommentTier, Tags, Geom, Core, Script,
 ]
