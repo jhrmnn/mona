@@ -85,7 +85,7 @@ class FileManager(_FileManager, SessionPlugin):
 
     def _path_primed(self, hashid: Hash) -> Path:
         path = self._path(hashid)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(exist_ok=True)
         return path
 
     def __contains__(self, hashid: Hash) -> bool:
