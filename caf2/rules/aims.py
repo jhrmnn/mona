@@ -15,7 +15,7 @@ from caf.Tools.convert import p2f
 
 
 class AimsPlugin(Plugin):
-    def process(self, task: Dict[str, Any]) -> None:
+    def process(self, kwargs: Dict[str, Any]) -> None:
         pass
 
 
@@ -24,12 +24,12 @@ class Aims(Pluggable):
         plugins = plugins or [factory() for factory in default_plugins]
         Pluggable.__init__(self, plugins)
 
-    def __call__(self, *, label: str = None, **task: Any) -> Task[DirTaskResult]:
-        self.run_plugins('process', task, start=None)
-        script = task.pop('script').encode()
-        inputs = {name: cont.encode() for name, cont in task.pop('inputs')}
-        if task:
-            raise InvalidInput(f'Unknown Aims kwargs: {list(task.keys())}')
+    def __call__(self, *, label: str = None, **kwargs: Any) -> Task[DirTaskResult]:
+        self.run_plugins('process', kwargs, start=None)
+        script = kwargs.pop('script').encode()
+        inputs = {name: cont.encode() for name, cont in kwargs.pop('inputs')}
+        if kwargs:
+            raise InvalidInput(f'Unknown Aims kwargs: {list(kwargs.keys())}')
         return dir_task(script, inputs, label=label)
 
 
@@ -37,8 +37,8 @@ class SpeciesDir(AimsPlugin):
     def __init__(self) -> None:
         self._speciesdirs: Dict[Tuple[str, str], Path] = {}
 
-    def process(self, task: Dict[str, Any]) -> None:
-        basis_key = aims, basis = task['aims'], task.pop('basis')
+    def process(self, kwargs: Dict[str, Any]) -> None:
+        basis_key = aims, basis = kwargs['aims'], kwargs.pop('basis')
         speciesdir = self._speciesdirs.get(basis_key)
         if not speciesdir:
             pathname = shutil.which(aims)
@@ -49,16 +49,16 @@ class SpeciesDir(AimsPlugin):
             path = Path(pathname)
             speciesdir = path.parents[1]/'aimsfiles/species_defaults'/basis
             self._speciesdirs[basis_key] = speciesdir  # type: ignore
-        task['speciesdir'] = speciesdir
+        kwargs['speciesdir'] = speciesdir
 
 
 class Basis(AimsPlugin):
     def __init__(self) -> None:
         self._basis_defs: Dict[Tuple[Path, str], str] = {}
 
-    def process(self, task: Dict[str, Any]) -> None:
-        speciesdir = task.pop('speciesdir')
-        all_species = set([(a.number, a.specie) for a in task['geom'].centers])
+    def process(self, kwargs: Dict[str, Any]) -> None:
+        speciesdir = kwargs.pop('speciesdir')
+        all_species = set([(a.number, a.specie) for a in kwargs['geom'].centers])
         basis = []
         for Z, species in sorted(all_species):
             if (speciesdir, species) not in self._basis_defs:
@@ -67,13 +67,13 @@ class Basis(AimsPlugin):
             else:
                 basis_def = self._basis_defs[speciesdir, species]
             basis.append(basis_def)
-        task['basis'] = basis
+        kwargs['basis'] = basis
 
 
 class Tags(AimsPlugin):
-    def process(self, task: Dict[str, Any]) -> None:
+    def process(self, kwargs: Dict[str, Any]) -> None:
         lines = []
-        for tag, value in task.pop('tags').items():
+        for tag, value in kwargs.pop('tags').items():
             if value is None:
                 continue
             if value is ():
@@ -84,26 +84,26 @@ class Tags(AimsPlugin):
                 if value == 'xc' and value.startswith('libxc'):
                     lines.append('override_warning_libxc')
                 lines.append(f'{tag}  {p2f(value)}')
-        task['control'] = '\n'.join(lines)
+        kwargs['control'] = '\n'.join(lines)
 
 
 class Geom(AimsPlugin):
-    def process(self, task: Dict[str, Any]) -> None:
-        task['geometry'] = task.pop('geom').dumps('aims')
+    def process(self, kwargs: Dict[str, Any]) -> None:
+        kwargs['geometry'] = kwargs.pop('geom').dumps('aims')
 
 
 class Core(AimsPlugin):
-    def process(self, task: Dict[str, Any]) -> None:
-        control = '\n\n'.join([task.pop('control'), *task.pop('basis')])
-        task['inputs'] = [
+    def process(self, kwargs: Dict[str, Any]) -> None:
+        control = '\n\n'.join([kwargs.pop('control'), *kwargs.pop('basis')])
+        kwargs['inputs'] = [
             ('control.in', control),
-            ('geometry.in', task.pop('geometry')),
+            ('geometry.in', kwargs.pop('geometry')),
         ]
 
 
 class Script(AimsPlugin):
-    def process(self, task: Dict[str, Any]) -> None:
-        aims, check = task.pop('aims'), task.pop('check', True)
+    def process(self, kwargs: Dict[str, Any]) -> None:
+        aims, check = kwargs.pop('aims'), kwargs.pop('check', True)
         lines = [
             '#!/bin/bash',
             'set -e',
@@ -113,25 +113,25 @@ class Script(AimsPlugin):
             lines.append(
                 'egrep "Have a nice day|stop_if_parser" STDOUT >/dev/null'
             )
-        task['script'] = '\n'.join(lines)
+        kwargs['script'] = '\n'.join(lines)
 
 
 class UncommentTier(AimsPlugin):
     def __init__(self) -> None:
         self._tiers_cache: Dict[Tuple[str, int], str] = {}
 
-    def process(self, task: Dict[str, Any]) -> None:
-        tier = task.pop('tier', None)
+    def process(self, kwargs: Dict[str, Any]) -> None:
+        tier = kwargs.pop('tier', None)
         if tier is None:
             return
-        for i in range(len(task['basis'])):
-            cache_key = task['basis'][i], tier
+        for i in range(len(kwargs['basis'])):
+            cache_key = kwargs['basis'][i], tier
             if cache_key in self._tiers_cache:
-                task['basis'][i] = self._tiers_cache[cache_key]
+                kwargs['basis'][i] = self._tiers_cache[cache_key]
                 continue
             buffer = ''
             tier_now = None
-            for l in task['basis'][i].split('\n'):
+            for l in kwargs['basis'][i].split('\n'):
                 m = re.search(r'"(\w+) tier"', l) or re.search(r'(Further)', l)
                 if m:
                     tier_now = {
@@ -149,7 +149,7 @@ class UncommentTier(AimsPlugin):
                 if '####' in l:
                     tier_now = None
                 buffer += l + '\n'
-            task['basis'][i] = buffer
+            kwargs['basis'][i] = buffer
             self._tiers_cache[cache_key] = buffer
 
 
