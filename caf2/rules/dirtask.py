@@ -69,7 +69,7 @@ async def dir_task(exe: Union[HashingPath, bytes],
     dirfactory = TemporaryDirectory if not dirmngr else dirmngr.tempdir
     with dirfactory() as tmpdir:
         root = Path(tmpdir)
-        exefile = str(root/'EXE')
+        exefile = str((root/'EXE').resolve())
         for filename, target in inputs.items():
             if isinstance(target, bytes):
                 (root/filename).write_bytes(target)
