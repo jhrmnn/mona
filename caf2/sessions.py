@@ -240,7 +240,7 @@ class Session(Pluggable):
         if not isinstance(fut, HashedFuture):
             return obj
         fut.register()
-        async for action, task, progress in traverse_async(
+        async for step in traverse_async(
                 self._process_objects([fut], save=False),
                 lambda task: (self._tasks[h] for h in chain(
                     self._graph.deps[task.hashid],
@@ -255,6 +255,9 @@ class Session(Pluggable):
                 depth,
                 priority,
         ):
+            if isinstance(step, Exception):
+                raise step
+            action, task, progress = step
             progress_line = ' '.join(f'{k}={v}' for k, v in progress.items())
             tag = action.name
             if task:

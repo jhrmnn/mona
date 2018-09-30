@@ -5,7 +5,7 @@ import asyncio
 from enum import Enum
 from typing import TypeVar, Deque, Set, Callable, Iterable, \
     MutableSequence, Dict, Awaitable, Container, Iterator, \
-    AsyncIterator, Tuple, cast, Optional, Any
+    AsyncIterator, Tuple, cast, Optional, Any, Union
 
 _T = TypeVar('_T')
 NodeScheduler = Callable[[_T, Callable[[_T], None]], None]
@@ -64,7 +64,7 @@ async def traverse_async(start: Iterable[_T],
                          sentinel: Callable[[_T], bool] = None,
                          depth: bool = False,
                          priority: Priority = default_priority
-                         ) -> AsyncIterator[Step[_T]]:
+                         ) -> AsyncIterator[Union[Exception, Step[_T]]]:
     """
     Traverse a self-extending DAG, yield steps.
 
@@ -111,19 +111,22 @@ async def traverse_async(start: Iterable[_T],
                 continue
             schedule(node, to_execute.append)
             extend_from(edges_from(node), to_visit, filter=visited)
-        elif action is Action.EXECUTE:
-            node = to_execute.popleft()
-            yield action, node, progress
-            executing += 1
-            await execute(node, done.put_nowait)
         elif action is Action.RESULTS:
             yield action, None, progress
             exc, nodes = await done.get()
             if exc:
-                raise exc
+                yield exc
             extend_from(nodes, to_visit, filter=visited)
             executing -= 1
             executed += 1
+        elif action is Action.EXECUTE:
+            node = to_execute.popleft()
+            yield action, node, progress
+            executing += 1
+            try:
+                await execute(node, done.put_nowait)
+            except Exception as exc:
+                yield exc
 
 
 def traverse(start: Iterable[_T],
