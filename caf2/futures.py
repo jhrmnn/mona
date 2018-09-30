@@ -19,8 +19,9 @@ class State(IntEnum):
     PENDING = 0
     READY = 1
     RUNNING = 2
-    HAS_RUN = 3
-    DONE = 4
+    ERROR = 3
+    HAS_RUN = 4
+    DONE = 5
 
 
 class Future:
