@@ -4,7 +4,6 @@
 import os
 import asyncio
 import logging
-from functools import partial
 from contextlib import asynccontextmanager
 from typing import Callable, Awaitable, Any, TypeVar, AsyncGenerator, Set
 
@@ -42,25 +41,23 @@ class Parallel(SessionPlugin):
         assert not self._asyncio_tasks
         log.info('All tasks cancelled')
 
-    async def _run_execute(self,
-                           execute: TaskExecute,
-                           task: Task[Any],
-                           reg: NodeExecuted[Task[Any]]) -> None:
-        try:
-            await execute(task, reg)
-        except Exception as e:
-            if not isinstance(e, asyncio.CancelledError):
-                reg((e, ()))
-        current_task = asyncio.current_task()
-        assert current_task
-        self._asyncio_tasks.remove(current_task)
-
-    async def _spawn_execute(self, execute: TaskExecute, *args: Any) -> None:
-        asyncio_task = asyncio.create_task(self._run_execute(execute, *args))
-        self._asyncio_tasks.add(asyncio_task)
-
     def wrap_execute(self, execute: TaskExecute) -> TaskExecute:
-        return partial(self._spawn_execute, execute)
+        async def _execute(task: Task[Any], reg: NodeExecuted[Task[Any]]) -> None:
+            try:
+                await execute(task, reg)
+            except Exception as e:
+                if not isinstance(e, asyncio.CancelledError):
+                    reg((e, ()))
+            current_task = asyncio.current_task()
+            assert current_task
+            self._asyncio_tasks.remove(current_task)
+
+        async def spawn_execute(task: Task[Any], reg: NodeExecuted[Task[Any]]
+                                ) -> None:
+            asyncio_task = asyncio.create_task(_execute(task, reg))
+            self._asyncio_tasks.add(asyncio_task)
+
+        return spawn_execute
 
     @asynccontextmanager
     async def _acquire(self, ncores: int) -> AsyncGenerator[None, None]:
