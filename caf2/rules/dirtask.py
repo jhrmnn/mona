@@ -6,12 +6,12 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from abc import ABC, abstractmethod
-from typing import TypeVar, Dict, Union
+from typing import TypeVar, Dict, Union, ContextManager, Any, Optional
 
-from ..utils import make_executable
+from ..utils import make_executable, Pathable
 from ..sessions import Session
 from ..hashing import HashedBytes
-from ..errors import InvalidInput, CafError
+from ..errors import InvalidInput
 from ..rules import Rule, with_hook
 from ..runners import run_process
 
@@ -32,14 +32,22 @@ class FileManager(ABC):
     def store_from_path(self, path: Path) -> HashedBytes: ...
 
 
-class DirTaskError(CafError):
-    def __init__(self, stdout: bytes, stderr: bytes) -> None:
-        super().__init__()
+class DirTaskError(subprocess.CalledProcessError):
+    def __init__(self, stdout: bytes, stderr: bytes, *args: Any) -> None:
+        super().__init__(*args)
         self.stdout = stdout
         self.stderr = stderr
 
     def __str__(self) -> str:
-        return str((self.stdout, self.stderr))
+        return '\n'.join([
+            'STDOUT:',
+            self.stdout.decode(),
+            '',
+            'STDERR:',
+            self.stderr.decode(),
+            '',
+            super().__str__()
+        ])
 
 
 @with_hook('dir_task')
@@ -65,12 +73,14 @@ async def dir_task(exe: Union[HashingPath, bytes],
         try:
             with out_path.open('w') as stdout, err_path.open('w') as stderr:
                 await run_process(exefile, stdout=stdout, stderr=stderr, cwd=root)
-        except subprocess.CalledProcessError:
-            errored = True
+        except subprocess.CalledProcessError as e:
+            exc: Optional[subprocess.CalledProcessError] = e
         else:
-            errored = False
-        if errored:
-            raise DirTaskError(out_path.read_bytes(), err_path.read_bytes())
+            exc = None
+        if exc:
+            out = out_path.read_bytes()
+            err = err_path.read_bytes()
+            raise DirTaskError(out, err, exc.returncode, exc.cmd)
         outputs = {}
         fmngr = Session.active().storage.get('dir_task:file_manager')
         assert not fmngr or isinstance(fmngr, FileManager)
