@@ -1,8 +1,11 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import logging
 from typing import Dict, Iterable, Any, TypeVar, cast, List, \
     Generator, Awaitable
+
+log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
 
@@ -34,7 +37,11 @@ class Pluggable:
                      ) -> Generator[Any, Any, None]:
         for plugin in self._get_plugins():
             all_args = args if start is None else (start, *args)
-            start = yield getattr(plugin, func)(*all_args, **kwargs)
+            try:
+                start = yield getattr(plugin, func)(*all_args, **kwargs)
+            except Exception:
+                log.error(f'Error in plugin {plugin.name!r}')
+                raise
 
     async def run_plugins_async(self, func: str, *args: Any, start: _T,
                                 reverse: bool = False, **kwargs: Any) -> _T:
