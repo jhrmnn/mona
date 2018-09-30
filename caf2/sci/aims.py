@@ -7,7 +7,7 @@ from pathlib import Path
 
 from typing import Dict, Any, Tuple, Iterable
 
-from .dirtask import dir_task, DirTaskResult
+from ..rules.dirtask import dir_task, DirTaskResult
 from ..tasks import Task
 from ..errors import CafError, InvalidInput
 from ..pluggable import Plugin, Pluggable
