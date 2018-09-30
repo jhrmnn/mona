@@ -1,0 +1,37 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import logging
+import shutil
+from tempfile import mkdtemp
+from pathlib import Path
+from contextlib import contextmanager
+from typing import Iterator
+
+from ..sessions import Session, SessionPlugin
+from ..utils import Pathable
+from ..rules.dirtask import TmpdirManager as _TmpdirManager
+
+log = logging.getLogger(__name__)
+
+
+class TmpdirManager(_TmpdirManager, SessionPlugin):
+    'tmpdir_manager'
+
+    def __init__(self, root: Pathable) -> None:
+        self._root = Path(root)
+
+    def post_enter(self, sess: Session) -> None:
+        sess.storage['dir_task:tmpdir_manager'] = self
+
+    @contextmanager
+    def tempdir(self) -> Iterator[str]:
+        task = Session.active().running_task
+        path = mkdtemp(prefix=f'{task.hashid[:6]}_', dir=str(self._root))
+        log.debug(f'Created tempdir for "{task.label}": {path}')
+        try:
+            yield path
+        except Exception as e:
+            raise
+        else:
+            shutil.rmtree(path)

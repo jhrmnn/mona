@@ -32,6 +32,11 @@ class FileManager(ABC):
     def store_from_path(self, path: Path) -> HashedBytes: ...
 
 
+class TmpdirManager(ABC):
+    @abstractmethod
+    def tempdir(self) -> ContextManager[Pathable]: ...
+
+
 class DirTaskError(subprocess.CalledProcessError):
     def __init__(self, stdout: bytes, stderr: bytes, *args: Any) -> None:
         super().__init__(*args)
@@ -55,8 +60,14 @@ class DirTaskError(subprocess.CalledProcessError):
 async def dir_task(exe: Union[HashingPath, bytes],
                    inputs: Dict[str, Union[HashingPath, bytes, Path]]
                    ) -> DirTaskResult:
+    sess = Session.active()
+    fmngr = sess.storage.get('dir_task:file_manager')
+    assert not fmngr or isinstance(fmngr, FileManager)
+    dirmngr = sess.storage.get('dir_task:tmpdir_manager')
+    assert not dirmngr or isinstance(dirmngr, TmpdirManager)
     inputs = {'EXE': exe, **inputs}
-    with TemporaryDirectory() as tmpdir:
+    dirfactory = TemporaryDirectory if not dirmngr else dirmngr.tempdir
+    with dirfactory() as tmpdir:
         root = Path(tmpdir)
         exefile = str(root/'EXE')
         for filename, target in inputs.items():
@@ -74,6 +85,8 @@ async def dir_task(exe: Union[HashingPath, bytes],
             with out_path.open('w') as stdout, err_path.open('w') as stderr:
                 await run_process(exefile, stdout=stdout, stderr=stderr, cwd=root)
         except subprocess.CalledProcessError as e:
+            if dirmngr:
+                raise
             exc: Optional[subprocess.CalledProcessError] = e
         else:
             exc = None
@@ -82,8 +95,6 @@ async def dir_task(exe: Union[HashingPath, bytes],
             err = err_path.read_bytes()
             raise DirTaskError(out, err, exc.returncode, exc.cmd)
         outputs = {}
-        fmngr = Session.active().storage.get('dir_task:file_manager')
-        assert not fmngr or isinstance(fmngr, FileManager)
         for path in root.glob('**/*'):
             relpath = path.relative_to(root)
             if str(relpath) not in inputs and path.is_file():
