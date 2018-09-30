@@ -156,20 +156,33 @@ class Task(HashedFuture[_T]):
             return cast(_T, self._result.default_result())
         raise TaskError(f'Has no defualt: {self!r}', self)
 
+    def set_running(self) -> None:
+        assert self._state is State.READY
+        self._state = State.RUNNING
+
+    def set_error(self) -> None:
+        assert self._state is State.RUNNING
+        self._state = State.ERROR
+
+    def set_has_run(self) -> None:
+        assert self._state is State.RUNNING
+        self._state = State.HAS_RUN
+
     def set_result(self, result: Union[_T, Hashed[_T]]) -> None:
+        assert self._state >= State.HAS_RUN
         self._result = result
         super().set_done()
 
     def set_future_result(self, result: HashedFuture[_T]) -> None:
-        assert self.state == State.READY
-        self._state = State.HAS_RUN
+        assert self.state is State.HAS_RUN
+        self._state = State.AWAITING
         self._result = result
 
     def future_result(self) -> HashedFuture[_T]:
-        if self.state < State.HAS_RUN:
-            raise TaskError(f'Has not run: {self!r}', self)
-        if self.done():
-            raise TaskError(f'Has already run: {self!r}', self)
+        if self._state < State.AWAITING:
+            raise TaskError(f'Do not have future: {self!r}', self)
+        if self._state > State.AWAITING:
+            raise TaskError(f'Already done: {self!r}', self)
         assert isinstance(self._result, HashedFuture)
         return self._result
 

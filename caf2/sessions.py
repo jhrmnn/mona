@@ -90,7 +90,7 @@ class Session(Pluggable):
             tasks_not_run = self._filter_tasks(lambda t: t.state < State.HAS_RUN)
             if tasks_not_run:
                 warnings.warn(
-                    f'tasks were never run: {tasks_not_run}', RuntimeWarning
+                    f'tasks have never run: {tasks_not_run}', RuntimeWarning
                 )
         self._tasks.clear()
         self._objects.clear()
@@ -176,9 +176,11 @@ class Session(Pluggable):
         if task.state < State.READY:
             raise TaskError(f'Not ready: {task!r}', task)
         if task.state > State.READY:
-            raise TaskError(f'Task already run: {task!r}', task)
+            raise TaskError(f'Task was already run: {task!r}', task)
+        task.set_running()
         with self._running_task_ctx(task):
             result = await task.corofunc(*(arg.value for arg in task.args))
+        task.set_has_run()
         side_effects = [
             self._tasks[h] for h in self._graph.side_effects[task.hashid]
         ]
@@ -249,7 +251,7 @@ class Session(Pluggable):
                     self._graph.backflow.get(task.hashid, ()),
                 )),
                 lambda task, reg: call_if(
-                    task.state < State.HAS_RUN,
+                    task.state < State.RUNNING,
                     task.add_ready_callback, lambda t: reg(t)
                 ),
                 self.run_plugins('wrap_execute', start=self._execute),

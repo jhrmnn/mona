@@ -42,6 +42,8 @@ class Cache(SessionPlugin):
         else:
             pickled_result, = row
             if pickled_result:
+                task.set_running()
+                task.set_has_run()
                 task.set_result(pickle.loads(pickled_result))
         return task
 
