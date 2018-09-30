@@ -51,12 +51,12 @@ class Parallel(SessionPlugin):
         else:
             self._pending += ncores
 
-    def stop(self) -> None:
+    def _stop(self) -> None:
         assert self._pending is None
         self._pending = 0
         log.info(f'Stopping scheduler')
 
-    def resume(self) -> None:
+    def ignored_exception(self) -> None:
         assert self._pending is not None
         log.info(f'Resuming scheduler with {self._pending} cores')
         pending = self._pending
@@ -64,19 +64,18 @@ class Parallel(SessionPlugin):
         self._release(pending)
 
     def wrap_execute(self, execute: TaskExecute) -> TaskExecute:
-        async def _execute(task: Task[Any], reg: NodeExecuted[Task[Any]]) -> None:
+        async def _execute(task: Task[Any], done: NodeExecuted[Task[Any]]) -> None:
             try:
-                await execute(task, reg)
+                await execute(task, done)
             except Exception as e:
                 if not isinstance(e, asyncio.CancelledError):
-                    reg((e, ()))
-            current_task = asyncio.current_task()
-            assert current_task
-            self._asyncio_tasks.remove(current_task)
+                    done((task, e, ()))
+            asyncio_task = asyncio.current_task()
+            assert asyncio_task
+            self._asyncio_tasks.remove(asyncio_task)
 
-        async def spawn_execute(task: Task[Any], reg: NodeExecuted[Task[Any]]
-                                ) -> None:
-            asyncio_task = asyncio.create_task(_execute(task, reg))
+        async def spawn_execute(*args: Any) -> None:
+            asyncio_task = asyncio.create_task(_execute(*args))
             self._asyncio_tasks.add(asyncio_task)
 
         return spawn_execute
@@ -90,7 +89,7 @@ class Parallel(SessionPlugin):
         try:
             yield
         except Exception as e:
-            self.stop()
+            self._stop()
             raise
         finally:
             self._release(ncores)

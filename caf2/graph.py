@@ -5,15 +5,15 @@ import asyncio
 from enum import Enum
 from typing import TypeVar, Deque, Set, Callable, Iterable, \
     MutableSequence, Dict, Awaitable, Container, Iterator, \
-    AsyncIterator, Tuple, cast, Optional, Any, Union
+    AsyncIterator, Tuple, cast, Optional, Any, Union, \
+    NamedTuple
 
 _T = TypeVar('_T')
 NodeScheduler = Callable[[_T, Callable[[_T], None]], None]
-NodeResult = Tuple[Optional[Exception], Iterable[_T]]
+NodeResult = Tuple[_T, Optional[Exception], Iterable[_T]]
 NodeExecuted = Callable[[NodeResult[_T]], None]
 NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[None]]
 Priority = Tuple['Action', 'Action', 'Action']
-Step = Tuple['Action', Optional[_T], Dict[str, int]]
 
 
 def extend_from(src: Iterable[_T],
@@ -26,6 +26,17 @@ class Action(Enum):
     RESULTS = 0
     EXECUTE = 1
     TRAVERSE = 2
+
+
+class Step(NamedTuple):
+    action: Action
+    node: Optional[Any]  # should be _T
+    progress: Dict[str, int]
+
+
+class NodeException(NamedTuple):
+    node: Any  # should be _T
+    exc: Exception
 
 
 default_priority = cast(Priority, tuple(Action))
@@ -64,7 +75,7 @@ async def traverse_async(start: Iterable[_T],
                          sentinel: Callable[[_T], bool] = None,
                          depth: bool = False,
                          priority: Priority = default_priority
-                         ) -> AsyncIterator[Union[Exception, Step[_T]]]:
+                         ) -> AsyncIterator[Union[Step, NodeException]]:
     """
     Traverse a self-extending DAG, yield steps.
 
@@ -105,28 +116,28 @@ async def traverse_async(start: Iterable[_T],
         }
         if action is Action.TRAVERSE:
             node = to_visit.pop() if depth else to_visit.popleft()
-            yield action, node, progress
+            yield Step(action, node, progress)
             visited.add(node)
             if sentinel and sentinel(node):
                 continue
             schedule(node, to_execute.append)
             extend_from(edges_from(node), to_visit, filter=visited)
         elif action is Action.RESULTS:
-            yield action, None, progress
-            exc, nodes = await done.get()
+            yield Step(action, None, progress)
+            node, exc, nodes = await done.get()
             if exc:
-                yield exc
+                yield NodeException(node, exc)
             extend_from(nodes, to_visit, filter=visited)
             executing -= 1
             executed += 1
         elif action is Action.EXECUTE:
             node = to_execute.popleft()
-            yield action, node, progress
+            yield Step(action, node, progress)
             executing += 1
             try:
                 await execute(node, done.put_nowait)
             except Exception as exc:
-                yield exc
+                yield NodeException(node, exc)
 
 
 def traverse(start: Iterable[_T],

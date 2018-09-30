@@ -15,7 +15,7 @@ from typing import Set, Any, Dict, Callable, Optional, \
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed
 from .graph import traverse, traverse_async, NodeExecuted, \
-    Action, Priority, default_priority
+    Action, Priority, default_priority, NodeException
 from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import SessionError, TaskError, FutureError, CafError
 from .pluggable import Plugin, Pluggable
@@ -24,6 +24,7 @@ log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
 TaskExecute = Callable[[Task[Any], NodeExecuted[Task[Any]]], Awaitable[None]]
+ExceptionHandler = Callable[[Task[Any], Exception], bool]
 
 _active_session: ContextVar[Optional['Session']] = \
     ContextVar('active_session', default=None)
@@ -37,6 +38,9 @@ class SessionPlugin(Plugin):
         pass
 
     async def post_run(self) -> None:
+        pass
+
+    def ignored_exception(self) -> None:
         pass
 
     def wrap_execute(self, exe: TaskExecute) -> TaskExecute:
@@ -87,7 +91,7 @@ class Session(Pluggable):
         _active_session.reset(self._active_session_token)
         del self._active_session_token
         if exc_type is None:
-            tasks_not_run = self._filter_tasks(lambda t: t.state < State.HAS_RUN)
+            tasks_not_run = self._filter_tasks(lambda t: t.state < State.RUNNING)
             if tasks_not_run:
                 warnings.warn(
                     f'tasks have never run: {tasks_not_run}', RuntimeWarning
@@ -211,36 +215,46 @@ class Session(Pluggable):
         self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
         return hashed
 
-    async def _execute(self, task: Task[Any], reg: NodeExecuted[Task[Any]]
+    async def _execute(self, task: Task[Any], done: NodeExecuted[Task[Any]]
                        ) -> None:
         await self.run_task_async(task)
         backflow = (
             self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
         )
-        reg((None, backflow))
+        done((task, None, backflow))
 
     def eval(self,
              obj: Any,
              depth: bool = False,
-             priority: Priority = default_priority) -> Any:
-        return asyncio.run(self.eval_async(obj, depth, priority))
+             priority: Priority = default_priority,
+             exception_handler: ExceptionHandler = None) -> Any:
+        return asyncio.run(self.eval_async(
+            obj, depth, priority, exception_handler
+        ))
 
     async def eval_async(self,
                          obj: Any,
                          depth: bool = False,
-                         priority: Priority = default_priority) -> Any:
+                         priority: Priority = default_priority,
+                         exception_handler: ExceptionHandler = None
+                         ) -> Any:
         async with self.run_context():
-            return await self._eval_async(obj, depth, priority)
+            return await self._eval_async(
+                obj, depth, priority, exception_handler
+            )
 
     async def _eval_async(self,
                           obj: Any,
                           depth: bool = False,
-                          priority: Priority = default_priority) -> Any:
+                          priority: Priority = default_priority,
+                          exception_handler: ExceptionHandler = None
+                          ) -> Any:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
         fut.register()
-        async for step in traverse_async(
+        exceptions = {}
+        async for step_or_exception in traverse_async(
                 self._process_objects([fut], save=False),
                 lambda task: (self._tasks[h] for h in chain(
                     self._graph.deps[task.hashid],
@@ -255,9 +269,18 @@ class Session(Pluggable):
                 depth,
                 priority,
         ):
-            if isinstance(step, Exception):
-                raise step
-            action, task, progress = step
+            if isinstance(step_or_exception, NodeException):
+                task, exc = step_or_exception
+                if isinstance(exc, (CafError, asyncio.CancelledError)):
+                    raise exc
+                elif isinstance(exc, Exception):
+                    if exception_handler and exception_handler(task, exc):
+                        self.run_plugins('ignored_exception', start=None)
+                        exceptions[task] = exc
+                        task.set_error()
+                        continue
+                    raise exc
+            action, task, progress = step_or_exception
             progress_line = ' '.join(f'{k}={v}' for k, v in progress.items())
             tag = action.name
             if task:
@@ -269,10 +292,14 @@ class Session(Pluggable):
         try:
             return fut.value
         except FutureError as e:
+            if exceptions:
+                msg = f'Cannot evaluate future because of errors: {exceptions}'
+                log.warning(msg)
+                return
             tasks_not_done = self._filter_tasks(lambda t: not t.done())
             if tasks_not_done:
                 msg = f'Task dependency cycle: {tasks_not_done}'
-                raise CafError(msg) from e
+                raise CafError(msg)
             raise
 
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
