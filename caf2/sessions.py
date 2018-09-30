@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 _T = TypeVar('_T')
 TaskExecute = Callable[[Task[Any], NodeExecuted[Task[Any]]], Awaitable[None]]
 ExceptionHandler = Callable[[Task[Any], Exception], bool]
+TaskFilter = Callable[[Task[Any]], bool]
 
 _active_session: ContextVar[Optional['Session']] = \
     ContextVar('active_session', default=None)
@@ -83,7 +84,7 @@ class Session(Pluggable):
         self.run_plugins('post_enter', self, start=None)
         return self
 
-    def _filter_tasks(self, cond: Callable[[Task[Any]], bool]) -> List[Task[Any]]:
+    def _filter_tasks(self, cond: TaskFilter) -> List[Task[Any]]:
         return list(filter(cond, self._tasks.values()))
 
     def __exit__(self, exc_type: Any, *args: Any) -> None:
@@ -215,39 +216,27 @@ class Session(Pluggable):
         self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
         return hashed
 
-    async def _execute(self, task: Task[Any], done: NodeExecuted[Task[Any]]
-                       ) -> None:
+    async def _traverse_execute(self, task: Task[Any],
+                                done: NodeExecuted[Task[Any]]) -> None:
         await self.run_task_async(task)
         backflow = (
             self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
         )
         done((task, None, backflow))
 
-    def eval(self,
-             obj: Any,
-             depth: bool = False,
-             priority: Priority = default_priority,
-             exception_handler: ExceptionHandler = None) -> Any:
-        return asyncio.run(self.eval_async(
-            obj, depth, priority, exception_handler
-        ))
+    def eval(self, *args: Any, **kwargs: Any) -> Any:
+        return asyncio.run(self.eval_async(*args, **kwargs))
 
-    async def eval_async(self,
-                         obj: Any,
-                         depth: bool = False,
-                         priority: Priority = default_priority,
-                         exception_handler: ExceptionHandler = None
-                         ) -> Any:
+    async def eval_async(self, *args: Any, **kwargs: Any) -> Any:
         async with self.run_context():
-            return await self._eval_async(
-                obj, depth, priority, exception_handler
-            )
+            return await self._eval_async(*args, **kwargs)
 
     async def _eval_async(self,
                           obj: Any,
                           depth: bool = False,
                           priority: Priority = default_priority,
-                          exception_handler: ExceptionHandler = None
+                          exception_handler: ExceptionHandler = None,
+                          task_filter: TaskFilter = None,
                           ) -> Any:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
@@ -261,10 +250,12 @@ class Session(Pluggable):
                     self._graph.backflow.get(task.hashid, ()),
                 )),
                 lambda task, reg: call_if(
-                    task.state < State.RUNNING,
+                    task.state < State.RUNNING and (
+                        not task_filter or task_filter(task)
+                    ),
                     task.add_ready_callback, lambda t: reg(t)
                 ),
-                self.run_plugins('wrap_execute', start=self._execute),
+                self.run_plugins('wrap_execute', start=self._traverse_execute),
                 lambda task: task.done(),
                 depth,
                 priority,
@@ -278,6 +269,7 @@ class Session(Pluggable):
                         self.run_plugins('ignored_exception', start=None)
                         exceptions[task] = exc
                         task.set_error()
+                        log.info(f'Handled {exc!r} from {task!r}')
                         continue
                     raise exc
             action, task, progress = step_or_exception
@@ -291,16 +283,20 @@ class Session(Pluggable):
         log.info('Finished')
         try:
             return fut.value
-        except FutureError as e:
+        except FutureError:
             if exceptions:
                 msg = f'Cannot evaluate future because of errors: {exceptions}'
                 log.warning(msg)
-                return
-            tasks_not_done = self._filter_tasks(lambda t: not t.done())
-            if tasks_not_done:
-                msg = f'Task dependency cycle: {tasks_not_done}'
-                raise CafError(msg)
-            raise
+            elif task_filter:
+                log.info('Cannot evaluate future because of task filter')
+            else:
+                tasks_not_done = self._filter_tasks(lambda t: not t.done())
+                if tasks_not_done:
+                    msg = f'Task dependency cycle: {tasks_not_done}'
+                    raise CafError(msg)
+                else:
+                    raise
+        return fut
 
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
         from graphviz import Digraph  # type: ignore
