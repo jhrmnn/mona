@@ -14,6 +14,7 @@ from ..rules import Rule, with_hook
 from ..runners import run_process
 
 _T = TypeVar('_T')
+DirTaskResult = Union[Dict[str, HashedBytes]]
 
 
 class HashingPath(ABC):
@@ -31,7 +32,7 @@ class FileManager(ABC):
 @Rule
 async def dir_task(exe: Union[HashingPath, bytes],
                    inputs: Dict[str, Union[HashingPath, bytes, Path]]
-                   ) -> Union[Dict[str, HashedBytes]]:
+                   ) -> DirTaskResult:
     inputs = {'EXE': exe, **inputs}
     with TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
