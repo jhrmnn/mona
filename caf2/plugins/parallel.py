@@ -8,6 +8,8 @@ from functools import partial
 from contextlib import asynccontextmanager
 from typing import Callable, Awaitable, Any, TypeVar, AsyncGenerator, Set
 
+from ..graph import NodeExecuted
+from ..tasks import Task
 from ..sessions import Session, SessionPlugin, TaskExecute
 
 log = logging.getLogger(__name__)
@@ -40,12 +42,15 @@ class Parallel(SessionPlugin):
         assert not self._asyncio_tasks
         log.info('All tasks cancelled')
 
-    async def _run_execute(self, execute: TaskExecute, *args: Any) -> None:
-        exc_result = await execute(*args)
-        if exc_result:
-            exc, reg = exc_result
-            if not isinstance(exc, asyncio.CancelledError):
-                reg((exc, None))
+    async def _run_execute(self,
+                           execute: TaskExecute,
+                           task: Task[Any],
+                           reg: NodeExecuted[Task[Any]]) -> None:
+        try:
+            await execute(task, reg)
+        except Exception as e:
+            if not isinstance(e, asyncio.CancelledError):
+                reg((e, ()))
         current_task = asyncio.current_task()
         assert current_task
         self._asyncio_tasks.remove(current_task)
@@ -78,10 +83,10 @@ class Parallel(SessionPlugin):
         n = task.storage.get('ncores', 1)
         if n > self._available:
             log.debug(f'{self._available}/{n} cores available for "{task}"')
-            waiting = True
+            waited = True
         else:
-            waiting = False
+            waited = False
         async with self._acquire(n):
-            if waiting:
+            if waited:
                 log.debug(f'All cores available for "{task}", calling')
             return await corofunc(*args, **kwargs)

@@ -15,7 +15,7 @@ from typing import Set, Any, Dict, Callable, Optional, \
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed
 from .graph import traverse, traverse_async, NodeExecuted, \
-    Action, Priority, default_priority, NodeException
+    Action, Priority, default_priority
 from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import SessionError, TaskError, FutureError, CafError
 from .pluggable import Plugin, Pluggable
@@ -212,16 +212,12 @@ class Session(Pluggable):
         return hashed
 
     async def _execute(self, task: Task[Any], reg: NodeExecuted[Task[Any]]
-                       ) -> NodeException[Any]:
-        try:
-            await self.run_task_async(task)
-        except Exception as e:
-            return e, reg
+                       ) -> None:
+        await self.run_task_async(task)
         backflow = (
             self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
         )
         reg((None, backflow))
-        return None
 
     def eval(self,
              obj: Any,

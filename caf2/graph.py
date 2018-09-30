@@ -11,8 +11,7 @@ _T = TypeVar('_T')
 NodeScheduler = Callable[[_T, Callable[[_T], None]], None]
 NodeResult = Tuple[Optional[Exception], Iterable[_T]]
 NodeExecuted = Callable[[NodeResult[_T]], None]
-NodeException = Optional[Tuple[Exception, NodeExecuted[_T]]]
-NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[NodeException[_T]]]
+NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[None]]
 Priority = Tuple['Action', 'Action', 'Action']
 Step = Tuple['Action', Optional[_T], Dict[str, int]]
 
@@ -116,9 +115,7 @@ async def traverse_async(start: Iterable[_T],
             node = to_execute.popleft()
             yield action, node, progress
             executing += 1
-            exc_result = await execute(node, done.put_nowait)
-            if exc_result:
-                raise exc_result[0]
+            await execute(node, done.put_nowait)
         elif action is Action.RESULTS:
             yield action, None, progress
             exc, nodes = await done.get()
