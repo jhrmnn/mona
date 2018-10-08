@@ -1,0 +1,41 @@
+Input: species+=Species ;
+
+Species:
+    'species' species=ID (
+        ('mass' mass=FLOAT_)
+        ('nucleus' nucleus=FLOAT_)
+        ('l_hartree' l_hartree=INT)
+        ('cut_pot' cut_pot=CutPot)
+        ('basis_dep_cutoff' (basis_dep_cutoff=FLOAT_ | basis_dep_cutoff=BOOL_))
+        ('radial_base' radial_base=RadialBase)
+        ('radial_multiplier' radial_multiplier=INT)
+        ('cite_reference' cite_reference=/\S+/)?
+        ('basis_acc' basis_acc=FLOAT_)?
+        ('include_min_basis' include_min_basis=BOOL_)?
+        ('pure_gauss' pure_gauss=BOOL_)?
+        ('angular_grids' (
+            angular_grids='auto' |
+            angular_grids='specified' grids+=InnerGridShell grids=OuterGridShell
+        ))
+        ('valence' valence=Occupation | 'ion_occ' ion_occ=Occupation)*
+        basis+=BasisFunction
+    )#
+;
+
+CutPot: onset=FLOAT_ width=FLOAT_ scale=FLOAT_ ;
+RadialBase: number=INT radius=FLOAT_ ;
+InnerGridShell: 'division' division=Division ;
+Division: radius=FLOAT_ points=LebedevInt ;
+OuterGridShell: 'outer_grid' outer_grid=LebedevInt ;
+Occupation: n=INT l=Angular occupation=FLOAT_ ;
+BasisFunction: 'ionic' ionic=IonicBasisFunction | 'hydro' hydro=HydroBasisFunction |
+    'gaussian' gaussian=GaussianBasisFunction ;
+IonicBasisFunction: n=INT l=Angular (radius=FLOAT_ | radius='auto') ;
+HydroBasisFunction: n=INT l=Angular z_eff=FLOAT_ ;
+GaussianBasisFunction: L=INT ('1' alpha=FLOAT_ | /(?!1$)\d+/ (alpha=FLOAT_ coeff=FLOAT_)+) ;
+BOOL_: /.true.|.false./ ;
+Angular: /[spdfghi]/ ;
+LebedevInt: /6|14|26|38|50|86|110|146|170|194|302|350|434|590|770|974|1202|1454|1730|2030|2354|2702|3074|3470|3890|4334|4802|5294|5810/ ;
+FLOAT_: /-?(\d*\.\d+|\d+\.\d*|\d+)([de]-?\d+)?/ ;
+
+Comment: /#.*$/ ;

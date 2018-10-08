@@ -21,10 +21,13 @@ classifiers = [
 python = "^3.7"
 typing_extensions = "^3.6"
 mypy_extensions = "^0.4.1"
-graphviz = {version = "^0.9.0",optional = true}
+graphviz = { version = "^0.9.0", optional = true }
+numpy = { version = "^1.15", optional = true }
+textx = { version = "~1.5", optional = true }
 
 [tool.poetry.extras]
 graphviz = ["graphviz"]
+sci = ["numpy", "textx"]
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.8"
