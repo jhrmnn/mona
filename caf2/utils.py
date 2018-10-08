@@ -4,6 +4,7 @@
 import os
 import stat
 from enum import Enum
+from datetime import datetime
 from typing import Any, Callable, TypeVar, Union, List, Tuple, \
     Iterable, Dict, Type
 
@@ -57,6 +58,10 @@ def make_nonwritable(path: Pathable) -> None:
         stat.S_IMODE(os.lstat(path).st_mode) &
         ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
     )
+
+
+def get_timestamp() -> str:
+    return datetime.now().isoformat(timespec='seconds')
 
 
 def call_if(cond: bool, func: Callable[..., None], *args: Any, **kwargs: Any

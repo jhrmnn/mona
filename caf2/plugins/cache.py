@@ -7,8 +7,7 @@ import pickle
 
 from ..sessions import SessionPlugin
 from ..tasks import Task
-from ..utils import Pathable
-from caf.Utils import get_timestamp
+from ..utils import Pathable, get_timestamp
 
 from typing import Any, Optional, Tuple, Set, TypeVar
 
