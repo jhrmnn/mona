@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "caf"
+name = "caf2"
 version = "0.4.0"
 description = "Distributed calculation framework"
 authors = ["Jan Hermann <dev@janhermann.cz>"]
