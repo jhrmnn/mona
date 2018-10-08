@@ -7,12 +7,11 @@ from pathlib import Path
 from collections import OrderedDict
 from typing import Dict, Any, Tuple, Iterable, Callable
 
-from caf.Tools.convert import p2f
-from caf.Tools.geomlib import Molecule, Atom
 from ...rules.dirtask import dir_task, DirTaskResult
 from ...tasks import Task
 from ...errors import CafError, InvalidInput
 from ...pluggable import Plugin, Pluggable
+from ..geomlib import Molecule, Atom
 from .dsl import parse_aims_input, expand_dicts
 
 
@@ -147,3 +146,16 @@ class Script(AimsPlugin):
 default_plugins = [
     SpeciesDir, Atoms, SpeciesDefaults, Control, Geom, Core, Script,
 ]
+
+
+def p2f(value: Any, nospace: bool = False) -> str:
+    if isinstance(value, bool):
+        return f'.{str(value).lower()}.'
+    if isinstance(value, tuple):
+        return (' ' if not nospace else ':').join(p2f(x) for x in value)
+    if isinstance(value, dict):
+        return ' '.join(
+            f'{p2f(k)}={p2f(v, nospace=True)}' if v is not None else f'{p2f(k)}'
+            for k, v in sorted(value.items())
+        )
+    return str(value)

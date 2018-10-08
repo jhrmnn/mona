@@ -3,9 +3,11 @@ from typing import Dict, Any, cast
 
 from textx.metamodel import metamodel_from_str, TextXClass  # type: ignore
 
+from .. import aims
+
 _bools = {'.true.': True, '.false.': False}
 _aims_mm = metamodel_from_str(
-    resources.read_text('caf2.sci.aims', 'aims.tx'),
+    resources.read_text(aims, 'aims.tx'),
     match_filters={
         'FLOAT_': lambda s: float(s.replace('d', 'e')),
         'LebedevInt': int,

@@ -1,37 +1,34 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from itertools import chain, product, repeat
 import os
-from io import StringIO
-import pkg_resources
 import csv
 import json
-from collections import OrderedDict
+from io import StringIO
 from copy import deepcopy
+from importlib import resources
+from collections import OrderedDict
+from itertools import chain, product, repeat
+from typing import List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, \
+    Union, Dict, Any, TYPE_CHECKING, TypeVar, Type, cast
 
-from typing import (
-    List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, Union, Dict, Any,
-    TYPE_CHECKING, TypeVar, Type
-)
+from .. import sci
 
 if TYPE_CHECKING:
     import numpy as np  # type: ignore
 else:
     np = None  # lazy-loaded in Molecule constructor
 
-specie_data = OrderedDict(
-    (r['symbol'], {**r, 'number': int(r['number'])})  # type: ignore
-    for r in csv.DictReader((
-        l.decode() for l in pkg_resources.resource_stream(__name__, 'atom-data.csv')
-    ), quoting=csv.QUOTE_NONNUMERIC)
-)
-bohr = 0.52917721092
 
 Vec = Tuple[float, float, float]
 _M = TypeVar('_M', bound='Molecule')
 
-
+bohr = 0.52917721092
+with resources.open_text(sci, 'atom-data.csv') as f:
+    species_data = OrderedDict(
+        (r['symbol'], {**r, 'number': int(r['number'])})  # type: ignore
+        for r in csv.DictReader((l for l in f), quoting=csv.QUOTE_NONNUMERIC)
+    )
 _string_cache: Dict[Any, str] = {}
 
 
@@ -42,21 +39,21 @@ def no_neg_zeros(r: Any) -> Any:
 class Atom:
     def __init__(self, specie: str, coord: Vec, **flags: Any) -> None:
         self.specie = specie
-        self.coord: Vec = tuple(coord)  # type: ignore
+        self.coord: Vec = cast(Vec, tuple(coord))
         self.flags = flags
 
     @property
     def mass(self) -> float:
-        mass: float = specie_data[self.specie]['mass']
+        mass: float = species_data[self.specie]['mass']
         return mass
 
     @property
     def number(self) -> int:
-        return int(specie_data[self.specie]['number'])
+        return int(species_data[self.specie]['number'])
 
     @property
     def covalent_radius(self) -> float:
-        r: float = specie_data[self.specie]['covalent radius']
+        r: float = species_data[self.specie]['covalent radius']
         return r
 
     def copy(self) -> 'Atom':
@@ -89,12 +86,12 @@ class Molecule(Sized, Iterable[Atom]):
         return sum(atom.mass for atom in self)
 
     @property
-    def cms(self) -> 'np.ndarray':
+    def cms(self) -> Any:
         masses = np.array([atom.mass for atom in self])
         return (masses[:, None]*self.xyz).sum(0)/self.mass
 
     @property
-    def inertia(self) -> 'np.ndarray':
+    def inertia(self) -> Any:
         masses = np.array([atom.mass for atom in self])
         coords_w = np.sqrt(masses)[:, None]*(self.xyz-self.cms)
         A = np.array([np.diag(np.full(3, r)) for r in np.sum(coords_w**2, 1)])
@@ -112,7 +109,7 @@ class Molecule(Sized, Iterable[Atom]):
         return "<{} '{}'>".format(self.__class__.__name__, self.formula)
 
     @property
-    def xyz(self) -> 'np.ndarray':
+    def xyz(self) -> Any:
         return np.array(self.coords)
 
     @property
@@ -124,7 +121,7 @@ class Molecule(Sized, Iterable[Atom]):
             f'{sp}{n if n > 1 else ""}' for sp, n in sorted(counter.items())
         )
 
-    def bondmatrix(self, scale: float) -> 'np.ndarray':
+    def bondmatrix(self, scale: float) -> Any:
         xyz = self.xyz
         Rs = np.array([atom.covalent_radius for atom in self])
         dmatrix = np.sqrt(np.sum((xyz[None, :]-xyz[:, None])**2, 2))
@@ -145,7 +142,7 @@ class Molecule(Sized, Iterable[Atom]):
             return self[0].number
         return hash(tuple(np.round(sorted(np.linalg.eigvalsh(self.inertia)), 3)))
 
-    def shifted(self: _M, delta: Union[Vec, 'np.ndarray']) -> _M:
+    def shifted(self: _M, delta: Vec) -> _M:
         m = self.copy()
         for atom in m:
             c = atom.coord
@@ -163,8 +160,7 @@ class Molecule(Sized, Iterable[Atom]):
         return self.shifted(-self.cms)
 
     def rotated(self: _M, axis: Union[str, int] = None, phi: float = None,
-                center: Union['np.ndarray', Vec] = None,
-                rotmat: 'np.ndarray' = None) -> _M:
+                center: Vec = None, rotmat: Any = None) -> _M:
         if rotmat is None:
             assert axis and phi
             phi = phi*np.pi/180
@@ -314,8 +310,7 @@ class Crystal(Molecule):
         )
 
     def rotated(self, axis: Union[str, int] = None, phi: float = None,
-                center: Union['np.ndarray', Vec] = None,
-                rotmat: 'np.ndarray' = None) -> 'Crystal':
+                center: Vec = None, rotmat: Any = None) -> 'Crystal':
         assert center is None
         g = super().rotated(axis, phi, (0, 0, 0), rotmat)
         m = Molecule.from_coords(['_']*3, self.lattice)
@@ -324,7 +319,7 @@ class Crystal(Molecule):
         return g
 
     @property
-    def abc(self) -> 'np.ndarray':
+    def abc(self) -> Any:
         return np.array(self.lattice)
 
     def get_kgrid(self, density: float = 0.06) -> Tuple[int, int, int]:
@@ -428,7 +423,7 @@ def readfile(path: str, fmt: str = None) -> Molecule:
         return load(f, fmt)
 
 
-def getfragments(C: 'np.ndarray') -> List[List[int]]:
+def getfragments(C: Any) -> List[List[int]]:
     """Find fragments within a set of sparsely connected elements.
 
     Given square matrix C where C_ij = 1 if i and j are connected
