@@ -14,8 +14,11 @@ class Plugin:
     name: str
 
     def __call__(self, obj: 'Pluggable') -> None:
-        name = getattr(self, 'name', self.__class__.__name__)
-        obj.register_plugin(name, self)
+        obj.register_plugin(self._name, self)
+
+    @property
+    def _name(self) -> str:
+        return cast(str, getattr(self, 'name', self.__class__.__name__))
 
 
 class Pluggable:
@@ -41,7 +44,7 @@ class Pluggable:
             try:
                 start = yield getattr(plugin, func)(*all_args, **kwargs)
             except Exception:
-                log.error(f'Error in plugin {plugin.name!r}')
+                log.error(f'Error in plugin {plugin._name!r}')
                 raise
 
     async def run_plugins_async(self, func: str, *args: Any, start: _T,
