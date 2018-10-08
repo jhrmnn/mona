@@ -1,6 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from functools import wraps
 from typing import Any, Callable, TypeVar, Generic, Awaitable, \
     Tuple, Optional
 
@@ -11,6 +12,8 @@ _T = TypeVar('_T')
 InputHook = Callable[[Tuple[Any, ...]], Tuple[Any, ...]]
 OutputHook = Callable[[_T], _T]
 Hooks = Optional[Tuple[Optional[InputHook], Optional[OutputHook[_T]]]]
+TaskFactory = Callable[..., Task[_T]]
+FactoryDecorator = Callable[[TaskFactory[_T]], TaskFactory[_T]]
 
 
 class Rule(Generic[_T]):
@@ -45,4 +48,14 @@ class HookedRule(Rule[_T]):
 def with_hook(name: str) -> Callable[[Rule[_T]], HookedRule[_T]]:
     def decorator(rule: Rule[_T]) -> HookedRule[_T]:
         return HookedRule(rule.func, name)
+    return decorator
+
+
+def labelled(label: str) -> FactoryDecorator[Any]:
+    def decorator(factory: TaskFactory[_T]) -> TaskFactory[_T]:
+        @wraps(factory)
+        def wrapper(*args: Any, **kwargs: Any) -> Task[_T]:
+            kwargs.setdefault('label', label)
+            return factory(*args, **kwargs)
+        return wrapper
     return decorator
