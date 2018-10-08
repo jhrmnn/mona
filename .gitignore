@@ -8,3 +8,4 @@
 /dist/
 /pyproject.lock
 /docs/build/
+/setup.py
