@@ -100,7 +100,7 @@ def test_graphviz():
     with Session() as sess:
         sess.eval(identity(multi(5)))
         dot = sess.dot_graph(format='svg')
-        assert len(dot.source) == 1847
+        assert len(dot.source.split('\n')) == 20
 
 
 def test_with_hook():

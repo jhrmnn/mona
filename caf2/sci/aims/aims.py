@@ -11,6 +11,7 @@ from ...rules.dirtask import dir_task, DirTaskResult
 from ...tasks import Task
 from ...errors import CafError, InvalidInput
 from ...pluggable import Plugin, Pluggable
+from ...hashing import hash_function
 from ..geomlib import Molecule, Atom
 from .dsl import parse_aims_input, expand_dicts
 
@@ -18,6 +19,9 @@ from .dsl import parse_aims_input, expand_dicts
 class AimsPlugin(Plugin):
     def process(self, kwargs: Dict[str, Any]) -> None:
         pass
+
+    def _func_hash(self) -> str:
+        return hash_function(self.process)
 
 
 class Aims(Pluggable[AimsPlugin]):
@@ -32,6 +36,9 @@ class Aims(Pluggable[AimsPlugin]):
         if kwargs:
             raise InvalidInput(f'Unknown Aims kwargs: {list(kwargs.keys())}')
         return dir_task(script, inputs, label=label)
+
+    def _func_hash(self) -> str:
+        return ','.join(p._func_hash() for p in self._get_plugins())
 
 
 class SpeciesDir(AimsPlugin):
@@ -82,6 +89,12 @@ class SpeciesDefaults(AimsPlugin):
             species_defs = deepcopy(species_defs)
             self._mod(species_defs, kwargs)
         kwargs['species_defs'] = species_defs
+
+    def _func_hash(self) -> str:
+        if not self._mod:
+            return super()._func_hash()
+        funcs = self.process, self._mod
+        return ','.join(hash_function(f) for f in funcs)  # type: ignore
 
 
 class Control(AimsPlugin):

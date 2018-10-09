@@ -9,7 +9,8 @@ from typing import Any, Callable, Optional, List, TypeVar, \
     Collection, cast, Tuple, Union, Awaitable, Dict
 
 from .futures import Future, State
-from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
+from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite, \
+    hash_function
 from .utils import get_fullname, Maybe, Empty, swap_type
 from .errors import FutureError, TaskError, CompositeError
 
@@ -107,9 +108,13 @@ class Task(HashedFuture[_T]):
 
     @property
     def spec(self) -> str:
-        lines = [get_fullname(self._corofunc)]
-        lines.extend(f'{fut.hashid}  # {fut.label}' for fut in self.args)
-        return '\n'.join(lines)
+        return json.dumps({
+            'corofunc': [
+                get_fullname(self._corofunc),
+                hash_function(self._corofunc)
+            ],
+            'args': [fut.hashid for fut in self._args]
+        }, indent=4)
 
     @property
     def label(self) -> str:

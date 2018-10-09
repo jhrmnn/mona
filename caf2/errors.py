@@ -42,3 +42,7 @@ class InvalidInput(CafError):
 
 class FilesError(CafError):
     pass
+
+
+class HashingError(CafError):
+    pass

@@ -7,6 +7,7 @@ from typing import Any, Callable, TypeVar, Generic, Tuple, Optional
 from ..tasks import Task, Corofunc
 from ..sessions import Session
 from ..errors import CafError
+from ..hashing import hash_function
 
 _T = TypeVar('_T')
 InputHook = Callable[[Tuple[Any, ...]], Tuple[Any, ...]]
@@ -27,6 +28,9 @@ class Rule(Generic[_T]):
 
     def add_label(self, label: str) -> None:
         self._label = label
+
+    def _func_hash(self) -> str:
+        return hash_function(self._corofunc)
 
     @property
     def corofunc(self) -> Corofunc[_T]:
