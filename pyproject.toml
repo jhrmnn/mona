@@ -1,19 +1,21 @@
 [tool.poetry]
-name = "caf2"
-version = "0.4.0"
+name = "calcfw"
+version = "0.4.0a1"
 description = "Distributed calculation framework"
 authors = ["Jan Hermann <dev@janhermann.cz>"]
 repository = "https://github.com/azag0/caf"
 license = "MPL-2.0"
+packages = [
+    { include = "caf2" },
+]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Natural Language :: English",
     "Operating System :: POSIX",
     "Topic :: Scientific/Engineering",
-    "Topic :: Software Development :: Build Tools",
     "Topic :: Utilities"
 ]
 
@@ -36,6 +38,3 @@ mypy = "^0.630.0"
 lxml = "^4.2"
 sphinx = "^1.8"
 toml = "^0.9.6"
-
-[tool.poetry.scripts]
-caf = "caf.cli:main"
