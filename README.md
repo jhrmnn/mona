@@ -19,4 +19,4 @@ with caf.Session() as sess:
 dot.render('fib.gv', view=True)
 ```
 
-![](https://raw.githubusercontent.com/azag0/caf/master/docs/fib.gv.svg?sanitize=true)
+![](https://raw.githubusercontent.com/azag0/calcfw/master/docs/fib.gv.svg?sanitize=true)
