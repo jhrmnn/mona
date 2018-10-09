@@ -1,0 +1,16 @@
+language: python
+matrix:
+  include:
+    - python: 3.7
+      dist: xenial
+      sudo: required
+before_install:
+  - pip install --upgrade --force-reinstall pip==18.0
+  - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+install:
+  - poetry install -E graphviz
+script:
+  - coverage run --source=caf2 --omit='caf2/sci/**' --branch -m pytest -vs
+after_success:
+  - pip install codecov
+  - codecov

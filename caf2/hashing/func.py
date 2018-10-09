@@ -1,6 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import os
 import ast
 import sys
 import json
@@ -16,12 +17,13 @@ from .hashing import Hash, HashedComposite, hash_text
 
 _T = TypeVar('_T')
 
-_stdlib_path = str(Path(ast.__file__).parent)
+# Travis duplicates some stdlib modules in virtualenv
+_stdlib_paths = [str(Path(m.__file__).parent) for m in [os, ast]]
 _cache: Dict[Callable[..., Any], Hash] = {}
 
 
 def is_stdlib(mod: ModuleType) -> bool:
-    return mod.__file__.startswith(_stdlib_path)
+    return any(mod.__file__.startswith(p) for p in _stdlib_paths)
 
 
 def version_of(mod: ModuleType) -> Optional[str]:
