@@ -15,6 +15,8 @@ from ..errors import InvalidInput
 from ..rules import Rule, with_hook
 from ..runners import run_process
 
+__version__ = '0.1.0'
+
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')

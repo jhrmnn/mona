@@ -15,6 +15,8 @@ log = logging.getLogger(__name__)
 _T = TypeVar('_T')
 ProcessOutput = Union[bytes, Tuple[bytes, bytes]]
 
+__version__ = '0.1.0'
+
 
 @runtime
 class Scheduler(Protocol):

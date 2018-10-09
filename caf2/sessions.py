@@ -20,6 +20,8 @@ from .utils import Literal, split, Empty, Maybe, call_if
 from .errors import SessionError, TaskError, FutureError, CafError
 from .pluggable import Plugin, Pluggable
 
+__version__ = '0.1.0'
+
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')

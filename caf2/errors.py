@@ -7,6 +7,8 @@ if TYPE_CHECKING:
     from .tasks import Task  # noqa
     from .sessions import Session  # noqa
 
+__version__ = '0.1.0'
+
 
 class CafError(Exception):
     pass

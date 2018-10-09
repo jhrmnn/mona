@@ -10,6 +10,8 @@ from typing import Any, NewType, Union, Generic, TypeVar, Dict, cast, \
 from ..json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
 from ..utils import Literal, shorten_text, TypeSwaps, swap_type
 
+__version__ = '0.1.0'
+
 _T = TypeVar('_T')
 _HCL = TypeVar('_HCL', bound='HashedCompositeLike')
 Hash = NewType('Hash', str)

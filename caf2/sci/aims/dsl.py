@@ -5,6 +5,8 @@ from textx.metamodel import metamodel_from_str, TextXClass  # type: ignore
 
 from .. import aims
 
+__version__ = '0.1.0'
+
 _bools = {'.true.': True, '.false.': False}
 _aims_mm = metamodel_from_str(
     resources.read_text(aims, 'aims.tx'),
