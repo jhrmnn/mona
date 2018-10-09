@@ -7,8 +7,8 @@ from abc import ABC, abstractmethod
 from typing import Any, NewType, Union, Generic, TypeVar, Dict, cast, \
     Iterable, Set, Callable, Tuple, Optional
 
-from .json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
-from .utils import Literal, shorten_text, TypeSwaps, swap_type
+from ..json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
+from ..utils import Literal, shorten_text, TypeSwaps, swap_type
 
 _T = TypeVar('_T')
 _HCL = TypeVar('_HCL', bound='HashedCompositeLike')
@@ -60,7 +60,7 @@ class Hashed(ABC, Generic[_T]):
 
 class HashedBytes(Hashed[bytes]):
     def __init__(self, content: bytes) -> None:
-        self._content: bytes = content
+        self._content = content
         Hashed.__init__(self)
         self._label = repr(shorten_text(content, 20))
 
