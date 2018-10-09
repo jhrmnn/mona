@@ -3,17 +3,18 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 from typing import Dict, Iterable, Any, TypeVar, cast, List, \
-    Generator, Awaitable
+    Generator, Awaitable, Generic
 
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
+_Plg = TypeVar('_Plg', bound='Plugin')
 
 
 class Plugin:
     name: str
 
-    def __call__(self, obj: 'Pluggable') -> None:
+    def __call__(self: _Plg, obj: 'Pluggable[_Plg]') -> None:
         obj.register_plugin(self._name, self)
 
     @property
@@ -21,16 +22,16 @@ class Plugin:
         return cast(str, getattr(self, 'name', self.__class__.__name__))
 
 
-class Pluggable:
-    def __init__(self, plugins: Iterable[Plugin] = None) -> None:
-        self._plugins: Dict[str, Plugin] = {}
+class Pluggable(Generic[_Plg]):
+    def __init__(self, plugins: Iterable[_Plg] = None) -> None:
+        self._plugins: Dict[str, _Plg] = {}
         for plugin in plugins or ():
-            plugin(self)
+            plugin(self)  # type: ignore
 
-    def register_plugin(self, name: str, plugin: Plugin) -> None:
+    def register_plugin(self, name: str, plugin: _Plg) -> None:
         self._plugins[name] = plugin
 
-    def _get_plugins(self, reverse: bool = False) -> List[Plugin]:
+    def _get_plugins(self, reverse: bool = False) -> List[_Plg]:
         plugins = list(self._plugins.values())
         if reverse:
             plugins.reverse()

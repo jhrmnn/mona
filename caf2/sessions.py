@@ -57,7 +57,7 @@ class Graph(NamedTuple):
     backflow: Dict[Hash, Set[Hash]]
 
 
-class Session(Pluggable):
+class Session(Pluggable[SessionPlugin]):
     def __init__(self, plugins: Iterable[SessionPlugin] = None) -> None:
         Pluggable.__init__(self, plugins)
         self._tasks: Dict[Hash, Task[Any]] = {}

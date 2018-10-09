@@ -20,7 +20,7 @@ class AimsPlugin(Plugin):
         pass
 
 
-class Aims(Pluggable):
+class Aims(Pluggable[AimsPlugin]):
     def __init__(self, plugins: Iterable[AimsPlugin] = None) -> None:
         plugins = plugins or [factory() for factory in default_plugins]
         Pluggable.__init__(self, plugins)
