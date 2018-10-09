@@ -20,7 +20,7 @@ HashableContainer = NewType('HashableContainer', object)
 HashableValue = Union[None, bool, int, float, str, HashableContainer]
 
 
-def _hash_text(text: Union[str, bytes]) -> Hash:
+def hash_text(text: Union[str, bytes]) -> Hash:
     if isinstance(text, str):
         text = text.encode()
     return Hash(hashlib.sha1(text).hexdigest())
@@ -29,7 +29,7 @@ def _hash_text(text: Union[str, bytes]) -> Hash:
 class Hashed(ABC, Generic[_T]):
     def __init__(self) -> None:
         assert not hasattr(self, '_hashid')
-        self._hashid = _hash_text(self.spec)
+        self._hashid = hash_text(self.spec)
 
     @property
     @abstractmethod
