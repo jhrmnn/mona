@@ -1,5 +1,11 @@
 # Caf — Distributed calculation framework
 
+[![Travis](https://travis-ci.org/azag0/calcfw.svg?branch=master)](https://travis-ci.org/azag0/calcfw)
+[![Codecov](https://img.shields.io/codecov/c/github/azag0/calcfw.svg)](https://codecov.io/gh/azag0/calcfw)
+![Python version](https://img.shields.io/pypi/pyversions/calcfw.svg)
+[![PyPI](https://img.shields.io/pypi/v/calcfw.svg)](https://pypi.org/project/calcfw/)
+[![MPL 2.0 license](https://img.shields.io/github/license/azag0/libmbd.svg)](https://github.com/azag0/libmbd/blob/master/LICENSE)
+
 ```python
 import caf2 as caf
 
