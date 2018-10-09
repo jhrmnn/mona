@@ -130,7 +130,8 @@ async def traverse_async(start: Iterable[_T],
             extend_from(nodes, to_visit, filter=visited)
             executing -= 1
             executed += 1
-        elif action is Action.EXECUTE:
+        else:
+            assert action is Action.EXECUTE
             node = to_execute.popleft()
             yield Step(action, node, progress)
             executing += 1

@@ -39,7 +39,7 @@ class TmpdirManager(ABC):
     def tempdir(self) -> ContextManager[Pathable]: ...
 
 
-class DirTaskError(subprocess.CalledProcessError):
+class DirTaskProcessError(subprocess.CalledProcessError):
     def __init__(self, stdout: bytes, stderr: bytes, *args: Any) -> None:
         super().__init__(*args)
         self.stdout = stdout
@@ -95,7 +95,7 @@ async def dir_task(exe: Union[HashingPath, bytes],
         if exc:
             out = out_path.read_bytes()
             err = err_path.read_bytes()
-            raise DirTaskError(out, err, exc.returncode, exc.cmd)
+            raise DirTaskProcessError(out, err, exc.returncode, exc.cmd)
         outputs = {}
         for path in root.glob('**/*'):
             relpath = path.relative_to(root)
