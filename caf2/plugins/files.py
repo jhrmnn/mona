@@ -5,7 +5,6 @@ from pathlib import Path
 
 from ..hashing import Hash, Hashed, HashedBytes
 from ..sessions import Session, SessionPlugin
-from ..rules import dir_task
 from ..utils import make_nonwritable, Pathable, split
 from ..errors import FilesError, InvalidInput
 from ..json import registered_classes
@@ -16,8 +15,6 @@ from typing import Dict, Union, cast, Tuple, Iterable, List
 
 InputTarget = Union[str, Path, bytes]
 Input = Union[str, Path, Tuple[str, InputTarget]]
-
-_dir_task = dir_task.func
 
 
 class StoredHashedBytes(HashedBytes):
