@@ -111,13 +111,10 @@ def test_run_already_run():
 
 
 def test_no_coroutine():
-    @Rule
-    def f():
-        pass
-
-    with Session():
-        with pytest.raises(CafError):
-            f()
+    with pytest.raises(CafError):
+        @Rule
+        def f():
+            pass
 
 
 def test_process_error():

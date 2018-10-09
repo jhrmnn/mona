@@ -1,11 +1,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import inspect
 from typing import Any, Callable, TypeVar, Generic, Awaitable, \
     Tuple, Optional
 
 from ..tasks import Task
 from ..sessions import Session
+from ..errors import CafError
 
 _T = TypeVar('_T')
 InputHook = Callable[[Tuple[Any, ...]], Tuple[Any, ...]]
@@ -15,6 +17,8 @@ Hooks = Optional[Tuple[Optional[InputHook], Optional[OutputHook[_T]]]]
 
 class Rule(Generic[_T]):
     def __init__(self, corofunc: Callable[..., Awaitable[_T]]) -> None:
+        if not inspect.iscoroutinefunction(corofunc):
+            raise CafError(f'Task function is not a coroutine: {corofunc}')
         self._corofunc = corofunc
         self._label: Optional[str] = None
 

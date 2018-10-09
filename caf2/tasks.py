@@ -5,14 +5,13 @@ import logging
 import json
 from abc import abstractmethod
 import asyncio
-import inspect
 from typing import Any, Callable, Optional, List, TypeVar, \
     Collection, cast, Tuple, Union, Awaitable, Dict
 
 from .futures import Future, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite
 from .utils import get_fullname, Maybe, Empty, swap_type
-from .errors import CafError, FutureError, TaskError, CompositeError
+from .errors import FutureError, TaskError, CompositeError
 
 log = logging.getLogger(__name__)
 
@@ -93,8 +92,6 @@ class Task(HashedFuture[_T]):
                  *args: Any,
                  label: str = None,
                  default: Maybe[_T] = Empty._) -> None:
-        if not inspect.iscoroutinefunction(corofunc):
-            raise CafError(f'Task function is not a coroutine: {corofunc}')
         self._corofunc = corofunc
         self._args = tuple(map(ensure_hashed, args))
         Hashed.__init__(self)
