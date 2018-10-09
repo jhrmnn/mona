@@ -2,10 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import inspect
-from typing import Any, Callable, TypeVar, Generic, Awaitable, \
-    Tuple, Optional
+from typing import Any, Callable, TypeVar, Generic, Tuple, Optional
 
-from ..tasks import Task
+from ..tasks import Task, Corofunc
 from ..sessions import Session
 from ..errors import CafError
 
@@ -16,7 +15,7 @@ Hooks = Optional[Tuple[Optional[InputHook], Optional[OutputHook[_T]]]]
 
 
 class Rule(Generic[_T]):
-    def __init__(self, corofunc: Callable[..., Awaitable[_T]]) -> None:
+    def __init__(self, corofunc: Corofunc[_T]) -> None:
         if not inspect.iscoroutinefunction(corofunc):
             raise CafError(f'Task function is not a coroutine: {corofunc}')
         self._corofunc = corofunc
@@ -30,12 +29,12 @@ class Rule(Generic[_T]):
         self._label = label
 
     @property
-    def func(self) -> Callable[..., Awaitable[_T]]:
+    def corofunc(self) -> Corofunc[_T]:
         return self._corofunc
 
 
 class HookedRule(Rule[_T]):
-    def __init__(self, corofunc: Callable[..., Awaitable[_T]], hook: str) -> None:
+    def __init__(self, corofunc: Corofunc[_T], hook: str) -> None:
         Rule.__init__(self, corofunc)
         self._hook = hook
 
@@ -53,7 +52,7 @@ class HookedRule(Rule[_T]):
 
 def with_hook(name: str) -> Callable[[Rule[_T]], HookedRule[_T]]:
     def decorator(rule: Rule[_T]) -> HookedRule[_T]:
-        return HookedRule(rule.func, name)
+        return HookedRule(rule.corofunc, name)
     return decorator
 
 

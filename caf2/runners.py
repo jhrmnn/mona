@@ -4,9 +4,10 @@
 import logging
 import asyncio
 import subprocess
-from typing import Any, TypeVar, Callable, Awaitable, Optional, Tuple, Union
+from typing import Any, TypeVar, Callable, Optional, Tuple, Union
 from typing_extensions import Protocol, runtime
 
+from .tasks import Corofunc
 from .sessions import Session
 
 log = logging.getLogger(__name__)
@@ -17,10 +18,8 @@ ProcessOutput = Union[bytes, Tuple[bytes, bytes]]
 
 @runtime
 class Scheduler(Protocol):
-    async def __call__(self,
-                       corofunc: Callable[..., Awaitable[_T]],
-                       *args: Any,
-                       **kwargs: Any) -> _T: ...
+    async def __call__(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
+                       ) -> _T: ...
 
 
 def _scheduler() -> Optional[Scheduler]:

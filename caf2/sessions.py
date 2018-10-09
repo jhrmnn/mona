@@ -13,7 +13,7 @@ from typing import Set, Any, Dict, Callable, Optional, \
     Union, Awaitable, AsyncGenerator
 
 from .hashing import Hash, Hashed, HashedCompositeLike
-from .tasks import Task, HashedFuture, State, maybe_hashed
+from .tasks import Task, HashedFuture, State, maybe_hashed, Corofunc
 from .graph import traverse, traverse_async, NodeExecuted, \
     Action, Priority, default_priority, NodeException
 from .utils import Literal, split, Empty, Maybe, call_if
@@ -145,7 +145,7 @@ class Session(Pluggable[SessionPlugin]):
             self._objects.update({o.hashid: o for o in objs})
         return tasks
 
-    def create_task(self, corofunc: Callable[..., Awaitable[_T]], *args: Any,
+    def create_task(self, corofunc: Corofunc[_T], *args: Any,
                     label: str = None, default: Maybe[_T] = Empty._
                     ) -> Task[_T]:
         task = Task(corofunc, *args, label=label, default=default)

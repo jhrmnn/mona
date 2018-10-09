@@ -20,6 +20,7 @@ _T = TypeVar('_T')
 _U = TypeVar('_U')
 _HFut = TypeVar('_HFut', bound='HashedFuture')  # type: ignore
 _TC = TypeVar('_TC', bound='TaskComposite')
+Corofunc = Callable[..., Awaitable[_T]]
 
 
 def ensure_hashed(obj: Any) -> Hashed[Any]:
@@ -87,10 +88,7 @@ class HashedFuture(Hashed[_T], Future):
 
 
 class Task(HashedFuture[_T]):
-    def __init__(self,
-                 corofunc: Callable[..., Awaitable[_T]],
-                 *args: Any,
-                 label: str = None,
+    def __init__(self, corofunc: Corofunc[_T], *args: Any, label: str = None,
                  default: Maybe[_T] = Empty._) -> None:
         self._corofunc = corofunc
         self._args = tuple(map(ensure_hashed, args))
@@ -121,7 +119,7 @@ class Task(HashedFuture[_T]):
         return self.resolve(lambda res: res.value)
 
     @property
-    def corofunc(self) -> Callable[..., Awaitable[_T]]:
+    def corofunc(self) -> Corofunc[_T]:
         return self._corofunc
 
     @property

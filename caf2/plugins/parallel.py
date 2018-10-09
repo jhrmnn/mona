@@ -5,11 +5,10 @@ import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Callable, Awaitable, Any, TypeVar, AsyncGenerator, \
-    Optional, Set
+from typing import Any, TypeVar, AsyncGenerator, Optional, Set
 
 from ..graph import NodeExecuted
-from ..tasks import Task
+from ..tasks import Task, Corofunc
 from ..sessions import Session, SessionPlugin, TaskExecute
 
 log = logging.getLogger(__name__)
@@ -94,10 +93,8 @@ class Parallel(SessionPlugin):
         finally:
             self._release(ncores)
 
-    async def run_coro(self,
-                       corofunc: Callable[..., Awaitable[_T]],
-                       *args: Any,
-                       **kwargs: Any) -> _T:
+    async def run_coro(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
+                       ) -> _T:
         task = Session.active().running_task
         n = task.storage.get('ncores', 1)
         if n > self._available:
