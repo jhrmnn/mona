@@ -72,7 +72,7 @@ class FileManager(_FileManager, SessionPlugin):
     name = 'file_manager'
 
     def __init__(self, root: Union[str, Pathable]) -> None:
-        self._root = Path(root)
+        self._root = Path(root).resolve()
         self._cache: Dict[Hash, bytes] = {}
         self._source_cache: Dict[Path, HashedPath] = {}
         self._dir_task_hooks = self._wrap_args, None

@@ -71,7 +71,6 @@ async def dir_task(exe: Union[HashingPath, bytes],
     dirfactory = TemporaryDirectory if not dirmngr else dirmngr.tempdir
     with dirfactory() as tmpdir:
         root = Path(tmpdir)
-        exefile = str((root/'EXE').resolve())
         for filename, target in inputs.items():
             if isinstance(target, bytes):
                 (root/filename).write_bytes(target)
@@ -81,6 +80,7 @@ async def dir_task(exe: Union[HashingPath, bytes],
                 (root/filename).symlink_to(target)
             else:
                 raise InvalidInput(f'Invalid target {target!r}')
+        exefile = str(root/'EXE')
         make_executable(exefile)
         out_path, err_path = root/'STDOUT', root/'STDERR'
         try:

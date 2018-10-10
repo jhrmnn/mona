@@ -19,7 +19,7 @@ class TmpdirManager(_TmpdirManager, SessionPlugin):
     'tmpdir_manager'
 
     def __init__(self, root: Pathable) -> None:
-        self._root = Path(root)
+        self._root = Path(root).resolve()
 
     def post_enter(self, sess: Session) -> None:
         sess.storage['dir_task:tmpdir_manager'] = self
