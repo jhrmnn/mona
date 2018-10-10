@@ -1,5 +1,5 @@
-Caf — Distributed calculation framework
-=======================================
+Calculation framework (Caf)
+===========================
 
 .. toctree::
 

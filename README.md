@@ -1,4 +1,4 @@
-# Caf — Distributed calculation framework
+# Calculation framework (Caf)
 
 [![build](https://img.shields.io/travis/azag0/calcfw.svg)](https://travis-ci.org/azag0/calcfw)
 [![coverage](https://img.shields.io/codecov/c/github/azag0/calcfw.svg)](https://codecov.io/gh/azag0/calcfw)
