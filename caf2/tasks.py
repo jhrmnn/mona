@@ -144,10 +144,10 @@ class Task(HashedFuture[_T]):
     def resolve(self, handler: Callable[[Hashed[_T]], _U] = None) -> Union[_U, _T]:
         if isinstance(self._result, Empty):
             raise TaskError(f'Has not run: {self!r}', self)
+        if not isinstance(self._result, Hashed):
+            return self._result
         handler = handler or (lambda x: x)  # type: ignore
-        if isinstance(self._result, Hashed):
-            return handler(self._result)  # type: ignore
-        return self._result
+        return handler(self._result)  # type: ignore
 
     def default_result(self) -> _T:
         if not isinstance(self._default, Empty):

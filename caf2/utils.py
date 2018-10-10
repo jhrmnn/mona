@@ -21,7 +21,7 @@ class Empty(Enum):
     _ = 0
 
 
-def get_fullname(obj: Callable[[Any], Any]) -> str:
+def get_fullname(obj: Union[Callable[..., Any], Type[Any]]) -> str:
     return f'{obj.__module__}:{obj.__qualname__}'
 
 

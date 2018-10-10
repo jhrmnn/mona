@@ -49,8 +49,8 @@ class SessionPlugin(Plugin['Session']):
     def wrap_execute(self, exe: TaskExecute) -> TaskExecute:
         return exe
 
-    def post_create(self, task: Task[_T]) -> Task[_T]:
-        return task
+    def post_create(self, task: Task[Any]) -> None:
+        pass
 
 
 class Graph(NamedTuple):
@@ -74,11 +74,6 @@ class Session(Pluggable):
         self._storage: Dict[str, Any] = {}
         self._warn = warn
 
-    def __repr__(self) -> str:
-        return (
-            f'<Session ntasks={len(self._tasks)} nobjects={len(self._objects)}>'
-        )
-
     def _check_active(self) -> None:
         sess = _active_session.get()
         if sess is None or sess is not self:
@@ -89,8 +84,10 @@ class Session(Pluggable):
         self._check_active()
         return self._storage
 
-    def get_deps(self, hashid: Hash) -> FrozenSet[Hash]:
-        return self._graph.deps[hashid]
+    def get_side_effects(self, task: Task[Any]) -> Iterable[Task[Any]]:
+        return tuple(
+            self._tasks[h] for h in self._graph.side_effects[task.hashid]
+        )
 
     def get_object(self, hashid: Hash) -> Hashed[Any]:
         return self._objects[hashid]
@@ -177,7 +174,8 @@ class Session(Pluggable):
         self._tasks[task.hashid] = task
         arg_tasks = self._process_objects(task.args, save=True)
         self._graph.deps[task.hashid] = frozenset(t.hashid for t in arg_tasks)
-        return self.run_plugins('post_create', start=task)
+        self.run_plugins('post_create', task, start=None)
+        return task
 
     @asynccontextmanager
     async def run_context(self) -> AsyncGenerator[None, None]:
@@ -203,9 +201,7 @@ class Session(Pluggable):
         with self._running_task_ctx(task):
             result = await task.corofunc(*(arg.value for arg in task.args))
         task.set_has_run()
-        side_effects = [
-            self._tasks[h] for h in self._graph.side_effects[task.hashid]
-        ]
+        side_effects = self.get_side_effects(task)
         if side_effects:
             log.debug(
                 f'{task}: created tasks: {list(map(Literal, side_effects))}'
