@@ -77,6 +77,9 @@ class FileManager(_FileManager, SessionPlugin):
         self._path_cache: Dict[Path, HashedPath] = {}
         self._dir_task_hooks = self._wrap_args, None
 
+    def __repr__(self) -> str:
+        return f'<FileManager ncache={len(self._cache)}>'
+
     def _path(self, hashid: Hash) -> Path:
         return self._root/hashid[:2]/hashid[2:]
 
@@ -100,9 +103,10 @@ class FileManager(_FileManager, SessionPlugin):
         raise FilesError(f'Missing in manager: {hashid}')
 
     def get_bytes(self, hashid: Hash) -> bytes:
-        content = self._cache.get(hashid)
-        if content:
-            return content
+        try:
+            return self._cache[hashid]
+        except KeyError:
+            pass
         path = self._path(hashid)
         try:
             return self._cache.setdefault(hashid, path.read_bytes())

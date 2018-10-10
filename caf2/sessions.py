@@ -60,7 +60,8 @@ class Graph(NamedTuple):
 
 
 class Session(Pluggable):
-    def __init__(self, plugins: Iterable[SessionPlugin] = None) -> None:
+    def __init__(self, plugins: Iterable[SessionPlugin] = None,
+                 warn: bool = True) -> None:
         Pluggable.__init__(self)
         for plugin in plugins or ():
             plugin(self)
@@ -71,6 +72,12 @@ class Session(Pluggable):
             ContextVar('running_task')
         self._running_task.set(None)
         self._storage: Dict[str, Any] = {}
+        self._warn = warn
+
+    def __repr__(self) -> str:
+        return (
+            f'<Session ntasks={len(self._tasks)} nobjects={len(self._objects)}>'
+        )
 
     def _check_active(self) -> None:
         sess = _active_session.get()
@@ -101,7 +108,7 @@ class Session(Pluggable):
         assert _active_session.get() is self
         _active_session.reset(self._active_session_token)
         del self._active_session_token
-        if exc_type is None:
+        if self._warn and exc_type is None:
             tasks_not_run = self._filter_tasks(lambda t: t.state < State.RUNNING)
             if tasks_not_run:
                 warnings.warn(
