@@ -2,6 +2,7 @@
 
 [![build](https://img.shields.io/travis/azag0/calcfw.svg)](https://travis-ci.org/azag0/calcfw)
 [![coverage](https://img.shields.io/codecov/c/github/azag0/calcfw.svg)](https://codecov.io/gh/azag0/calcfw)
+[![docs](https://img.shields.io/readthedocs/calcfw.svg)](https://calcfw.readthedocs.io/)
 ![python](https://img.shields.io/pypi/pyversions/calcfw.svg)
 [![pypi](https://img.shields.io/pypi/v/calcfw.svg)](https://pypi.org/project/calcfw/)
 [![last commit](https://img.shields.io/github/last-commit/azag0/calcfw.svg)](https://github.com/azag0/calcfw/commits/master)
