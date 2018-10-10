@@ -2,36 +2,35 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
-from typing import Dict, Iterable, Any, TypeVar, cast, List, \
+from typing import Dict, Any, TypeVar, cast, List, \
     Generator, Awaitable, Generic
 
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
-_Plg = TypeVar('_Plg', bound='Plugin')
+_P = TypeVar('_P', bound='Pluggable')
 
 
-class Plugin:
+class Plugin(Generic[_P]):
     name: str
 
-    def __call__(self: _Plg, obj: 'Pluggable[_Plg]') -> None:
-        obj.register_plugin(self._name, self)
+    def __call__(self, app: _P) -> None:
+        app.register_plugin(self._name, self)
+        self._app = app
 
     @property
     def _name(self) -> str:
         return cast(str, getattr(self, 'name', self.__class__.__name__))
 
 
-class Pluggable(Generic[_Plg]):
-    def __init__(self, plugins: Iterable[_Plg] = None) -> None:
-        self._plugins: Dict[str, _Plg] = {}
-        for plugin in plugins or ():
-            plugin(self)  # type: ignore
+class Pluggable:
+    def __init__(self: _P) -> None:
+        self._plugins: Dict[str, Plugin[_P]] = {}
 
-    def register_plugin(self, name: str, plugin: _Plg) -> None:
+    def register_plugin(self: _P, name: str, plugin: Plugin[_P]) -> None:
         self._plugins[name] = plugin
 
-    def _get_plugins(self, reverse: bool = False) -> List[_Plg]:
+    def _get_plugins(self: _P, reverse: bool = False) -> List[Plugin[_P]]:
         plugins = list(self._plugins.values())
         if reverse:
             plugins.reverse()

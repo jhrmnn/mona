@@ -5,7 +5,7 @@ import shutil
 from copy import deepcopy
 from pathlib import Path
 from collections import OrderedDict
-from typing import Dict, Any, Tuple, Iterable, Callable
+from typing import Dict, Any, Tuple, Callable, cast
 
 from ...rules.dirtask import dir_task, DirTaskResult
 from ...tasks import Task
@@ -16,7 +16,7 @@ from ..geomlib import Molecule, Atom
 from .dsl import parse_aims_input, expand_dicts
 
 
-class AimsPlugin(Plugin):
+class AimsPlugin(Plugin['Aims']):
     def process(self, kwargs: Dict[str, Any]) -> None:
         pass
 
@@ -24,10 +24,11 @@ class AimsPlugin(Plugin):
         return hash_function(self.process)
 
 
-class Aims(Pluggable[AimsPlugin]):
-    def __init__(self, plugins: Iterable[AimsPlugin] = None) -> None:
-        plugins = plugins or [factory() for factory in default_plugins]
-        Pluggable.__init__(self, plugins)
+class Aims(Pluggable):
+    def __init__(self) -> None:
+        Pluggable.__init__(self)
+        for factory in default_plugins:
+            factory()(self)
 
     def __call__(self, *, label: str = None, **kwargs: Any) -> Task[DirTaskResult]:
         self.run_plugins('process', kwargs, start=None)
@@ -38,7 +39,9 @@ class Aims(Pluggable[AimsPlugin]):
         return dir_task(script, inputs, label=label)
 
     def _func_hash(self) -> str:
-        return ','.join(p._func_hash() for p in self._get_plugins())
+        return ','.join(
+            cast(AimsPlugin, p)._func_hash() for p in self._get_plugins()
+        )
 
 
 class SpeciesDir(AimsPlugin):

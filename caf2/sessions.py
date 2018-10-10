@@ -33,7 +33,7 @@ _active_session: ContextVar[Optional['Session']] = \
     ContextVar('active_session', default=None)
 
 
-class SessionPlugin(Plugin):
+class SessionPlugin(Plugin['Session']):
     def post_enter(self, sess: 'Session') -> None:
         pass
 
@@ -59,9 +59,11 @@ class Graph(NamedTuple):
     backflow: Dict[Hash, FrozenSet[Hash]]
 
 
-class Session(Pluggable[SessionPlugin]):
+class Session(Pluggable):
     def __init__(self, plugins: Iterable[SessionPlugin] = None) -> None:
-        Pluggable.__init__(self, plugins)
+        Pluggable.__init__(self)
+        for plugin in plugins or ():
+            plugin(self)
         self._tasks: Dict[Hash, Task[Any]] = {}
         self._objects: Dict[Hash, Hashed[Any]] = {}
         self._graph = Graph({}, defaultdict(set), {})
