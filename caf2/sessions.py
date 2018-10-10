@@ -10,7 +10,7 @@ from contextvars import ContextVar
 from contextlib import contextmanager, asynccontextmanager
 from typing import Set, Any, Dict, Callable, Optional, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple, \
-    Union, Awaitable, AsyncGenerator
+    Union, Awaitable, AsyncGenerator, FrozenSet
 
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, Corofunc
@@ -54,9 +54,9 @@ class SessionPlugin(Plugin):
 
 
 class Graph(NamedTuple):
-    deps: Dict[Hash, Set[Hash]]
+    deps: Dict[Hash, FrozenSet[Hash]]
     side_effects: Dict[Hash, Set[Hash]]
-    backflow: Dict[Hash, Set[Hash]]
+    backflow: Dict[Hash, FrozenSet[Hash]]
 
 
 class Session(Pluggable[SessionPlugin]):
@@ -79,6 +79,12 @@ class Session(Pluggable[SessionPlugin]):
     def storage(self) -> Dict[str, Any]:
         self._check_active()
         return self._storage
+
+    def get_deps(self, hashid: Hash) -> FrozenSet[Hash]:
+        return self._graph.deps[hashid]
+
+    def get_object(self, hashid: Hash) -> Hashed[Any]:
+        return self._objects[hashid]
 
     def __enter__(self) -> 'Session':
         assert _active_session.get() is None
@@ -161,7 +167,7 @@ class Session(Pluggable[SessionPlugin]):
         task.register()
         self._tasks[task.hashid] = task
         arg_tasks = self._process_objects(task.args, save=True)
-        self._graph.deps[task.hashid] = set(t.hashid for t in arg_tasks)
+        self._graph.deps[task.hashid] = frozenset(t.hashid for t in arg_tasks)
         return self.run_plugins('post_create', start=task)
 
     @asynccontextmanager
@@ -215,7 +221,7 @@ class Session(Pluggable[SessionPlugin]):
                 fut.add_done_callback(lambda fut: task.set_result(fut.value))
                 fut.register()
         backflow = self._process_objects([hashed], save=True)
-        self._graph.backflow[task.hashid] = set(t.hashid for t in backflow)
+        self._graph.backflow[task.hashid] = frozenset(t.hashid for t in backflow)
         return hashed
 
     async def _traverse_execute(self, task: Task[Any],
@@ -303,6 +309,7 @@ class Session(Pluggable[SessionPlugin]):
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
         from graphviz import Digraph  # type: ignore
 
+        tasks: Union[Set[Hash], FrozenSet[Hash]]
         dot = Digraph(*args, **kwargs)
         for child, parents in self._graph.deps.items():
             dot.node(child, repr(Literal(self._tasks[child])))
