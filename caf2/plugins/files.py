@@ -11,7 +11,7 @@ from ..json import registered_classes
 from ..rules.dirtask import FileManager as _FileManager, \
     HashingPath as _HashingPath
 
-from typing import Dict, Union, cast, Tuple, Iterable, List
+from typing import Dict, Union, cast, Tuple, Iterable, List, Optional
 
 InputTarget = Union[str, Path, bytes]
 Input = Union[str, Path, Tuple[str, InputTarget]]
@@ -74,7 +74,7 @@ class FileManager(_FileManager, SessionPlugin):
     def __init__(self, root: Union[str, Pathable]) -> None:
         self._root = Path(root).resolve()
         self._cache: Dict[Hash, bytes] = {}
-        self._source_cache: Dict[Path, HashedPath] = {}
+        self._path_cache: Dict[Path, HashedPath] = {}
         self._dir_task_hooks = self._wrap_args, None
 
     def _path(self, hashid: Hash) -> Path:
@@ -111,7 +111,7 @@ class FileManager(_FileManager, SessionPlugin):
         raise FilesError(f'Missing in manager: {hashid}')
 
     def store_from_path(self, path: Path) -> StoredHashedBytes:
-        # TODO large files could be hashed more efficiently and copied
+        # TODO large files could be hashed more efficiently
         hashed = HashedBytes(path.read_bytes())
         hashid = hashed.hashid
         if hashid not in self:
@@ -120,7 +120,8 @@ class FileManager(_FileManager, SessionPlugin):
             make_nonwritable(stored_path)
         return StoredHashedBytes(hashid, hashed.label)
 
-    def _store_bytes(self, content: bytes) -> StoredHashedBytes:
+    def _store_bytes(self, content: bytes) -> Tuple[HashedBytes, Optional[Path]]:
+        stored_path: Optional[Path]
         hashed = HashedBytes(content)
         hashid = hashed.hashid
         if hashid not in self:
@@ -128,27 +129,24 @@ class FileManager(_FileManager, SessionPlugin):
             stored_path = self._path_primed(hashid)
             stored_path.write_bytes(content)
             make_nonwritable(stored_path)
-        return StoredHashedBytes(hashid, hashed.label)
+        else:
+            stored_path = None
+        return hashed, stored_path
 
-    def _store_source(self, path: Path) -> HashedPath:
-        hashed_path = self._source_cache.get(path)
-        if hashed_path:
-            return hashed_path
-        content = path.read_bytes()
-        hashed = HashedBytes(content)
-        hashid = hashed.hashid
-        if hashid not in self:
-            self._cache[hashid] = content
-            stored_path = self._path_primed(hashid)
-            stored_path.write_bytes(content)
-            make_nonwritable(stored_path)
-        hashed_path = HashedPath(hashid, hashed.label, stored_path)
-        return self._source_cache.setdefault(path, hashed_path)
+    def _store_path(self, path: Path) -> HashedPath:
+        try:
+            return self._path_cache[path]
+        except KeyError:
+            pass
+        hashed, stored_path = self._store_bytes(path.read_bytes())
+        hashed_path = HashedPath(hashed.hashid, hashed.label, stored_path)
+        return self._path_cache.setdefault(path, hashed_path)
 
     def _wrap_target(self, target: InputTarget) -> HashedPath:
         if isinstance(target, (str, Path)):
-            return self._store_source(Path(target))
-        stored_bytes = self._store_bytes(target)
+            return self._store_path(Path(target))
+        hashed, _ = self._store_bytes(target)
+        stored_bytes = StoredHashedBytes(hashed.hashid, hashed.label)
         return HashedPath(stored_bytes.hashid, stored_bytes.label)
 
     def _wrap_inputs(self, files: Iterable[Input]) -> Dict[str, HashedPath]:
