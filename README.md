@@ -1,6 +1,6 @@
 # Calculation framework (Caf)
 
-[![build](https://img.shields.io/travis/azag0/calcfw.svg)](https://travis-ci.org/azag0/calcfw)
+[![build](https://img.shields.io/travis/azag0/calcfw/master.svg)](https://travis-ci.org/azag0/calcfw)
 [![coverage](https://img.shields.io/codecov/c/github/azag0/calcfw.svg)](https://codecov.io/gh/azag0/calcfw)
 [![docs](https://img.shields.io/readthedocs/calcfw.svg)](https://janhermann.cz/calcfw/)
 ![python](https://img.shields.io/pypi/pyversions/calcfw.svg)
