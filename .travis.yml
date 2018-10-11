@@ -14,9 +14,8 @@ script:
 after_success:
   - pip install codecov
   - codecov
-  - sphinx-build docs docs/build
-  - rm -r docs/build/.doctrees
-  - cp docs/_config.yml docs/build/
+  - sphinx-build -d . docs docs/build
+  - touch docs/build/.nojekyll
 deploy:
   provider: pages
   skip-cleanup: true
