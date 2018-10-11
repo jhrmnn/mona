@@ -1,6 +1,6 @@
 *.pyc
-/.mypy_cache
 /*.egg-info/
+/.mypy_cache/
 /.pytest_cache/
 /.coverage
 /htmlcov/
