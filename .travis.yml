@@ -15,6 +15,7 @@ after_success:
   - pip install codecov
   - codecov
   - sphinx-build docs docs/build
+  - rm -r docs/build/.doctrees
   - cp docs/_config.yml docs/build/
 deploy:
   provider: pages

@@ -4,19 +4,6 @@ import toml
 import sys
 import os
 
-if os.environ.get('READTHEDOCS') == 'True':
-    from unittest.mock import MagicMock
-
-    class Mock(MagicMock):
-        @classmethod
-        def __getattr__(cls, name):
-            return MagicMock()
-
-    MOCK_MODULES = ['typing_extensions', 'mypy_extensions']
-    if sys.version_info[1] < 7:
-        MOCK_MODULES.extend(['contextvars', 'contextlib'])
-    sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-
 sys.path.insert(0, os.path.abspath('..'))
 
 metadata = toml.load(open('../pyproject.toml'))['tool']['poetry']
