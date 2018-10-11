@@ -1,16 +1,16 @@
-#!/usr/bin/env python3
-import datetime
-import toml
-import sys
 import os
+import sys
+import datetime
+
+import toml
 
 sys.path.insert(0, os.path.abspath('..'))
 
 metadata = toml.load(open('../pyproject.toml'))['tool']['poetry']
 
-project = metadata['name']
+project = 'Caf'
 version = metadata['version']
-author = metadata['authors'][0]
+author = ' '.join(metadata['authors'][0].split()[:-1])
 description = metadata['description']
 
 extensions = [
@@ -31,7 +31,10 @@ html_theme_options = {
     'description': description,
     'github_button': True,
     'github_user': 'azag0',
-    'github_repo': 'pyberny',
+    'github_repo': 'calcfw',
+    'badge_branch': 'master',
+    'codecov_button': True,
+    'travis_button': True,
 }
 html_sidebars = {
     '**': [

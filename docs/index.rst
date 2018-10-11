@@ -1,5 +1,5 @@
-Calculation framework (Caf)
-===========================
+Calculation framework
+=====================
 
 .. toctree::
 
