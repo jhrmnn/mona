@@ -1,10 +1,23 @@
 import os
 import sys
 import datetime
+from unittest.mock import MagicMock
 
 import toml
 
 sys.path.insert(0, os.path.abspath('..'))
+
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+
+MOCK_MODULES = [
+    'contextvars', 'contextlib', 'typing_extensions', 'mypy_extensions'
+]
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 metadata = toml.load(open('../pyproject.toml'))['tool']['poetry']
 
@@ -20,7 +33,7 @@ extensions = [
 ]
 source_suffix = '.rst'
 master_doc = 'index'
-copyright = f'2016-{datetime.date.today().year}, {author}'
+copyright = f'2015-{datetime.date.today().year}, {author}'
 release = version
 language = None
 exclude_patterns = ['build', '.DS_Store']

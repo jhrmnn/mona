@@ -4,8 +4,9 @@
 [![coverage](https://img.shields.io/codecov/c/github/azag0/calcfw.svg)](https://codecov.io/gh/azag0/calcfw)
 ![python](https://img.shields.io/pypi/pyversions/calcfw.svg)
 [![pypi](https://img.shields.io/pypi/v/calcfw.svg)](https://pypi.org/project/calcfw/)
+[![commits since](https://img.shields.io/github/commits-since/azag0/calcfw/latest.svg)](https://github.com/azag0/calcfw/releases)
 [![last commit](https://img.shields.io/github/last-commit/azag0/calcfw.svg)](https://github.com/azag0/calcfw/commits/master)
-[![license](https://img.shields.io/github/license/azag0/libmbd.svg)](https://github.com/azag0/libmbd/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/azag0/calcfw.svg)](https://github.com/azag0/calcfw/blob/master/LICENSE)
 
 ```python
 import caf2 as caf

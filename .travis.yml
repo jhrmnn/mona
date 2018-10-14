@@ -2,20 +2,21 @@ language: python
 matrix:
   include:
     - python: 3.7
+      env: TOXENV=py37-coverage-codecov
       dist: xenial
       sudo: required
+    - python: 3.6
+      stage: deploy
+      env: TOXENV=docs
 before_install:
-  - pip install --upgrade pip==18.0
-  - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
-install:
-  - poetry install -E graphviz
-script:
-  - coverage run --source=caf2 --omit='caf2/sci/**' --branch -m pytest -vs
-after_success:
-  - pip install codecov
-  - codecov
-  - sphinx-build -d . docs docs/build
-  - touch docs/build/.nojekyll
+  - pip install tox tox-venv
+  - |
+    if [[ $TOXENV != docs ]]; then
+      pip install --upgrade pip"<=18.0"
+      curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+    fi
+install: true
+script: tox
 deploy:
   provider: pages
   skip-cleanup: true
@@ -24,3 +25,4 @@ deploy:
   local-dir: docs/build
   on:
     branch: master
+    condition: $TOXENV = docs
