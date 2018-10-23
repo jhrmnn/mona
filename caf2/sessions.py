@@ -207,17 +207,14 @@ class Session(Pluggable):
             return result
         if task.has_hook():
             hashed = task.run_hook(hashed)
-        if not isinstance(hashed, HashedFuture):
+        if not isinstance(hashed, HashedFuture) or hashed.done():
             task.set_result(hashed)
         else:
             fut = hashed
-            if fut.done():
-                task.set_result(fut.value)
-            else:
-                log.debug(f'{task}: has run, pending: {fut}')
-                task.set_future_result(fut)
-                fut.add_done_callback(lambda fut: task.set_result(fut.value))
-                fut.register()
+            log.debug(f'{task}: has run, pending: {fut}')
+            task.set_future_result(fut)
+            fut.add_done_callback(lambda fut: task.set_result(fut))
+            fut.register()
         backflow = self._process_objects([hashed])
         self._graph.backflow[task.hashid] = frozenset(t.hashid for t in backflow)
         return hashed
