@@ -66,7 +66,6 @@ class Session(Pluggable):
         for plugin in plugins or ():
             plugin(self)
         self._tasks: Dict[Hash, Task[Any]] = {}
-        self._objects: Dict[Hash, Hashed[Any]] = {}
         self._graph = Graph({}, defaultdict(set), {})
         self._running_task: ContextVar[Optional[Task[Any]]] = \
             ContextVar('running_task')
@@ -89,8 +88,6 @@ class Session(Pluggable):
             self._tasks[h] for h in self._graph.side_effects[task.hashid]
         )
 
-    def get_object(self, hashid: Hash) -> Hashed[Any]:
-        return self._objects[hashid]
 
     def __enter__(self) -> 'Session':
         assert _active_session.get() is None
@@ -112,7 +109,6 @@ class Session(Pluggable):
                     f'tasks have never run: {tasks_not_run}', RuntimeWarning
                 )
         self._tasks.clear()
-        self._objects.clear()
         self._storage.clear()
         self._graph.deps.clear()
         self._graph.side_effects.clear()
@@ -135,8 +131,7 @@ class Session(Pluggable):
             assert self._running_task.get() is task
             self._running_task.set(None)
 
-    def _process_objects(self, objs: Iterable[Hashed[Any]], *, save: bool
-                         ) -> List[Task[Any]]:
+    def _process_objects(self, objs: Iterable[Hashed[Any]]) -> List[Task[Any]]:
         objs = list(traverse(
             objs,
             lambda o: (
@@ -155,8 +150,6 @@ class Session(Pluggable):
         for task in tasks:
             if task.hashid not in self._tasks:
                 raise TaskError(f'Not in session: {task!r}', task)
-        if save:
-            self._objects.update({o.hashid: o for o in objs})
         return tasks
 
     def create_task(self, corofunc: Corofunc[_T], *args: Any,
@@ -172,7 +165,7 @@ class Session(Pluggable):
             pass
         task.register()
         self._tasks[task.hashid] = task
-        arg_tasks = self._process_objects(task.args, save=True)
+        arg_tasks = self._process_objects(task.args)
         self._graph.deps[task.hashid] = frozenset(t.hashid for t in arg_tasks)
         self.run_plugins('post_create', task, start=None)
         return task
@@ -225,7 +218,7 @@ class Session(Pluggable):
                 task.set_future_result(fut)
                 fut.add_done_callback(lambda fut: task.set_result(fut.value))
                 fut.register()
-        backflow = self._process_objects([hashed], save=True)
+        backflow = self._process_objects([hashed])
         self._graph.backflow[task.hashid] = frozenset(t.hashid for t in backflow)
         return hashed
 
@@ -257,7 +250,7 @@ class Session(Pluggable):
         fut.register()
         exceptions = {}
         async for step_or_exception in traverse_async(
-                self._process_objects([fut], save=False),
+                self._process_objects([fut]),
                 lambda task: (self._tasks[h] for h in chain(
                     self._graph.deps[task.hashid],
                     self._graph.backflow.get(task.hashid, ()),
