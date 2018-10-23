@@ -43,6 +43,12 @@ class SessionPlugin(Plugin['Session']):
     async def post_run(self) -> None:
         pass
 
+    def post_task_run(self, task: Task[Any]) -> None:
+        pass
+
+    def save_hashed(self, objs: Iterable[Hashed[Any]]) -> None:
+        pass
+
     def ignored_exception(self) -> None:
         pass
 
@@ -88,6 +94,8 @@ class Session(Pluggable):
             self._tasks[h] for h in self._graph.side_effects[task.hashid]
         )
 
+    def get_task(self, hashid: Hash) -> Task[Any]:
+        return self._tasks[hashid]
 
     def __enter__(self) -> 'Session':
         assert _active_session.get() is None
@@ -150,6 +158,7 @@ class Session(Pluggable):
         for task in tasks:
             if task.hashid not in self._tasks:
                 raise TaskError(f'Not in session: {task!r}', task)
+        self.run_plugins('save_hashed', objs, start=None)
         return tasks
 
     def create_task(self, corofunc: Corofunc[_T], *args: Any,
@@ -185,20 +194,7 @@ class Session(Pluggable):
     def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         return asyncio.run(self._run_task(task))
 
-    async def run_task_async(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
-        if task.state < State.READY:
-            raise TaskError(f'Not ready: {task!r}', task)
-        if task.state > State.READY:
-            raise TaskError(f'Task was already run: {task!r}', task)
-        task.set_running()
-        with self._running_task_ctx(task):
-            result = await task.corofunc(*(arg.value for arg in task.args))
-        task.set_has_run()
-        side_effects = self.get_side_effects(task)
-        if side_effects:
-            log.debug(
-                f'{task}: created tasks: {list(map(Literal, side_effects))}'
-            )
+    def _set_result(self, task: Task[_T], result: _T) -> Union[_T, Hashed[_T]]:
         hashed = maybe_hashed(result)
         if hashed is None:
             if task.has_hook():
@@ -218,6 +214,24 @@ class Session(Pluggable):
         backflow = self._process_objects([hashed])
         self._graph.backflow[task.hashid] = frozenset(t.hashid for t in backflow)
         return hashed
+
+    async def run_task_async(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
+        if task.state < State.READY:
+            raise TaskError(f'Not ready: {task!r}', task)
+        if task.state > State.READY:
+            raise TaskError(f'Task was already run: {task!r}', task)
+        task.set_running()
+        with self._running_task_ctx(task):
+            result = await task.corofunc(*(arg.value for arg in task.args))
+        task.set_has_run()
+        side_effects = self.get_side_effects(task)
+        if side_effects:
+            log.debug(
+                f'{task}: created tasks: {list(map(Literal, side_effects))}'
+            )
+        task_result = self._set_result(task, result)
+        self.run_plugins('post_task_run', task, start=None)
+        return task_result
 
     async def _traverse_execute(self, task: Task[Any],
                                 done: NodeExecuted[Task[Any]]) -> None:

@@ -1,9 +1,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import json
 from pathlib import Path
 
-from ..hashing import Hash, Hashed, HashedBytes
+from ..hashing import Hash, Hashed, HashedBytes, HashedRegister
 from ..sessions import Session, SessionPlugin
 from ..utils import make_nonwritable, Pathable, split
 from ..errors import FilesError, InvalidInput
@@ -51,7 +52,12 @@ class HashedPath(Hashed[HashingPath]):
 
     @property
     def spec(self) -> str:
-        raise NotImplementedError()
+        return json.dumps([self._hashid, self._label])
+
+    @classmethod
+    def from_spec(cls, spec: str, reg: HashedRegister) -> 'HashedPath':
+        hashid, label = json.loads(spec)
+        return cls(hashid, label)
 
     @property
     def value(self) -> HashingPath:

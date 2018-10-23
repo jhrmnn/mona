@@ -13,13 +13,13 @@ from ..utils import Literal, shorten_text, TypeSwaps, swap_type
 __version__ = '0.1.0'
 
 _T = TypeVar('_T')
-_HCL = TypeVar('_HCL', bound='HashedCompositeLike')
 Hash = NewType('Hash', str)
 # symbolic type for a JSON-like container including custom classes
 Composite = NewType('Composite', object)
 # HashableContainer should be Union[List[HashableValue], Dict[str, HashableValue]]
 HashableContainer = NewType('HashableContainer', object)
 HashableValue = Union[None, bool, int, float, str, HashableContainer]
+HashedRegister = Callable[[Hash], 'Hashed[Any]']
 
 
 def hash_text(text: Union[str, bytes]) -> Hash:
@@ -36,6 +36,10 @@ class Hashed(ABC, Generic[_T]):
     @property
     @abstractmethod
     def spec(self) -> Union[str, bytes]: ...
+
+    @classmethod
+    @abstractmethod
+    def from_spec(cls, spec: Any, reg: HashedRegister) -> 'Hashed[_T]': ...
 
     @property
     @abstractmethod
@@ -70,6 +74,10 @@ class HashedBytes(Hashed[bytes]):
     def spec(self) -> bytes:
         return self.value
 
+    @classmethod
+    def from_spec(cls, spec: bytes, reg: HashedRegister) -> Hashed[bytes]:
+        return cls(spec)
+
     @property
     def label(self) -> str:
         return self._label
@@ -95,6 +103,11 @@ class HashedCompositeLike(Hashed[Composite]):
     @property
     def spec(self) -> str:
         return json.dumps([self._jsonstr, *sorted(self._components)])
+
+    @classmethod
+    def from_spec(cls, spec: str, reg: HashedRegister) -> Hashed[Composite]:
+        jsonstr, *hashids = json.loads(spec)
+        return cls(jsonstr, (reg(h) for h in hashids))
 
     @property
     def label(self) -> str:

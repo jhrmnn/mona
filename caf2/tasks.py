@@ -5,12 +5,14 @@ import logging
 import json
 from abc import abstractmethod
 import asyncio
+import inspect
+import importlib
 from typing import Any, Callable, Optional, List, TypeVar, \
-    Collection, cast, Tuple, Union, Awaitable, Dict
+    Collection, cast, Tuple, Union, Awaitable, Dict, Iterable
 
 from .futures import Future, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite, \
-    hash_function
+    hash_function, HashedRegister
 from .utils import get_fullname, Maybe, Empty, swap_type
 from .errors import FutureError, TaskError, CompositeError
 
@@ -115,6 +117,20 @@ class Task(HashedFuture[_T]):
             self._default.hashid if self._default else None,
             *(fut.hashid for fut in self._args)
         ])
+
+    @classmethod
+    def from_spec(cls, spec: str, reg: HashedRegister, label: str = None
+                  ) -> 'Task[Any]':
+        fullname, corohash, default_hash, *arg_hashes = json.loads(spec)
+        modname, fname = fullname.split(':')
+        mod = importlib.import_module(modname)
+        rule = getattr(mod, fname)
+        corofunc = rule.corofunc
+        assert inspect.iscoroutinefunction(corofunc)
+        assert hash_function(corofunc) == corohash
+        default = reg(default_hash) if default_hash else Empty._
+        args = (reg(h) for h in arg_hashes)
+        return cls(corofunc, *args, label=label, default=default)
 
     @property
     def label(self) -> str:
@@ -233,6 +249,13 @@ class TaskComponent(HashedFuture[_T]):
             self._default.hashid if self._default else None,
             *self._keys
         ])
+
+    @classmethod
+    def from_spec(cls, spec: str, reg: HashedRegister) -> 'TaskComponent[Any]':
+        task_hash, default_hash, *keys = json.loads(spec)
+        task = cast(Task[Any], reg(task_hash))
+        default = reg(default_hash) if default_hash else Empty._
+        return cls(task, keys, default)
 
     @property
     def label(self) -> str:
