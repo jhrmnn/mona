@@ -6,6 +6,6 @@
 /htmlcov/
 /report/
 /dist/
-/pyproject.lock
+/poetry.lock
 /docs/build/
 /setup.py
