@@ -93,6 +93,8 @@ class Task(HashedFuture[_T]):
                  default: Maybe[_T] = Empty._) -> None:
         self._corofunc = corofunc
         self._args = tuple(map(ensure_hashed, args))
+        self._default: Optional[Hashed[_T]] = \
+            ensure_hashed(default) if default is not Empty._ else None
         Hashed.__init__(self)
         Future.__init__(
             self, (arg for arg in self._args if isinstance(arg, HashedFuture))
@@ -103,19 +105,16 @@ class Task(HashedFuture[_T]):
         )
         self._result: Union[_T, Hashed[_T], Empty] = Empty._
         self._hook: Optional[Callable[[_T], _T]] = None
-        self._default: Optional[Hashed[_T]] = \
-            ensure_hashed(default) if default is not Empty._ else None
         self._storage: Dict[str, Any] = {}
 
     @property
     def spec(self) -> str:
-        return json.dumps({
-            'corofunc': [
-                get_fullname(self._corofunc),
-                hash_function(self._corofunc)
-            ],
-            'args': [fut.hashid for fut in self._args]
-        }, indent=4)
+        return json.dumps([
+            get_fullname(self._corofunc),
+            hash_function(self._corofunc),
+            self._default.hashid if self._default else None,
+            *(fut.hashid for fut in self._args)
+        ])
 
     @property
     def label(self) -> str:
@@ -218,18 +217,22 @@ class TaskComponent(HashedFuture[_T]):
                  default: Maybe[_T] = Empty._) -> None:
         self._task = task
         self._keys = keys
+        self._default: Optional[Hashed[_T]] = \
+            ensure_hashed(default) if default is not Empty._ else None
         Hashed.__init__(self)
         Future.__init__(self, [cast(HashedFuture[Any], task)])
         self._label = ''.join([
             self._task.label, *(f'[{k!r}]' for k in self._keys)
         ])
-        self._default: Optional[Hashed[_T]] = \
-            ensure_hashed(default) if default is not Empty._ else None
         self.add_ready_callback(lambda self: self.set_done())
 
     @property
     def spec(self) -> str:
-        return json.dumps([self._task.hashid] + self._keys)
+        return json.dumps([
+            self._task.hashid,
+            self._default.hashid if self._default else None,
+            *self._keys
+        ])
 
     @property
     def label(self) -> str:

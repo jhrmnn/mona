@@ -84,8 +84,8 @@ class HashedCompositeLike(Hashed[Composite]):
 
     def __init__(self, jsonstr: str, components: Iterable[Hashed[Any]]) -> None:
         self._jsonstr = jsonstr
-        Hashed.__init__(self)
         self._components = {comp.hashid: comp for comp in components}
+        Hashed.__init__(self)
         self._label = repr(self.resolve(lambda hashed: Literal(hashed.label)))
 
     @property
@@ -94,7 +94,7 @@ class HashedCompositeLike(Hashed[Composite]):
 
     @property
     def spec(self) -> str:
-        return self._jsonstr
+        return json.dumps([self._jsonstr, *sorted(self._components)])
 
     @property
     def label(self) -> str:
