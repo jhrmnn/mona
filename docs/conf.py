@@ -1,25 +1,13 @@
 import os
 import sys
 import datetime
-from unittest.mock import MagicMock
 
 import toml
 
 sys.path.insert(0, os.path.abspath('..'))
 
-
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-        return MagicMock()
-
-
-MOCK_MODULES = [
-    'contextvars', 'contextlib', 'typing_extensions', 'mypy_extensions'
-]
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-
-metadata = toml.load(open('../pyproject.toml'))['tool']['poetry']
+with open('../pyproject.toml') as f:
+    metadata = toml.load(f)['tool']['poetry']
 
 project = 'Caf'
 version = metadata['version']

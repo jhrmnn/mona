@@ -1,16 +1,14 @@
 language: python
+dist: xenial
+sudo: required
+python: 3.7
 matrix:
   include:
-    - python: 3.7
-      env: TOXENV=py37-coverage-codecov
-      dist: xenial
-      sudo: required
-    - python: 3.6
-      stage: deploy
+    - env: TOXENV=py37-coverage-codecov
+    - stage: deploy
       env: TOXENV=docs
 before_install:
-  - pip install --upgrade pip"<=18.0" tox tox-venv
-  - curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+  - pip install poetry tox tox-venv
 install: true
 script: tox
 deploy:
