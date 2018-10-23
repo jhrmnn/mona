@@ -103,7 +103,8 @@ class Task(HashedFuture[_T]):
         )
         self._result: Union[_T, Hashed[_T], Empty] = Empty._
         self._hook: Optional[Callable[[_T], _T]] = None
-        self._default = default
+        self._default: Optional[Hashed[_T]] = \
+            ensure_hashed(default) if default is not Empty._ else None
         self._storage: Dict[str, Any] = {}
 
     @property
@@ -150,8 +151,8 @@ class Task(HashedFuture[_T]):
         return handler(self._result)  # type: ignore
 
     def default_result(self) -> _T:
-        if not isinstance(self._default, Empty):
-            return self._default
+        if self._default:
+            return self._default.value
         if isinstance(self._result, HashedFuture):
             return cast(_T, self._result.default_result())
         raise TaskError(f'Has no defualt: {self!r}', self)
@@ -222,7 +223,8 @@ class TaskComponent(HashedFuture[_T]):
         self._label = ''.join([
             self._task.label, *(f'[{k!r}]' for k in self._keys)
         ])
-        self._default = default
+        self._default: Optional[Hashed[_T]] = \
+            ensure_hashed(default) if default is not Empty._ else None
         self.add_ready_callback(lambda self: self.set_done())
 
     @property
@@ -253,8 +255,8 @@ class TaskComponent(HashedFuture[_T]):
         return cast(_T, obj)
 
     def default_result(self) -> _T:
-        if not isinstance(self._default, Empty):
-            return self._default
+        if self._default:
+            return self._default.value
         return self.resolve(lambda task: task.default_result())
 
 
