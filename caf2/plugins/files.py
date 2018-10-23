@@ -71,11 +71,13 @@ registered_classes[HashingPath] = (
 class FileManager(_FileManager, SessionPlugin):
     name = 'file_manager'
 
-    def __init__(self, root: Union[str, Pathable]) -> None:
+    def __init__(self, root: Union[str, Pathable], eager: bool = True
+                 ) -> None:
         self._root = Path(root).resolve()
         self._cache: Dict[Hash, bytes] = {}
         self._path_cache: Dict[Path, HashedPath] = {}
         self._dir_task_hooks = self._wrap_args, None
+        self._eager = eager
 
     def __repr__(self) -> str:
         return f'<FileManager ncache={len(self._cache)}>'
@@ -124,32 +126,38 @@ class FileManager(_FileManager, SessionPlugin):
             make_nonwritable(stored_path)
         return StoredHashedBytes(hashid, hashed.label)
 
-    def _store_bytes(self, content: bytes) -> Tuple[HashedBytes, Optional[Path]]:
+    def store_cache(self) -> None:
+        for hashid, content in self._cache.items():
+            self._store_in_file(hashid, content)
+
+    def _store_in_file(self, hashid: Hash, content: bytes) -> None:
+        stored_path = self._path_primed(hashid)
+        stored_path.write_bytes(content)
+        make_nonwritable(stored_path)
+
+    def _store_bytes(self, content: bytes) -> HashedBytes:
         stored_path: Optional[Path]
         hashed = HashedBytes(content)
         hashid = hashed.hashid
         if hashid not in self:
             self._cache[hashid] = content
-            stored_path = self._path_primed(hashid)
-            stored_path.write_bytes(content)
-            make_nonwritable(stored_path)
-        else:
-            stored_path = None
-        return hashed, stored_path
+            if self._eager:
+                self._store_in_file(hashid, content)
+        return hashed
 
     def _store_path(self, path: Path) -> HashedPath:
         try:
             return self._path_cache[path]
         except KeyError:
             pass
-        hashed, stored_path = self._store_bytes(path.read_bytes())
-        hashed_path = HashedPath(hashed.hashid, hashed.label, stored_path)
+        hashed = self._store_bytes(path.read_bytes())
+        hashed_path = HashedPath(hashed.hashid, hashed.label)
         return self._path_cache.setdefault(path, hashed_path)
 
     def _wrap_target(self, target: InputTarget) -> HashedPath:
         if isinstance(target, (str, Path)):
             return self._store_path(Path(target))
-        hashed, _ = self._store_bytes(target)
+        hashed = self._store_bytes(target)
         stored_bytes = StoredHashedBytes(hashed.hashid, hashed.label)
         return HashedPath(stored_bytes.hashid, stored_bytes.label)
 
