@@ -267,8 +267,9 @@ class TaskComponent(HashedFuture[_T]):
 # execution, but it is only taken by the child task, so that if the component
 # does not exist, the exception is raised only later
 class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
-    def __init__(self, jsonstr: str, components: Collection[Hashed[Any]]
+    def __init__(self, jsonstr: str, components: Iterable[Hashed[Any]]
                  ) -> None:
+        components = list(components)
         futures = [comp for comp in components if isinstance(comp, HashedFuture)]
         assert futures
         Future.__init__(self, futures)
