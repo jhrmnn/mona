@@ -32,11 +32,12 @@ pytest = { version = "^3.8", optional = true }
 coverage = { version = "^4.5", optional = true }
 sphinx = { version = "^1.8", optional = true }
 toml = { version = "^0.9.6", optional = true }
+pytest-mock = {version = "^1.10",optional = true}
 
 [tool.poetry.extras]
 graphviz = ["graphviz"]
 sci = ["numpy", "textx"]
-test = ["pytest"]
+test = ["pytest", "pytest-mock"]
 cov = ["coverage"]
 doc = ["sphinx", "toml"]
 

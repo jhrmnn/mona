@@ -14,22 +14,25 @@ def db(tmpdir):
     cache.db.close()
 
 
-def test_db(db):
+def test_db(db, mocker):
     sess = Session([Cache(db)])
     with sess:
-        assert sess.eval(analysis(calcs())) == 20
-    with sess:
         sess.eval(analysis(calcs()))
-        assert len(sess._tasks) == 2
+    sess.run_task_async = None
+    mocker.patch.object(sess, 'run_task_async')
+    with sess:
+        assert sess.eval(analysis(calcs())) == 20
+        assert not sess.run_task_async.called
 
 
-def test_db_files(db, tmpdir):
+def test_db_files(db, tmpdir, mocker):
     sess = Session([Cache(db), FileManager(tmpdir)])
     with sess:
-        assert sess.eval(analysis(calcs2())) == 20
+        sess.eval(analysis(calcs2()))
+    mocker.patch.object(sess, 'run_task_async')
     with sess:
         sess.eval(analysis(calcs2()))
-        assert len(sess._tasks) == 2
+        assert not sess.run_task_async.called
 
 
 @pytest.mark.filterwarnings("ignore:tasks have never run")

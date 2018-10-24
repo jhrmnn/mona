@@ -1,6 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import logging
 import sqlite3
 import pickle
 from enum import Enum
@@ -14,7 +15,9 @@ from ..utils import Pathable, get_timestamp, get_fullname, import_fullname
 from ..hashing import Hash, Hashed
 
 from typing import Any, Optional, Set, TypeVar, NamedTuple, Union, \
-    Iterable, Dict, cast, Type
+    Iterable, Dict, cast, Type, Deque
+
+log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
 
@@ -48,6 +51,7 @@ class Cache(SessionPlugin):
         self._pending: Set[Hash] = set()
         self._objects: Dict[Hash, Hashed[Any]] = {}
         self._eager = eager
+        self._to_restore: Optional[Deque[Task[Any]]] = None
 
     def __repr__(self) -> str:
         return (
@@ -114,9 +118,14 @@ class Cache(SessionPlugin):
         row = ObjectRow(*raw_row)
         factory = cast(Type[Hashed[Any]], import_fullname(row.typetag))
         assert issubclass(factory, Hashed)
-        return factory.from_spec(row.spec, self._get_object)
+        hashed = cast(Hashed[Any], factory.from_spec(row.spec, self._get_object))
+        if isinstance(hashed, Task):
+            hashed = self._app.process_task(hashed)
+        return hashed
 
     def save_hashed(self, objs: Iterable[Hashed[Any]]) -> None:
+        if self._to_restore is not None:
+            return
         if self._eager:
             self._store_objects(objs)
             self._db.commit()
@@ -124,10 +133,21 @@ class Cache(SessionPlugin):
             self._objects.update({o.hashid: o for o in objs})
 
     def post_create(self, task: Task[_T]) -> None:
+        if self._to_restore is not None:
+            self._to_restore.append(task)
+            return
+        self._to_restore = Deque([task])
+        while self._to_restore:
+            task = self._to_restore.popleft()
+            self._post_create(task)
+        self._to_restore = None
+
+    def _post_create(self, task: Task[_T]) -> None:
         raw_row = self._db.execute(
             'SELECT * FROM tasks WHERE hashid = ?', (task.hashid,)
         ).fetchone()
         if not raw_row:
+            assert not self._to_restore
             if self._eager:
                 self._store_tasks([task])
                 self._store_objects([task])
@@ -138,17 +158,25 @@ class Cache(SessionPlugin):
         row = TaskRow(*raw_row)
         if State[row.state] < State.HAS_RUN:
             return
+        task._label = row.label
+        log.info(f'Restoring from cache: {task}')
         assert row.result_type
         task.set_running()
+        if row.side_effects:
+            with self._app.running_task_ctx(task):
+                for hashid in row.side_effects.split(','):
+                    child_task = self._get_object(cast(Hash, hashid))
+                    assert isinstance(child_task, Task)
         task.set_has_run()
         result_type = ResultType[row.result_type]
         if result_type is ResultType.PICKLED:
             assert isinstance(row.result, bytes)
-            task.set_result(pickle.loads(row.result))
+            result = pickle.loads(row.result)
         else:
             assert result_type is ResultType.HASHED
             assert isinstance(row.result, str)
-            task.set_result(self._get_object(cast(Hash, row.result)))
+            result = self._get_object(cast(Hash, row.result))
+        self._app.set_result(task, result)
 
     def update_state(self, task: Task[_T]) -> None:
         self._db.execute(
