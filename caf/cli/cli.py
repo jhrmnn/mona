@@ -9,7 +9,7 @@ import click
 
 from ..sessions import Session
 from ..utils import import_fullname
-from .app import Caf
+from .app import App
 
 logging.basicConfig(
     style='{',
@@ -24,12 +24,12 @@ logging.getLogger('caf').setLevel(int(os.environ.get('CAF_DEBUG', logging.INFO))
 @click.group()
 @click.pass_context
 def cli(ctx: click.Context) -> None:
-    ctx.ensure_object(Caf)
+    ctx.ensure_object(App)
 
 
 @cli.command()
 @click.pass_obj
-def init(app: Caf) -> None:
+def init(app: App) -> None:
     app.ensure_cafdir()
 
 
@@ -40,7 +40,7 @@ def init(app: Caf) -> None:
 @click.option('--maxerror', default=5, help='Number of errors in row to quit')
 @click.argument('rulename', metavar='RULE')
 @click.pass_obj
-def run(app: Caf,
+def run(app: App,
         pattern: Optional[List[str]],
         jobs: int,
         limit: Optional[int],

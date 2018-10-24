@@ -15,14 +15,14 @@ from ..utils import get_timestamp, Pathable
 log = logging.getLogger(__name__)
 
 
-class Caf:
+class App:
     CAFDIR = '.caf'
     TMPDIR = 'tmpdir'
     FILES = 'files'
     CACHE = 'cache.db'
 
     def __init__(self, cafdir: Pathable = None) -> None:
-        cafdir = cafdir or os.environ.get('CAF_DIR') or Caf.CAFDIR
+        cafdir = cafdir or os.environ.get('CAF_DIR') or App.CAFDIR
         self._cafdir = Path(cafdir).resolve()
         self._config: Dict[str, Any] = {}
         for path in [
@@ -42,9 +42,9 @@ class Caf:
     def __call__(self, sess: Session) -> None:
         self._plugins = {
             'parallel': Parallel(),
-            'tmpdir': TmpdirManager(self._cafdir/Caf.TMPDIR),
-            'files': FileManager(self._cafdir/Caf.FILES),
-            'cache': Cache.from_path(self._cafdir/Caf.CACHE),
+            'tmpdir': TmpdirManager(self._cafdir/App.TMPDIR),
+            'files': FileManager(self._cafdir/App.FILES),
+            'cache': Cache.from_path(self._cafdir/App.CACHE),
         }
         for plugin in self._plugins.values():
             plugin(sess)
@@ -58,12 +58,12 @@ class Caf:
         try:
             cache_home = Path(self._config['cache'])
         except KeyError:
-            for dirname in [Caf.TMPDIR, Caf.FILES]:
+            for dirname in [App.TMPDIR, App.FILES]:
                 (self._cafdir/dirname).mkdir()
         else:
             ts = get_timestamp()
             cachedir = cache_home/f'{Path.cwd().name}_{ts}'
             cachedir.mkdir()
-            for dirname in [Caf.TMPDIR, Caf.FILES]:
+            for dirname in [App.TMPDIR, App.FILES]:
                 (cachedir/dirname).mkdir()
                 (self._cafdir/dirname).symlink_to(cachedir/dirname)
