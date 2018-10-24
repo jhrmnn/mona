@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
 import stat
+import importlib
 from enum import Enum
 from datetime import datetime
 from typing import Any, Callable, TypeVar, Union, List, Tuple, \
@@ -23,6 +24,12 @@ class Empty(Enum):
 
 def get_fullname(obj: Union[Callable[..., Any], Type[Any]]) -> str:
     return f'{obj.__module__}:{obj.__qualname__}'
+
+
+def import_fullname(fullname: str) -> Any:
+    module_name, qualname = fullname.split(':')
+    module = importlib.import_module(module_name)
+    return getattr(module, qualname)
 
 
 def shorten_text(s: Union[str, bytes], n: int) -> str:

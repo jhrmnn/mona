@@ -6,14 +6,13 @@ import json
 from abc import abstractmethod
 import asyncio
 import inspect
-import importlib
 from typing import Any, Callable, Optional, List, TypeVar, \
-    Collection, cast, Tuple, Union, Awaitable, Dict, Iterable
+    cast, Tuple, Union, Awaitable, Dict, Iterable
 
 from .futures import Future, State
 from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite, \
     hash_function, HashedRegister
-from .utils import get_fullname, Maybe, Empty, swap_type
+from .utils import get_fullname, Maybe, Empty, swap_type, import_fullname
 from .errors import FutureError, TaskError, CompositeError
 
 log = logging.getLogger(__name__)
@@ -121,11 +120,8 @@ class Task(HashedFuture[_T]):
     @classmethod
     def from_spec(cls, spec: str, reg: HashedRegister, label: str = None
                   ) -> 'Task[Any]':
-        fullname, corohash, default_hash, *arg_hashes = json.loads(spec)
-        modname, fname = fullname.split(':')
-        mod = importlib.import_module(modname)
-        rule = getattr(mod, fname)
-        corofunc = rule.corofunc
+        rule_name, corohash, default_hash, *arg_hashes = json.loads(spec)
+        corofunc = import_fullname(rule_name).corofunc
         assert inspect.iscoroutinefunction(corofunc)
         assert hash_function(corofunc) == corohash
         default = reg(default_hash) if default_hash else Empty._

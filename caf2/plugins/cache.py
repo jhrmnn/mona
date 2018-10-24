@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import sqlite3
 import pickle
-import importlib
 from enum import Enum
 from itertools import chain
 from textwrap import dedent
@@ -11,7 +10,7 @@ from textwrap import dedent
 from ..sessions import SessionPlugin
 from ..futures import State
 from ..tasks import Task
-from ..utils import Pathable, get_timestamp, get_fullname
+from ..utils import Pathable, get_timestamp, get_fullname, import_fullname
 from ..hashing import Hash, Hashed
 
 from typing import Any, Optional, Set, TypeVar, NamedTuple, Union, \
@@ -113,9 +112,7 @@ class Cache(SessionPlugin):
         ).fetchone()
         assert raw_row
         row = ObjectRow(*raw_row)
-        modname, typename = row.typetag.split(':')
-        mod = importlib.import_module(modname)
-        factory: Type[Hashed[Any]] = getattr(mod, typename)
+        factory = cast(Type[Hashed[Any]], import_fullname(row.typetag))
         assert issubclass(factory, Hashed)
         return factory.from_spec(row.spec, self._get_object)
 
