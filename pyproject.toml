@@ -32,9 +32,11 @@ pytest = { version = "^3.8", optional = true }
 coverage = { version = "^4.5", optional = true }
 sphinx = { version = "^1.8", optional = true }
 toml = { version = "^0.9.6", optional = true }
+click = { version = "^7.0", optional = true }
 pytest-mock = {version = "^1.10",optional = true}
 
 [tool.poetry.extras]
+cli = ["click", "toml"]
 graphviz = ["graphviz"]
 sci = ["numpy", "textx"]
 test = ["pytest", "pytest-mock"]
@@ -45,3 +47,6 @@ doc = ["sphinx", "toml"]
 mypy = "^0.630.0"
 lxml = "^4.2"
 flake8 = "^3.5"
+
+[tool.poetry.scripts]
+caf = "caf.cli:cli.main"
