@@ -9,7 +9,7 @@
 [![license](https://img.shields.io/github/license/azag0/calcfw.svg)](https://github.com/azag0/calcfw/blob/master/LICENSE)
 
 ```python
-import caf2 as caf
+import caf
 
 @caf.Rule
 async def total(xs):

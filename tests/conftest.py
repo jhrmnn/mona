@@ -8,4 +8,4 @@ if debug_level:
         format='[{asctime}.{msecs:03.0f}] {levelname}:{name}: {message}',
         datefmt='%H:%M:%S',
     )
-    logging.getLogger('caf2').setLevel(int(debug_level))
+    logging.getLogger('caf').setLevel(int(debug_level))

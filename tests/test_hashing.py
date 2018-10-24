@@ -1,7 +1,7 @@
 import pytest  # type: ignore
 
-from caf2.errors import HashingError
-from caf2.hashing import hash_function
+from caf.errors import HashingError
+from caf.hashing import hash_function
 
 
 def test_docstring():

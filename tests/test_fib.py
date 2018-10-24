@@ -1,4 +1,4 @@
-from caf2 import Rule, Session
+from caf import Rule, Session
 
 from tests.test_core import total
 

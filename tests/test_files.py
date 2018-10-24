@@ -3,12 +3,12 @@ from pathlib import Path
 
 import pytest  # type: ignore
 
-from caf2 import Rule, Session
-from caf2.rules import dir_task
-from caf2.hashing import HashedBytes
-from caf2.plugins import FileManager
-from caf2.plugins.files import StoredHashedBytes
-from caf2.errors import FilesError, InvalidInput
+from caf import Rule, Session
+from caf.rules import dir_task
+from caf.hashing import HashedBytes
+from caf.plugins import FileManager
+from caf.plugins.files import StoredHashedBytes
+from caf.errors import FilesError, InvalidInput
 
 from tests.test_dirtask import calcs
 

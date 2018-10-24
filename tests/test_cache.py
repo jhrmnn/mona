@@ -1,7 +1,7 @@
 import pytest  # type: ignore
 
-from caf2 import Session, Rule
-from caf2.plugins import Cache, FileManager
+from caf import Session, Rule
+from caf.plugins import Cache, FileManager
 
 from tests.test_dirtask import analysis, calcs
 from tests.test_files import calcs2

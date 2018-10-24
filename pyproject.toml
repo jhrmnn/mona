@@ -8,7 +8,7 @@ repository = "https://github.com/azag0/calcfw"
 documentation = "https://azag0.github.io/calcfw"
 license = "MPL-2.0"
 packages = [
-    { include = "caf2" },
+    { include = "caf" },
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

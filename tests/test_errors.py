@@ -3,8 +3,8 @@ import pickle
 
 import pytest  # type: ignore
 
-from caf2 import Rule, Session, run_shell
-from caf2.errors import TaskError, SessionError, CafError
+from caf import Rule, Session, run_shell
+from caf.errors import TaskError, SessionError, CafError
 
 from tests.test_core import identity
 

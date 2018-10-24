@@ -2,8 +2,8 @@ import subprocess
 
 import pytest  # type: ignore
 
-from caf2 import Rule, Session, run_thread, run_shell
-from caf2.rules import with_hook
+from caf import Rule, Session, run_thread, run_shell
+from caf.rules import with_hook
 
 
 @Rule

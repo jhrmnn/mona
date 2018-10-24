@@ -2,8 +2,8 @@ import pytest  # type: ignore
 
 import json
 
-from caf2.json import ClassJSONDecoder, ClassJSONEncoder, validate_json
-from caf2.errors import CompositeError
+from caf.json import ClassJSONDecoder, ClassJSONEncoder, validate_json
+from caf.errors import CompositeError
 
 
 class K:

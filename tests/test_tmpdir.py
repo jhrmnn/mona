@@ -1,9 +1,9 @@
 import subprocess
 from pathlib import Path
 
-from caf2 import Session
-from caf2.plugins import TmpdirManager
-from caf2.rules import dir_task
+from caf import Session
+from caf.plugins import TmpdirManager
+from caf.rules import dir_task
 
 from tests.test_dirtask import analysis, calcs
 
