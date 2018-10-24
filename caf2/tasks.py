@@ -118,15 +118,14 @@ class Task(HashedFuture[_T]):
         ])
 
     @classmethod
-    def from_spec(cls, spec: str, reg: HashedRegister, label: str = None
-                  ) -> 'Task[Any]':
+    def from_spec(cls, spec: str, reg: HashedRegister) -> 'Task[Any]':
         rule_name, corohash, default_hash, *arg_hashes = json.loads(spec)
         corofunc = import_fullname(rule_name).corofunc
         assert inspect.iscoroutinefunction(corofunc)
         assert hash_function(corofunc) == corohash
         default = reg(default_hash) if default_hash else Empty._
         args = (reg(h) for h in arg_hashes)
-        return cls(corofunc, *args, label=label, default=default)
+        return cls(corofunc, *args, default=default)
 
     @property
     def label(self) -> str:
@@ -183,7 +182,7 @@ class Task(HashedFuture[_T]):
     def set_result(self, result: Union[_T, Hashed[_T]]) -> None:
         assert self._state >= State.HAS_RUN
         self._result = result
-        super().set_done()
+        self.set_done()
 
     def set_future_result(self, result: HashedFuture[_T]) -> None:
         assert self.state is State.HAS_RUN

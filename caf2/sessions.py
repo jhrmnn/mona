@@ -130,7 +130,7 @@ class Session(Pluggable):
         raise SessionError(f'No running task: {self!r}', self)
 
     @contextmanager
-    def _running_task_ctx(self, task: Task[Any]) -> Iterator[None]:
+    def running_task_ctx(self, task: Task[Any]) -> Iterator[None]:
         assert not self._running_task.get()
         self._running_task.set(task)
         try:
@@ -221,7 +221,7 @@ class Session(Pluggable):
         if task.state > State.READY:
             raise TaskError(f'Task was already run: {task!r}', task)
         task.set_running()
-        with self._running_task_ctx(task):
+        with self.running_task_ctx(task):
             result = await task.corofunc(*(arg.value for arg in task.args))
         task.set_has_run()
         side_effects = self.get_side_effects(task)

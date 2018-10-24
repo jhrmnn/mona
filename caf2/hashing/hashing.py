@@ -75,7 +75,7 @@ class HashedBytes(Hashed[bytes]):
         return self.value
 
     @classmethod
-    def from_spec(cls, spec: bytes, reg: HashedRegister) -> Hashed[bytes]:
+    def from_spec(cls, spec: bytes, reg: HashedRegister) -> 'HashedBytes':
         return cls(spec)
 
     @property
@@ -105,7 +105,7 @@ class HashedCompositeLike(Hashed[Composite]):
         return json.dumps([self._jsonstr, *sorted(self._components)])
 
     @classmethod
-    def from_spec(cls, spec: str, reg: HashedRegister) -> Hashed[Composite]:
+    def from_spec(cls, spec: str, reg: HashedRegister) -> 'HashedCompositeLike':
         jsonstr, *hashids = json.loads(spec)
         return cls(jsonstr, (reg(h) for h in hashids))
 
