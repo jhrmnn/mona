@@ -24,7 +24,8 @@ class Rule(Generic[_T]):
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
         kwargs.setdefault('label', self._label)
-        return Session.active().create_task(self._corofunc, *args, **kwargs)
+        task = Task(self._corofunc, *args, **kwargs)
+        return Session.active().process_task(task)
 
     def add_label(self, label: str) -> None:
         self._label = label

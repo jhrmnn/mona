@@ -161,10 +161,7 @@ class Session(Pluggable):
         self.run_plugins('save_hashed', objs, start=None)
         return tasks
 
-    def create_task(self, corofunc: Corofunc[_T], *args: Any,
-                    label: str = None, default: Maybe[_T] = Empty._
-                    ) -> Task[_T]:
-        task = Task(corofunc, *args, label=label, default=default)
+    def process_task(self, task: Task[_T]) -> Task[_T]:
         parent_task = self._running_task.get()
         if parent_task:
             self._graph.side_effects[parent_task.hashid].add(task.hashid)
