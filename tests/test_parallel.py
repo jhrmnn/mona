@@ -1,4 +1,5 @@
 import asyncio
+import subprocess
 
 import pytest  # type: ignore
 
@@ -26,11 +27,16 @@ async def calcs(n):
     return [[
         dist,
         dir_task(
-            f'#!/bin/bash\nexpr $(cat data) "*" 2; sleep {n}; true'.encode(),
+            f'#!/bin/bash\nexpr $(cat data) "*" 2; sleep {n}'.encode(),
             {'data': str(dist).encode()},
             label=f'/calcs/dist={dist}'
         )['STDOUT']
     ] for dist in range(5)]
+
+
+@Rule
+async def error():
+    return int('x')
 
 
 def test_shell():
@@ -55,6 +61,16 @@ def test_thread():
 def test_calc():
     with Session([Parallel()]) as sess:
         assert sess.eval(analysis(calcs(0))) == 20
+
+
+@pytest.mark.filterwarnings("ignore:tasks have never run")
+def test_exception():
+    def handler(task, exc):
+        if isinstance(exc, subprocess.CalledProcessError):
+            return True
+
+    with Session([Parallel()]) as sess:
+        sess.eval(analysis(calcs('x')), exception_handler=handler)
 
 
 def test_cancelling():

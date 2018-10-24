@@ -281,7 +281,8 @@ class Session(Pluggable):
                 task, exc = step_or_exception
                 if isinstance(exc, (CafError, asyncio.CancelledError)):
                     raise exc
-                elif isinstance(exc, Exception):
+                else:
+                    assert isinstance(exc, Exception)
                     if exception_handler and exception_handler(task, exc):
                         self.run_plugins('ignored_exception', start=None)
                         exceptions[task] = exc

@@ -57,7 +57,8 @@ def test_identical_futures():
         return [f([m], [max(x, y)-1])[0]]
 
     with Session() as sess:
-        assert sess.eval(f([f([1], [1])[0]], [f([1], [1])[0]])[0]) == 0
+        expr = f([f([1], [1])[0]], [f([1], [1])[0]])[0]
+        assert sess.eval(expr, depth=True) == 0
 
 
 def test_recursion():

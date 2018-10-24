@@ -69,6 +69,16 @@ def test_hashing(tmpdir):
     assert without_fmngr[1].hashid == alt_input[1].hashid
 
 
+@pytest.mark.filterwarnings("ignore:tasks have never run")
+def test_postponed(tmpdir):
+    fmngr = FileManager(tmpdir, eager=False)
+    with Session([fmngr]) as sess:
+        sess.eval(calcs2(), task_filter=lambda t: t.label[0] != '/')
+        assert len(list(Path(tmpdir).glob('**'))) == 1
+    fmngr.store_cache()
+    assert len(list(Path(tmpdir).glob('**'))) == 7
+
+
 def test_missing_file(tmpdir):
     fmngr = FileManager(tmpdir)
     with pytest.raises(FilesError):

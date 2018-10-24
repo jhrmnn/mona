@@ -1,9 +1,10 @@
 import subprocess
+import pickle
 
 import pytest  # type: ignore
 
 from caf2 import Rule, Session, run_shell
-from caf2.errors import TaskError, SessionError, CafError, InvalidInput
+from caf2.errors import TaskError, SessionError, CafError
 
 from tests.test_core import identity
 
@@ -41,6 +42,11 @@ def test_future_result2():
 def test_not_active():
     with pytest.raises(SessionError):
         Session().storage['a'] = 1
+
+
+def test_no_running_task():
+    with pytest.raises(SessionError):
+        Session().running_task
 
 
 @pytest.mark.filterwarnings("ignore:tasks have never run")
@@ -115,6 +121,12 @@ def test_no_coroutine():
         @Rule
         def f():
             pass
+
+
+def test_pickled_future():
+    with pytest.raises(CafError):
+        with Session():
+            pickle.dumps(identity())
 
 
 def test_process_error():
