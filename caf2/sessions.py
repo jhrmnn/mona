@@ -191,26 +191,23 @@ class Session(Pluggable):
     def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         return asyncio.run(self._run_task(task))
 
-    def _set_result(self, task: Task[_T], result: _T) -> Union[_T, Hashed[_T]]:
-        hashed = maybe_hashed(result)
-        if hashed is None:
+    def set_result(self, task: Task[_T], result: Union[_T, Hashed[_T]]) -> None:
+        if not isinstance(result, Hashed):
             if task.has_hook():
                 raise TaskError(f'{result!r} cannot be hooked', task)
             task.set_result(result)
-            return result
+            return
         if task.has_hook():
-            hashed = task.run_hook(hashed)
-        if not isinstance(hashed, HashedFuture) or hashed.done():
-            task.set_result(hashed)
+            result = task.run_hook(result)
+        if not isinstance(result, HashedFuture) or result.done():
+            task.set_result(result)
         else:
-            fut = hashed
-            log.debug(f'{task}: has run, pending: {fut}')
-            task.set_future_result(fut)
-            fut.add_done_callback(lambda fut: task.set_result(fut))
-            fut.register()
-        backflow = self._process_objects([hashed])
+            log.debug(f'{task}: has run, pending: {result}')
+            task.set_future_result(result)
+            result.add_done_callback(lambda fut: task.set_done())
+            result.register()
+        backflow = self._process_objects([result])
         self._graph.backflow[task.hashid] = frozenset(t.hashid for t in backflow)
-        return hashed
 
     async def run_task_async(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         if task.state < State.READY:
@@ -219,16 +216,17 @@ class Session(Pluggable):
             raise TaskError(f'Task was already run: {task!r}', task)
         task.set_running()
         with self.running_task_ctx(task):
-            result = await task.corofunc(*(arg.value for arg in task.args))
+            raw_result = await task.corofunc(*(arg.value for arg in task.args))
         task.set_has_run()
         side_effects = self.get_side_effects(task)
         if side_effects:
             log.debug(
                 f'{task}: created tasks: {list(map(Literal, side_effects))}'
             )
-        task_result = self._set_result(task, result)
+        result = maybe_hashed(raw_result) or raw_result
+        self.set_result(task, result)
         self.run_plugins('post_task_run', task, start=None)
-        return task_result
+        return result
 
     async def _traverse_execute(self, task: Task[Any],
                                 done: NodeExecuted[Task[Any]]) -> None:
