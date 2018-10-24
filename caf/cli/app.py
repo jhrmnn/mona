@@ -8,9 +8,9 @@ from typing import Dict, Any
 
 import toml
 
-from .sessions import Session
-from .plugins import Parallel, TmpdirManager, FileManager, Cache
-from .utils import get_timestamp, Pathable
+from ..sessions import Session
+from ..plugins import Parallel, TmpdirManager, FileManager, Cache
+from ..utils import get_timestamp, Pathable
 
 log = logging.getLogger(__name__)
 

@@ -7,9 +7,9 @@ from typing import List, Optional
 
 import click
 
+from ..sessions import Session
+from ..utils import import_fullname
 from .app import Caf
-from .sessions import Session
-from .utils import import_fullname
 
 logging.basicConfig(
     style='{',
