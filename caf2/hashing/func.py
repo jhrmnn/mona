@@ -119,8 +119,6 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
 # fixed function from stdlib which parses closures in code consts as well
 # TODO submit cpython fix
 def getclosurevars(func: Callable[..., Any]) -> inspect.ClosureVars:
-    if inspect.ismethod(func):
-        func = func.__func__  # type: ignore
     code = func.__code__
     nonlocal_vars = {
         name: cell.cell_contents
