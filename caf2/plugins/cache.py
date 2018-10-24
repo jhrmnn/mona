@@ -150,10 +150,18 @@ class Cache(SessionPlugin):
             assert isinstance(row.result, str)
             task.set_result(self._get_object(cast(Hash, row.result)))
 
+    def update_state(self, task: Task[_T]) -> None:
+        self._db.execute(
+            'UPDATE tasks SET state = ? WHERE hashid = ?',
+            (task.state.name, task.hashid)
+        )
+
     def post_task_run(self, task: Task[_T]) -> None:
         if not self._eager:
             return
         self._store_result(task)
+        if task.state < State.DONE:
+            task.add_done_callback(lambda task: self.update_state(task))
         self._db.commit()
 
     def store_pending(self) -> None:
