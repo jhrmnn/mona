@@ -13,10 +13,10 @@ from typing import Set, Any, Dict, Callable, Optional, \
     Union, Awaitable, AsyncGenerator, FrozenSet
 
 from .hashing import Hash, Hashed, HashedCompositeLike
-from .tasks import Task, HashedFuture, State, maybe_hashed, Corofunc
+from .tasks import Task, HashedFuture, State, maybe_hashed
 from .graph import traverse, traverse_async, NodeExecuted, \
     Action, Priority, default_priority, NodeException
-from .utils import Literal, split, Empty, Maybe, call_if
+from .utils import Literal, split, call_if
 from .errors import SessionError, TaskError, FutureError, CafError
 from .pluggable import Plugin, Pluggable
 
