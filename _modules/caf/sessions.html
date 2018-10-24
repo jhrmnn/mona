@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>caf2.sessions &#8212; Caf 0.4.0-alpha.8 documentation</title>
+    <title>caf.sessions &#8212; Caf 0.4.0-alpha.8 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -32,7 +32,7 @@
 
           <div class="body" role="main">
             
-  <h1>Source code for caf2.sessions</h1><div class="highlight"><pre>
+  <h1>Source code for caf.sessions</h1><div class="highlight"><pre>
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
@@ -48,10 +48,10 @@
     <span class="n">Union</span><span class="p">,</span> <span class="n">Awaitable</span><span class="p">,</span> <span class="n">AsyncGenerator</span><span class="p">,</span> <span class="n">FrozenSet</span>
 
 <span class="kn">from</span> <span class="nn">.hashing</span> <span class="k">import</span> <span class="n">Hash</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">,</span> <span class="n">HashedCompositeLike</span>
-<span class="kn">from</span> <span class="nn">.tasks</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">maybe_hashed</span><span class="p">,</span> <span class="n">Corofunc</span>
+<span class="kn">from</span> <span class="nn">.tasks</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">maybe_hashed</span>
 <span class="kn">from</span> <span class="nn">.graph</span> <span class="k">import</span> <span class="n">traverse</span><span class="p">,</span> <span class="n">traverse_async</span><span class="p">,</span> <span class="n">NodeExecuted</span><span class="p">,</span> \
     <span class="n">Action</span><span class="p">,</span> <span class="n">Priority</span><span class="p">,</span> <span class="n">default_priority</span><span class="p">,</span> <span class="n">NodeException</span>
-<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">Empty</span><span class="p">,</span> <span class="n">Maybe</span><span class="p">,</span> <span class="n">call_if</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">call_if</span>
 <span class="kn">from</span> <span class="nn">.errors</span> <span class="k">import</span> <span class="n">SessionError</span><span class="p">,</span> <span class="n">TaskError</span><span class="p">,</span> <span class="n">FutureError</span><span class="p">,</span> <span class="n">CafError</span>
 <span class="kn">from</span> <span class="nn">.pluggable</span> <span class="k">import</span> <span class="n">Plugin</span><span class="p">,</span> <span class="n">Pluggable</span>
 
@@ -100,7 +100,7 @@
     <span class="n">backflow</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Hash</span><span class="p">,</span> <span class="n">FrozenSet</span><span class="p">[</span><span class="n">Hash</span><span class="p">]]</span>
 
 
-<div class="viewcode-block" id="Session"><a class="viewcode-back" href="../../api.html#caf2.sessions.Session">[docs]</a><span class="k">class</span> <span class="nc">Session</span><span class="p">(</span><span class="n">Pluggable</span><span class="p">):</span>
+<div class="viewcode-block" id="Session"><a class="viewcode-back" href="../../api.html#caf.sessions.Session">[docs]</a><span class="k">class</span> <span class="nc">Session</span><span class="p">(</span><span class="n">Pluggable</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plugins</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">SessionPlugin</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">warn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">Pluggable</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
@@ -165,7 +165,7 @@
         <span class="k">raise</span> <span class="n">SessionError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;No running task: </span><span class="si">{self!r}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
 
     <span class="nd">@contextmanager</span>
-    <span class="k">def</span> <span class="nf">_running_task_ctx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="kc">None</span><span class="p">]:</span>
+    <span class="k">def</span> <span class="nf">running_task_ctx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="kc">None</span><span class="p">]:</span>
         <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running_task</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_running_task</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
@@ -196,10 +196,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;save_hashed&#39;</span><span class="p">,</span> <span class="n">objs</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">tasks</span>
 
-    <span class="k">def</span> <span class="nf">create_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">corofunc</span><span class="p">:</span> <span class="n">Corofunc</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-                    <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Maybe</span><span class="p">[</span><span class="n">_T</span><span class="p">]</span> <span class="o">=</span> <span class="n">Empty</span><span class="o">.</span><span class="n">_</span>
-                    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
-        <span class="n">task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">corofunc</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">default</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">process_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
         <span class="n">parent_task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running_task</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">parent_task</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">side_effects</span><span class="p">[</span><span class="n">parent_task</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
@@ -229,26 +226,23 @@
     <span class="k">def</span> <span class="nf">run_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
         <span class="k">return</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_task</span><span class="p">(</span><span class="n">task</span><span class="p">))</span>
 
-    <span class="k">def</span> <span class="nf">_set_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="n">result</span><span class="p">:</span> <span class="n">_T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
-        <span class="n">hashed</span> <span class="o">=</span> <span class="n">maybe_hashed</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">hashed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">set_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="n">result</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">has_hook</span><span class="p">():</span>
                 <span class="k">raise</span> <span class="n">TaskError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{result!r}</span><span class="s1"> cannot be hooked&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
             <span class="n">task</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">result</span>
+            <span class="k">return</span>
         <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">has_hook</span><span class="p">():</span>
-            <span class="n">hashed</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">run_hook</span><span class="p">(</span><span class="n">hashed</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">hashed</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">)</span> <span class="ow">or</span> <span class="n">hashed</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
-            <span class="n">task</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">hashed</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">run_hook</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">)</span> <span class="ow">or</span> <span class="n">result</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
+            <span class="n">task</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">fut</span> <span class="o">=</span> <span class="n">hashed</span>
-            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{task}</span><span class="s1">: has run, pending: </span><span class="si">{fut}</span><span class="s1">&#39;</span><span class="p">)</span>
-            <span class="n">task</span><span class="o">.</span><span class="n">set_future_result</span><span class="p">(</span><span class="n">fut</span><span class="p">)</span>
-            <span class="n">fut</span><span class="o">.</span><span class="n">add_done_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">fut</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">fut</span><span class="p">))</span>
-            <span class="n">fut</span><span class="o">.</span><span class="n">register</span><span class="p">()</span>
-        <span class="n">backflow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_objects</span><span class="p">([</span><span class="n">hashed</span><span class="p">])</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{task}</span><span class="s1">: has run, pending: </span><span class="si">{result}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">task</span><span class="o">.</span><span class="n">set_future_result</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">add_done_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">fut</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">set_done</span><span class="p">())</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">register</span><span class="p">()</span>
+        <span class="n">backflow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_objects</span><span class="p">([</span><span class="n">result</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">backflow</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">hashid</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">backflow</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">hashed</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">run_task_async</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
         <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span> <span class="o">&lt;</span> <span class="n">State</span><span class="o">.</span><span class="n">READY</span><span class="p">:</span>
@@ -256,17 +250,18 @@
         <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span> <span class="o">&gt;</span> <span class="n">State</span><span class="o">.</span><span class="n">READY</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TaskError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Task was already run: </span><span class="si">{task!r}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
         <span class="n">task</span><span class="o">.</span><span class="n">set_running</span><span class="p">()</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running_task_ctx</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
-            <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">task</span><span class="o">.</span><span class="n">corofunc</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">args</span><span class="p">))</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">running_task_ctx</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+            <span class="n">raw_result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">task</span><span class="o">.</span><span class="n">corofunc</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">args</span><span class="p">))</span>
         <span class="n">task</span><span class="o">.</span><span class="n">set_has_run</span><span class="p">()</span>
         <span class="n">side_effects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_side_effects</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">side_effects</span><span class="p">:</span>
             <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                 <span class="n">f</span><span class="s1">&#39;</span><span class="si">{task}</span><span class="s1">: created tasks: {list(map(Literal, side_effects))}&#39;</span>
             <span class="p">)</span>
-        <span class="n">task_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set_result</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">maybe_hashed</span><span class="p">(</span><span class="n">raw_result</span><span class="p">)</span> <span class="ow">or</span> <span class="n">raw_result</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_task_run&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">task_result</span>
+        <span class="k">return</span> <span class="n">result</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_traverse_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
                                 <span class="n">done</span><span class="p">:</span> <span class="n">NodeExecuted</span><span class="p">[</span><span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>

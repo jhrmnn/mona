@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>caf2.futures &#8212; Caf 0.4.0-alpha.8 documentation</title>
+    <title>caf.futures &#8212; Caf 0.4.0-alpha.8 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -32,7 +32,7 @@
 
           <div class="body" role="main">
             
-  <h1>Source code for caf2.futures</h1><div class="highlight"><pre>
+  <h1>Source code for caf.futures</h1><div class="highlight"><pre>
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
@@ -60,7 +60,7 @@
     <span class="n">DONE</span> <span class="o">=</span> <span class="mi">6</span>
 
 
-<div class="viewcode-block" id="Future"><a class="viewcode-back" href="../../api.html#caf2.futures.Future">[docs]</a><span class="k">class</span> <span class="nc">Future</span><span class="p">:</span>
+<div class="viewcode-block" id="Future"><a class="viewcode-back" href="../../api.html#caf.futures.Future">[docs]</a><span class="k">class</span> <span class="nc">Future</span><span class="p">:</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">_Fut</span><span class="p">,</span> <span class="n">parents</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">_Fut</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_parents</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">parents</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pending</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">fut</span> <span class="k">for</span> <span class="n">fut</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parents</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">fut</span><span class="o">.</span><span class="n">done</span><span class="p">())</span>

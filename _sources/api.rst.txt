@@ -2,29 +2,29 @@ API
 ===
 
 
-.. autoclass:: caf2.futures.Future
+.. autoclass:: caf.futures.Future
     :members:
 
-.. autoclass:: caf2.hashing.HashedComposite
-    :members:
-    :inherited-members:
-
-.. autoclass:: caf2.tasks.Task
+.. autoclass:: caf.hashing.HashedComposite
     :members:
     :inherited-members:
 
-.. autoclass:: caf2.tasks.TaskComposite
+.. autoclass:: caf.tasks.Task
     :members:
     :inherited-members:
 
-.. autoclass:: caf2.tasks.TaskComponent
+.. autoclass:: caf.tasks.TaskComposite
     :members:
     :inherited-members:
 
-.. autoclass:: caf2.sessions.Session
+.. autoclass:: caf.tasks.TaskComponent
     :members:
     :inherited-members:
 
-.. autoclass:: caf2.rules.Rule
+.. autoclass:: caf.sessions.Session
+    :members:
+    :inherited-members:
+
+.. autoclass:: caf.rules.Rule
     :members:
     :inherited-members:
