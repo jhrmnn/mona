@@ -24,6 +24,15 @@ class StoredHashedBytes(HashedBytes):
         self._label = label
 
     @property
+    def spec(self) -> bytes:
+        return json.dumps([self._hashid, self._label]).encode()
+
+    @classmethod
+    def from_spec(cls, spec: bytes, reg: HashedRegister) -> 'HashedBytes':
+        hashid, label = json.loads(spec)
+        return cls(hashid, label)
+
+    @property
     def value(self) -> bytes:
         return FileManager.active().get_bytes(self._hashid)
 
