@@ -24,6 +24,7 @@ class Parallel(SessionPlugin):
         self._available = self._ncores
         self._asyncio_tasks: Set[asyncio.Task[Any]] = set()
         self._pending: Optional[int] = None
+        self._registered_exceptions = 0
 
     def post_enter(self, sess: Session) -> None:
         sess.storage['scheduler'] = self.run_coro
@@ -56,6 +57,10 @@ class Parallel(SessionPlugin):
         log.info(f'Stopping scheduler')
 
     def ignored_exception(self) -> None:
+        self._registered_exceptions -= 1
+        assert self._registered_exceptions >= 0
+        if self._registered_exceptions > 0:
+            return
         assert self._pending is not None
         log.info(f'Resuming scheduler with {self._pending} cores')
         pending = self._pending
@@ -88,7 +93,9 @@ class Parallel(SessionPlugin):
         try:
             yield
         except Exception as e:
-            self._stop()
+            if self._registered_exceptions == 0:
+                self._stop()
+            self._registered_exceptions += 1
             raise
         finally:
             self._release(ncores)
