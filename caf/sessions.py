@@ -66,8 +66,7 @@ class Graph(NamedTuple):
 
 
 class Session(Pluggable):
-    def __init__(self, plugins: Iterable[SessionPlugin] = None,
-                 warn: bool = True) -> None:
+    def __init__(self, plugins: Iterable[SessionPlugin] = None) -> None:
         Pluggable.__init__(self)
         for plugin in plugins or ():
             plugin(self)
@@ -77,7 +76,7 @@ class Session(Pluggable):
             ContextVar('running_task')
         self._running_task.set(None)
         self._storage: Dict[str, Any] = {}
-        self._warn = warn
+        self._skipped = False
 
     def _check_active(self) -> None:
         sess = _active_session.get()
@@ -110,7 +109,7 @@ class Session(Pluggable):
         assert _active_session.get() is self
         _active_session.reset(self._active_session_token)
         del self._active_session_token
-        if self._warn and exc_type is None:
+        if not self._skipped and exc_type is None:
             tasks_not_run = self._filter_tasks(lambda t: t.state < State.RUNNING)
             if tasks_not_run:
                 warnings.warn(
@@ -249,29 +248,35 @@ class Session(Pluggable):
                           priority: Priority = default_priority,
                           exception_handler: ExceptionHandler = None,
                           task_filter: TaskFilter = None,
+                          limit: int = None
                           ) -> Any:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
         fut.register()
         exceptions = {}
-        async for step_or_exception in traverse_async(
-                self._process_objects([fut]),
-                lambda task: (self._tasks[h] for h in chain(
-                    self._graph.deps[task.hashid],
-                    self._graph.backflow.get(task.hashid, ()),
-                )),
-                lambda task, reg: call_if(
-                    task.state < State.RUNNING and (
-                        not task_filter or task_filter(task)
-                    ),
-                    task.add_ready_callback, lambda t: reg(t)
-                ),
-                self.run_plugins('wrap_execute', start=self._traverse_execute),
-                lambda task: task.done(),
-                depth,
-                priority,
-        ):
+        traversal = traverse_async(
+            self._process_objects([fut]),
+            lambda task: (self._tasks[h] for h in chain(
+                self._graph.deps[task.hashid],
+                self._graph.backflow.get(task.hashid, ()),
+            )),
+            lambda task, reg: call_if(
+                task.state < State.RUNNING,
+                task.add_ready_callback, lambda t: reg(t)
+            ),
+            self.run_plugins('wrap_execute', start=self._traverse_execute),
+            depth,
+            priority,
+        )
+        n_executed = 0
+        shutdown = False
+        do_step: bool = None  # type: ignore
+        while True:
+            try:
+                step_or_exception = await traversal.asend(do_step)
+            except StopAsyncIteration:
+                break
             if isinstance(step_or_exception, NodeException):
                 task, exc = step_or_exception
                 if isinstance(exc, (CafError, asyncio.CancelledError)):
@@ -283,6 +288,7 @@ class Session(Pluggable):
                         exceptions[task] = exc
                         task.set_error()
                         log.info(f'Handled {exc!r} from {task!r}')
+                        do_step = True
                         continue
                     raise exc
             action, task, progress = step_or_exception
@@ -292,7 +298,24 @@ class Session(Pluggable):
                 tag += f': {task.label}'
             log.debug(f'{tag}, progress: {progress_line}')
             if action is Action.EXECUTE:
-                log.info(f'{task}: will run')
+                do_step = not shutdown
+                if do_step:
+                    n_executed += 1
+                    if limit:
+                        assert n_executed <= limit
+                        if n_executed == limit:
+                            log.info('Maximum number of executed tasks reached')
+                            shutdown = True
+                    log.info(f'{task}: will run')
+            elif action is Action.TRAVERSE:
+                if task.done():
+                    do_step = False
+                elif not task_filter:
+                    do_step = True
+                else:
+                    do_step = task_filter(task)
+            if not do_step:
+                self._skipped = True
         log.info('Finished')
         try:
             return fut.value
@@ -300,8 +323,8 @@ class Session(Pluggable):
             if exceptions:
                 msg = f'Cannot evaluate future because of errors: {exceptions}'
                 log.warning(msg)
-            elif task_filter:
-                log.info('Cannot evaluate future because of task filter')
+            elif self._skipped:
+                log.info('Cannot evaluate future because tasks were skipped')
             else:
                 tasks_not_done = self._filter_tasks(lambda t: not t.done())
                 if tasks_not_done:

@@ -5,7 +5,7 @@ import asyncio
 from enum import Enum
 from typing import TypeVar, Deque, Set, Callable, Iterable, \
     MutableSequence, Dict, Awaitable, Container, Iterator, \
-    AsyncIterator, Tuple, cast, Optional, Any, Union, \
+    AsyncGenerator, Tuple, cast, Optional, Any, Union, \
     NamedTuple
 
 _T = TypeVar('_T')
@@ -72,10 +72,9 @@ async def traverse_async(start: Iterable[_T],
                          edges_from: Callable[[_T], Iterable[_T]],
                          schedule: NodeScheduler[_T],
                          execute: NodeExecutor[_T],
-                         sentinel: Callable[[_T], bool] = None,
                          depth: bool = False,
                          priority: Priority = default_priority
-                         ) -> AsyncIterator[Union[Step, NodeException]]:
+                         ) -> AsyncGenerator[Union[Step, NodeException], bool]:
     """
     Traverse a self-extending DAG, yield steps.
 
@@ -116,9 +115,8 @@ async def traverse_async(start: Iterable[_T],
         }
         if action is Action.TRAVERSE:
             node = to_visit.pop() if depth else to_visit.popleft()
-            yield Step(action, node, progress)
             visited.add(node)
-            if sentinel and sentinel(node):
+            if not (yield Step(action, node, progress)):
                 continue
             schedule(node, to_execute.append)
             extend_from(edges_from(node), to_visit, filter=visited)
@@ -133,7 +131,8 @@ async def traverse_async(start: Iterable[_T],
         else:
             assert action is Action.EXECUTE
             node = to_execute.popleft()
-            yield Step(action, node, progress)
+            if not (yield Step(action, node, progress)):
+                continue
             executing += 1
             try:
                 await execute(node, done.put_nowait)
