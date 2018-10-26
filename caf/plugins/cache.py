@@ -163,8 +163,10 @@ class Cache(SessionPlugin):
             obj = factory.from_spec(spec, self._get_object)
         if isinstance(obj, Task):
             obj, registered = self._app.register_task(obj)
-            if not self._full_restore and registered:
-                self._to_restore.append(obj)
+            if registered:
+                obj.set_label('_RESTORE')
+                if not self._full_restore:
+                    self._to_restore.append(obj)
         self._object_cache[hashid] = obj
         return obj
 
@@ -181,6 +183,27 @@ class Cache(SessionPlugin):
             assert isinstance(row.result, str)
             result = self._get_object(row.result)
         return result
+
+    def _restore_task(self, task: Task[object]) -> None:
+        row = self._get_task_row(task.hashid)
+        assert row
+        if task.label == '_RESTORE':
+            task.set_label(row.label)
+        if State[row.state] < State.HAS_RUN:
+            return
+        log.info(f'Restoring from cache: {task}')
+        assert State[row.state] > State.HAS_RUN
+        task.set_running()
+        if self._full_restore and row.side_effects:
+            side_effects: List[Task[object]] = []
+            for hashid in row.side_effects.split(','):
+                child_task = self._get_object(cast(Hash, hashid))
+                assert isinstance(child_task, Task)
+                self._app.add_side_effect_of(task, child_task)
+                side_effects.append(child_task)
+            self._to_restore.extend(reversed(side_effects))
+        task.set_has_run()
+        self._app.set_result(task, self._get_result(row))
 
     def save_hashed(self, objs: Iterable[Hashed[object]]) -> None:
         if hasattr(self, '_to_restore'):
@@ -205,26 +228,6 @@ class Cache(SessionPlugin):
         while self._to_restore:
             self._restore_task(self._to_restore.pop())
         delattr(self, '_to_restore')
-
-    def _restore_task(self, task: Task[object]) -> None:
-        row = self._get_task_row(task.hashid)
-        assert row
-        task._label = row.label
-        if State[row.state] < State.HAS_RUN:
-            return
-        log.info(f'Restoring from cache: {task}')
-        assert State[row.state] > State.HAS_RUN
-        task.set_running()
-        if self._full_restore and row.side_effects:
-            side_effects: List[Task[object]] = []
-            for hashid in row.side_effects.split(','):
-                child_task = self._get_object(cast(Hash, hashid))
-                assert isinstance(child_task, Task)
-                self._app.add_side_effect_of(task, child_task)
-                side_effects.append(child_task)
-            self._to_restore.extend(reversed(side_effects))
-        task.set_has_run()
-        self._app.set_result(task, self._get_result(row))
 
     def post_task_run(self, task: Task[object]) -> None:
         if not self._eager:

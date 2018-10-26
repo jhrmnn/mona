@@ -130,6 +130,9 @@ class Task(HashedFuture[_T_co]):
     def label(self) -> str:
         return self._label
 
+    def set_label(self, label: str) -> None:
+        self._label = label
+
     def result(self) -> _T_co:
         return self.resolve(lambda res: res.value)
 
