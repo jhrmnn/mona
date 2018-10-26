@@ -55,7 +55,7 @@ class SessionPlugin(Plugin['Session']):
     def wrap_execute(self, exe: TaskExecute) -> TaskExecute:
         return exe
 
-    def post_register(self, task: Task[Any]) -> None:
+    def post_create(self, task: Task[Any]) -> None:
         pass
 
 
@@ -160,17 +160,16 @@ class Session(Pluggable):
         self.run_plugins('save_hashed', objs, start=None)
         return tasks
 
-    def register_task(self, task: Task[_T]) -> Task[_T]:
+    def register_task(self, task: Task[_T]) -> Tuple[Task[_T], bool]:
         try:
-            return self._tasks[task.hashid]
+            return self._tasks[task.hashid], False
         except KeyError:
             pass
         self._tasks[task.hashid] = task
         task.register()
         arg_tasks = self._process_objects(task.args)
         self._graph.deps[task.hashid] = frozenset(t.hashid for t in arg_tasks)
-        self.run_plugins('post_register', task, start=None)
-        return task
+        return task, True
 
     def add_side_effect_of(self, caller: Task[object], callee: Task[object]
                            ) -> None:
@@ -182,7 +181,10 @@ class Session(Pluggable):
         caller = self._running_task.get()
         if caller:
             self.add_side_effect_of(caller, task)
-        return self.register_task(task)
+        task, registered = self.register_task(task)
+        if registered:
+            self.run_plugins('post_create', task, start=None)
+        return task
 
     @asynccontextmanager
     async def run_context(self) -> AsyncGenerator[None, None]:

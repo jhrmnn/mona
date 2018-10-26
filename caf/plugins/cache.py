@@ -58,13 +58,12 @@ class Cache(SessionPlugin):
     name = 'db_cache'
 
     def __init__(self, db: sqlite3.Connection, eager: bool = True,
-                 restore_tasks: bool = False) -> None:
+                 full_restore: bool = False) -> None:
         self._db = db
         self._pending: Set[Hash] = set()
         self._objects: Dict[Hash, Hashed[object]] = {}
         self._eager = eager
-        self._to_restore: Optional[List[Task[object]]] = None
-        self._restore_tasks = restore_tasks
+        self._full_restore = full_restore
         self._object_cache: 'WeakValueDictionary[Hash, Hashed[object]]' \
             = WeakValueDictionary()
 
@@ -155,7 +154,7 @@ class Cache(SessionPlugin):
         if obj:
             return obj
         spec, factory = self._get_object_factory(hashid)
-        if factory is Task and not self._restore_tasks:
+        if factory is Task and not self._full_restore:
             task_row = self._get_task_row(hashid)
             assert task_row
             if State[task_row.state] > State.HAS_RUN:
@@ -163,7 +162,9 @@ class Cache(SessionPlugin):
         if not obj:
             obj = factory.from_spec(spec, self._get_object)
         if isinstance(obj, Task):
-            obj = self._app.register_task(obj)
+            obj, registered = self._app.register_task(obj)
+            if not self._full_restore and registered:
+                self._to_restore.append(obj)
         self._object_cache[hashid] = obj
         return obj
 
@@ -182,7 +183,7 @@ class Cache(SessionPlugin):
         return result
 
     def save_hashed(self, objs: Iterable[Hashed[object]]) -> None:
-        if self._to_restore is not None:
+        if hasattr(self, '_to_restore'):
             return
         if self._eager:
             self._store_objects(objs)
@@ -190,22 +191,9 @@ class Cache(SessionPlugin):
         else:
             self._objects.update({o.hashid: o for o in objs})
 
-    def post_register(self, task: Task[object]) -> None:
-        if self._to_restore is not None:
-            if not self._restore_tasks:
-                self._to_restore.append(task)
-            return
-        self._to_restore = [task]
-        while self._to_restore:
-            task = self._to_restore.pop()
-            self._post_register(task)
-        self._to_restore = None
-
-    def _post_register(self, task: Task[object]) -> None:
-        assert self._to_restore is not None
+    def post_create(self, task: Task[object]) -> None:
         row = self._get_task_row(task.hashid)
         if not row:
-            assert not self._to_restore
             if self._eager:
                 self._store_tasks([task])
                 self._store_objects([task])
@@ -213,13 +201,21 @@ class Cache(SessionPlugin):
             else:
                 self._pending.add(task.hashid)
             return
+        self._to_restore = [task]
+        while self._to_restore:
+            self._restore_task(self._to_restore.pop())
+        delattr(self, '_to_restore')
+
+    def _restore_task(self, task: Task[object]) -> None:
+        row = self._get_task_row(task.hashid)
+        assert row
         task._label = row.label
         if State[row.state] < State.HAS_RUN:
             return
         log.info(f'Restoring from cache: {task}')
         assert State[row.state] > State.HAS_RUN
         task.set_running()
-        if self._restore_tasks and row.side_effects:
+        if self._full_restore and row.side_effects:
             side_effects: List[Task[object]] = []
             for hashid in row.side_effects.split(','):
                 child_task = self._get_object(cast(Hash, hashid))
