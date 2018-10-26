@@ -222,7 +222,7 @@ class Session(Pluggable):
             log.debug(
                 f'{task}: created tasks: {list(map(Literal, side_effects))}'
             )
-        result = maybe_hashed(raw_result) or raw_result
+        result = cast(_T, maybe_hashed(raw_result)) or raw_result
         self.set_result(task, result)
         self.run_plugins('post_task_run', task, start=None)
         return result

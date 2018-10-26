@@ -4,7 +4,7 @@
 import json
 import hashlib
 from abc import ABC, abstractmethod
-from typing import Any, NewType, Union, Generic, TypeVar, Dict, cast, \
+from typing import NewType, Union, Generic, TypeVar, Dict, cast, \
     Iterable, Set, Callable, Tuple, Optional
 
 from ..json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
@@ -12,14 +12,11 @@ from ..utils import Literal, shorten_text, TypeSwaps, swap_type
 
 __version__ = '0.1.0'
 
-_T = TypeVar('_T')
+_T_co = TypeVar('_T_co', covariant=True)
 Hash = NewType('Hash', str)
 # symbolic type for a JSON-like container including custom classes
 Composite = NewType('Composite', object)
-# HashableContainer should be Union[List[HashableValue], Dict[str, HashableValue]]
-HashableContainer = NewType('HashableContainer', object)
-HashableValue = Union[None, bool, int, float, str, HashableContainer]
-HashedRegister = Callable[[Hash], 'Hashed[Any]']
+HashResolver = Callable[[Hash], 'Hashed[object]']
 
 
 def hash_text(text: Union[str, bytes]) -> Hash:
@@ -28,18 +25,18 @@ def hash_text(text: Union[str, bytes]) -> Hash:
     return Hash(hashlib.sha1(text).hexdigest())
 
 
-class Hashed(ABC, Generic[_T]):
+class Hashed(ABC, Generic[_T_co]):
     def __init__(self) -> None:
         assert not hasattr(self, '_hashid')
         self._hashid = hash_text(self.spec)
 
     @property
     @abstractmethod
-    def spec(self) -> Union[str, bytes]: ...
+    def spec(self) -> bytes: ...
 
     @classmethod
     @abstractmethod
-    def from_spec(cls, spec: Any, reg: HashedRegister) -> 'Hashed[_T]': ...
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'Hashed[_T_co]': ...
 
     @property
     @abstractmethod
@@ -47,7 +44,7 @@ class Hashed(ABC, Generic[_T]):
 
     @property
     @abstractmethod
-    def value(self) -> _T: ...
+    def value(self) -> _T_co: ...
 
     def __str__(self) -> str:
         return f'{self.tag}: {self.label}'
@@ -75,7 +72,7 @@ class HashedBytes(Hashed[bytes]):
         return self.value
 
     @classmethod
-    def from_spec(cls, spec: bytes, reg: HashedRegister) -> 'HashedBytes':
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedBytes':
         return cls(spec)
 
     @property
@@ -90,7 +87,7 @@ class HashedBytes(Hashed[bytes]):
 class HashedCompositeLike(Hashed[Composite]):
     type_swaps: TypeSwaps = {bytes: HashedBytes}
 
-    def __init__(self, jsonstr: str, components: Iterable[Hashed[Any]]) -> None:
+    def __init__(self, jsonstr: str, components: Iterable[Hashed[object]]) -> None:
         self._jsonstr = jsonstr
         self._components = {comp.hashid: comp for comp in components}
         Hashed.__init__(self)
@@ -101,25 +98,25 @@ class HashedCompositeLike(Hashed[Composite]):
     def value(self) -> Composite: ...
 
     @property
-    def spec(self) -> str:
-        return json.dumps([self._jsonstr, *sorted(self._components)])
+    def spec(self) -> bytes:
+        return json.dumps([self._jsonstr, *sorted(self._components)]).encode()
 
     @classmethod
-    def from_spec(cls, spec: str, reg: HashedRegister) -> 'HashedCompositeLike':
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedCompositeLike':
         jsonstr, *hashids = json.loads(spec)
-        return cls(jsonstr, (reg(h) for h in hashids))
+        return cls(jsonstr, (resolve(h) for h in hashids))
 
     @property
     def label(self) -> str:
         return self._label
 
     @property
-    def components(self) -> Iterable[Hashed[Any]]:
+    def components(self) -> Iterable[Hashed[object]]:
         return self._components.values()
 
-    def resolve(self, handler: Callable[['Hashed[Any]'], Any] = lambda x: x
+    def resolve(self, handler: Callable[['Hashed[object]'], object] = lambda x: x
                 ) -> Composite:
-        def hook(type_tag: str, dct: Dict[str, JSONValue]) -> Any:
+        def hook(type_tag: str, dct: Dict[str, JSONValue]) -> object:
             if type_tag == 'Hashed':
                 return handler(self._components[cast(Hash, dct['hashid'])])
             return dct
@@ -127,17 +124,18 @@ class HashedCompositeLike(Hashed[Composite]):
         return cast(Composite, obj)
 
     @classmethod
-    def _default(cls, o: Any) -> Optional[Tuple[Any, str, Dict[str, JSONValue]]]:
+    def _default(cls, o: object
+                 ) -> Optional[Tuple[object, str, Dict[str, JSONValue]]]:
         o = swap_type(o, cls.type_swaps)
         if isinstance(o, Hashed):
             return (o, 'Hashed', {'hashid': o.hashid})
         return None
 
     @classmethod
-    def parse_object(cls, obj: HashableValue) -> Tuple[str, Set[Hashed[Any]]]:
+    def parse_object(cls, obj: object) -> Tuple[str, Set[Hashed[object]]]:
         classes = (Hashed,) + tuple(cls.type_swaps)
         validate_json(obj, lambda x: isinstance(x, classes))
-        components: Set[Hashed[Any]] = set()
+        components: Set[Hashed[object]] = set()
         jsonstr = json.dumps(
             obj,
             sort_keys=True,
@@ -149,7 +147,7 @@ class HashedCompositeLike(Hashed[Composite]):
 
 
 class HashedComposite(HashedCompositeLike):
-    def __init__(self, jsonstr: str, components: Iterable[Hashed[Any]]) -> None:
+    def __init__(self, jsonstr: str, components: Iterable[Hashed[object]]) -> None:
         HashedCompositeLike.__init__(self, jsonstr, components)
         self._value = self.resolve(lambda comp: comp.value)
 

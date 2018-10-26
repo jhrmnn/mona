@@ -5,7 +5,7 @@ import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, TypeVar, AsyncGenerator, Optional, Set
+from typing import Any, TypeVar, AsyncGenerator, Optional, Set, cast
 
 from ..graph import NodeExecuted
 from ..tasks import Task, Corofunc
@@ -103,7 +103,7 @@ class Parallel(SessionPlugin):
     async def run_coro(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
                        ) -> _T:
         task = self._app.running_task
-        n = task.storage.get('ncores', 1)
+        n = cast(int, task.storage.get('ncores', 1))
         if n > self._available:
             log.debug(
                 f'Waiting for {n-self._available}/{n} '

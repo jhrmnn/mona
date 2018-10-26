@@ -19,7 +19,6 @@ from typing import Any, Optional, Set, TypeVar, NamedTuple, Union, \
 
 log = logging.getLogger(__name__)
 
-_T = TypeVar('_T')
 
 
 class TaskRow(NamedTuple):
@@ -29,13 +28,13 @@ class TaskRow(NamedTuple):
     created: str
     side_effects: Optional[str] = None
     result_type: Optional[str] = None
-    result: Union[None, str, bytes] = None
+    result: Union[None, Hash, bytes] = None
 
 
 class ObjectRow(NamedTuple):
     hashid: Hash
     typetag: str
-    spec: Union[str, bytes]
+    spec: bytes
 
 
 class ResultType(Enum):
@@ -49,9 +48,9 @@ class Cache(SessionPlugin):
     def __init__(self, db: sqlite3.Connection, eager: bool = True) -> None:
         self._db = db
         self._pending: Set[Hash] = set()
-        self._objects: Dict[Hash, Hashed[Any]] = {}
+        self._objects: Dict[Hash, Hashed[object]] = {}
         self._eager = eager
-        self._to_restore: Optional[Deque[Task[Any]]] = None
+        self._to_restore: Optional[List[Task[object]]] = None
 
     def __repr__(self) -> str:
         return (
@@ -63,7 +62,7 @@ class Cache(SessionPlugin):
     def db(self) -> sqlite3.Connection:
         return self._db
 
-    def _store_objects(self, objs: Iterable[Hashed[Any]]) -> None:
+    def _store_objects(self, objs: Iterable[Hashed[object]]) -> None:
         obj_rows = [ObjectRow(
             hashid=obj.hashid,
             typetag=get_fullname(obj.__class__),
@@ -73,7 +72,7 @@ class Cache(SessionPlugin):
             'INSERT OR IGNORE INTO objects VALUES (?,?,?)', obj_rows
         )
 
-    def _store_tasks(self, tasks: Iterable[Task[Any]]) -> None:
+    def _store_tasks(self, tasks: Iterable[Task[object]]) -> None:
         task_rows = [TaskRow(
             hashid=task.hashid,
             label=task.label,
@@ -84,9 +83,9 @@ class Cache(SessionPlugin):
             'INSERT INTO tasks VALUES (?,?,?,?,?,?,?)', task_rows
         )
 
-    def _store_result(self, task: Task[_T]) -> None:
-        result: Union[str, bytes]
-        hashed: Hashed[_T]
+    def _store_result(self, task: Task[object]) -> None:
+        result: Union[Hash, bytes]
+        hashed: Hashed[object]
         if task.state is State.AWAITING:
             hashed = task.future_result()
             result_type = ResultType.HASHED
@@ -94,8 +93,8 @@ class Cache(SessionPlugin):
             assert task.state is State.DONE
             hashed_or_obj = task.resolve()
             if isinstance(hashed_or_obj, Hashed):
-                hashed = hashed_or_obj
                 result_type = ResultType.HASHED
+                hashed = hashed_or_obj
             else:
                 result_type = ResultType.PICKLED
                 result = pickle.dumps(hashed_or_obj)
@@ -123,7 +122,7 @@ class Cache(SessionPlugin):
             hashed = self._app.process_task(hashed)
         return hashed
 
-    def save_hashed(self, objs: Iterable[Hashed[Any]]) -> None:
+    def save_hashed(self, objs: Iterable[Hashed[object]]) -> None:
         if self._to_restore is not None:
             return
         if self._eager:
@@ -132,7 +131,7 @@ class Cache(SessionPlugin):
         else:
             self._objects.update({o.hashid: o for o in objs})
 
-    def post_create(self, task: Task[_T]) -> None:
+    def post_create(self, task: Task[object]) -> None:
         if self._to_restore is not None:
             self._to_restore.append(task)
             return
@@ -184,7 +183,7 @@ class Cache(SessionPlugin):
             (task.state.name, task.hashid)
         )
 
-    def post_task_run(self, task: Task[_T]) -> None:
+    def post_task_run(self, task: Task[object]) -> None:
         if not self._eager:
             return
         self._store_result(task)

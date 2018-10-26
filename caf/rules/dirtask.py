@@ -20,7 +20,7 @@ __version__ = '0.1.0'
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
-DirTaskResult = Union[Dict[str, HashedBytes]]
+DirTaskResult = Union[Dict[str, Union[bytes, HashedBytes]]]
 
 
 class HashingPath(ABC):
@@ -103,6 +103,6 @@ async def dir_task(exe: Union[HashingPath, bytes],
                 if fmngr:
                     output = fmngr.store_from_path(path)
                 else:
-                    output = HashedBytes(path.read_bytes())
+                    output = path.read_bytes()
                 outputs[str(relpath)] = output
     return outputs
