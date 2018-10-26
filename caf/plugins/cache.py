@@ -167,6 +167,20 @@ class Cache(SessionPlugin):
         self._object_cache[hashid] = obj
         return obj
 
+    def _get_result(self, row: TaskRow) -> Optional[object]:
+        if State[row.state] < State.HAS_RUN:
+            return None
+        assert row.result_type
+        result_type = ResultType[row.result_type]
+        if result_type is ResultType.PICKLED:
+            assert isinstance(row.result, bytes)
+            result: object = pickle.loads(row.result)
+        else:
+            assert result_type is ResultType.HASHED
+            assert isinstance(row.result, str)
+            result = self._get_object(row.result)
+        return result
+
     def save_hashed(self, objs: Iterable[Hashed[object]]) -> None:
         if self._to_restore is not None:
             return
@@ -186,20 +200,6 @@ class Cache(SessionPlugin):
             task = self._to_restore.pop()
             self._post_register(task)
         self._to_restore = None
-
-    def _get_result(self, row: TaskRow) -> Optional[object]:
-        if State[row.state] < State.HAS_RUN:
-            return None
-        assert row.result_type
-        result_type = ResultType[row.result_type]
-        if result_type is ResultType.PICKLED:
-            assert isinstance(row.result, bytes)
-            result: object = pickle.loads(row.result)
-        else:
-            assert result_type is ResultType.HASHED
-            assert isinstance(row.result, str)
-            result = self._get_object(row.result)
-        return result
 
     def _post_register(self, task: Task[object]) -> None:
         assert self._to_restore is not None
