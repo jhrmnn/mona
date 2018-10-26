@@ -34,17 +34,21 @@ class App:
                 with path.open() as f:
                     self._config.update(toml.load(f))
 
-    def session(self, *args: Any, **kwargs: Any) -> Session:
-        sess = Session(*args, **kwargs)
-        self(sess)
+    def session(self, **kwargs: Any) -> Session:
+        sess = Session()
+        self(sess, **kwargs)
         return sess
 
-    def __call__(self, sess: Session) -> None:
+    def __call__(self, sess: Session, ncores: int = None,
+                 restore_tasks: bool = False) -> None:
         self._plugins = {
-            'parallel': Parallel(),
+            'parallel': Parallel(ncores),
             'tmpdir': TmpdirManager(self._cafdir/App.TMPDIR),
             'files': FileManager(self._cafdir/App.FILES),
-            'cache': Cache.from_path(self._cafdir/App.CACHE),
+            'cache': Cache.from_path(
+                self._cafdir/App.CACHE,
+                restore_tasks=restore_tasks
+            ),
         }
         for plugin in self._plugins.values():
             plugin(sess)
