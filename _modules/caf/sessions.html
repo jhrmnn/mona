@@ -48,7 +48,7 @@
     <span class="n">Union</span><span class="p">,</span> <span class="n">Awaitable</span><span class="p">,</span> <span class="n">AsyncGenerator</span><span class="p">,</span> <span class="n">FrozenSet</span>
 
 <span class="kn">from</span> <span class="nn">.hashing</span> <span class="k">import</span> <span class="n">Hash</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">,</span> <span class="n">HashedCompositeLike</span>
-<span class="kn">from</span> <span class="nn">.tasks</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">maybe_hashed</span>
+<span class="kn">from</span> <span class="nn">.tasks</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">maybe_hashed</span><span class="p">,</span> <span class="n">Corofunc</span>
 <span class="kn">from</span> <span class="nn">.graph</span> <span class="k">import</span> <span class="n">traverse</span><span class="p">,</span> <span class="n">traverse_async</span><span class="p">,</span> <span class="n">NodeExecuted</span><span class="p">,</span> \
     <span class="n">Action</span><span class="p">,</span> <span class="n">Priority</span><span class="p">,</span> <span class="n">default_priority</span><span class="p">,</span> <span class="n">NodeException</span>
 <span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">call_if</span>
@@ -90,7 +90,7 @@
     <span class="k">def</span> <span class="nf">wrap_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exe</span><span class="p">:</span> <span class="n">TaskExecute</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskExecute</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">exe</span>
 
-    <span class="k">def</span> <span class="nf">post_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">post_register</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">pass</span>
 
 
@@ -164,7 +164,7 @@
         <span class="k">raise</span> <span class="n">SessionError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;No running task: </span><span class="si">{self!r}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
 
     <span class="nd">@contextmanager</span>
-    <span class="k">def</span> <span class="nf">running_task_ctx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="kc">None</span><span class="p">]:</span>
+    <span class="k">def</span> <span class="nf">_running_task_ctx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="kc">None</span><span class="p">]:</span>
         <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running_task</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_running_task</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
@@ -195,20 +195,29 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;save_hashed&#39;</span><span class="p">,</span> <span class="n">objs</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">tasks</span>
 
-    <span class="k">def</span> <span class="nf">process_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
-        <span class="n">parent_task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running_task</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">parent_task</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">side_effects</span><span class="p">[</span><span class="n">parent_task</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">register_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span>
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
             <span class="k">pass</span>
-        <span class="n">task</span><span class="o">.</span><span class="n">register</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">register</span><span class="p">()</span>
         <span class="n">arg_tasks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_objects</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">deps</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">hashid</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">arg_tasks</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_create&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_register&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">task</span>
+
+    <span class="k">def</span> <span class="nf">add_side_effect_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caller</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span> <span class="n">callee</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">]</span>
+                           <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">side_effects</span><span class="p">[</span><span class="n">caller</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callee</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">create_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">corofunc</span><span class="p">:</span> <span class="n">Corofunc</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
+                    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">corofunc</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">caller</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running_task</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">caller</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_side_effect_of</span><span class="p">(</span><span class="n">caller</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_task</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
     <span class="nd">@asynccontextmanager</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">run_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
@@ -249,7 +258,7 @@
         <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span> <span class="o">&gt;</span> <span class="n">State</span><span class="o">.</span><span class="n">READY</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TaskError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Task was already run: </span><span class="si">{task!r}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
         <span class="n">task</span><span class="o">.</span><span class="n">set_running</span><span class="p">()</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">running_task_ctx</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running_task_ctx</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
             <span class="n">raw_result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">task</span><span class="o">.</span><span class="n">corofunc</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">args</span><span class="p">))</span>
         <span class="n">task</span><span class="o">.</span><span class="n">set_has_run</span><span class="p">()</span>
         <span class="n">side_effects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_side_effects</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
@@ -314,7 +323,9 @@
                 <span class="k">break</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_or_exception</span><span class="p">,</span> <span class="n">NodeException</span><span class="p">):</span>
                 <span class="n">task</span><span class="p">,</span> <span class="n">exc</span> <span class="o">=</span> <span class="n">step_or_exception</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="p">(</span><span class="n">CafError</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="p">(</span>
+                        <span class="n">CafError</span><span class="p">,</span> <span class="ne">AssertionError</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span>
+                <span class="p">)):</span>
                     <span class="k">raise</span> <span class="n">exc</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span>
