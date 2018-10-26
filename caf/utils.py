@@ -10,6 +10,7 @@ from typing import Any, Callable, TypeVar, Union, List, Tuple, \
     Iterable, Dict, Type
 
 _T = TypeVar('_T')
+_V = TypeVar('_V')
 Maybe = Union[_T, 'Empty']
 Pathable = Union[str, 'os.PathLike[str]']
 TypeSwaps = Dict[Type[Any], Callable[[Any], Any]]
@@ -84,3 +85,11 @@ def split(iterable: Iterable[_T], first: Callable[[_T], bool]
     for item in iterable:
         (left if first(item) else right).append(item)
     return left, right
+
+
+def groupby(iterable: Iterable[_T], key: Callable[[_T], _V]
+            ) -> Dict[_V, List[_T]]:
+    groups: Dict[_V, List[_T]] = {}
+    for x in iterable:
+        groups.setdefault(key(x), []).append(x)
+    return groups
