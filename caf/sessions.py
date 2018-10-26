@@ -8,7 +8,7 @@ from collections import defaultdict
 import asyncio
 from contextvars import ContextVar
 from contextlib import contextmanager, asynccontextmanager
-from typing import Set, Any, Dict, Callable, Optional, \
+from typing import Any, Dict, Callable, Optional, \
     TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple, \
     Union, Awaitable, AsyncGenerator, FrozenSet
 
@@ -61,7 +61,7 @@ class SessionPlugin(Plugin['Session']):
 
 class Graph(NamedTuple):
     deps: Dict[Hash, FrozenSet[Hash]]
-    side_effects: Dict[Hash, Set[Hash]]
+    side_effects: Dict[Hash, List[Hash]]
     backflow: Dict[Hash, FrozenSet[Hash]]
 
 
@@ -71,7 +71,7 @@ class Session(Pluggable):
         for plugin in plugins or ():
             plugin(self)
         self._tasks: Dict[Hash, Task[Any]] = {}
-        self._graph = Graph({}, defaultdict(set), {})
+        self._graph = Graph({}, defaultdict(list), {})
         self._running_task: ContextVar[Optional[Task[Any]]] = \
             ContextVar('running_task')
         self._running_task.set(None)
@@ -163,7 +163,7 @@ class Session(Pluggable):
     def process_task(self, task: Task[_T]) -> Task[_T]:
         parent_task = self._running_task.get()
         if parent_task:
-            self._graph.side_effects[parent_task.hashid].add(task.hashid)
+            self._graph.side_effects[parent_task.hashid].append(task.hashid)
         try:
             return self._tasks[task.hashid]
         except KeyError:
@@ -337,7 +337,7 @@ class Session(Pluggable):
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
         from graphviz import Digraph  # type: ignore
 
-        tasks: Union[Set[Hash], FrozenSet[Hash]]
+        tasks: Union[List[Hash], FrozenSet[Hash]]
         dot = Digraph(*args, **kwargs)
         for child, parents in self._graph.deps.items():
             dot.node(child, repr(Literal(self._tasks[child])))
