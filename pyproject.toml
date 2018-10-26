@@ -44,7 +44,7 @@ cov = ["coverage"]
 doc = ["sphinx", "toml"]
 
 [tool.poetry.dev-dependencies]
-mypy = "^0.630.0"
+mypy = "^0.641.0"
 lxml = "^4.2"
 flake8 = "^3.5"
 
