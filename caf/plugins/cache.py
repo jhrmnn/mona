@@ -163,7 +163,7 @@ class Cache(SessionPlugin):
         if not obj:
             obj = factory.from_spec(spec, self._get_object)
         if isinstance(obj, Task):
-            obj = self._app.process_task(obj)
+            obj = self._app.register_task(obj)
         self._object_cache[hashid] = obj
         return obj
 
@@ -176,7 +176,7 @@ class Cache(SessionPlugin):
         else:
             self._objects.update({o.hashid: o for o in objs})
 
-    def post_create(self, task: Task[object]) -> None:
+    def post_register(self, task: Task[object]) -> None:
         if self._to_restore is not None:
             if not self._restore_tasks:
                 self._to_restore.append(task)
@@ -184,7 +184,7 @@ class Cache(SessionPlugin):
         self._to_restore = [task]
         while self._to_restore:
             task = self._to_restore.pop()
-            self._post_create(task)
+            self._post_register(task)
         self._to_restore = None
 
     def _get_result(self, row: TaskRow) -> Optional[object]:
@@ -201,7 +201,7 @@ class Cache(SessionPlugin):
             result = self._get_object(row.result)
         return result
 
-    def _post_create(self, task: Task[object]) -> None:
+    def _post_register(self, task: Task[object]) -> None:
         assert self._to_restore is not None
         row = self._get_task_row(task.hashid)
         if not row:
@@ -220,11 +220,13 @@ class Cache(SessionPlugin):
         assert State[row.state] > State.HAS_RUN
         task.set_running()
         if self._restore_tasks and row.side_effects:
-            with self._app.running_task_ctx(task):
-                for hashid in reversed(row.side_effects.split(',')):
-                    child_task = self._get_object(cast(Hash, hashid))
-                    assert isinstance(child_task, Task)
-                    self._to_restore.append(child_task)
+            side_effects: List[Task[object]] = []
+            for hashid in row.side_effects.split(','):
+                child_task = self._get_object(cast(Hash, hashid))
+                assert isinstance(child_task, Task)
+                self._app.add_side_effect_of(task, child_task)
+                side_effects.append(child_task)
+            self._to_restore.extend(reversed(side_effects))
         task.set_has_run()
         self._app.set_result(task, self._get_result(row))
 

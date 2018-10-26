@@ -13,7 +13,7 @@ from typing import Any, Dict, Callable, Optional, \
     Union, Awaitable, AsyncGenerator, FrozenSet
 
 from .hashing import Hash, Hashed, HashedCompositeLike
-from .tasks import Task, HashedFuture, State, maybe_hashed
+from .tasks import Task, HashedFuture, State, maybe_hashed, Corofunc
 from .graph import traverse, traverse_async, NodeExecuted, \
     Action, Priority, default_priority, NodeException
 from .utils import Literal, split, call_if
@@ -55,7 +55,7 @@ class SessionPlugin(Plugin['Session']):
     def wrap_execute(self, exe: TaskExecute) -> TaskExecute:
         return exe
 
-    def post_create(self, task: Task[Any]) -> None:
+    def post_register(self, task: Task[Any]) -> None:
         pass
 
 
@@ -129,7 +129,7 @@ class Session(Pluggable):
         raise SessionError(f'No running task: {self!r}', self)
 
     @contextmanager
-    def running_task_ctx(self, task: Task[Any]) -> Iterator[None]:
+    def _running_task_ctx(self, task: Task[Any]) -> Iterator[None]:
         assert not self._running_task.get()
         self._running_task.set(task)
         try:
@@ -160,20 +160,29 @@ class Session(Pluggable):
         self.run_plugins('save_hashed', objs, start=None)
         return tasks
 
-    def process_task(self, task: Task[_T]) -> Task[_T]:
-        parent_task = self._running_task.get()
-        if parent_task:
-            self._graph.side_effects[parent_task.hashid].append(task.hashid)
+    def register_task(self, task: Task[_T]) -> Task[_T]:
         try:
             return self._tasks[task.hashid]
         except KeyError:
             pass
-        task.register()
         self._tasks[task.hashid] = task
+        task.register()
         arg_tasks = self._process_objects(task.args)
         self._graph.deps[task.hashid] = frozenset(t.hashid for t in arg_tasks)
-        self.run_plugins('post_create', task, start=None)
+        self.run_plugins('post_register', task, start=None)
         return task
+
+    def add_side_effect_of(self, caller: Task[object], callee: Task[object]
+                           ) -> None:
+        self._graph.side_effects[caller.hashid].append(callee.hashid)
+
+    def create_task(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
+                    ) -> Task[_T]:
+        task = Task(corofunc, *args, **kwargs)
+        caller = self._running_task.get()
+        if caller:
+            self.add_side_effect_of(caller, task)
+        return self.register_task(task)
 
     @asynccontextmanager
     async def run_context(self) -> AsyncGenerator[None, None]:
@@ -214,7 +223,7 @@ class Session(Pluggable):
         if task.state > State.READY:
             raise TaskError(f'Task was already run: {task!r}', task)
         task.set_running()
-        with self.running_task_ctx(task):
+        with self._running_task_ctx(task):
             raw_result = await task.corofunc(*(arg.value for arg in task.args))
         task.set_has_run()
         side_effects = self.get_side_effects(task)
