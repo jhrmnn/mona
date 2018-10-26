@@ -279,7 +279,9 @@ class Session(Pluggable):
                 break
             if isinstance(step_or_exception, NodeException):
                 task, exc = step_or_exception
-                if isinstance(exc, (CafError, asyncio.CancelledError)):
+                if isinstance(exc, (
+                        CafError, AssertionError, asyncio.CancelledError
+                )):
                     raise exc
                 else:
                     assert isinstance(exc, Exception)
