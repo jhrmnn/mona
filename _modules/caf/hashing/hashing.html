@@ -39,8 +39,19 @@
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">hashlib</span>
 <span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">NewType</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">cast</span><span class="p">,</span> \
-    <span class="n">Iterable</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">NewType</span><span class="p">,</span>
+    <span class="n">Union</span><span class="p">,</span>
+    <span class="n">Generic</span><span class="p">,</span>
+    <span class="n">TypeVar</span><span class="p">,</span>
+    <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">cast</span><span class="p">,</span>
+    <span class="n">Iterable</span><span class="p">,</span>
+    <span class="n">Set</span><span class="p">,</span>
+    <span class="n">Callable</span><span class="p">,</span>
+    <span class="n">Tuple</span><span class="p">,</span>
+    <span class="n">Optional</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="kn">from</span> <span class="nn">..json</span> <span class="k">import</span> <span class="n">ClassJSONEncoder</span><span class="p">,</span> <span class="n">ClassJSONDecoder</span><span class="p">,</span> <span class="n">JSONValue</span><span class="p">,</span> <span class="n">validate_json</span>
 <span class="kn">from</span> <span class="nn">..utils</span> <span class="k">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">shorten_text</span><span class="p">,</span> <span class="n">TypeSwaps</span><span class="p">,</span> <span class="n">swap_type</span>
@@ -67,19 +78,23 @@
 
     <span class="nd">@property</span>
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">spec</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span> <span class="nf">spec</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+        <span class="o">...</span>
 
     <span class="nd">@classmethod</span>
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Hashed[_T_co]&#39;</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Hashed[_T_co]&#39;</span><span class="p">:</span>
+        <span class="o">...</span>
 
     <span class="nd">@property</span>
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">label</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span> <span class="nf">label</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="o">...</span>
 
     <span class="nd">@property</span>
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_T_co</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_T_co</span><span class="p">:</span>
+        <span class="o">...</span>
 
     <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{self.tag}</span><span class="s1">: </span><span class="si">{self.label}</span><span class="s1">&#39;</span>
@@ -130,7 +145,8 @@
 
     <span class="nd">@property</span>
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Composite</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Composite</span><span class="p">:</span>
+        <span class="o">...</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">spec</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
@@ -149,18 +165,19 @@
     <span class="k">def</span> <span class="nf">components</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]]:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_components</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="s1">&#39;Hashed[object]&#39;</span><span class="p">],</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span>
-                <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Composite</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">resolve</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="s1">&#39;Hashed[object]&#39;</span><span class="p">],</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Composite</span><span class="p">:</span>
         <span class="k">def</span> <span class="nf">hook</span><span class="p">(</span><span class="n">type_tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dct</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">JSONValue</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">object</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">type_tag</span> <span class="o">==</span> <span class="s1">&#39;Hashed&#39;</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">handler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_components</span><span class="p">[</span><span class="n">cast</span><span class="p">(</span><span class="n">Hash</span><span class="p">,</span> <span class="n">dct</span><span class="p">[</span><span class="s1">&#39;hashid&#39;</span><span class="p">])])</span>
             <span class="k">return</span> <span class="n">dct</span>
+
         <span class="n">obj</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_jsonstr</span><span class="p">,</span> <span class="n">hook</span><span class="o">=</span><span class="n">hook</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="n">ClassJSONDecoder</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">Composite</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">_default</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="nb">object</span>
-                 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">object</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">JSONValue</span><span class="p">]]]:</span>
+    <span class="k">def</span> <span class="nf">_default</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">o</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">object</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">JSONValue</span><span class="p">]]]:</span>
         <span class="n">o</span> <span class="o">=</span> <span class="n">swap_type</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">type_swaps</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">):</span>
             <span class="k">return</span> <span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="s1">&#39;Hashed&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;hashid&#39;</span><span class="p">:</span> <span class="n">o</span><span class="o">.</span><span class="n">hashid</span><span class="p">})</span>
@@ -176,7 +193,7 @@
             <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">tape</span><span class="o">=</span><span class="n">components</span><span class="p">,</span>
             <span class="n">default</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">_default</span><span class="p">,</span>
-            <span class="bp">cls</span><span class="o">=</span><span class="n">ClassJSONEncoder</span>
+            <span class="bp">cls</span><span class="o">=</span><span class="n">ClassJSONEncoder</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">jsonstr</span><span class="p">,</span> <span class="n">components</span>
 

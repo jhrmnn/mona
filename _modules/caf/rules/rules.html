@@ -92,6 +92,7 @@
 <span class="k">def</span> <span class="nf">with_hook</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">]],</span> <span class="n">HookedRule</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
     <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">rule</span><span class="p">:</span> <span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">HookedRule</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
         <span class="k">return</span> <span class="n">HookedRule</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">corofunc</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
     <span class="k">return</span> <span class="n">decorator</span>
 
 
@@ -99,6 +100,7 @@
     <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">rule</span><span class="p">:</span> <span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
         <span class="n">rule</span><span class="o">.</span><span class="n">add_label</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">rule</span>
+
     <span class="k">return</span> <span class="n">decorator</span>
 </pre></div>
 
