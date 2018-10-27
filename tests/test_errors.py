@@ -77,26 +77,6 @@ def test_dependency_cycle():
             sess.eval(f(1))
 
 
-def test_unhookable():
-    @Rule
-    async def f(x):
-        return object()
-
-    with pytest.raises(TaskError):
-        with Session() as sess:
-            task = f(1)
-            task.add_hook(lambda x: x)
-            sess.eval(task)
-
-
-def test_invalid_hook():
-    with pytest.raises(TaskError):
-        with Session() as sess:
-            task = identity(1)
-            task.add_hook(lambda x: 0)
-            sess.eval(task)
-
-
 def test_resolve_unrun():
     with pytest.raises(TaskError):
         with Session():

@@ -244,19 +244,6 @@ class Task(HashedFuture[_T_co]):
         ]
         return await self._corofunc(*args)
 
-    def add_hook(self, hook: Callable[[_T_co], _T_co]) -> None:
-        self._hook = hook
-
-    def has_hook(self) -> bool:
-        return bool(self._hook)
-
-    def run_hook(self, result: Hashed[_T_co]) -> Hashed[_T_co]:
-        assert self._hook
-        hooked_result = cast(Hashed[_T_co], ensure_hashed(self._hook(result.value)))
-        if hooked_result.hashid != result.hashid:
-            raise TaskError(f'Hook {self._hook!r} changed hash', self)
-        return hooked_result
-
 
 class TaskComponent(HashedFuture[_T_co]):
     def __init__(

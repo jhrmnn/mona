@@ -222,12 +222,8 @@ class Session(Pluggable):
 
     def set_result(self, task: Task[_T], result: Union[_T, Hashed[_T]]) -> None:
         if not isinstance(result, Hashed):
-            if task.has_hook():
-                raise TaskError(f'{result!r} cannot be hooked', task)
             task.set_result(result)
             return
-        if task.has_hook():
-            result = task.run_hook(result)
         if not isinstance(result, HashedFuture) or result.done():
             task.set_result(result)
         else:

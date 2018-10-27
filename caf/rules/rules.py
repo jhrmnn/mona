@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import inspect
-from typing import Any, Callable, TypeVar, Generic, Tuple, Optional
+from typing import Any, Callable, TypeVar, Generic, Tuple, Optional, cast
 
 from ..tasks import Task, Corofunc
 from ..sessions import Session
@@ -10,9 +10,7 @@ from ..errors import CafError
 from ..hashing import hash_function
 
 _T = TypeVar('_T')
-InputHook = Callable[[Tuple[Any, ...]], Tuple[Any, ...]]
-OutputHook = Callable[[_T], _T]
-Hooks = Optional[Tuple[Optional[InputHook], Optional[OutputHook[_T]]]]
+Hook = Callable[[Tuple[Any, ...]], Tuple[Any, ...]]
 
 
 class Rule(Generic[_T]):
@@ -43,15 +41,10 @@ class HookedRule(Rule[_T]):
         self._hook = hook
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
-        hooks: Hooks[_T] = Session.active().storage.get(f'hook:{self._hook}')
-        if hooks:
-            pre_hook, post_hook = hooks
-            if pre_hook:
-                args = pre_hook(args)
-        task = Rule.__call__(self, *args, **kwargs)
-        if hooks and post_hook:
-            task.add_hook(post_hook)
-        return task
+        hook = cast(Hook, Session.active().storage.get(f'hook:{self._hook}'))
+        if hook:
+            args = hook(args)
+        return Rule.__call__(self, *args, **kwargs)
 
 
 def with_hook(name: str) -> Callable[[Rule[_T]], HookedRule[_T]]:

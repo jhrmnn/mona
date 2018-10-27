@@ -89,7 +89,6 @@ class FileManager(_FileManager, SessionPlugin):
         self._root = Path(root).resolve()
         self._cache: Dict[Hash, bytes] = {}
         self._path_cache: Dict[Path, HashedPath] = {}
-        self._dir_task_hooks = self._wrap_args, None
         self._eager = eager
 
     def __repr__(self) -> str:
@@ -108,7 +107,7 @@ class FileManager(_FileManager, SessionPlugin):
 
     def post_enter(self, sess: Session) -> None:
         sess.storage['file_manager:self'] = self
-        sess.storage['hook:dir_task'] = self._dir_task_hooks
+        sess.storage['hook:dir_task'] = self._wrap_args
         sess.storage['dir_task:file_manager'] = self
 
     def get_path(self, hashid: Hash) -> Path:

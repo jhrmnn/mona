@@ -72,13 +72,6 @@ def test_recursion():
         assert sess.eval(recurse(0)) == 5
 
 
-def test_hook():
-    with Session() as sess:
-        task = identity([1])
-        task.add_hook(lambda x: [1])
-        sess.run_task(task)
-
-
 def test_tasks_not_run():
     with pytest.warns(RuntimeWarning):
         with Session() as sess:
@@ -111,7 +104,7 @@ def test_with_hook():
         return 1
 
     with Session() as sess:
-        sess.storage['hook:test'] = None, lambda x: x
+        sess.storage['hook:test'] = lambda x: x
         task = f(1)
         sess.eval(task)
 
