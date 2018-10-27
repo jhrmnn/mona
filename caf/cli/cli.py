@@ -35,8 +35,8 @@ def init(app: App) -> None:
 
 
 class TaskFilter:
-    def __init__(self, patterns: List[str], no_path: bool = False) -> None:
-        self._patterns = patterns
+    def __init__(self, patterns: List[str] = None, no_path: bool = False) -> None:
+        self._patterns = patterns or []
         self._no_path = no_path
 
     def __call__(self, task: Task[Any]) -> bool:
@@ -64,8 +64,17 @@ class ExceptionBuffer:
 
 
 @cli.command()
+@click.argument('rulename', metavar='RULE')
+@click.pass_obj
+def conf(app: App, rulename: str) -> None:
+    rule = import_fullname(rulename)
+    task_filter = TaskFilter(no_path=True)
+    with app.session(full_restore=True) as sess:
+        sess.eval(rule(), task_filter=task_filter)
+
+
+@cli.command()
 @click.option('-p', '--pattern', multiple=True, help='Tasks to be executed')
-@click.option('-P', '--no-path', is_flag=True, help='No tasks with path-like label')
 @click.option('-j', '--cores', type=int, help='Number of cores')
 @click.option('-l', '--limit', type=int, help='Limit number of tasks to N')
 @click.option('--maxerror', default=5, help='Number of errors in row to quit')
@@ -74,14 +83,13 @@ class ExceptionBuffer:
 def run(
     app: App,
     pattern: List[str],
-    no_path: bool,
     cores: int,
     limit: Optional[int],
     maxerror: int,
     rulename: str,
 ) -> None:
     rule = import_fullname(rulename)
-    task_filter = TaskFilter(pattern, no_path)
+    task_filter = TaskFilter(pattern)
     exception_buffer = ExceptionBuffer(maxerror)
     with app.session(ncores=cores) as sess:
         sess.eval(
