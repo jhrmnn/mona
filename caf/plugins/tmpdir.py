@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 
 class TmpdirManager(_TmpdirManager, SessionPlugin):
-    'tmpdir_manager'
+    name = 'tmpdir_manager'
 
     def __init__(self, root: Pathable) -> None:
         self._root = Path(root).resolve()

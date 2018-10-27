@@ -35,7 +35,7 @@ def test_db_files(db, tmpdir, mocker):
         assert not sess.run_task_async.called
 
 
-@pytest.mark.filterwarnings("ignore:tasks have never run")
+@pytest.mark.filterwarnings('ignore:tasks have never run')
 def test_postponed(db):
     cache = Cache(db, eager=False)
     sess = Session([cache])
@@ -53,7 +53,7 @@ async def get_object():
     return object()
 
 
-@pytest.mark.filterwarnings("ignore:tasks have never run")
+@pytest.mark.filterwarnings('ignore:tasks have never run')
 def test_pickled(db):
     with Session([Cache(db)]) as sess:
         get_object()

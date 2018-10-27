@@ -66,7 +66,7 @@ def test_calc():
         assert sess.eval(analysis(calcs(0))) == 20
 
 
-@pytest.mark.filterwarnings("ignore:tasks have never run")
+@pytest.mark.filterwarnings('ignore:tasks have never run')
 def test_exception():
     def handler(task, exc):
         if isinstance(exc, subprocess.CalledProcessError):

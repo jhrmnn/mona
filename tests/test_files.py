@@ -72,7 +72,7 @@ def test_hashing(tmpdir):
     assert without_fmngr[1].hashid == alt_input[1].hashid
 
 
-@pytest.mark.filterwarnings("ignore:tasks have never run")
+@pytest.mark.filterwarnings('ignore:tasks have never run')
 def test_postponed(tmpdir):
     fmngr = FileManager(tmpdir, eager=False)
     with Session([fmngr]) as sess:

@@ -39,7 +39,7 @@ def test_validation_errors():
     with pytest.raises(CompositeError):
         validate_json({1: 2})
     with pytest.raises(CompositeError):
-        validate_json({"1": object()})
+        validate_json({'1': object()})
 
 
 def test_encoding_errors():
