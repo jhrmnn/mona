@@ -6,6 +6,7 @@ import json
 from abc import abstractmethod
 import asyncio
 import inspect
+import pickle
 from typing import (
     Callable,
     Optional,
@@ -117,15 +118,11 @@ class Task(HashedFuture[_T_co]):
     ) -> None:
         self._corofunc = corofunc
         self._args = tuple(map(ensure_hashed, args))
-        self._default = (
-            cast(Hashed[_T_co], ensure_hashed(default))
-            if default is not Empty._
-            else None
-        )
         Hashed.__init__(self)
         Future.__init__(
             self, (arg for arg in self._args if isinstance(arg, HashedFuture))
         )
+        self._default = default
         self._label = label or (
             f'{self._corofunc.__qualname__}'
             f'({", ".join(a.label for a in self._args)})'
@@ -140,29 +137,22 @@ class Task(HashedFuture[_T_co]):
             [
                 get_fullname(self._corofunc),
                 hash_function(self._corofunc),
-                self._default.hashid if self._default else None,
                 *(fut.hashid for fut in self._args),
             ]
         ).encode()
 
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'Task[_T_co]':
-        rule_name, corohash, default_hash, *arg_hashes = json.loads(spec)
+        rule_name, corohash, *arg_hashes = json.loads(spec)
         corofunc = import_fullname(rule_name).corofunc
         assert inspect.iscoroutinefunction(corofunc)
         assert hash_function(corofunc) == corohash
-        default: Union[_T_co, Empty] = cast(
-            _T_co, resolve(default_hash)
-        ) if default_hash else Empty._
         args = (resolve(h) for h in arg_hashes)
-        return cls(corofunc, *args, default=default)
+        return cls(corofunc, *args)
 
     @property
     def label(self) -> str:
         return self._label
-
-    def set_label(self, label: str) -> None:
-        self._label = label
 
     def result(self) -> _T_co:
         return self.resolve(lambda res: res.value)
@@ -198,11 +188,17 @@ class Task(HashedFuture[_T_co]):
         return handler(self._result)  # type: ignore
 
     def default_result(self) -> _T_co:
-        if self._default:
-            return self._default.value
+        if not isinstance(self._default, Empty):
+            return self._default
         if isinstance(self._result, HashedFuture):
             return cast(HashedFuture[_T_co], self._result).default_result()
         raise TaskError(f'Has no defualt: {self!r}', self)
+
+    def metadata(self) -> Optional[bytes]:
+        return pickle.dumps((self._default, self._label))
+
+    def set_metadata(self, metadata: bytes) -> None:
+        self._default, self._label = pickle.loads(metadata)
 
     def set_running(self) -> None:
         assert self._state is State.READY
@@ -251,34 +247,21 @@ class TaskComponent(HashedFuture[_T_co]):
     ) -> None:
         self._task = task
         self._keys = keys
-        self._default = (
-            cast(Hashed[_T_co], ensure_hashed(default))
-            if default is not Empty._
-            else None
-        )
         Hashed.__init__(self)
         Future.__init__(self, [cast(HashedFuture[object], task)])
+        self._default = default
         self._label = ''.join([self._task.label, *(f'[{k!r}]' for k in self._keys)])
         self.add_ready_callback(lambda self: self.set_done())
 
     @property
     def spec(self) -> bytes:
-        return json.dumps(
-            [
-                self._task.hashid,
-                self._default.hashid if self._default else None,
-                *self._keys,
-            ]
-        ).encode()
+        return json.dumps([self._task.hashid, *self._keys]).encode()
 
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'TaskComponent[_T_co]':
-        task_hash, default_hash, *keys = json.loads(spec)
+        task_hash, *keys = json.loads(spec)
         task = cast(Task[object], resolve(task_hash))
-        default: Union[_T_co, Empty] = cast(
-            _T_co, resolve(default_hash)
-        ) if default_hash else Empty._
-        return cls(task, keys, default)
+        return cls(task, keys)
 
     @property
     def label(self) -> str:
@@ -306,9 +289,15 @@ class TaskComponent(HashedFuture[_T_co]):
         return cast(_T_co, obj)
 
     def default_result(self) -> _T_co:
-        if self._default:
-            return self._default.value
+        if not isinstance(self._default, Empty):
+            return self._default
         return self.resolve(lambda task: task.default_result())
+
+    def metadata(self) -> Optional[bytes]:
+        return pickle.dumps(self._default)
+
+    def set_metadata(self, metadata: bytes) -> None:
+        self._default = pickle.loads(metadata)
 
 
 # the semantics may imply that the component is taken immediately after

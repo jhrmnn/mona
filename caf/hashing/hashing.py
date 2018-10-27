@@ -61,6 +61,12 @@ class Hashed(ABC, Generic[_T_co]):
     def value(self) -> _T_co:
         ...
 
+    def metadata(self) -> Optional[bytes]:
+        return None
+
+    def set_metadata(self, metadata: bytes) -> None:
+        raise NotImplementedError
+
     def __str__(self) -> str:
         return f'{self.tag}: {self.label}'
 
