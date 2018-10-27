@@ -22,7 +22,7 @@ log.setLevel(logging.INFO)
 logging.getLogger('caf').setLevel(int(os.environ.get('CAF_DEBUG', logging.INFO)))
 
 
-@click.group()
+@click.group(chain=True)
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     ctx.ensure_object(App)
