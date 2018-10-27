@@ -59,6 +59,9 @@ class SessionPlugin(Plugin['Session']):
     def post_enter(self, sess: 'Session') -> None:
         pass
 
+    def pre_exit(self, sess: 'Session') -> None:
+        pass
+
     async def pre_run(self) -> None:
         pass
 
@@ -126,6 +129,7 @@ class Session(Pluggable):
 
     def __exit__(self, exc_type: Any, *args: Any) -> None:
         assert _active_session.get() is self
+        self.run_plugins('pre_exit', self, start=None)
         _active_session.reset(self._active_session_token)
         del self._active_session_token
         if not self._skipped and exc_type is None:

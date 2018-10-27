@@ -246,7 +246,9 @@ class Cache(SessionPlugin):
             task.add_done_callback(lambda task: self._update_state(task))
         self._db.commit()
 
-    def store_pending(self) -> None:
+    def pre_exit(self, sess: Session) -> None:
+        if self._eager:
+            return
         tasks = [self._app.get_task(hashid) for hashid in self._pending]
         self._store_tasks(tasks)
         for task in tasks:
