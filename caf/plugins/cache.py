@@ -5,23 +5,15 @@ import logging
 import sqlite3
 import pickle
 from enum import Enum
-from itertools import chain
 from textwrap import dedent
 from weakref import WeakValueDictionary
-
-from ..sessions import SessionPlugin
-from ..futures import State, Future
-from ..tasks import Task
-from ..utils import Pathable, get_timestamp, get_fullname, import_fullname
-from ..hashing import Hash, Hashed
-
 from typing import (
     Any,
     Optional,
     Set,
     NamedTuple,
     Union,
-    Iterable,
+    Sequence,
     Dict,
     cast,
     Type,
@@ -30,6 +22,12 @@ from typing import (
     List,
 )
 
+from ..sessions import Session, SessionPlugin
+from ..futures import State, Future
+from ..tasks import Task
+from ..utils import Pathable, get_timestamp, get_fullname, import_fullname
+from ..hashing import Hash, Hashed
+
 log = logging.getLogger(__name__)
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -37,12 +35,10 @@ _T_co = TypeVar('_T_co', covariant=True)
 
 class TaskRow(NamedTuple):
     hashid: Hash
-    label: str
     state: str
-    created: str
     side_effects: Optional[str] = None
     result_type: Optional[str] = None
-    result: Union[None, Hash, bytes] = None
+    result: Union[Hash, bytes, None] = None
 
 
 class ObjectRow(NamedTuple):
@@ -56,12 +52,23 @@ class ResultType(Enum):
     PICKLED = 1
 
 
+class SessionRow(NamedTuple):
+    sessionid: int
+    created: str
+
+
+class TargetRow(NamedTuple):
+    objectid: Hash
+    sessionid: int
+    label: Optional[str]
+    metadata: Optional[bytes]
+
+
 class CachedTask(Task[_T_co]):
-    def __init__(self, hashid: Hash, label: str) -> None:
+    def __init__(self, hashid: Hash) -> None:
         self._hashid = hashid
         self._args = ()
         Future.__init__(self, [])  # type: ignore
-        self._label = label
         self._hook = None
 
 
@@ -88,26 +95,27 @@ class Cache(SessionPlugin):
     def db(self) -> sqlite3.Connection:
         return self._db
 
-    def _store_objects(self, objs: Iterable[Hashed[object]]) -> None:
+    def _store_objects_targets(self, objs: Sequence[Hashed[object]]) -> None:
         obj_rows = [
-            ObjectRow(
-                hashid=obj.hashid, typetag=get_fullname(obj.__class__), spec=obj.spec
+            ObjectRow(obj.hashid, get_fullname(obj.__class__), obj.spec) for obj in objs
+        ]
+        self._db.executemany('INSERT OR IGNORE INTO objects VALUES (?,?,?)', obj_rows)
+        self._store_targets(objs)
+
+    def _store_targets(self, objs: Sequence[Hashed[object]]) -> None:
+        sessionid = self._app.storage['cache:sessionid']
+        target_rows = [
+            TargetRow(
+                obj.hashid,
+                sessionid,
+                obj.label if isinstance(obj, Task) else None,
+                obj.metadata(),
             )
             for obj in objs
         ]
-        self._db.executemany('INSERT OR IGNORE INTO objects VALUES (?,?,?)', obj_rows)
-
-    def _store_tasks(self, tasks: Iterable[Task[object]]) -> None:
-        task_rows = [
-            TaskRow(
-                hashid=task.hashid,
-                label=task.label,
-                state=task.state.name,
-                created=get_timestamp(),
-            )
-            for task in tasks
-        ]
-        self._db.executemany('INSERT INTO tasks VALUES (?,?,?,?,?,?,?)', task_rows)
+        self._db.executemany(
+            'INSERT OR IGNORE INTO targets VALUES (?,?,?,?)', target_rows
+        )
 
     def _update_state(self, task: Task[object]) -> None:
         self._db.execute(
@@ -134,9 +142,10 @@ class Cache(SessionPlugin):
             result = hashed.hashid
         side_effects = ','.join(t.hashid for t in self._app.get_side_effects(task))
         self._db.execute(
-            'UPDATE tasks SET side_effects = ?, result_type = ?, '
-            'result = ? WHERE hashid = ?',
-            (side_effects, result_type.name, result, task.hashid),
+            'REPLACE INTO tasks VALUES (?,?,?,?,?)',
+            TaskRow(
+                task.hashid, task.state.name, side_effects, result_type.name, result
+            ),
         )
 
     def _get_task_row(self, hashid: Hash) -> Optional[TaskRow]:
@@ -146,6 +155,14 @@ class Cache(SessionPlugin):
         if not raw_row:
             return None
         return TaskRow(*raw_row)
+
+    def _get_target_row(self, hashid: Hash) -> TargetRow:
+        raw_row = self._db.execute(
+            'SELECT * FROM targets WHERE objectid = ? ORDER BY sessionid DESC LIMIT 1',
+            (hashid,),
+        ).fetchone()
+        assert raw_row
+        return TargetRow(*raw_row)
 
     def _get_object_factory(self, hashid: Hash) -> Tuple[bytes, Type[Hashed[object]]]:
         raw_row = self._db.execute(
@@ -166,19 +183,22 @@ class Cache(SessionPlugin):
             task_row = self._get_task_row(hashid)
             assert task_row
             if State[task_row.state] > State.HAS_RUN:
-                obj = CachedTask(hashid, task_row.label)
+                obj = CachedTask(hashid)
         if not obj:
             obj = factory.from_spec(spec, self._get_object)
+        assert hashid == obj.hashid
+        metadata = self._get_target_row(hashid).metadata
+        if metadata is not None:
+            obj.set_metadata(metadata)
         if isinstance(obj, Task):
             obj, registered = self._app.register_task(obj)
             if registered:
-                obj.set_label('_RESTORE')
                 if not self._full_restore:
                     self._to_restore.append(obj)
         self._object_cache[hashid] = obj
         return obj
 
-    def _get_result(self, row: TaskRow) -> Optional[object]:
+    def _get_result(self, row: TaskRow) -> object:
         if State[row.state] < State.HAS_RUN:
             return None
         assert row.result_type
@@ -195,8 +215,6 @@ class Cache(SessionPlugin):
     def _restore_task(self, task: Task[object]) -> None:
         row = self._get_task_row(task.hashid)
         assert row
-        if task.label == '_RESTORE':
-            task.set_label(row.label)
         if State[row.state] < State.HAS_RUN:
             return
         log.info(f'Restoring from cache: {task}')
@@ -213,35 +231,44 @@ class Cache(SessionPlugin):
         task.set_has_run()
         self._app.set_result(task, self._get_result(row))
 
-    def save_hashed(self, objs: Iterable[Hashed[object]]) -> None:
+    def post_enter(self, sess: Session) -> None:
+        cur = self._db.execute(
+            'INSERT into sessions VALUES (?,?)', (None, get_timestamp())
+        )
+        sess.storage['cache:sessionid'] = cur.lastrowid
+
+    def save_hashed(self, objs: Sequence[Hashed[object]]) -> None:
         if hasattr(self, '_to_restore'):
             return
         if self._eager:
-            self._store_objects(objs)
+            self._store_objects_targets(objs)
             self._db.commit()
         else:
             self._objects.update({o.hashid: o for o in objs})
 
     def post_create(self, task: Task[object]) -> None:
         row = self._get_task_row(task.hashid)
-        if not row:
-            if self._eager:
-                self._store_tasks([task])
-                self._store_objects([task])
-                self._db.commit()
-            else:
-                self._pending.add(task.hashid)
-            return
-        self._to_restore = [task]
-        while self._to_restore:
-            self._restore_task(self._to_restore.pop())
-        delattr(self, '_to_restore')
+        if row:
+            self._to_restore = [task]
+            while self._to_restore:
+                self._restore_task(self._to_restore.pop())
+            delattr(self, '_to_restore')
+            self._store_targets([task])
+            self._db.commit()
+        elif self._eager:
+            self._db.execute(
+                'INSERT INTO tasks VALUES (?,?,?,?,?)',
+                TaskRow(task.hashid, task.state.name),
+            )
+            self._store_objects_targets([task])
+            self._db.commit()
+        else:
+            self._pending.add(task.hashid)
 
     def post_task_run(self, task: Task[object]) -> None:
         if not self._eager:
             return
         self._store_result(task)
-        self._update_state(task)
         if task.state < State.DONE:
             task.add_done_callback(lambda task: self._update_state(task))
         self._db.commit()
@@ -250,12 +277,12 @@ class Cache(SessionPlugin):
         if self._eager:
             return
         tasks = [self._app.get_task(hashid) for hashid in self._pending]
-        self._store_tasks(tasks)
         for task in tasks:
-            self._update_state(task)
             if task.state > State.HAS_RUN:
                 self._store_result(task)
-        self._store_objects(chain(self._objects.values(), tasks))
+            else:
+                self._update_state(task)
+        self._store_objects_targets([*self._objects.values(), *tasks])
         self._pending.clear()
         self._objects.clear()
         self._db.commit()
@@ -266,29 +293,51 @@ class Cache(SessionPlugin):
         db.execute(
             dedent(
                 """\
-            CREATE TABLE IF NOT EXISTS tasks (
-                hashid         TEXT,
-                label          TEXT,
-                state          TEXT,
-                created        TEXT,
-                side_effects   TEXT,
-                result_type    TEXT,
-                result         BLOB,
-                PRIMARY KEY (hashid)
-            )
-            """
+                CREATE TABLE IF NOT EXISTS objects (
+                    hashid   TEXT PRIMARY KEY,
+                    typetag  TEXT,
+                    spec     BLOB
+                )
+                """
             )
         )
         db.execute(
             dedent(
                 """\
-            CREATE TABLE IF NOT EXISTS objects (
-                hashid   TEXT,
-                typetag  TEXT,
-                spec     BLOB,
-                PRIMARY KEY (hashid)
+                CREATE TABLE IF NOT EXISTS tasks (
+                    hashid         TEXT PRIMARY KEY,
+                    state          TEXT,
+                    side_effects   TEXT,
+                    result_type    TEXT,
+                    result         BLOB,
+                    FOREIGN KEY(hashid) REFERENCES objects(hashid)
+                )
+                """
             )
-            """
+        )
+        db.execute(
+            dedent(
+                """\
+                CREATE TABLE IF NOT EXISTS sessions (
+                    sessionid   INTEGER PRIMARY KEY,
+                    created     TEXT
+                )
+                """
+            )
+        )
+        db.execute(
+            dedent(
+                """\
+                CREATE TABLE IF NOT EXISTS targets (
+                    objectid   TEXT,
+                    sessionid  INTEGER,
+                    label      TEXT,
+                    metadata   BLOB,
+                    PRIMARY KEY(objectid, sessionid),
+                    FOREIGN KEY(objectid) REFERENCES objects(hashid),
+                    FOREIGN KEY(sessionid) REFERENCES sessions(sessionid)
+                )
+                """
             )
         )
         return Cache(db, **kwargs)
