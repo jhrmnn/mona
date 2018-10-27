@@ -77,7 +77,7 @@ class SpeciesDefaults(AimsPlugin):
 
     def process(self, kwargs: Dict[str, Any]) -> None:
         speciesdir = kwargs.pop('speciesdir')
-        all_species = set([(a.number, a.specie) for a in kwargs['geom'].centers])
+        all_species = {(a.number, a.specie) for a in kwargs['geom'].centers}
         species_defs = []
         for Z, species in sorted(all_species):
             if (speciesdir, species) not in self._species_defs:

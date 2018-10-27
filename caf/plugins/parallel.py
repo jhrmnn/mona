@@ -93,7 +93,7 @@ class Parallel(SessionPlugin):
                 self._available -= 1
         try:
             yield
-        except Exception as e:
+        except Exception:
             if self._registered_exceptions == 0:
                 self._stop()
             self._registered_exceptions += 1

@@ -27,7 +27,7 @@ def parse_xml(source: IO[str]) -> Any:
 
 def parse_xmlelem(elem: Any) -> Any:
     results = {}
-    children = set(c.tag for c in elem)
+    children = {c.tag for c in elem}
     for child in children:
         child_elems = elem.findall(child)
         child_results = []

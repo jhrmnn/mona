@@ -28,7 +28,7 @@ class State(IntEnum):
 class Future:
     def __init__(self: _Fut, parents: Iterable[_Fut]) -> None:
         self._parents = frozenset(parents)
-        self._pending = set(fut for fut in self._parents if not fut.done())
+        self._pending = {fut for fut in self._parents if not fut.done()}
         self._children: Set['Future'] = set()
         self._done_callbacks: List[Callback[_Fut]] = []
         self._ready_callbacks: List[Callback[_Fut]] = []

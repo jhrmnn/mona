@@ -59,14 +59,17 @@ class HashedFuture(Hashed[_T_co], Future):
     """
     @property
     @abstractmethod
-    def spec(self) -> bytes: ...
+    def spec(self) -> bytes:
+        ...
 
     @property
     @abstractmethod
-    def label(self) -> str: ...
+    def label(self) -> str:
+        ...
 
     @abstractmethod
-    def result(self) -> _T_co: ...
+    def result(self) -> _T_co:
+        ...
 
     @property
     def value(self) -> _T_co:
@@ -155,7 +158,8 @@ class Task(HashedFuture[_T_co]):
             ) -> 'TaskComponent[object]':
         return TaskComponent(self, [key], default)
 
-    def resolve(self, handler: Callable[[Hashed[_T_co]], _U] = None) -> Union[_U, _T_co]:
+    def resolve(self, handler: Callable[[Hashed[_T_co]], _U] = None
+                ) -> Union[_U, _T_co]:
         if isinstance(self._result, Empty):
             raise TaskError(f'Has not run: {self!r}', self)
         if not isinstance(self._result, Hashed):

@@ -291,7 +291,8 @@ class Crystal(Molecule):
             for r in self.lattice:
                 x, y, z = no_neg_zeros(r)
                 f.write(f'{x:15.8f} {y:15.8f} {z:15.8f}\n')
-            species: Dict[str, List[Atom]] = OrderedDict((sp, []) for sp in set(self.species))
+            species: Dict[str, List[Atom]] = \
+                OrderedDict((sp, []) for sp in set(self.species))
             f.write(' '.join(species.keys()) + '\n')
             for atom in self:
                 species[atom.specie].append(atom)

@@ -26,17 +26,20 @@ DirTaskResult = Union[Dict[str, Union[bytes, HashedBytes]]]
 class HashingPath(ABC):
     @property
     @abstractmethod
-    def path(self) -> Path: ...
+    def path(self) -> Path:
+        ...
 
 
 class FileManager(ABC):
     @abstractmethod
-    def store_from_path(self, path: Path) -> HashedBytes: ...
+    def store_from_path(self, path: Path) -> HashedBytes:
+        ...
 
 
 class TmpdirManager(ABC):
     @abstractmethod
-    def tempdir(self) -> ContextManager[Pathable]: ...
+    def tempdir(self) -> ContextManager[Pathable]:
+        ...
 
 
 class DirTaskProcessError(subprocess.CalledProcessError):

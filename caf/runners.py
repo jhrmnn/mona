@@ -20,8 +20,8 @@ __version__ = '0.1.0'
 
 @runtime
 class Scheduler(Protocol):
-    async def __call__(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
-                       ) -> _T: ...
+    async def __call__(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any) -> _T:
+        ...
 
 
 def _scheduler() -> Optional[Scheduler]:

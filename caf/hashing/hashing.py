@@ -32,19 +32,23 @@ class Hashed(ABC, Generic[_T_co]):
 
     @property
     @abstractmethod
-    def spec(self) -> bytes: ...
+    def spec(self) -> bytes:
+        ...
 
     @classmethod
     @abstractmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'Hashed[_T_co]': ...
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'Hashed[_T_co]':
+        ...
 
     @property
     @abstractmethod
-    def label(self) -> str: ...
+    def label(self) -> str:
+        ...
 
     @property
     @abstractmethod
-    def value(self) -> _T_co: ...
+    def value(self) -> _T_co:
+        ...
 
     def __str__(self) -> str:
         return f'{self.tag}: {self.label}'
@@ -95,7 +99,8 @@ class HashedCompositeLike(Hashed[Composite]):
 
     @property
     @abstractmethod
-    def value(self) -> Composite: ...
+    def value(self) -> Composite:
+        ...
 
     @property
     def spec(self) -> bytes:

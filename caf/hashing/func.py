@@ -120,10 +120,9 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
 # TODO submit cpython fix
 def getclosurevars(func: Callable[..., Any]) -> inspect.ClosureVars:
     code = func.__code__
-    nonlocal_vars = {
-        name: cell.cell_contents
-        for name, cell in zip(code.co_freevars, func.__closure__ or ())  # type: ignore
-    }
+    nonlocal_vars = {name: cell.cell_contents for name, cell in zip(
+        code.co_freevars, func.__closure__ or ()  # type: ignore
+    )}
     global_ns = func.__globals__  # type: ignore
     builtin_ns = global_ns['__builtins__']
     if inspect.ismodule(builtin_ns):

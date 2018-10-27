@@ -31,7 +31,7 @@ class TmpdirManager(_TmpdirManager, SessionPlugin):
         log.debug(f'Created tempdir for "{task.label}": {path}')
         try:
             yield path
-        except Exception as e:
+        except Exception:
             raise
         else:
             shutil.rmtree(path)

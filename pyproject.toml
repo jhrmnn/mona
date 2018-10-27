@@ -15,7 +15,6 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "Natural Language :: English",
     "Operating System :: POSIX",
     "Topic :: Scientific/Engineering",
     "Topic :: Utilities"
@@ -47,6 +46,8 @@ doc = ["sphinx", "toml"]
 mypy = "^0.641.0"
 lxml = "^4.2"
 flake8 = "^3.5"
+flake8-bugbear = "^18.8"
+flake8-comprehensions = "^1.4"
 
 [tool.poetry.scripts]
 caf = "caf.cli:cli.main"

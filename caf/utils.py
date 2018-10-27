@@ -63,8 +63,9 @@ def make_executable(path: Pathable) -> None:
 def make_nonwritable(path: Pathable) -> None:
     os.chmod(
         path,
-        stat.S_IMODE(os.lstat(path).st_mode) &
-        ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
+        stat.S_IMODE(os.lstat(path).st_mode) & ~(
+            stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+        )
     )
 
 

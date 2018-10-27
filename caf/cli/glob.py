@@ -13,8 +13,8 @@ def match_glob(path: str, pattern: str) -> Optional[str]:
     if not regex:
         regex = re.compile(
             pattern
-            .replace('(', '\(')
-            .replace(')', '\)')
+            .replace('(', r'\(')
+            .replace(')', r'\)')
             .replace('?', '[^/]')
             .replace('<>', '([^/]*)')
             .replace('<', '(')
