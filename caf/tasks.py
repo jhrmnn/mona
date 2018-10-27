@@ -213,12 +213,14 @@ class Task(HashedFuture[_T_co]):
         self._state = State.HAS_RUN
 
     def set_result(self, result: Union[_T_co, Hashed[_T_co]]) -> None:
-        assert self._state >= State.HAS_RUN
+        assert self._state is State.HAS_RUN
+        assert not isinstance(result, HashedFuture) or result.done()
         self._result = result
         self.set_done()
 
     def set_future_result(self, result: HashedFuture[_T_co]) -> None:
         assert self.state is State.HAS_RUN
+        assert not result.done()
         self._state = State.AWAITING
         self._result = result
 
