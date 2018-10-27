@@ -57,6 +57,7 @@ class HookedRule(Rule[_T]):
 def with_hook(name: str) -> Callable[[Rule[_T]], HookedRule[_T]]:
     def decorator(rule: Rule[_T]) -> HookedRule[_T]:
         return HookedRule(rule.corofunc, name)
+
     return decorator
 
 
@@ -64,4 +65,5 @@ def labelled(label: str) -> Callable[[Rule[_T]], Rule[_T]]:
     def decorator(rule: Rule[_T]) -> Rule[_T]:
         rule.add_label(label)
         return rule
+
     return decorator

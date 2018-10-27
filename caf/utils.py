@@ -6,8 +6,7 @@ import stat
 import importlib
 from enum import Enum
 from datetime import datetime
-from typing import Any, Callable, TypeVar, Union, List, Tuple, \
-    Iterable, Dict, Type
+from typing import Any, Callable, TypeVar, Union, List, Tuple, Iterable, Dict, Type
 
 _T = TypeVar('_T')
 _V = TypeVar('_V')
@@ -20,6 +19,7 @@ TypeSwaps = Dict[Type[Any], Callable[[Any], Any]]
 # yet, so isisntance() it is.
 class Empty(Enum):
     """Absence of a value."""
+
     _ = 0
 
 
@@ -35,7 +35,7 @@ def import_fullname(fullname: str) -> Any:
 
 def shorten_text(s: Union[str, bytes], n: int) -> str:
     if len(s) > n:
-        s = s[:n-3]
+        s = s[: n - 3]
         shortened = True
     else:
         shortened = False
@@ -63,9 +63,8 @@ def make_executable(path: Pathable) -> None:
 def make_nonwritable(path: Pathable) -> None:
     os.chmod(
         path,
-        stat.S_IMODE(os.lstat(path).st_mode) & ~(
-            stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
-        )
+        stat.S_IMODE(os.lstat(path).st_mode)
+        & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH),
     )
 
 
@@ -73,14 +72,14 @@ def get_timestamp() -> str:
     return datetime.now().isoformat(timespec='seconds')
 
 
-def call_if(cond: bool, func: Callable[..., None], *args: Any, **kwargs: Any
-            ) -> None:
+def call_if(cond: bool, func: Callable[..., None], *args: Any, **kwargs: Any) -> None:
     if cond:
         func(*args, **kwargs)
 
 
-def split(iterable: Iterable[_T], first: Callable[[_T], bool]
-          ) -> Tuple[List[_T], List[_T]]:
+def split(
+    iterable: Iterable[_T], first: Callable[[_T], bool]
+) -> Tuple[List[_T], List[_T]]:
     left: List[_T] = []
     right: List[_T] = []
     for item in iterable:
@@ -88,8 +87,7 @@ def split(iterable: Iterable[_T], first: Callable[[_T], bool]
     return left, right
 
 
-def groupby(iterable: Iterable[_T], key: Callable[[_T], _V]
-            ) -> Dict[_V, List[_T]]:
+def groupby(iterable: Iterable[_T], key: Callable[[_T], _V]) -> Dict[_V, List[_T]]:
     groups: Dict[_V, List[_T]] = {}
     for x in iterable:
         groups.setdefault(key(x), []).append(x)

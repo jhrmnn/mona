@@ -4,8 +4,19 @@
 import json
 import hashlib
 from abc import ABC, abstractmethod
-from typing import NewType, Union, Generic, TypeVar, Dict, cast, \
-    Iterable, Set, Callable, Tuple, Optional
+from typing import (
+    NewType,
+    Union,
+    Generic,
+    TypeVar,
+    Dict,
+    cast,
+    Iterable,
+    Set,
+    Callable,
+    Tuple,
+    Optional,
+)
 
 from ..json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
 from ..utils import Literal, shorten_text, TypeSwaps, swap_type
@@ -119,18 +130,19 @@ class HashedCompositeLike(Hashed[Composite]):
     def components(self) -> Iterable[Hashed[object]]:
         return self._components.values()
 
-    def resolve(self, handler: Callable[['Hashed[object]'], object] = lambda x: x
-                ) -> Composite:
+    def resolve(
+        self, handler: Callable[['Hashed[object]'], object] = lambda x: x
+    ) -> Composite:
         def hook(type_tag: str, dct: Dict[str, JSONValue]) -> object:
             if type_tag == 'Hashed':
                 return handler(self._components[cast(Hash, dct['hashid'])])
             return dct
+
         obj = json.loads(self._jsonstr, hook=hook, cls=ClassJSONDecoder)
         return cast(Composite, obj)
 
     @classmethod
-    def _default(cls, o: object
-                 ) -> Optional[Tuple[object, str, Dict[str, JSONValue]]]:
+    def _default(cls, o: object) -> Optional[Tuple[object, str, Dict[str, JSONValue]]]:
         o = swap_type(o, cls.type_swaps)
         if isinstance(o, Hashed):
             return (o, 'Hashed', {'hashid': o.hashid})
@@ -146,7 +158,7 @@ class HashedCompositeLike(Hashed[Composite]):
             sort_keys=True,
             tape=components,
             default=cls._default,
-            cls=ClassJSONEncoder
+            cls=ClassJSONEncoder,
         )
         return jsonstr, components
 

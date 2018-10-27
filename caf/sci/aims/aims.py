@@ -39,9 +39,7 @@ class Aims(Pluggable):
         return dir_task(script, inputs, label=label)
 
     def _func_hash(self) -> str:
-        return ','.join(
-            cast(AimsPlugin, p)._func_hash() for p in self._get_plugins()
-        )
+        return ','.join(cast(AimsPlugin, p)._func_hash() for p in self._get_plugins())
 
 
 class SpeciesDir(AimsPlugin):
@@ -49,8 +47,7 @@ class SpeciesDir(AimsPlugin):
         self._speciesdirs: Dict[Tuple[str, str], Path] = {}
 
     def process(self, kwargs: Dict[str, Any]) -> None:
-        sp_def_key = aims, sp_def = \
-            kwargs['aims'], kwargs.pop('species_defaults')
+        sp_def_key = aims, sp_def = kwargs['aims'], kwargs.pop('species_defaults')
         speciesdir = self._speciesdirs.get(sp_def_key)
         if not speciesdir:
             pathname = shutil.which(aims)
@@ -59,7 +56,7 @@ class SpeciesDir(AimsPlugin):
             if not pathname:
                 raise CafError(f'Aims "{aims}" not found')
             path = Path(pathname)
-            speciesdir = path.parents[1]/'aimsfiles/species_defaults'/sp_def
+            speciesdir = path.parents[1] / 'aimsfiles/species_defaults' / sp_def
             self._speciesdirs[sp_def_key] = speciesdir  # type: ignore
         kwargs['speciesdir'] = speciesdir
 
@@ -82,7 +79,7 @@ class SpeciesDefaults(AimsPlugin):
         for Z, species in sorted(all_species):
             if (speciesdir, species) not in self._species_defs:
                 species_def = parse_aims_input(
-                    (speciesdir/f'{Z:02d}_{species}_default').read_text()
+                    (speciesdir / f'{Z:02d}_{species}_default').read_text()
                 )['species'][0]
                 self._species_defs[speciesdir, species] = species_def
             else:
@@ -147,21 +144,13 @@ class Core(AimsPlugin):
 class Script(AimsPlugin):
     def process(self, kwargs: Dict[str, Any]) -> None:
         aims, check = kwargs.pop('aims'), kwargs.pop('check', True)
-        lines = [
-            '#!/bin/bash',
-            'set -e',
-            f'AIMS={aims} run_aims',
-        ]
+        lines = ['#!/bin/bash', 'set -e', f'AIMS={aims} run_aims']
         if check:
-            lines.append(
-                'egrep "Have a nice day|stop_if_parser" STDOUT >/dev/null'
-            )
+            lines.append('egrep "Have a nice day|stop_if_parser" STDOUT >/dev/null')
         kwargs['script'] = '\n'.join(lines)
 
 
-default_plugins = [
-    SpeciesDir, Atoms, SpeciesDefaults, Control, Geom, Core, Script,
-]
+default_plugins = [SpeciesDir, Atoms, SpeciesDefaults, Control, Geom, Core, Script]
 
 
 def p2f(value: Any, nospace: bool = False) -> str:

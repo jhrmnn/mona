@@ -15,14 +15,15 @@ _aims_mm = metamodel_from_str(
         'LebedevInt': int,
         'BOOL_': lambda s: _bools[s],
     },
-    auto_init_attributes=False
+    auto_init_attributes=False,
 )
 
 
 def _model_to_dict(o: Any) -> Any:
     if isinstance(o, TextXClass):
         return {
-            k: _model_to_dict(v) for k, v in vars(o).items()
+            k: _model_to_dict(v)
+            for k, v in vars(o).items()
             if k[0] != '_' and k != 'parent'
         }
     if isinstance(o, list):

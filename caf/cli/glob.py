@@ -12,8 +12,7 @@ def match_glob(path: str, pattern: str) -> Optional[str]:
     regex = _regexes.get(pattern)
     if not regex:
         regex = re.compile(
-            pattern
-            .replace('(', r'\(')
+            pattern.replace('(', r'\(')
             .replace(')', r'\)')
             .replace('?', '[^/]')
             .replace('<>', '([^/]*)')
@@ -24,7 +23,8 @@ def match_glob(path: str, pattern: str) -> Optional[str]:
             .replace(',', '|')
             .replace('**', r'\\')
             .replace('*', '[^/]*')
-            .replace(r'\\', '.*') + '$'
+            .replace(r'\\', '.*')
+            + '$'
         )
         _regexes[pattern] = regex
     m = regex.match(path)

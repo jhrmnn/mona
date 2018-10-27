@@ -48,10 +48,12 @@ async def run_process(*args: str, **kwargs: Any) -> ProcessOutput:
     return await _run_process(args, **kwargs)
 
 
-async def _run_process(args: Union[str, Tuple[str, ...]],
-                       shell: bool = False,
-                       input: bytes = None,
-                       **kwargs: Any) -> Union[bytes, Tuple[bytes, bytes]]:
+async def _run_process(
+    args: Union[str, Tuple[str, ...]],
+    shell: bool = False,
+    input: bytes = None,
+    **kwargs: Any,
+) -> Union[bytes, Tuple[bytes, bytes]]:
     kwargs.setdefault('stdin', subprocess.PIPE)
     kwargs.setdefault('stdout', subprocess.PIPE)
     if shell:

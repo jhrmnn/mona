@@ -43,7 +43,7 @@ class TaskFilter:
         if self._no_path and task.label.startswith('/'):
             return False
         if self._patterns and not any(
-                match_glob(task.label, patt) for patt in self._patterns
+            match_glob(task.label, patt) for patt in self._patterns
         ):
             return False
         return True
@@ -71,13 +71,15 @@ class ExceptionBuffer:
 @click.option('--maxerror', default=5, help='Number of errors in row to quit')
 @click.argument('rulename', metavar='RULE')
 @click.pass_obj
-def run(app: App,
-        pattern: List[str],
-        no_path: bool,
-        cores: int,
-        limit: Optional[int],
-        maxerror: int,
-        rulename: str) -> None:
+def run(
+    app: App,
+    pattern: List[str],
+    no_path: bool,
+    cores: int,
+    limit: Optional[int],
+    maxerror: int,
+    rulename: str,
+) -> None:
     rule = import_fullname(rulename)
     task_filter = TaskFilter(pattern, no_path)
     exception_buffer = ExceptionBuffer(maxerror)

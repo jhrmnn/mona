@@ -23,16 +23,14 @@ def test_encoder_decoder():
     jsonstr = json.dumps(
         obj,
         tape=tape,
-        default=lambda x:
-        (x, 'K', {'x': x.x}) if isinstance(x, K) else None,
-        cls=ClassJSONEncoder
+        default=lambda x: (x, 'K', {'x': x.x}) if isinstance(x, K) else None,
+        cls=ClassJSONEncoder,
     )
     assert len(tape) == 2
     obj2 = json.loads(
         jsonstr,
-        hook=lambda type_tag, dct:
-        K(dct['x']) if type_tag == 'K' else dct,
-        cls=ClassJSONDecoder
+        hook=lambda type_tag, dct: K(dct['x']) if type_tag == 'K' else dct,
+        cls=ClassJSONDecoder,
     )
     assert obj == obj2
 
@@ -46,9 +44,4 @@ def test_validation_errors():
 
 def test_encoding_errors():
     with pytest.raises(TypeError):
-        json.dumps(
-            [object()],
-            tape=set(),
-            default=lambda x: None,
-            cls=ClassJSONEncoder
-        )
+        json.dumps([object()], tape=set(), default=lambda x: None, cls=ClassJSONEncoder)

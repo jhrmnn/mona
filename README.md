@@ -7,6 +7,7 @@
 [![commits since](https://img.shields.io/github/commits-since/azag0/calcfw/latest.svg)](https://github.com/azag0/calcfw/releases)
 [![last commit](https://img.shields.io/github/last-commit/azag0/calcfw.svg)](https://github.com/azag0/calcfw/commits/master)
 [![license](https://img.shields.io/github/license/azag0/calcfw.svg)](https://github.com/azag0/calcfw/blob/master/LICENSE)
+[![code style](https://img.shields.io/badge/code%20style-black-202020.svg)](https://github.com/ambv/black)
 
 ```python
 import caf
@@ -19,7 +20,7 @@ async def total(xs):
 async def fib(n):
     if n < 2:
         return n
-    return total([fib(n-1), fib(n-2)])
+    return total([fib(n - 1), fib(n - 2)])
 
 with caf.Session() as sess:
     sess.eval(fib(5))

@@ -118,6 +118,7 @@ def test_run_already_run():
 
 def test_no_coroutine():
     with pytest.raises(CafError):
+
         @Rule
         def f():
             pass

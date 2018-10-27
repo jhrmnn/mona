@@ -9,8 +9,7 @@ from ..sessions import Session, SessionPlugin
 from ..utils import make_nonwritable, Pathable, split
 from ..errors import FilesError, InvalidInput
 from ..json import registered_classes
-from ..rules.dirtask import FileManager as _FileManager, \
-    HashingPath as _HashingPath
+from ..rules.dirtask import FileManager as _FileManager, HashingPath as _HashingPath
 
 from typing import Dict, Union, cast, Tuple, Iterable, List, Optional
 
@@ -79,15 +78,14 @@ class HashedPath(Hashed[HashingPath]):
 
 registered_classes[HashingPath] = (
     lambda hp: {'hashid': hp.hashid},
-    lambda dct: HashingPath(cast(Hash, dct['hashid']))
+    lambda dct: HashingPath(cast(Hash, dct['hashid'])),
 )
 
 
 class FileManager(_FileManager, SessionPlugin):
     name = 'file_manager'
 
-    def __init__(self, root: Union[str, Pathable], eager: bool = True
-                 ) -> None:
+    def __init__(self, root: Union[str, Pathable], eager: bool = True) -> None:
         self._root = Path(root).resolve()
         self._cache: Dict[Hash, bytes] = {}
         self._path_cache: Dict[Path, HashedPath] = {}
@@ -98,7 +96,7 @@ class FileManager(_FileManager, SessionPlugin):
         return f'<FileManager ncache={len(self._cache)}>'
 
     def _path(self, hashid: Hash) -> Path:
-        return self._root/hashid[:2]/hashid[2:]
+        return self._root / hashid[:2] / hashid[2:]
 
     def _path_primed(self, hashid: Hash) -> Path:
         path = self._path(hashid)
@@ -184,9 +182,12 @@ class FileManager(_FileManager, SessionPlugin):
                 filename, target = item, Path(item)
             elif isinstance(item, Path):
                 filename, target = str(item), item
-            elif isinstance(item, tuple) and len(item) == 2 and \
-                    isinstance(item[0], str) and \
-                    isinstance(item[1], (str, Path, bytes)):
+            elif (
+                isinstance(item, tuple)
+                and len(item) == 2
+                and isinstance(item[0], str)
+                and isinstance(item[1], (str, Path, bytes))
+            ):
                 filename, target = item
             else:
                 raise InvalidInput('Unknown input type: {item!r}')
@@ -196,11 +197,14 @@ class FileManager(_FileManager, SessionPlugin):
             hashed_files[filename] = self._wrap_target(target)
         return hashed_files
 
-    def _wrap_args(self, args: Union[
+    def _wrap_args(
+        self,
+        args: Union[
             Tuple[InputTarget, Dict[str, Union[bytes, Path]]],
             Tuple[InputTarget, List[Input]],
-            Tuple[InputTarget, List[Input], Dict[str, Union[str, Path]]]
-    ]) -> Tuple[HashedPath, Dict[str, Union[HashedPath, Path]]]:
+            Tuple[InputTarget, List[Input], Dict[str, Union[str, Path]]],
+        ],
+    ) -> Tuple[HashedPath, Dict[str, Union[HashedPath, Path]]]:
         exe = args[0]
         inputs = args[1]
         stored_exe = self._wrap_target(exe)

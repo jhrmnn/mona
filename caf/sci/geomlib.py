@@ -9,8 +9,22 @@ from copy import deepcopy
 from importlib import resources
 from collections import OrderedDict
 from itertools import chain, product, repeat
-from typing import List, Tuple, DefaultDict, Iterator, IO, Sized, Iterable, \
-    Union, Dict, Any, TYPE_CHECKING, TypeVar, Type, cast
+from typing import (
+    List,
+    Tuple,
+    DefaultDict,
+    Iterator,
+    IO,
+    Sized,
+    Iterable,
+    Union,
+    Dict,
+    Any,
+    TYPE_CHECKING,
+    TypeVar,
+    Type,
+    cast,
+)
 
 from .. import sci
 
@@ -24,7 +38,7 @@ __version__ = '0.1.0'
 Vec = Tuple[float, float, float]
 _M = TypeVar('_M', bound='Molecule')
 
-bohr = 0.52917721092
+bohr = 0.529_177_210_92
 with resources.open_text(sci, 'atom-data.csv') as f:
     species_data = OrderedDict(
         (r['symbol'], {**r, 'number': int(r['number'])})  # type: ignore
@@ -34,7 +48,7 @@ _string_cache: Dict[Any, str] = {}
 
 
 def no_neg_zeros(r: Any) -> Any:
-    return [0. if abs(x) < 1e-8 else x for x in r]
+    return [0.0 if abs(x) < 1e-8 else x for x in r]
 
 
 class Atom:
@@ -70,8 +84,9 @@ class Molecule(Sized, Iterable[Atom]):
         self.flags = flags
 
     @classmethod
-    def from_coords(cls: Type[_M], species: List[str], coords: List[Vec],
-                    **flags: Any) -> _M:
+    def from_coords(
+        cls: Type[_M], species: List[str], coords: List[Vec], **flags: Any
+    ) -> _M:
         return cls([Atom(sp, coord) for sp, coord in zip(species, coords)], **flags)
 
     @property
@@ -89,15 +104,15 @@ class Molecule(Sized, Iterable[Atom]):
     @property
     def cms(self) -> Any:
         masses = np.array([atom.mass for atom in self])
-        return (masses[:, None]*self.xyz).sum(0)/self.mass
+        return (masses[:, None] * self.xyz).sum(0) / self.mass
 
     @property
     def inertia(self) -> Any:
         masses = np.array([atom.mass for atom in self])
-        coords_w = np.sqrt(masses)[:, None]*(self.xyz-self.cms)
-        A = np.array([np.diag(np.full(3, r)) for r in np.sum(coords_w**2, 1)])
-        B = coords_w[:, :, None]*coords_w[:, None, :]
-        return np.sum(A-B, 0)
+        coords_w = np.sqrt(masses)[:, None] * (self.xyz - self.cms)
+        A = np.array([np.diag(np.full(3, r)) for r in np.sum(coords_w ** 2, 1)])
+        B = coords_w[:, :, None] * coords_w[:, None, :]
+        return np.sum(A - B, 0)
 
     def __getitem__(self, i: int) -> Atom:
         return self._atoms[i]
@@ -118,15 +133,13 @@ class Molecule(Sized, Iterable[Atom]):
         counter = DefaultDict[str, int](int)
         for specie in self.species:
             counter[specie] += 1
-        return ''.join(
-            f'{sp}{n if n > 1 else ""}' for sp, n in sorted(counter.items())
-        )
+        return ''.join(f'{sp}{n if n > 1 else ""}' for sp, n in sorted(counter.items()))
 
     def bondmatrix(self, scale: float) -> Any:
         xyz = self.xyz
         Rs = np.array([atom.covalent_radius for atom in self])
-        dmatrix = np.sqrt(np.sum((xyz[None, :]-xyz[:, None])**2, 2))
-        thrmatrix = scale*(Rs[None, :]+Rs[:, None])
+        dmatrix = np.sqrt(np.sum((xyz[None, :] - xyz[:, None]) ** 2, 2))
+        thrmatrix = scale * (Rs[None, :] + Rs[:, None])
         return dmatrix < thrmatrix
 
     def get_fragments(self, scale: float = 1.3) -> List['Molecule']:
@@ -147,7 +160,7 @@ class Molecule(Sized, Iterable[Atom]):
         m = self.copy()
         for atom in m:
             c = atom.coord
-            atom.coord = (c[0]+delta[0], c[1]+delta[1], c[2]+delta[2])
+            atom.coord = (c[0] + delta[0], c[1] + delta[1], c[2] + delta[2])
         return m
 
     def __add__(self: _M, other: object) -> _M:
@@ -160,16 +173,23 @@ class Molecule(Sized, Iterable[Atom]):
     def centered(self: _M) -> _M:
         return self.shifted(-self.cms)
 
-    def rotated(self: _M, axis: Union[str, int] = None, phi: float = None,
-                center: Vec = None, rotmat: Any = None) -> _M:
+    def rotated(
+        self: _M,
+        axis: Union[str, int] = None,
+        phi: float = None,
+        center: Vec = None,
+        rotmat: Any = None,
+    ) -> _M:
         if rotmat is None:
             assert axis and phi
-            phi = phi*np.pi/180
-            rotmat = np.array([
-                1, 0, 0,
-                0, np.cos(phi), -np.sin(phi),
-                0, np.sin(phi), np.cos(phi)
-            ]).reshape(3, 3)
+            phi = phi * np.pi / 180
+            rotmat = np.array(
+                [
+                    [1, 0, 0],
+                    [0, np.cos(phi), -np.sin(phi)],
+                    [0, np.sin(phi), np.cos(phi)],
+                ]
+            )
             if isinstance(axis, str):
                 shift = {'x': 0, 'y': 1, 'z': 2}[axis]
             else:
@@ -179,7 +199,7 @@ class Molecule(Sized, Iterable[Atom]):
         center = np.array(center) if center else self.cms
         m = self.copy()
         for atom in m:
-            atom.coord = tuple(center+rotmat.dot(atom.coord-center))  # type: ignore
+            atom.coord = tuple(center + rotmat.dot(atom.coord - center))  # type: ignore
         return m
 
     @property
@@ -210,9 +230,12 @@ class Molecule(Sized, Iterable[Atom]):
             f.write('{}\n'.format(len(self)))
             f.write('Formula: {}\n'.format(self.formula))
             for specie, coord in self.items():
-                f.write('{:>2} {}\n'.format(specie, ' '.join(
-                    '{:15.8}'.format(x) for x in no_neg_zeros(coord)
-                )))
+                f.write(
+                    '{:>2} {}\n'.format(
+                        specie,
+                        ' '.join('{:15.8}'.format(x) for x in no_neg_zeros(coord)),
+                    )
+                )
         elif fmt == 'aims':
             for i, atom in enumerate(self.centers):
                 specie, r = atom.specie, atom.coord
@@ -231,10 +254,12 @@ class Molecule(Sized, Iterable[Atom]):
         elif fmt == 'mopac':
             f.write('* Formula: {}\n'.format(self.formula))
             for specie, coord in self.items():
-                f.write('{:>2} {}\n'.format(
-                    specie,
-                    ' '.join('{:15.8} 1'.format(x) for x in no_neg_zeros(coord))
-                ))
+                f.write(
+                    '{:>2} {}\n'.format(
+                        specie,
+                        ' '.join('{:15.8} 1'.format(x) for x in no_neg_zeros(coord)),
+                    )
+                )
         else:
             raise ValueError("Unknown format: '{}'".format(fmt))
 
@@ -267,12 +292,11 @@ class Crystal(Molecule):
         self.lattice = lattice
 
     @classmethod
-    def from_coords(cls, species: List[str], coords: List[Vec],  # type: ignore
-                    lattice: List[Vec], **flags) -> 'Crystal':
+    def from_coords(  # type: ignore
+        cls, species: List[str], coords: List[Vec], lattice: List[Vec], **flags
+    ) -> 'Crystal':
         return cls(
-            [Atom(sp, coord) for sp, coord in zip(species, coords)],
-            lattice,
-            **flags
+            [Atom(sp, coord) for sp, coord in zip(species, coords)], lattice, **flags
         )
 
     def dump(self, f: IO[str], fmt: str) -> None:
@@ -291,8 +315,9 @@ class Crystal(Molecule):
             for r in self.lattice:
                 x, y, z = no_neg_zeros(r)
                 f.write(f'{x:15.8f} {y:15.8f} {z:15.8f}\n')
-            species: Dict[str, List[Atom]] = \
-                OrderedDict((sp, []) for sp in set(self.species))
+            species: Dict[str, List[Atom]] = OrderedDict(
+                (sp, []) for sp in set(self.species)
+            )
             f.write(' '.join(species.keys()) + '\n')
             for atom in self:
                 species[atom.specie].append(atom)
@@ -306,16 +331,18 @@ class Crystal(Molecule):
             raise ValueError(f'Unknown format: {fmt!r}')
 
     def copy(self) -> 'Crystal':
-        return Crystal(
-            [atom.copy() for atom in self._atoms],
-            self.lattice.copy()
-        )
+        return Crystal([atom.copy() for atom in self._atoms], self.lattice.copy())
 
-    def rotated(self, axis: Union[str, int] = None, phi: float = None,
-                center: Vec = None, rotmat: Any = None) -> 'Crystal':
+    def rotated(
+        self,
+        axis: Union[str, int] = None,
+        phi: float = None,
+        center: Vec = None,
+        rotmat: Any = None,
+    ) -> 'Crystal':
         assert center is None
         g = super().rotated(axis, phi, (0, 0, 0), rotmat)
-        m = Molecule.from_coords(['_']*3, self.lattice)
+        m = Molecule.from_coords(['_'] * 3, self.lattice)
         m = m.rotated(axis, phi, (0, 0, 0), rotmat)
         g.lattice = m.coords
         return g
@@ -325,29 +352,33 @@ class Crystal(Molecule):
         return np.array(self.lattice)
 
     def get_kgrid(self, density: float = 0.06) -> Tuple[int, int, int]:
-        rec_lattice = 2*np.pi*np.linalg.inv(self.abc.T)
-        rec_lens = np.sqrt((rec_lattice**2).sum(1))
-        nkpts = np.ceil(rec_lens/(density*bohr))
+        rec_lattice = 2 * np.pi * np.linalg.inv(self.abc.T)
+        rec_lens = np.sqrt((rec_lattice ** 2).sum(1))
+        nkpts = np.ceil(rec_lens / (density * bohr))
         return int(nkpts[0]), int(nkpts[1]), int(nkpts[2])
 
     def supercell(self, ns: Tuple[int, int, int]) -> 'Crystal':
         abc = self.abc
-        latt_vectors = np.array([
-            sum(s*vec for s, vec in zip(shift, abc))
-            for shift in product(*map(range, ns))
-        ])
+        latt_vectors = np.array(
+            [
+                sum(s * vec for s, vec in zip(shift, abc))
+                for shift in product(*map(range, ns))
+            ]
+        )
         species = list(chain.from_iterable(repeat(self.species, len(latt_vectors))))
         coords = [
-            (x, y, z) for x, y, z in
-            (self.xyz[None, :, :]+latt_vectors[:, None, :]).reshape((-1, 3))
+            (x, y, z)
+            for x, y, z in (self.xyz[None, :, :] + latt_vectors[:, None, :]).reshape(
+                (-1, 3)
+            )
         ]
-        lattice = [(x, y, z) for x, y, z in abc*np.array(ns)[:, None]]
+        lattice = [(x, y, z) for x, y, z in abc * np.array(ns)[:, None]]
         return Crystal.from_coords(species, coords, lattice)
 
     def normalized(self) -> 'Crystal':
         xyz = (
-            np.mod(self.xyz@np.linalg.inv(self.lattice)+1e-10, 1)-1e-10
-        )@self.lattice
+            np.mod(self.xyz @ np.linalg.inv(self.lattice) + 1e-10, 1) - 1e-10
+        ) @ self.lattice
         return Crystal.from_coords(self.species, xyz, self.lattice.copy())
 
 
@@ -446,15 +477,17 @@ def getfragments(C: Any) -> List[List[int]]:
         if assigned[elem] >= 0:  # skip if assigned
             continue
         queue[0], a, b = elem, 0, 1  # queue starting with the element itself
-        while b-a > 0:  # until queue is exhausted
-            node, a = queue[a], a+1  # pop from queue
+        while b - a > 0:  # until queue is exhausted
+            node, a = queue[a], a + 1  # pop from queue
             assigned[node] = ifragment  # assign node
             neighbors = np.flatnonzero(C[node, :])  # list of neighbors
             for neighbor in neighbors:
                 if not (assigned[neighbor] >= 0 or neighbor in queue[a:b]):
                     # add to queue if not assigned or in queue
-                    queue[b], b = neighbor, b+1
+                    queue[b], b = neighbor, b + 1
         ifragment += 1
-    fragments = [[i for i, f in enumerate(assigned) if f == fragment]
-                 for fragment in range(ifragment)]
+    fragments = [
+        [i for i, f in enumerate(assigned) if f == fragment]
+        for fragment in range(ifragment)
+    ]
     return fragments

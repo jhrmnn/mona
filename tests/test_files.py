@@ -25,15 +25,18 @@ def datafile():
 
 @Rule
 async def calcs2():
-    return [[
-        dist,
-        dir_task(
-            '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
-            [('data', str(dist).encode())],
-            {'input': 'data'},
-            label=f'/calcs/dist={dist}'
-        ).get('STDOUT', b'0')
-    ] for dist in range(5)]
+    return [
+        [
+            dist,
+            dir_task(
+                '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
+                [('data', str(dist).encode())],
+                {'input': 'data'},
+                label=f'/calcs/dist={dist}',
+            ).get('STDOUT', b'0'),
+        ]
+        for dist in range(5)
+    ]
 
 
 def test_hashing(tmpdir):
@@ -111,6 +114,7 @@ def test_alt_input(datafile, tmpdir):
             ['data'],
             {'input': 'data'},
         )
+
     with Session([FileManager(tmpdir)]) as sess:
         sess.run_task(create_task())
         int(create_task().value['STDOUT']) == 4
@@ -118,16 +122,23 @@ def test_alt_input(datafile, tmpdir):
 
 def test_alt_input2(datafile, tmpdir):
     with Session([FileManager(tmpdir)]) as sess:
-        assert int(sess.run_task(dir_task(
-            '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
-            [Path('data')],
-            {'input': 'data'},
-        )).value['STDOUT']) == 4
+        assert (
+            int(
+                sess.run_task(
+                    dir_task(
+                        '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
+                        [Path('data')],
+                        {'input': 'data'},
+                    )
+                ).value['STDOUT']
+            )
+            == 4
+        )
 
 
 def test_alt_input3(tmpdir):
     tmpdir = Path(tmpdir)
-    (tmpdir/'data').write_text('2')
+    (tmpdir / 'data').write_text('2')
     with Session([FileManager(tmpdir)]):
         with pytest.raises(InvalidInput):
             dir_task(b'', [object()])

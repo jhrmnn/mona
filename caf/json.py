@@ -4,8 +4,20 @@
 import json
 from pathlib import PosixPath
 
-from typing import Any, Set, Type, Dict, Callable, cast, Tuple, Optional, \
-    NewType, Union, TypeVar, Iterable
+from typing import (
+    Any,
+    Set,
+    Type,
+    Dict,
+    Callable,
+    cast,
+    Tuple,
+    Optional,
+    NewType,
+    Union,
+    TypeVar,
+    Iterable,
+)
 
 from .graph import traverse_id
 from .errors import CompositeError
@@ -23,7 +35,7 @@ ClassRegister = Dict[Type[Any], Tuple[JSONConverter[Any], JSONAdapter[Any]]]
 registered_classes: ClassRegister = {
     PosixPath: (
         lambda p: {'path': str(p)},
-        lambda dct: PosixPath(cast(str, dct['path']))
+        lambda dct: PosixPath(cast(str, dct['path'])),
     )
 }
 
@@ -53,8 +65,9 @@ def validate_json(obj: Any, hook: Callable[[Any], bool] = None) -> None:
 
 
 class ClassJSONEncoder(json.JSONEncoder):
-    def __init__(self, *args: Any, tape: Set[Any], default: JSONDefault[Any],
-                 **kwargs: Any) -> None:
+    def __init__(
+        self, *args: Any, tape: Set[Any], default: JSONDefault[Any], **kwargs: Any
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._default = default
         self._tape = tape
@@ -79,8 +92,7 @@ class ClassJSONEncoder(json.JSONEncoder):
 
 
 class ClassJSONDecoder(json.JSONDecoder):
-    def __init__(self, *args: Any, hook: JSONHook[Any], **kwargs: Any
-                 ) -> None:
+    def __init__(self, *args: Any, hook: JSONHook[Any], **kwargs: Any) -> None:
         assert 'object_hook' not in kwargs
         kwargs['object_hook'] = self._my_object_hook
         super().__init__(*args, **kwargs)

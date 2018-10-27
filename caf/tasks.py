@@ -6,12 +6,28 @@ import json
 from abc import abstractmethod
 import asyncio
 import inspect
-from typing import Callable, Optional, List, TypeVar, \
-    cast, Tuple, Union, Awaitable, Dict, Iterable
+from typing import (
+    Callable,
+    Optional,
+    List,
+    TypeVar,
+    cast,
+    Tuple,
+    Union,
+    Awaitable,
+    Dict,
+    Iterable,
+)
 
 from .futures import Future, State
-from .hashing import Hashed, Composite, HashedCompositeLike, HashedComposite, \
-    hash_function, HashResolver
+from .hashing import (
+    Hashed,
+    Composite,
+    HashedCompositeLike,
+    HashedComposite,
+    hash_function,
+    HashResolver,
+)
 from .utils import get_fullname, Maybe, Empty, swap_type, import_fullname
 from .errors import FutureError, TaskError, CompositeError
 
@@ -57,6 +73,7 @@ class HashedFuture(Hashed[_T_co], Future):
     Inherits abstract methods spec() and label() from Hashed, implements
     abstract property value and adds abstract method result().
     """
+
     @property
     @abstractmethod
     def spec(self) -> bytes:
@@ -91,12 +108,20 @@ class HashedFuture(Hashed[_T_co], Future):
 
 
 class Task(HashedFuture[_T_co]):
-    def __init__(self, corofunc: Corofunc[_T_co], *args: object, label: str = None,
-                 default: Maybe[_T_co] = Empty._) -> None:
+    def __init__(
+        self,
+        corofunc: Corofunc[_T_co],
+        *args: object,
+        label: str = None,
+        default: Maybe[_T_co] = Empty._,
+    ) -> None:
         self._corofunc = corofunc
         self._args = tuple(map(ensure_hashed, args))
-        self._default = cast(Hashed[_T_co], ensure_hashed(default)) \
-            if default is not Empty._ else None
+        self._default = (
+            cast(Hashed[_T_co], ensure_hashed(default))
+            if default is not Empty._
+            else None
+        )
         Hashed.__init__(self)
         Future.__init__(
             self, (arg for arg in self._args if isinstance(arg, HashedFuture))
@@ -111,12 +136,14 @@ class Task(HashedFuture[_T_co]):
 
     @property
     def spec(self) -> bytes:
-        return json.dumps([
-            get_fullname(self._corofunc),
-            hash_function(self._corofunc),
-            self._default.hashid if self._default else None,
-            *(fut.hashid for fut in self._args)
-        ]).encode()
+        return json.dumps(
+            [
+                get_fullname(self._corofunc),
+                hash_function(self._corofunc),
+                self._default.hashid if self._default else None,
+                *(fut.hashid for fut in self._args),
+            ]
+        ).encode()
 
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'Task[_T_co]':
@@ -124,8 +151,9 @@ class Task(HashedFuture[_T_co]):
         corofunc = import_fullname(rule_name).corofunc
         assert inspect.iscoroutinefunction(corofunc)
         assert hash_function(corofunc) == corohash
-        default: Union[_T_co, Empty] = cast(_T_co, resolve(default_hash)) \
-            if default_hash else Empty._
+        default: Union[_T_co, Empty] = cast(
+            _T_co, resolve(default_hash)
+        ) if default_hash else Empty._
         args = (resolve(h) for h in arg_hashes)
         return cls(corofunc, *args, default=default)
 
@@ -154,12 +182,14 @@ class Task(HashedFuture[_T_co]):
     def __getitem__(self, key: object) -> 'TaskComponent[object]':
         return self.get(key)
 
-    def get(self, key: object, default: Maybe[object] = Empty._
-            ) -> 'TaskComponent[object]':
+    def get(
+        self, key: object, default: Maybe[object] = Empty._
+    ) -> 'TaskComponent[object]':
         return TaskComponent(self, [key], default)
 
-    def resolve(self, handler: Callable[[Hashed[_T_co]], _U] = None
-                ) -> Union[_U, _T_co]:
+    def resolve(
+        self, handler: Callable[[Hashed[_T_co]], _U] = None
+    ) -> Union[_U, _T_co]:
         if isinstance(self._result, Empty):
             raise TaskError(f'Has not run: {self!r}', self)
         if not isinstance(self._result, Hashed):
@@ -209,9 +239,7 @@ class Task(HashedFuture[_T_co]):
 
     async def call_async(self) -> _T_co:
         args = [
-            arg.value_or_default
-            if isinstance(arg, HashedFuture)
-            else arg.value
+            arg.value_or_default if isinstance(arg, HashedFuture) else arg.value
             for arg in self.args
         ]
         return await self._corofunc(*args)
@@ -231,33 +259,38 @@ class Task(HashedFuture[_T_co]):
 
 
 class TaskComponent(HashedFuture[_T_co]):
-    def __init__(self, task: Task[object], keys: List[object],
-                 default: Maybe[_T_co] = Empty._) -> None:
+    def __init__(
+        self, task: Task[object], keys: List[object], default: Maybe[_T_co] = Empty._
+    ) -> None:
         self._task = task
         self._keys = keys
-        self._default = cast(Hashed[_T_co], ensure_hashed(default)) \
-            if default is not Empty._ else None
+        self._default = (
+            cast(Hashed[_T_co], ensure_hashed(default))
+            if default is not Empty._
+            else None
+        )
         Hashed.__init__(self)
         Future.__init__(self, [cast(HashedFuture[object], task)])
-        self._label = ''.join([
-            self._task.label, *(f'[{k!r}]' for k in self._keys)
-        ])
+        self._label = ''.join([self._task.label, *(f'[{k!r}]' for k in self._keys)])
         self.add_ready_callback(lambda self: self.set_done())
 
     @property
     def spec(self) -> bytes:
-        return json.dumps([
-            self._task.hashid,
-            self._default.hashid if self._default else None,
-            *self._keys
-        ]).encode()
+        return json.dumps(
+            [
+                self._task.hashid,
+                self._default.hashid if self._default else None,
+                *self._keys,
+            ]
+        ).encode()
 
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'TaskComponent[_T_co]':
         task_hash, default_hash, *keys = json.loads(spec)
         task = cast(Task[object], resolve(task_hash))
-        default: Union[_T_co, Empty] = cast(_T_co, resolve(default_hash)) \
-            if default_hash else Empty._
+        default: Union[_T_co, Empty] = cast(
+            _T_co, resolve(default_hash)
+        ) if default_hash else Empty._
         return cls(task, keys, default)
 
     @property
@@ -270,8 +303,9 @@ class TaskComponent(HashedFuture[_T_co]):
     def __getitem__(self, key: object) -> 'TaskComponent[object]':
         return self.get(key)
 
-    def get(self, key: object, default: Maybe[object] = Empty._
-            ) -> 'TaskComponent[object]':
+    def get(
+        self, key: object, default: Maybe[object] = Empty._
+    ) -> 'TaskComponent[object]':
         return TaskComponent(self._task, self._keys + [key], default)
 
     @property
@@ -294,8 +328,7 @@ class TaskComponent(HashedFuture[_T_co]):
 # execution, but it is only taken by the child task, so that if the component
 # does not exist, the exception is raised only later
 class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
-    def __init__(self, jsonstr: str, components: Iterable[Hashed[object]]
-                 ) -> None:
+    def __init__(self, jsonstr: str, components: Iterable[Hashed[object]]) -> None:
         components = list(components)
         futures = [comp for comp in components if isinstance(comp, HashedFuture)]
         assert futures
@@ -311,7 +344,7 @@ class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: igno
 
     def default_result(self) -> Composite:
         return self.resolve(
-            lambda comp:
-            cast(object, comp.value_or_default) if isinstance(comp, HashedFuture)
+            lambda comp: cast(object, comp.value_or_default)
+            if isinstance(comp, HashedFuture)
             else comp.value
         )

@@ -15,9 +15,7 @@ async def parse_aims(outputs: Dict[str, bytes]) -> Any:
     stdout = outputs['results.xml'].decode()
     parsed = parse_xml(io.StringIO(stdout))
     energies = {x['name']: x['value'][0] for x in parsed['energy']}
-    return {
-        'energy': energies['Total energy']
-    }
+    return {'energy': energies['Total energy']}
 
 
 def parse_xml(source: IO[str]) -> Any:
@@ -51,7 +49,7 @@ def parse_xmlelem(elem: Any) -> Any:
 
 def parse_xmlarr(xmlarr: Any, axis: int = None, typef: Type[Any] = None) -> Any:
     if axis is None:
-        axis = len(xmlarr.attrib['size'].split())-1
+        axis = len(xmlarr.attrib['size'].split()) - 1
     if not typef:
         typename = xmlarr.attrib['type']
         if typename == 'dble' or typename == 'real':
@@ -61,8 +59,10 @@ def parse_xmlarr(xmlarr: Any, axis: int = None, typef: Type[Any] = None) -> Any:
         else:
             raise Exception('Unknown array type')
     if axis > 0:
-        lst = [parse_xmlarr(v, axis-1, typef)[..., None]
-               for v in xmlarr.findall('vector')]
+        lst = [
+            parse_xmlarr(v, axis - 1, typef)[..., None]
+            for v in xmlarr.findall('vector')
+        ]
         return np.concatenate(lst, axis)
     else:
         return np.array([typef(x) for x in xmlarr.text.split()])

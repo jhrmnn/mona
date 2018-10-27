@@ -14,11 +14,7 @@ version = metadata['version']
 author = ' '.join(metadata['authors'][0].split()[:-1])
 description = metadata['description']
 
-extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.todo',
-    'sphinx.ext.viewcode'
-]
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.viewcode']
 source_suffix = '.rst'
 master_doc = 'index'
 copyright = f'2015-{datetime.date.today().year}, {author}'
@@ -38,12 +34,7 @@ html_theme_options = {
     'travis_button': True,
 }
 html_sidebars = {
-    '**': [
-        'about.html',
-        'navigation.html',
-        'relations.html',
-        'searchbox.html',
-    ]
+    '**': ['about.html', 'navigation.html', 'relations.html', 'searchbox.html']
 }
 htmlhelp_basename = f'{project}doc'
 

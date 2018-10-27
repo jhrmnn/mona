@@ -45,9 +45,7 @@ def hash_function(func: Callable[..., Any]) -> Hash:
         pass
     ast_code = ast_code_of(func)
     hashed_globals = hashed_globals_of(func)
-    spec = json.dumps(
-        {'ast_code': ast_code, 'globals': hashed_globals}, sort_keys=True
-    )
+    spec = json.dumps({'ast_code': ast_code, 'globals': hashed_globals}, sort_keys=True)
     return _cache.setdefault(func, hash_text(spec))
 
 
@@ -81,8 +79,7 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
     items = chain(closure_vars.nonlocals.items(), closure_vars.globals.items())
     hashed_globals: Dict[str, str] = {}
     for name, obj in items:
-        if inspect.isclass(obj) or inspect.isfunction(obj) or \
-                inspect.ismodule(obj):
+        if inspect.isclass(obj) or inspect.isfunction(obj) or inspect.ismodule(obj):
             if inspect.ismodule(obj):
                 mod = obj
                 fullname = obj.__name__
@@ -101,8 +98,11 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
                 hashed_globals[name] = f'function:{hashid}'
                 continue
         if hasattr(obj, '_func_hash'):
-            hashid = obj._func_hash() \
-                if getattr(obj, 'corofunc', None) is not func else 'self'
+            hashid = (
+                obj._func_hash()
+                if getattr(obj, 'corofunc', None) is not func
+                else 'self'
+            )
             hashed_globals[name] = f'func_hash:{hashid}'
             continue
         try:
@@ -120,9 +120,10 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
 # TODO submit cpython fix
 def getclosurevars(func: Callable[..., Any]) -> inspect.ClosureVars:
     code = func.__code__
-    nonlocal_vars = {name: cell.cell_contents for name, cell in zip(
-        code.co_freevars, func.__closure__ or ()  # type: ignore
-    )}
+    nonlocal_vars = {
+        name: cell.cell_contents
+        for name, cell in zip(code.co_freevars, func.__closure__ or ())  # type: ignore
+    }
     global_ns = func.__globals__  # type: ignore
     builtin_ns = global_ns['__builtins__']
     if inspect.ismodule(builtin_ns):
@@ -144,6 +145,4 @@ def getclosurevars(func: Callable[..., Any]) -> inspect.ClosureVars:
                     builtin_vars[name] = builtin_ns[name]
                 except KeyError:
                     unbound_names.add(name)
-    return inspect.ClosureVars(
-        nonlocal_vars, global_vars, builtin_vars, unbound_names
-    )
+    return inspect.ClosureVars(nonlocal_vars, global_vars, builtin_vars, unbound_names)

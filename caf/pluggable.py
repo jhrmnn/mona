@@ -2,8 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
-from typing import Dict, Any, TypeVar, cast, List, \
-    Generator, Awaitable, Generic
+from typing import Dict, Any, TypeVar, cast, List, Generator, Awaitable, Generic
 
 log = logging.getLogger(__name__)
 
@@ -36,9 +35,9 @@ class Pluggable:
             plugins.reverse()
         return plugins
 
-    def _run_plugins(self, func: str, start: Any, *args: Any,
-                     reverse: bool = False, **kwargs: Any
-                     ) -> Generator[Any, Any, None]:
+    def _run_plugins(
+        self, func: str, start: Any, *args: Any, reverse: bool = False, **kwargs: Any
+    ) -> Generator[Any, Any, None]:
         for plugin in self._get_plugins():
             all_args = args if start is None else (start, *args)
             try:
@@ -47,8 +46,9 @@ class Pluggable:
                 log.error(f'Error in plugin {plugin._name!r}')
                 raise
 
-    async def run_plugins_async(self, func: str, *args: Any, start: _T,
-                                reverse: bool = False, **kwargs: Any) -> _T:
+    async def run_plugins_async(
+        self, func: str, *args: Any, start: _T, reverse: bool = False, **kwargs: Any
+    ) -> _T:
         gen = self._run_plugins(func, start, *args, reverse=reverse, **kwargs)
         try:
             start = await cast(Awaitable[_T], next(gen))
@@ -57,8 +57,9 @@ class Pluggable:
         except StopIteration:
             return start
 
-    def run_plugins(self, func: str, *args: Any, start: _T,
-                    reverse: bool = False, **kwargs: Any) -> _T:
+    def run_plugins(
+        self, func: str, *args: Any, start: _T, reverse: bool = False, **kwargs: Any
+    ) -> _T:
         gen = self._run_plugins(func, start, *args, reverse=reverse, **kwargs)
         try:
             start = cast(_T, next(gen))

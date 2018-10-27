@@ -26,9 +26,9 @@ class App:
         self._cafdir = Path(cafdir).resolve()
         self._config: Dict[str, Any] = {}
         for path in [
-                Path('~/.config/caf/config.toml').expanduser(),
-                Path('caf.toml'),
-                self._cafdir/'config.toml',
+            Path('~/.config/caf/config.toml').expanduser(),
+            Path('caf.toml'),
+            self._cafdir / 'config.toml',
         ]:
             if path.exists():
                 with path.open() as f:
@@ -39,15 +39,15 @@ class App:
         self(sess, **kwargs)
         return sess
 
-    def __call__(self, sess: Session, ncores: int = None,
-                 full_restore: bool = False) -> None:
+    def __call__(
+        self, sess: Session, ncores: int = None, full_restore: bool = False
+    ) -> None:
         self._plugins = {
             'parallel': Parallel(ncores),
-            'tmpdir': TmpdirManager(self._cafdir/App.TMPDIR),
-            'files': FileManager(self._cafdir/App.FILES),
+            'tmpdir': TmpdirManager(self._cafdir / App.TMPDIR),
+            'files': FileManager(self._cafdir / App.FILES),
             'cache': Cache.from_path(
-                self._cafdir/App.CACHE,
-                full_restore=full_restore,
+                self._cafdir / App.CACHE, full_restore=full_restore
             ),
         }
         for plugin in self._plugins.values():
@@ -63,11 +63,11 @@ class App:
             cache_home = Path(self._config['cache'])
         except KeyError:
             for dirname in [App.TMPDIR, App.FILES]:
-                (self._cafdir/dirname).mkdir()
+                (self._cafdir / dirname).mkdir()
         else:
             ts = get_timestamp()
-            cachedir = cache_home/f'{Path.cwd().name}_{ts}'
+            cachedir = cache_home / f'{Path.cwd().name}_{ts}'
             cachedir.mkdir()
             for dirname in [App.TMPDIR, App.FILES]:
-                (cachedir/dirname).mkdir()
-                (self._cafdir/dirname).symlink_to(cachedir/dirname)
+                (cachedir / dirname).mkdir()
+                (self._cafdir / dirname).symlink_to(cachedir / dirname)

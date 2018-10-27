@@ -24,14 +24,17 @@ async def process():
 
 @Rule
 async def calcs(n):
-    return [[
-        dist,
-        dir_task(
-            f'#!/bin/bash\nexpr $(cat data) "*" 2; sleep {n}'.encode(),
-            {'data': str(dist).encode()},
-            label=f'/calcs/dist={dist}'
-        )['STDOUT']
-    ] for dist in range(5)]
+    return [
+        [
+            dist,
+            dir_task(
+                f'#!/bin/bash\nexpr $(cat data) "*" 2; sleep {n}'.encode(),
+                {'data': str(dist).encode()},
+                label=f'/calcs/dist={dist}',
+            )['STDOUT'],
+        ]
+        for dist in range(5)
+    ]
 
 
 @Rule

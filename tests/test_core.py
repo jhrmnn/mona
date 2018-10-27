@@ -54,7 +54,7 @@ def test_identical_futures():
         m = min(x, y)
         if m < 0:
             return [0]
-        return [f([m], [max(x, y)-1])[0]]
+        return [f([m], [max(x, y) - 1])[0]]
 
     with Session() as sess:
         expr = f([f([1], [1])[0]], [f([1], [1])[0]])[0]
@@ -65,7 +65,7 @@ def test_recursion():
     @Rule
     async def recurse(i):
         if i < 5:
-            return recurse(i+1)
+            return recurse(i + 1)
         return i
 
     with Session() as sess:

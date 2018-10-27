@@ -49,22 +49,24 @@ class DirTaskProcessError(subprocess.CalledProcessError):
         self.stderr = stderr
 
     def __str__(self) -> str:
-        return '\n'.join([
-            'STDOUT:',
-            self.stdout.decode(),
-            '',
-            'STDERR:',
-            self.stderr.decode(),
-            '',
-            super().__str__()
-        ])
+        return '\n'.join(
+            [
+                'STDOUT:',
+                self.stdout.decode(),
+                '',
+                'STDERR:',
+                self.stderr.decode(),
+                '',
+                super().__str__(),
+            ]
+        )
 
 
 @with_hook('dir_task')
 @Rule
-async def dir_task(exe: Union[HashingPath, bytes],
-                   inputs: Dict[str, Union[HashingPath, bytes, Path]]
-                   ) -> DirTaskResult:
+async def dir_task(
+    exe: Union[HashingPath, bytes], inputs: Dict[str, Union[HashingPath, bytes, Path]]
+) -> DirTaskResult:
     sess = Session.active()
     fmngr = sess.storage.get('dir_task:file_manager')
     assert not fmngr or isinstance(fmngr, FileManager)
@@ -76,16 +78,16 @@ async def dir_task(exe: Union[HashingPath, bytes],
         root = Path(tmpdir)
         for filename, target in inputs.items():
             if isinstance(target, bytes):
-                (root/filename).write_bytes(target)
+                (root / filename).write_bytes(target)
             elif isinstance(target, (Path, HashingPath)):
                 if not isinstance(target, Path):
                     target = target.path
-                (root/filename).symlink_to(target)
+                (root / filename).symlink_to(target)
             else:
                 raise InvalidInput(f'Invalid target {target!r}')
-        exefile = str(root/'EXE')
+        exefile = str(root / 'EXE')
         make_executable(exefile)
-        out_path, err_path = root/'STDOUT', root/'STDERR'
+        out_path, err_path = root / 'STDOUT', root / 'STDERR'
         try:
             with out_path.open('w') as stdout, err_path.open('w') as stderr:
                 await run_process(exefile, stdout=stdout, stderr=stderr, cwd=root)

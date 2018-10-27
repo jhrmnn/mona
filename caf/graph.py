@@ -3,10 +3,25 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import asyncio
 from enum import Enum
-from typing import TypeVar, Deque, Set, Callable, Iterable, \
-    MutableSequence, Dict, Awaitable, Container, Iterator, \
-    AsyncGenerator, Tuple, cast, Optional, Any, Union, \
-    NamedTuple
+from typing import (
+    TypeVar,
+    Deque,
+    Set,
+    Callable,
+    Iterable,
+    MutableSequence,
+    Dict,
+    Awaitable,
+    Container,
+    Iterator,
+    AsyncGenerator,
+    Tuple,
+    cast,
+    Optional,
+    Any,
+    Union,
+    NamedTuple,
+)
 
 _T = TypeVar('_T')
 NodeScheduler = Callable[[_T, Callable[[_T], None]], None]
@@ -16,9 +31,9 @@ NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[None]]
 Priority = Tuple['Action', 'Action', 'Action']
 
 
-def extend_from(src: Iterable[_T],
-                seq: MutableSequence[_T], *,
-                filter: Container[_T]) -> None:
+def extend_from(
+    src: Iterable[_T], seq: MutableSequence[_T], *, filter: Container[_T]
+) -> None:
     seq.extend(x for x in src if x not in filter)
 
 
@@ -68,13 +83,14 @@ class SetDeque(Deque[_T]):
         return x
 
 
-async def traverse_async(start: Iterable[_T],
-                         edges_from: Callable[[_T], Iterable[_T]],
-                         schedule: NodeScheduler[_T],
-                         execute: NodeExecutor[_T],
-                         depth: bool = False,
-                         priority: Priority = default_priority
-                         ) -> AsyncGenerator[Union[Step, NodeException], bool]:
+async def traverse_async(
+    start: Iterable[_T],
+    edges_from: Callable[[_T], Iterable[_T]],
+    schedule: NodeScheduler[_T],
+    execute: NodeExecutor[_T],
+    depth: bool = False,
+    priority: Priority = default_priority,
+) -> AsyncGenerator[Union[Step, NodeException], bool]:
     """
     Traverse a self-extending DAG, yield steps.
 
@@ -106,12 +122,12 @@ async def traverse_async(start: Iterable[_T],
                 break
             action = Action.RESULTS
         progress = {
-            'executing': executing-done.qsize(),
+            'executing': executing - done.qsize(),
             'to_execute': len(to_execute),
             'to_visit': len(to_visit),
             'with_result': done.qsize(),
             'done': executed,
-            'visited': len(visited)
+            'visited': len(visited),
         }
         if action is Action.TRAVERSE:
             node = to_visit.pop() if depth else to_visit.popleft()
@@ -140,10 +156,12 @@ async def traverse_async(start: Iterable[_T],
                 yield NodeException(node, exc)
 
 
-def traverse(start: Iterable[_T],
-             edges_from: Callable[[_T], Iterable[_T]],
-             sentinel: Callable[[_T], bool] = None,
-             depth: bool = False) -> Iterator[_T]:
+def traverse(
+    start: Iterable[_T],
+    edges_from: Callable[[_T], Iterable[_T]],
+    sentinel: Callable[[_T], bool] = None,
+    depth: bool = False,
+) -> Iterator[_T]:
     """Traverse a DAG, yield visited notes."""
     visited: Set[_T] = set()
     queue = Deque[_T]()
@@ -157,8 +175,9 @@ def traverse(start: Iterable[_T],
         queue.extend(m for m in edges_from(n) if m not in visited)
 
 
-def traverse_id(start: Iterable[_T],
-                edges_from: Callable[[_T], Iterable[_T]]) -> Iterable[_T]:
+def traverse_id(
+    start: Iterable[_T], edges_from: Callable[[_T], Iterable[_T]]
+) -> Iterable[_T]:
     table: Dict[int, _T] = {}
 
     def ids_from(ns: Iterable[_T]) -> Iterable[int]:

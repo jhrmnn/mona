@@ -101,8 +101,7 @@ class Parallel(SessionPlugin):
         finally:
             self._release(ncores)
 
-    async def run_coro(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
-                       ) -> _T:
+    async def run_coro(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any) -> _T:
         task = self._app.running_task
         n = cast(int, task.storage.get('ncores', 1))
         if n > self._available:

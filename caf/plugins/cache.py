@@ -12,12 +12,23 @@ from weakref import WeakValueDictionary
 from ..sessions import SessionPlugin
 from ..futures import State, Future
 from ..tasks import Task
-from ..utils import Pathable, get_timestamp, get_fullname, \
-    import_fullname
+from ..utils import Pathable, get_timestamp, get_fullname, import_fullname
 from ..hashing import Hash, Hashed
 
-from typing import Any, Optional, Set, NamedTuple, Union, \
-    Iterable, Dict, cast, Type, Tuple, TypeVar, List
+from typing import (
+    Any,
+    Optional,
+    Set,
+    NamedTuple,
+    Union,
+    Iterable,
+    Dict,
+    cast,
+    Type,
+    Tuple,
+    TypeVar,
+    List,
+)
 
 log = logging.getLogger(__name__)
 
@@ -57,20 +68,20 @@ class CachedTask(Task[_T_co]):
 class Cache(SessionPlugin):
     name = 'db_cache'
 
-    def __init__(self, db: sqlite3.Connection, eager: bool = True,
-                 full_restore: bool = False) -> None:
+    def __init__(
+        self, db: sqlite3.Connection, eager: bool = True, full_restore: bool = False
+    ) -> None:
         self._db = db
         self._pending: Set[Hash] = set()
         self._objects: Dict[Hash, Hashed[object]] = {}
         self._eager = eager
         self._full_restore = full_restore
-        self._object_cache: 'WeakValueDictionary[Hash, Hashed[object]]' \
-            = WeakValueDictionary()
+        self._object_cache: 'WeakValueDictionary[Hash, Hashed[object]]'
+        self._object_cache = WeakValueDictionary()
 
     def __repr__(self) -> str:
         return (
-            f'<Cache npending={len(self._pending)} '
-            f'nobjects={len(self._objects)}>'
+            f'<Cache npending={len(self._pending)} ' f'nobjects={len(self._objects)}>'
         )
 
     @property
@@ -78,30 +89,30 @@ class Cache(SessionPlugin):
         return self._db
 
     def _store_objects(self, objs: Iterable[Hashed[object]]) -> None:
-        obj_rows = [ObjectRow(
-            hashid=obj.hashid,
-            typetag=get_fullname(obj.__class__),
-            spec=obj.spec
-        ) for obj in objs]
-        self._db.executemany(
-            'INSERT OR IGNORE INTO objects VALUES (?,?,?)', obj_rows
-        )
+        obj_rows = [
+            ObjectRow(
+                hashid=obj.hashid, typetag=get_fullname(obj.__class__), spec=obj.spec
+            )
+            for obj in objs
+        ]
+        self._db.executemany('INSERT OR IGNORE INTO objects VALUES (?,?,?)', obj_rows)
 
     def _store_tasks(self, tasks: Iterable[Task[object]]) -> None:
-        task_rows = [TaskRow(
-            hashid=task.hashid,
-            label=task.label,
-            state=task.state.name,
-            created=get_timestamp(),
-        ) for task in tasks]
-        self._db.executemany(
-            'INSERT INTO tasks VALUES (?,?,?,?,?,?,?)', task_rows
-        )
+        task_rows = [
+            TaskRow(
+                hashid=task.hashid,
+                label=task.label,
+                state=task.state.name,
+                created=get_timestamp(),
+            )
+            for task in tasks
+        ]
+        self._db.executemany('INSERT INTO tasks VALUES (?,?,?,?,?,?,?)', task_rows)
 
     def _update_state(self, task: Task[object]) -> None:
         self._db.execute(
             'UPDATE tasks SET state = ? WHERE hashid = ?',
-            (task.state.name, task.hashid)
+            (task.state.name, task.hashid),
         )
 
     def _store_result(self, task: Task[object]) -> None:
@@ -121,13 +132,11 @@ class Cache(SessionPlugin):
                 result = pickle.dumps(hashed_or_obj)
         if result_type is ResultType.HASHED:
             result = hashed.hashid
-        side_effects = ','.join(
-            t.hashid for t in self._app.get_side_effects(task)
-        )
+        side_effects = ','.join(t.hashid for t in self._app.get_side_effects(task))
         self._db.execute(
             'UPDATE tasks SET side_effects = ?, result_type = ?, '
             'result = ? WHERE hashid = ?',
-            (side_effects, result_type.name, result, task.hashid)
+            (side_effects, result_type.name, result, task.hashid),
         )
 
     def _get_task_row(self, hashid: Hash) -> Optional[TaskRow]:
@@ -138,8 +147,7 @@ class Cache(SessionPlugin):
             return None
         return TaskRow(*raw_row)
 
-    def _get_object_factory(self, hashid: Hash
-                            ) -> Tuple[bytes, Type[Hashed[object]]]:
+    def _get_object_factory(self, hashid: Hash) -> Tuple[bytes, Type[Hashed[object]]]:
         raw_row = self._db.execute(
             'SELECT * FROM objects WHERE hashid = ?', (hashid,)
         ).fetchone()
@@ -253,8 +261,9 @@ class Cache(SessionPlugin):
     @classmethod
     def from_path(cls, path: Pathable, **kwargs: Any) -> 'Cache':
         db = sqlite3.connect(path)
-        db.execute(dedent(
-            """\
+        db.execute(
+            dedent(
+                """\
             CREATE TABLE IF NOT EXISTS tasks (
                 hashid         TEXT,
                 label          TEXT,
@@ -266,9 +275,11 @@ class Cache(SessionPlugin):
                 PRIMARY KEY (hashid)
             )
             """
-        ))
-        db.execute(dedent(
-            """\
+            )
+        )
+        db.execute(
+            dedent(
+                """\
             CREATE TABLE IF NOT EXISTS objects (
                 hashid   TEXT,
                 typetag  TEXT,
@@ -276,5 +287,6 @@ class Cache(SessionPlugin):
                 PRIMARY KEY (hashid)
             )
             """
-        ))
+            )
+        )
         return Cache(db, **kwargs)

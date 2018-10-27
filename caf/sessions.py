@@ -8,14 +8,35 @@ from collections import defaultdict
 import asyncio
 from contextvars import ContextVar
 from contextlib import contextmanager, asynccontextmanager
-from typing import Any, Dict, Callable, Optional, \
-    TypeVar, Iterator, NamedTuple, cast, Iterable, List, Tuple, \
-    Union, Awaitable, AsyncGenerator, FrozenSet
+from typing import (
+    Any,
+    Dict,
+    Callable,
+    Optional,
+    TypeVar,
+    Iterator,
+    NamedTuple,
+    cast,
+    Iterable,
+    List,
+    Tuple,
+    Union,
+    Awaitable,
+    AsyncGenerator,
+    FrozenSet,
+)
 
 from .hashing import Hash, Hashed, HashedCompositeLike
 from .tasks import Task, HashedFuture, State, maybe_hashed, Corofunc
-from .graph import traverse, traverse_async, NodeExecuted, \
-    Action, Priority, default_priority, NodeException
+from .graph import (
+    traverse,
+    traverse_async,
+    NodeExecuted,
+    Action,
+    Priority,
+    default_priority,
+    NodeException,
+)
 from .utils import Literal, split, call_if
 from .errors import SessionError, TaskError, FutureError, CafError
 from .pluggable import Plugin, Pluggable
@@ -29,8 +50,9 @@ TaskExecute = Callable[[Task[Any], NodeExecuted[Task[Any]]], Awaitable[None]]
 ExceptionHandler = Callable[[Task[Any], Exception], bool]
 TaskFilter = Callable[[Task[Any]], bool]
 
-_active_session: ContextVar[Optional['Session']] = \
-    ContextVar('active_session', default=None)
+_active_session: ContextVar[Optional['Session']] = ContextVar(
+    'active_session', default=None
+)
 
 
 class SessionPlugin(Plugin['Session']):
@@ -72,8 +94,7 @@ class Session(Pluggable):
             plugin(self)
         self._tasks: Dict[Hash, Task[Any]] = {}
         self._graph = Graph({}, defaultdict(list), {})
-        self._running_task: ContextVar[Optional[Task[Any]]] = \
-            ContextVar('running_task')
+        self._running_task: ContextVar[Optional[Task[Any]]] = ContextVar('running_task')
         self._running_task.set(None)
         self._storage: Dict[str, Any] = {}
         self._skipped = False
@@ -89,9 +110,7 @@ class Session(Pluggable):
         return self._storage
 
     def get_side_effects(self, task: Task[Any]) -> Iterable[Task[Any]]:
-        return tuple(
-            self._tasks[h] for h in self._graph.side_effects[task.hashid]
-        )
+        return tuple(self._tasks[h] for h in self._graph.side_effects[task.hashid])
 
     def get_task(self, hashid: Hash) -> Task[Any]:
         return self._tasks[hashid]
@@ -112,9 +131,7 @@ class Session(Pluggable):
         if not self._skipped and exc_type is None:
             tasks_not_run = self._filter_tasks(lambda t: t.state < State.RUNNING)
             if tasks_not_run:
-                warnings.warn(
-                    f'tasks have never run: {tasks_not_run}', RuntimeWarning
-                )
+                warnings.warn(f'tasks have never run: {tasks_not_run}', RuntimeWarning)
         self._tasks.clear()
         self._storage.clear()
         self._graph.deps.clear()
@@ -139,20 +156,22 @@ class Session(Pluggable):
             self._running_task.set(None)
 
     def _process_objects(self, objs: Iterable[Hashed[Any]]) -> List[Task[Any]]:
-        objs = list(traverse(
-            objs,
-            lambda o: (
-                o.components
-                if isinstance(o, HashedCompositeLike)
-                else cast(Iterable[Hashed[Any]], o.parents)
-                if isinstance(o, HashedFuture)
-                else []
-            ),
-            lambda o: isinstance(o, Task)
-        ))
+        objs = list(
+            traverse(
+                objs,
+                lambda o: (
+                    o.components
+                    if isinstance(o, HashedCompositeLike)
+                    else cast(Iterable[Hashed[Any]], o.parents)
+                    if isinstance(o, HashedFuture)
+                    else []
+                ),
+                lambda o: isinstance(o, Task),
+            )
+        )
         tasks, objs = cast(
             Tuple[List[Task[Any]], List[Hashed[Any]]],
-            split(objs, lambda o: isinstance(o, Task))
+            split(objs, lambda o: isinstance(o, Task)),
         )
         for task in tasks:
             if task.hashid not in self._tasks:
@@ -171,12 +190,12 @@ class Session(Pluggable):
         self._graph.deps[task.hashid] = frozenset(t.hashid for t in arg_tasks)
         return task, True
 
-    def add_side_effect_of(self, caller: Task[object], callee: Task[object]
-                           ) -> None:
+    def add_side_effect_of(self, caller: Task[object], callee: Task[object]) -> None:
         self._graph.side_effects[caller.hashid].append(callee.hashid)
 
-    def create_task(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
-                    ) -> Task[_T]:
+    def create_task(
+        self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
+    ) -> Task[_T]:
         task = Task(corofunc, *args, **kwargs)
         caller = self._running_task.get()
         if caller:
@@ -230,20 +249,17 @@ class Session(Pluggable):
         task.set_has_run()
         side_effects = self.get_side_effects(task)
         if side_effects:
-            log.debug(
-                f'{task}: created tasks: {list(map(Literal, side_effects))}'
-            )
+            log.debug(f'{task}: created tasks: {list(map(Literal, side_effects))}')
         result = cast(_T, maybe_hashed(raw_result)) or raw_result
         self.set_result(task, result)
         self.run_plugins('post_task_run', task, start=None)
         return result
 
-    async def _traverse_execute(self, task: Task[Any],
-                                done: NodeExecuted[Task[Any]]) -> None:
+    async def _traverse_execute(
+        self, task: Task[Any], done: NodeExecuted[Task[Any]]
+    ) -> None:
         await self.run_task_async(task)
-        backflow = (
-            self._tasks[h] for h in self._graph.backflow.get(task.hashid, ())
-        )
+        backflow = (self._tasks[h] for h in self._graph.backflow.get(task.hashid, ()))
         done((task, None, backflow))
 
     def eval(self, *args: Any, **kwargs: Any) -> Any:
@@ -253,14 +269,15 @@ class Session(Pluggable):
         async with self.run_context():
             return await self._eval_async(*args, **kwargs)
 
-    async def _eval_async(self,
-                          obj: Any,
-                          depth: bool = False,
-                          priority: Priority = default_priority,
-                          exception_handler: ExceptionHandler = None,
-                          task_filter: TaskFilter = None,
-                          limit: int = None
-                          ) -> Any:
+    async def _eval_async(
+        self,
+        obj: Any,
+        depth: bool = False,
+        priority: Priority = default_priority,
+        exception_handler: ExceptionHandler = None,
+        task_filter: TaskFilter = None,
+        limit: int = None,
+    ) -> Any:
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
@@ -268,13 +285,15 @@ class Session(Pluggable):
         exceptions = {}
         traversal = traverse_async(
             self._process_objects([fut]),
-            lambda task: (self._tasks[h] for h in chain(
-                self._graph.deps[task.hashid],
-                self._graph.backflow.get(task.hashid, ()),
-            )),
+            lambda task: (
+                self._tasks[h]
+                for h in chain(
+                    self._graph.deps[task.hashid],
+                    self._graph.backflow.get(task.hashid, ()),
+                )
+            ),
             lambda task, reg: call_if(
-                task.state < State.RUNNING,
-                task.add_ready_callback, lambda t: reg(t)
+                task.state < State.RUNNING, task.add_ready_callback, lambda t: reg(t)
             ),
             self.run_plugins('wrap_execute', start=self._traverse_execute),
             depth,
@@ -290,9 +309,7 @@ class Session(Pluggable):
                 break
             if isinstance(step_or_exception, NodeException):
                 task, exc = step_or_exception
-                if isinstance(exc, (
-                        CafError, AssertionError, asyncio.CancelledError
-                )):
+                if isinstance(exc, (CafError, AssertionError, asyncio.CancelledError)):
                     raise exc
                 else:
                     assert isinstance(exc, Exception)
@@ -362,8 +379,12 @@ class Session(Pluggable):
         for target, tasks in self._graph.backflow.items():
             for task in tasks:
                 dot.edge(
-                    task, target,
-                    style='tapered', penwidth='7', dir='back', arrowtail='none'
+                    task,
+                    target,
+                    style='tapered',
+                    penwidth='7',
+                    dir='back',
+                    arrowtail='none',
                 )
         return dot
 

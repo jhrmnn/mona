@@ -9,14 +9,17 @@ from caf.errors import InvalidInput
 
 @Rule
 async def calcs():
-    return [[
-        dist,
-        dir_task(
-            '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
-            {'data': str(dist).encode(), 'input': Path('data')},
-            label=f'/calcs/dist={dist}'
-        ).get('STDOUT', b'0')
-    ] for dist in range(5)]
+    return [
+        [
+            dist,
+            dir_task(
+                '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
+                {'data': str(dist).encode(), 'input': Path('data')},
+                label=f'/calcs/dist={dist}',
+            ).get('STDOUT', b'0'),
+        ]
+        for dist in range(5)
+    ]
 
 
 @Rule
@@ -30,7 +33,7 @@ async def python():
         '#!/usr/bin/env python\n'
         'import coverage\n'
         'print(coverage.__name__)'.encode(),
-        {}
+        {},
     )['STDOUT']
 
 
