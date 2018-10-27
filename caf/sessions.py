@@ -24,6 +24,7 @@ from typing import (
     Awaitable,
     AsyncGenerator,
     FrozenSet,
+    Sequence,
 )
 
 from .hashing import Hash, Hashed, HashedCompositeLike
@@ -71,7 +72,7 @@ class SessionPlugin(Plugin['Session']):
     def post_task_run(self, task: Task[Any]) -> None:
         pass
 
-    def save_hashed(self, objs: Iterable[Hashed[Any]]) -> None:
+    def save_hashed(self, objs: Sequence[Hashed[Any]]) -> None:
         pass
 
     def ignored_exception(self) -> None:
