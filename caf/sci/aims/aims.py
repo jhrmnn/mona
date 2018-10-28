@@ -39,7 +39,12 @@ class Aims(Pluggable):
         return dir_task(script, inputs, label=label)
 
     def _func_hash(self) -> str:
-        return ','.join(cast(AimsPlugin, p)._func_hash() for p in self._get_plugins())
+        return ','.join(
+            [
+                hash_function(Aims.__call__),
+                *(cast(AimsPlugin, p)._func_hash() for p in self._get_plugins()),
+            ]
+        )
 
 
 class SpeciesDir(AimsPlugin):
