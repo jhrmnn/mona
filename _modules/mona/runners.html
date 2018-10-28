@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>caf.runners &#8212; Caf 0.4.1 documentation</title>
+    <title>mona.runners &#8212; Mona 0.1.0 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -32,7 +32,7 @@
 
           <div class="body" role="main">
             
-  <h1>Source code for caf.runners</h1><div class="highlight"><pre>
+  <h1>Source code for mona.runners</h1><div class="highlight"><pre>
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
@@ -67,7 +67,7 @@
     <span class="k">return</span> <span class="n">scheduler</span>
 
 
-<div class="viewcode-block" id="run_shell"><a class="viewcode-back" href="../../api.html#caf.run_shell">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">run_shell</span><span class="p">(</span><span class="n">cmd</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProcessOutput</span><span class="p">:</span>
+<div class="viewcode-block" id="run_shell"><a class="viewcode-back" href="../../api.html#mona.run_shell">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">run_shell</span><span class="p">(</span><span class="n">cmd</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProcessOutput</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Execute a command in a shell. Wrapper around</span>
 <span class="sd">    :func:`asyncio.create_subprocess_shell` that handles errors and whose behavior can</span>
 <span class="sd">    be modified by session plugins.</span>
@@ -88,7 +88,7 @@
     <span class="k">return</span> <span class="k">await</span> <span class="n">_run_process</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="run_process"><a class="viewcode-back" href="../../api.html#caf.run_process">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">run_process</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProcessOutput</span><span class="p">:</span>
+<div class="viewcode-block" id="run_process"><a class="viewcode-back" href="../../api.html#mona.run_process">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">run_process</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ProcessOutput</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Create a subprocess. Wrapper around</span>
 <span class="sd">    :func:`asyncio.create_subprocess_exec` that handles errors and whose</span>
 <span class="sd">    behavior can be modified by session plugins.</span>
@@ -139,7 +139,7 @@
     <span class="k">return</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span>
 
 
-<div class="viewcode-block" id="run_thread"><a class="viewcode-back" href="../../api.html#caf.run_thread">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">run_thread</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">_T</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_T</span><span class="p">:</span>
+<div class="viewcode-block" id="run_thread"><a class="viewcode-back" href="../../api.html#mona.run_thread">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">run_thread</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">_T</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_T</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Run a callable in a new thread. Wrapper around :meth:`loop.run_in_executor`</span>
 <span class="sd">    whose behavior can be modified by session plugins.</span>
 
@@ -165,7 +165,7 @@
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../../index.html">Caf</a></h1>
+<h1 class="logo"><a href="../../index.html">Mona</a></h1>
 
 
 
@@ -175,7 +175,7 @@
 
 
 <p>
-<iframe src="https://ghbtns.com/github-btn.html?user=azag0&repo=calcfw&type=watch&count=true&size=large&v=2"
+<iframe src="https://ghbtns.com/github-btn.html?user=azag0&repo=mona&type=watch&count=true&size=large&v=2"
   allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
 </p>
 
@@ -186,10 +186,10 @@
     
 
 <p>
-<a class="badge" href="https://travis-ci.org/azag0/calcfw">
+<a class="badge" href="https://travis-ci.org/azag0/mona">
     <img
-        alt="https://secure.travis-ci.org/azag0/calcfw.svg?branch=master"
-        src="https://secure.travis-ci.org/azag0/calcfw.svg?branch=master"
+        alt="https://secure.travis-ci.org/azag0/mona.svg?branch=master"
+        src="https://secure.travis-ci.org/azag0/mona.svg?branch=master"
     />
 </a>
 </p>
@@ -200,10 +200,10 @@
     
 
 <p>
-<a class="badge" href="https://codecov.io/github/azag0/calcfw">
+<a class="badge" href="https://codecov.io/github/azag0/mona">
     <img
-    alt="https://codecov.io/github/azag0/calcfw/coverage.svg?branch=master"
-    src="https://codecov.io/github/azag0/calcfw/coverage.svg?branch=master"
+    alt="https://codecov.io/github/azag0/mona/coverage.svg?branch=master"
+    src="https://codecov.io/github/azag0/mona/coverage.svg?branch=master"
     />
 </a>
 </p>

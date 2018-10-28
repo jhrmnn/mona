@@ -4,7 +4,7 @@ API
 Rules and Sessions
 ------------------
 
-.. module:: caf
+.. module:: mona
 
 .. autoclass:: Rule
     :members:
@@ -22,7 +22,7 @@ Rules and Sessions
     :members:
 
 
-.. module:: caf.rules
+.. module:: mona.rules
 
 Directory tasks
 ---------------
@@ -38,7 +38,7 @@ Scientific calculations
 Molecular and crystal geometries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. module:: caf.sci.geomlib
+.. module:: mona.sci.geomlib
 
 .. autoclass:: Atom
     :members:
@@ -58,7 +58,7 @@ Molecular and crystal geometries
 FHI-aims
 ^^^^^^^^
 
-.. module:: caf.sci.aims
+.. module:: mona.sci.aims
 
 .. autoclass:: Aims
     :members:
@@ -72,21 +72,21 @@ Futures and Tasks
 The following classes are not intended for direct use by the end user, but are
 part of the versioned public API neverthless.
 
-.. autoclass:: caf.futures.Future
+.. autoclass:: mona.futures.Future
     :members:
 
-.. autoclass:: caf.hashing.HashedComposite
-    :members:
-    :inherited-members:
-
-.. autoclass:: caf.tasks.Task
+.. autoclass:: mona.hashing.HashedComposite
     :members:
     :inherited-members:
 
-.. autoclass:: caf.tasks.TaskComposite
+.. autoclass:: mona.tasks.Task
     :members:
     :inherited-members:
 
-.. autoclass:: caf.tasks.TaskComponent
+.. autoclass:: mona.tasks.TaskComposite
+    :members:
+    :inherited-members:
+
+.. autoclass:: mona.tasks.TaskComponent
     :members:
     :inherited-members:

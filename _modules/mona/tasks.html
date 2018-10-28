@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>caf.tasks &#8212; Caf 0.4.1 documentation</title>
+    <title>mona.tasks &#8212; Mona 0.1.0 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -32,7 +32,7 @@
 
           <div class="body" role="main">
             
-  <h1>Source code for caf.tasks</h1><div class="highlight"><pre>
+  <h1>Source code for mona.tasks</h1><div class="highlight"><pre>
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
@@ -143,7 +143,7 @@
         <span class="k">return</span> <span class="n">f</span><span class="s1">&#39;&lt;</span><span class="si">{self.__class__.__name__}</span><span class="s1"> </span><span class="si">{self}</span><span class="s1"> state=</span><span class="si">{self.state.name}</span><span class="s1">&gt;&#39;</span>
 
 
-<div class="viewcode-block" id="Task"><a class="viewcode-back" href="../../api.html#caf.tasks.Task">[docs]</a><span class="k">class</span> <span class="nc">Task</span><span class="p">(</span><span class="n">HashedFuture</span><span class="p">[</span><span class="n">_T_co</span><span class="p">]):</span>
+<div class="viewcode-block" id="Task"><a class="viewcode-back" href="../../api.html#mona.tasks.Task">[docs]</a><span class="k">class</span> <span class="nc">Task</span><span class="p">(</span><span class="n">HashedFuture</span><span class="p">[</span><span class="n">_T_co</span><span class="p">]):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">corofunc</span><span class="p">:</span> <span class="n">Corofunc</span><span class="p">[</span><span class="n">_T_co</span><span class="p">],</span>
@@ -278,7 +278,7 @@
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_corofunc</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="TaskComponent"><a class="viewcode-back" href="../../api.html#caf.tasks.TaskComponent">[docs]</a><span class="k">class</span> <span class="nc">TaskComponent</span><span class="p">(</span><span class="n">HashedFuture</span><span class="p">[</span><span class="n">_T_co</span><span class="p">]):</span>
+<div class="viewcode-block" id="TaskComponent"><a class="viewcode-back" href="../../api.html#mona.tasks.TaskComponent">[docs]</a><span class="k">class</span> <span class="nc">TaskComponent</span><span class="p">(</span><span class="n">HashedFuture</span><span class="p">[</span><span class="n">_T_co</span><span class="p">]):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span> <span class="n">keys</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span> <span class="n">default</span><span class="p">:</span> <span class="n">Maybe</span><span class="p">[</span><span class="n">_T_co</span><span class="p">]</span> <span class="o">=</span> <span class="n">Empty</span><span class="o">.</span><span class="n">_</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -340,7 +340,7 @@
 <span class="c1"># the semantics may imply that the component is taken immediately after</span>
 <span class="c1"># execution, but it is only taken by the child task, so that if the component</span>
 <span class="c1"># does not exist, the exception is raised only later</span>
-<div class="viewcode-block" id="TaskComposite"><a class="viewcode-back" href="../../api.html#caf.tasks.TaskComposite">[docs]</a><span class="k">class</span> <span class="nc">TaskComposite</span><span class="p">(</span><span class="n">HashedCompositeLike</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">[</span><span class="n">Composite</span><span class="p">]):</span>  <span class="c1"># type: ignore</span>
+<div class="viewcode-block" id="TaskComposite"><a class="viewcode-back" href="../../api.html#mona.tasks.TaskComposite">[docs]</a><span class="k">class</span> <span class="nc">TaskComposite</span><span class="p">(</span><span class="n">HashedCompositeLike</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">[</span><span class="n">Composite</span><span class="p">]):</span>  <span class="c1"># type: ignore</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jsonstr</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">components</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">components</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">components</span><span class="p">)</span>
         <span class="n">futures</span> <span class="o">=</span> <span class="p">[</span><span class="n">comp</span> <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="n">components</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">)]</span>
@@ -369,7 +369,7 @@
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../../index.html">Caf</a></h1>
+<h1 class="logo"><a href="../../index.html">Mona</a></h1>
 
 
 
@@ -379,7 +379,7 @@
 
 
 <p>
-<iframe src="https://ghbtns.com/github-btn.html?user=azag0&repo=calcfw&type=watch&count=true&size=large&v=2"
+<iframe src="https://ghbtns.com/github-btn.html?user=azag0&repo=mona&type=watch&count=true&size=large&v=2"
   allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
 </p>
 
@@ -390,10 +390,10 @@
     
 
 <p>
-<a class="badge" href="https://travis-ci.org/azag0/calcfw">
+<a class="badge" href="https://travis-ci.org/azag0/mona">
     <img
-        alt="https://secure.travis-ci.org/azag0/calcfw.svg?branch=master"
-        src="https://secure.travis-ci.org/azag0/calcfw.svg?branch=master"
+        alt="https://secure.travis-ci.org/azag0/mona.svg?branch=master"
+        src="https://secure.travis-ci.org/azag0/mona.svg?branch=master"
     />
 </a>
 </p>
@@ -404,10 +404,10 @@
     
 
 <p>
-<a class="badge" href="https://codecov.io/github/azag0/calcfw">
+<a class="badge" href="https://codecov.io/github/azag0/mona">
     <img
-    alt="https://codecov.io/github/azag0/calcfw/coverage.svg?branch=master"
-    src="https://codecov.io/github/azag0/calcfw/coverage.svg?branch=master"
+    alt="https://codecov.io/github/azag0/mona/coverage.svg?branch=master"
+    src="https://codecov.io/github/azag0/mona/coverage.svg?branch=master"
     />
 </a>
 </p>

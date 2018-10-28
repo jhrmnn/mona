@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>API &#8212; Caf 0.4.1 documentation</title>
+    <title>API &#8212; Mona 0.1.0 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -17,7 +17,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="CLI" href="cli.html" />
-    <link rel="prev" title="Welcome to Caf" href="index.html" />
+    <link rel="prev" title="Welcome to Mona" href="index.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -36,11 +36,11 @@
             
   <div class="section" id="api">
 <h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-caf">
-<span id="rules-and-sessions"></span><h2>Rules and Sessions<a class="headerlink" href="#module-caf" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-mona">
+<span id="rules-and-sessions"></span><h2>Rules and Sessions<a class="headerlink" href="#module-mona" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
-<dt id="caf.Rule">
-<em class="property">class </em><code class="descclassname">caf.</code><code class="descname">Rule</code><span class="sig-paren">(</span><em>corofunc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/rules.html#Rule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Rule" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.Rule">
+<em class="property">class </em><code class="descclassname">mona.</code><code class="descname">Rule</code><span class="sig-paren">(</span><em>corofunc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/rules/rules.html#Rule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Rule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Decorator that turns a coroutine function into a rule, which is a
 callable that generates a task instead of actually calling the coroutine.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -54,8 +54,8 @@ callable that generates a task instead of actually calling the coroutine.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="caf.labelled">
-<code class="descclassname">caf.</code><code class="descname">labelled</code><span class="sig-paren">(</span><em>label</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/rules.html#labelled"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.labelled" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.labelled">
+<code class="descclassname">mona.</code><code class="descname">labelled</code><span class="sig-paren">(</span><em>label</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/rules/rules.html#labelled"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.labelled" title="Permalink to this definition">¶</a></dt>
 <dd><p>Decorator to be used on a rule that makes the rule assign a fixed label
 to all the tasks it generates.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -71,8 +71,8 @@ to all the tasks it generates.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="caf.run_shell">
-<code class="descclassname">caf.</code><code class="descname">run_shell</code><span class="sig-paren">(</span><em>cmd</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/runners.html#run_shell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.run_shell" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.run_shell">
+<code class="descclassname">mona.</code><code class="descname">run_shell</code><span class="sig-paren">(</span><em>cmd</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_shell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_shell" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute a command in a shell. Wrapper around
 <code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_shell()</span></code> that handles errors and whose behavior can
 be modified by session plugins.</p>
@@ -103,8 +103,8 @@ tuple of bytes containing standard and error outputs.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="caf.run_process">
-<code class="descclassname">caf.</code><code class="descname">run_process</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/runners.html#run_process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.run_process" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.run_process">
+<code class="descclassname">mona.</code><code class="descname">run_process</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_process" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a subprocess. Wrapper around
 <code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_exec()</span></code> that handles errors and whose
 behavior can be modified by session plugins.</p>
@@ -135,8 +135,8 @@ tuple of bytes containing standard and error outputs.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="caf.run_thread">
-<code class="descclassname">caf.</code><code class="descname">run_thread</code><span class="sig-paren">(</span><em>func</em>, <em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/runners.html#run_thread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.run_thread" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.run_thread">
+<code class="descclassname">mona.</code><code class="descname">run_thread</code><span class="sig-paren">(</span><em>func</em>, <em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_thread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_thread" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a callable in a new thread. Wrapper around <code class="xref py py-meth docutils literal notranslate"><span class="pre">loop.run_in_executor()</span></code>
 whose behavior can be modified by session plugins.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -163,8 +163,8 @@ whose behavior can be modified by session plugins.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="caf.Session">
-<em class="property">class </em><code class="descclassname">caf.</code><code class="descname">Session</code><span class="sig-paren">(</span><em>plugins=None</em>, <em>warn=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.Session">
+<em class="property">class </em><code class="descclassname">mona.</code><code class="descname">Session</code><span class="sig-paren">(</span><em>plugins=None</em>, <em>warn=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session" title="Permalink to this definition">¶</a></dt>
 <dd><p>The Session context manager represents a session in which tasks can be
 created and executed.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -182,8 +182,8 @@ executed</li>
 </tbody>
 </table>
 <dl class="method">
-<dt id="caf.Session.create_task">
-<code class="descname">create_task</code><span class="sig-paren">(</span><em>corofunc</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session.create_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.create_task" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.Session.create_task">
+<code class="descname">create_task</code><span class="sig-paren">(</span><em>corofunc</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.create_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.create_task" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a new task.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -192,7 +192,7 @@ executed</li>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>corofunc</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code>[…, <code class="xref py py-class docutils literal notranslate"><span class="pre">Awaitable</span></code>[~_T]]) – a coroutine function to be executed</li>
 <li><strong>args</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>) – arguments to the coroutine</li>
-<li><strong>kwargs</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>) – keyword arguments passed to <a class="reference internal" href="#caf.tasks.Task" title="caf.tasks.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a></li>
+<li><strong>kwargs</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>) – keyword arguments passed to <a class="reference internal" href="#mona.tasks.Task" title="mona.tasks.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a></li>
 </ul>
 </td>
 </tr>
@@ -204,8 +204,8 @@ executed</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.Session.dot_graph">
-<code class="descname">dot_graph</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session.dot_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.dot_graph" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.Session.dot_graph">
+<code class="descname">dot_graph</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.dot_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.dot_graph" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate <a class="reference external" href="https://graphviz.readthedocs.io/en/stable/api.html#digraph">graphviz.Digraph</a> for the
 task DAG. Requires <a class="reference external" href="https://graphviz.readthedocs.io/">Graphviz</a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -219,9 +219,9 @@ task DAG. Requires <a class="reference external" href="https://graphviz.readthed
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.Session.eval">
-<code class="descname">eval</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session.eval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.eval" title="Permalink to this definition">¶</a></dt>
-<dd><p>Blocking version of <a class="reference internal" href="#caf.Session.eval_async" title="caf.Session.eval_async"><code class="xref py py-meth docutils literal notranslate"><span class="pre">eval_async()</span></code></a>.</p>
+<dt id="mona.Session.eval">
+<code class="descname">eval</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.eval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.eval" title="Permalink to this definition">¶</a></dt>
+<dd><p>Blocking version of <a class="reference internal" href="#mona.Session.eval_async" title="mona.Session.eval_async"><code class="xref py py-meth docutils literal notranslate"><span class="pre">eval_async()</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -233,8 +233,8 @@ task DAG. Requires <a class="reference external" href="https://graphviz.readthed
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.Session.eval_async">
-<em class="property">coroutine </em><code class="descname">eval_async</code><span class="sig-paren">(</span><em>self</em>, <em>obj</em>, <em>depth=False</em>, <em>priority=(RESULTS</em>, <em>EXECUTE</em>, <em>TRAVERSE)</em>, <em>exception_handler=None</em>, <em>task_filter=None</em>, <em>limit=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session.eval_async"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.eval_async" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.Session.eval_async">
+<em class="property">coroutine </em><code class="descname">eval_async</code><span class="sig-paren">(</span><em>self</em>, <em>obj</em>, <em>depth=False</em>, <em>priority=(RESULTS</em>, <em>EXECUTE</em>, <em>TRAVERSE)</em>, <em>exception_handler=None</em>, <em>task_filter=None</em>, <em>limit=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.eval_async"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.eval_async" title="Permalink to this definition">¶</a></dt>
 <dd><p>Evaluate the given object by running all tasks it contains as well as
 any new generated tasks.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -268,8 +268,8 @@ the task should be executed</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.Session.run_task">
-<code class="descname">run_task</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session.run_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.run_task" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.Session.run_task">
+<code class="descname">run_task</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.run_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.run_task" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a task.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -292,8 +292,8 @@ instance if hashable.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.Session.running_task">
-<code class="descname">running_task</code><a class="headerlink" href="#caf.Session.running_task" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.Session.running_task">
+<code class="descname">running_task</code><a class="headerlink" href="#mona.Session.running_task" title="Permalink to this definition">¶</a></dt>
 <dd><p>Currently running task. This would be usually used from within a task
 coroutine.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -307,8 +307,8 @@ coroutine.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.Session.storage">
-<code class="descname">storage</code><a class="headerlink" href="#caf.Session.storage" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.Session.storage">
+<code class="descname">storage</code><a class="headerlink" href="#mona.Session.storage" title="Permalink to this definition">¶</a></dt>
 <dd><p>A ganeral string-based dictionary available when a session is active.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -322,12 +322,12 @@ coroutine.</p>
 
 </dd></dl>
 
-<span class="target" id="module-caf.rules"></span></div>
+<span class="target" id="module-mona.rules"></span></div>
 <div class="section" id="directory-tasks">
 <h2>Directory tasks<a class="headerlink" href="#directory-tasks" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="caf.rules.dir_task">
-<code class="descclassname">caf.rules.</code><code class="descname">dir_task</code><span class="sig-paren">(</span><em>exe</em>, <em>inputs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/dirtask.html#dir_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.rules.dir_task" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.rules.dir_task">
+<code class="descclassname">mona.rules.</code><code class="descname">dir_task</code><span class="sig-paren">(</span><em>exe</em>, <em>inputs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/rules/dirtask.html#dir_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.rules.dir_task" title="Permalink to this definition">¶</a></dt>
 <dd><p>Task rule with an executable and a collection of files as inputs and a
 collection of output files as output.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -341,8 +341,8 @@ collection of output files as output.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="caf.rules.DirtaskTmpdir">
-<em class="property">class </em><code class="descclassname">caf.rules.</code><code class="descname">DirtaskTmpdir</code><span class="sig-paren">(</span><em>output_filter=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/dirtask.html#DirtaskTmpdir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.rules.DirtaskTmpdir" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.rules.DirtaskTmpdir">
+<em class="property">class </em><code class="descclassname">mona.rules.</code><code class="descname">DirtaskTmpdir</code><span class="sig-paren">(</span><em>output_filter=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/rules/dirtask.html#DirtaskTmpdir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.rules.DirtaskTmpdir" title="Permalink to this definition">¶</a></dt>
 <dd><p>Context manager of a temporary directory that collects created files.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -353,8 +353,8 @@ collection of output files as output.</p>
 </tbody>
 </table>
 <dl class="method">
-<dt id="caf.rules.DirtaskTmpdir.result">
-<code class="descname">result</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/dirtask.html#DirtaskTmpdir.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.rules.DirtaskTmpdir.result" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.rules.DirtaskTmpdir.result">
+<code class="descname">result</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/rules/dirtask.html#DirtaskTmpdir.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.rules.DirtaskTmpdir.result" title="Permalink to this definition">¶</a></dt>
 <dd><p>The collection of files created in the temporary directory. This is
 available only after leaving the context.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -372,11 +372,11 @@ available only after leaving the context.</p>
 </div>
 <div class="section" id="scientific-calculations">
 <h2>Scientific calculations<a class="headerlink" href="#scientific-calculations" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="module-caf.sci.geomlib">
-<span id="molecular-and-crystal-geometries"></span><h3>Molecular and crystal geometries<a class="headerlink" href="#module-caf.sci.geomlib" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="module-mona.sci.geomlib">
+<span id="molecular-and-crystal-geometries"></span><h3>Molecular and crystal geometries<a class="headerlink" href="#module-mona.sci.geomlib" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
-<dt id="caf.sci.geomlib.Atom">
-<em class="property">class </em><code class="descclassname">caf.sci.geomlib.</code><code class="descname">Atom</code><span class="sig-paren">(</span><em>species</em>, <em>coord</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Atom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Atom" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Atom">
+<em class="property">class </em><code class="descclassname">mona.sci.geomlib.</code><code class="descname">Atom</code><span class="sig-paren">(</span><em>species</em>, <em>coord</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Atom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Atom" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represents a single atom.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -391,22 +391,22 @@ available only after leaving the context.</p>
 </tbody>
 </table>
 <dl class="method">
-<dt id="caf.sci.geomlib.Atom.copy">
-<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Atom.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Atom.copy" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Atom.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Atom.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Atom.copy" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a copy.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Atom" title="caf.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a></td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#mona.sci.geomlib.Atom" title="mona.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a></td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Atom.covalent_radius">
-<code class="descname">covalent_radius</code><a class="headerlink" href="#caf.sci.geomlib.Atom.covalent_radius" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Atom.covalent_radius">
+<code class="descname">covalent_radius</code><a class="headerlink" href="#mona.sci.geomlib.Atom.covalent_radius" title="Permalink to this definition">¶</a></dt>
 <dd><p>covalent radius</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -419,8 +419,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Atom.mass">
-<code class="descname">mass</code><a class="headerlink" href="#caf.sci.geomlib.Atom.mass" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Atom.mass">
+<code class="descname">mass</code><a class="headerlink" href="#mona.sci.geomlib.Atom.mass" title="Permalink to this definition">¶</a></dt>
 <dd><p>atom mass</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -433,8 +433,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Atom.number">
-<code class="descname">number</code><a class="headerlink" href="#caf.sci.geomlib.Atom.number" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Atom.number">
+<code class="descname">number</code><a class="headerlink" href="#mona.sci.geomlib.Atom.number" title="Permalink to this definition">¶</a></dt>
 <dd><p>atom number</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -449,20 +449,20 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="caf.sci.geomlib.Molecule">
-<em class="property">class </em><code class="descclassname">caf.sci.geomlib.</code><code class="descname">Molecule</code><span class="sig-paren">(</span><em>atoms</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule">
+<em class="property">class </em><code class="descclassname">mona.sci.geomlib.</code><code class="descname">Molecule</code><span class="sig-paren">(</span><em>atoms</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represents a molecule.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>atoms</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<a class="reference internal" href="#caf.sci.geomlib.Atom" title="caf.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a>]) – atoms</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>atoms</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<a class="reference internal" href="#mona.sci.geomlib.Atom" title="mona.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a>]) – atoms</td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
-<dt id="caf.sci.geomlib.Molecule.bondmatrix">
-<code class="descname">bondmatrix</code><span class="sig-paren">(</span><em>scale</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.bondmatrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.bondmatrix" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.bondmatrix">
+<code class="descname">bondmatrix</code><span class="sig-paren">(</span><em>scale</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.bondmatrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.bondmatrix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a connectivity matrix.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -475,8 +475,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Molecule.centered">
-<code class="descname">centered</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.centered"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.centered" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.centered">
+<code class="descname">centered</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.centered"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.centered" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a new molecule with a center of mass at origin.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -489,22 +489,22 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Molecule.centers">
-<code class="descname">centers</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.centers" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.centers">
+<code class="descname">centers</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.centers" title="Permalink to this definition">¶</a></dt>
 <dd><p>iterator over atoms</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code>[<a class="reference internal" href="#caf.sci.geomlib.Atom" title="caf.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a>]</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code>[<a class="reference internal" href="#mona.sci.geomlib.Atom" title="mona.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a>]</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Molecule.cms">
-<code class="descname">cms</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.cms" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.cms">
+<code class="descname">cms</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.cms" title="Permalink to this definition">¶</a></dt>
 <dd><p>center of mass</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -517,8 +517,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Molecule.coords">
-<code class="descname">coords</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.coords" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.coords">
+<code class="descname">coords</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.coords" title="Permalink to this definition">¶</a></dt>
 <dd><p>coordinates</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -531,8 +531,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Molecule.copy">
-<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.copy" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.copy" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a cpoy.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -545,8 +545,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Molecule.dump">
-<code class="descname">dump</code><span class="sig-paren">(</span><em>f</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.dump" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.dump">
+<code class="descname">dump</code><span class="sig-paren">(</span><em>f</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.dump" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write a molecule to a file.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -559,8 +559,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Molecule.dumps">
-<code class="descname">dumps</code><span class="sig-paren">(</span><em>fmt</em><span class="sig-paren">)</span><a class="headerlink" href="#caf.sci.geomlib.Molecule.dumps" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.dumps">
+<code class="descname">dumps</code><span class="sig-paren">(</span><em>fmt</em><span class="sig-paren">)</span><a class="headerlink" href="#mona.sci.geomlib.Molecule.dumps" title="Permalink to this definition">¶</a></dt>
 <dd><p>Default object formatter.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -573,8 +573,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Molecule.formula">
-<code class="descname">formula</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.formula" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.formula">
+<code class="descname">formula</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.formula" title="Permalink to this definition">¶</a></dt>
 <dd><table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -586,8 +586,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="classmethod">
-<dt id="caf.sci.geomlib.Molecule.from_coords">
-<em class="property">classmethod </em><code class="descname">from_coords</code><span class="sig-paren">(</span><em>species</em>, <em>coords</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.from_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.from_coords" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.from_coords">
+<em class="property">classmethod </em><code class="descname">from_coords</code><span class="sig-paren">(</span><em>species</em>, <em>coords</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.from_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.from_coords" title="Permalink to this definition">¶</a></dt>
 <dd><p>Alternative constructor.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -607,22 +607,22 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Molecule.get_fragments">
-<code class="descname">get_fragments</code><span class="sig-paren">(</span><em>scale=1.3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.get_fragments"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.get_fragments" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.get_fragments">
+<code class="descname">get_fragments</code><span class="sig-paren">(</span><em>scale=1.3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.get_fragments"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.get_fragments" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a list of clusters of connected atoms.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<a class="reference internal" href="#caf.sci.geomlib.Molecule" title="caf.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]]</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<a class="reference internal" href="#mona.sci.geomlib.Molecule" title="mona.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]]</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Molecule.inertia">
-<code class="descname">inertia</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.inertia" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.inertia">
+<code class="descname">inertia</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.inertia" title="Permalink to this definition">¶</a></dt>
 <dd><p>inertia tensor</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -635,8 +635,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Molecule.items">
-<code class="descname">items</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.items"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.items" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.items">
+<code class="descname">items</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.items"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.items" title="Permalink to this definition">¶</a></dt>
 <dd><p>iterator over tuples of atom type and coordinate</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -649,8 +649,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Molecule.mass">
-<code class="descname">mass</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.mass" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.mass">
+<code class="descname">mass</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.mass" title="Permalink to this definition">¶</a></dt>
 <dd><p>molecular mass</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -663,8 +663,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Molecule.numbers">
-<code class="descname">numbers</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.numbers" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.numbers">
+<code class="descname">numbers</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.numbers" title="Permalink to this definition">¶</a></dt>
 <dd><p>atom numbers</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -677,8 +677,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Molecule.rotated">
-<code class="descname">rotated</code><span class="sig-paren">(</span><em>axis=None</em>, <em>phi=None</em>, <em>center=None</em>, <em>rotmat=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.rotated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.rotated" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.rotated">
+<code class="descname">rotated</code><span class="sig-paren">(</span><em>axis=None</em>, <em>phi=None</em>, <em>center=None</em>, <em>rotmat=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.rotated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.rotated" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a new rotated molecule.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -691,8 +691,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Molecule.shifted">
-<code class="descname">shifted</code><span class="sig-paren">(</span><em>delta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.shifted"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.shifted" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.shifted">
+<code class="descname">shifted</code><span class="sig-paren">(</span><em>delta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.shifted"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.shifted" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a new molecule shifted in space.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -705,8 +705,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Molecule.species">
-<code class="descname">species</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.species" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.species">
+<code class="descname">species</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.species" title="Permalink to this definition">¶</a></dt>
 <dd><p>atom types</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -719,8 +719,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Molecule.write">
-<code class="descname">write</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.write" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.write">
+<code class="descname">write</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.write" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write to a file.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -733,8 +733,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Molecule.xyz">
-<code class="descname">xyz</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.xyz" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Molecule.xyz">
+<code class="descname">xyz</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.xyz" title="Permalink to this definition">¶</a></dt>
 <dd><p>coordinates as a numpy array</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -749,15 +749,15 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="caf.sci.geomlib.Crystal">
-<em class="property">class </em><code class="descclassname">caf.sci.geomlib.</code><code class="descname">Crystal</code><span class="sig-paren">(</span><em>atoms</em>, <em>lattice</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal" title="Permalink to this definition">¶</a></dt>
-<dd><p>Represents a crystal. Inherits from <a class="reference internal" href="#caf.sci.geomlib.Molecule" title="caf.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>.</p>
+<dt id="mona.sci.geomlib.Crystal">
+<em class="property">class </em><code class="descclassname">mona.sci.geomlib.</code><code class="descname">Crystal</code><span class="sig-paren">(</span><em>atoms</em>, <em>lattice</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a crystal. Inherits from <a class="reference internal" href="#mona.sci.geomlib.Molecule" title="mona.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>atoms</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<a class="reference internal" href="#caf.sci.geomlib.Atom" title="caf.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a>]) – atoms</li>
+<li><strong>atoms</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<a class="reference internal" href="#mona.sci.geomlib.Atom" title="mona.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a>]) – atoms</li>
 <li><strong>lattice</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]) – lattice vectors</li>
 </ul>
 </td>
@@ -765,8 +765,8 @@ available only after leaving the context.</p>
 </tbody>
 </table>
 <dl class="attribute">
-<dt id="caf.sci.geomlib.Crystal.abc">
-<code class="descname">abc</code><a class="headerlink" href="#caf.sci.geomlib.Crystal.abc" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Crystal.abc">
+<code class="descname">abc</code><a class="headerlink" href="#mona.sci.geomlib.Crystal.abc" title="Permalink to this definition">¶</a></dt>
 <dd><p>latice vectors as a numpy array</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -779,22 +779,22 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Crystal.copy">
-<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.copy" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Crystal.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal.copy" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a cpoy.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Crystal" title="caf.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#mona.sci.geomlib.Crystal" title="mona.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Crystal.dump">
-<code class="descname">dump</code><span class="sig-paren">(</span><em>f</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.dump" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Crystal.dump">
+<code class="descname">dump</code><span class="sig-paren">(</span><em>f</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal.dump" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write a molecule to a file.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -807,8 +807,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="classmethod">
-<dt id="caf.sci.geomlib.Crystal.from_coords">
-<em class="property">classmethod </em><code class="descname">from_coords</code><span class="sig-paren">(</span><em>species</em>, <em>coords</em>, <em>lattice</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.from_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.from_coords" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Crystal.from_coords">
+<em class="property">classmethod </em><code class="descname">from_coords</code><span class="sig-paren">(</span><em>species</em>, <em>coords</em>, <em>lattice</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal.from_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal.from_coords" title="Permalink to this definition">¶</a></dt>
 <dd><p>Alternative constructor.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -821,7 +821,7 @@ available only after leaving the context.</p>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#caf.sci.geomlib.Crystal" title="caf.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</p>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#mona.sci.geomlib.Crystal" title="mona.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</p>
 </td>
 </tr>
 </tbody>
@@ -829,8 +829,8 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Crystal.get_kgrid">
-<code class="descname">get_kgrid</code><span class="sig-paren">(</span><em>density=0.06</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.get_kgrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.get_kgrid" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Crystal.get_kgrid">
+<code class="descname">get_kgrid</code><span class="sig-paren">(</span><em>density=0.06</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal.get_kgrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal.get_kgrid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a k-point grid with a given density.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -843,28 +843,28 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Crystal.rotated">
-<code class="descname">rotated</code><span class="sig-paren">(</span><em>axis=None</em>, <em>phi=None</em>, <em>center=None</em>, <em>rotmat=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.rotated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.rotated" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Crystal.rotated">
+<code class="descname">rotated</code><span class="sig-paren">(</span><em>axis=None</em>, <em>phi=None</em>, <em>center=None</em>, <em>rotmat=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal.rotated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal.rotated" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a new rotated molecule.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Crystal" title="caf.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#mona.sci.geomlib.Crystal" title="mona.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="method">
-<dt id="caf.sci.geomlib.Crystal.supercell">
-<code class="descname">supercell</code><span class="sig-paren">(</span><em>ns</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.supercell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.supercell" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.Crystal.supercell">
+<code class="descname">supercell</code><span class="sig-paren">(</span><em>ns</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal.supercell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal.supercell" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a supercell.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Crystal" title="caf.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#mona.sci.geomlib.Crystal" title="mona.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</td>
 </tr>
 </tbody>
 </table>
@@ -873,50 +873,50 @@ available only after leaving the context.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="caf.sci.geomlib.readfile">
-<code class="descclassname">caf.sci.geomlib.</code><code class="descname">readfile</code><span class="sig-paren">(</span><em>path</em>, <em>fmt=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#readfile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.readfile" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.readfile">
+<code class="descclassname">mona.sci.geomlib.</code><code class="descname">readfile</code><span class="sig-paren">(</span><em>path</em>, <em>fmt=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#readfile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.readfile" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read a molecule or a crystal from a path.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Molecule" title="caf.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#mona.sci.geomlib.Molecule" title="mona.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="function">
-<dt id="caf.sci.geomlib.load">
-<code class="descclassname">caf.sci.geomlib.</code><code class="descname">load</code><span class="sig-paren">(</span><em>fp</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.load" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.load">
+<code class="descclassname">mona.sci.geomlib.</code><code class="descname">load</code><span class="sig-paren">(</span><em>fp</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.load" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read a molecule or a crystal from a file object.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Molecule" title="caf.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#mona.sci.geomlib.Molecule" title="mona.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="function">
-<dt id="caf.sci.geomlib.loads">
-<code class="descclassname">caf.sci.geomlib.</code><code class="descname">loads</code><span class="sig-paren">(</span><em>s</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#loads"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.loads" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.sci.geomlib.loads">
+<code class="descclassname">mona.sci.geomlib.</code><code class="descname">loads</code><span class="sig-paren">(</span><em>s</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#loads"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.loads" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read a molecule or a crystal from a string.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Molecule" title="caf.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#mona.sci.geomlib.Molecule" title="mona.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 </div>
-<div class="section" id="module-caf.sci.aims">
-<span id="fhi-aims"></span><h3>FHI-aims<a class="headerlink" href="#module-caf.sci.aims" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="module-mona.sci.aims">
+<span id="fhi-aims"></span><h3>FHI-aims<a class="headerlink" href="#module-mona.sci.aims" title="Permalink to this headline">¶</a></h3>
 </div>
 </div>
 <div class="section" id="futures-and-tasks">
@@ -924,28 +924,28 @@ available only after leaving the context.</p>
 <p>The following classes are not intended for direct use by the end user, but are
 part of the versioned public API neverthless.</p>
 <dl class="class">
-<dt id="caf.futures.Future">
-<em class="property">class </em><code class="descclassname">caf.futures.</code><code class="descname">Future</code><span class="sig-paren">(</span><em>parents</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/futures.html#Future"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.futures.Future" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.futures.Future">
+<em class="property">class </em><code class="descclassname">mona.futures.</code><code class="descname">Future</code><span class="sig-paren">(</span><em>parents</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/futures.html#Future"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.futures.Future" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="class">
-<dt id="caf.hashing.HashedComposite">
-<em class="property">class </em><code class="descclassname">caf.hashing.</code><code class="descname">HashedComposite</code><span class="sig-paren">(</span><em>jsonstr</em>, <em>components</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/hashing/hashing.html#HashedComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.hashing.HashedComposite" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.hashing.HashedComposite">
+<em class="property">class </em><code class="descclassname">mona.hashing.</code><code class="descname">HashedComposite</code><span class="sig-paren">(</span><em>jsonstr</em>, <em>components</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/hashing/hashing.html#HashedComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.hashing.HashedComposite" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="class">
-<dt id="caf.tasks.Task">
-<em class="property">class </em><code class="descclassname">caf.tasks.</code><code class="descname">Task</code><span class="sig-paren">(</span><em>corofunc</em>, <em>*args</em>, <em>label=None</em>, <em>default=&lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/tasks.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.tasks.Task" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.tasks.Task">
+<em class="property">class </em><code class="descclassname">mona.tasks.</code><code class="descname">Task</code><span class="sig-paren">(</span><em>corofunc</em>, <em>*args</em>, <em>label=None</em>, <em>default=&lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/tasks.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.tasks.Task" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="class">
-<dt id="caf.tasks.TaskComposite">
-<em class="property">class </em><code class="descclassname">caf.tasks.</code><code class="descname">TaskComposite</code><span class="sig-paren">(</span><em>jsonstr</em>, <em>components</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/tasks.html#TaskComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.tasks.TaskComposite" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.tasks.TaskComposite">
+<em class="property">class </em><code class="descclassname">mona.tasks.</code><code class="descname">TaskComposite</code><span class="sig-paren">(</span><em>jsonstr</em>, <em>components</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/tasks.html#TaskComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.tasks.TaskComposite" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="class">
-<dt id="caf.tasks.TaskComponent">
-<em class="property">class </em><code class="descclassname">caf.tasks.</code><code class="descname">TaskComponent</code><span class="sig-paren">(</span><em>task</em>, <em>keys</em>, <em>default=&lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/tasks.html#TaskComponent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.tasks.TaskComponent" title="Permalink to this definition">¶</a></dt>
+<dt id="mona.tasks.TaskComponent">
+<em class="property">class </em><code class="descclassname">mona.tasks.</code><code class="descname">TaskComponent</code><span class="sig-paren">(</span><em>task</em>, <em>keys</em>, <em>default=&lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/tasks.html#TaskComponent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.tasks.TaskComponent" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -958,7 +958,7 @@ part of the versioned public API neverthless.</p>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="index.html">Caf</a></h1>
+<h1 class="logo"><a href="index.html">Mona</a></h1>
 
 
 
@@ -968,7 +968,7 @@ part of the versioned public API neverthless.</p>
 
 
 <p>
-<iframe src="https://ghbtns.com/github-btn.html?user=azag0&repo=calcfw&type=watch&count=true&size=large&v=2"
+<iframe src="https://ghbtns.com/github-btn.html?user=azag0&repo=mona&type=watch&count=true&size=large&v=2"
   allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
 </p>
 
@@ -979,10 +979,10 @@ part of the versioned public API neverthless.</p>
     
 
 <p>
-<a class="badge" href="https://travis-ci.org/azag0/calcfw">
+<a class="badge" href="https://travis-ci.org/azag0/mona">
     <img
-        alt="https://secure.travis-ci.org/azag0/calcfw.svg?branch=master"
-        src="https://secure.travis-ci.org/azag0/calcfw.svg?branch=master"
+        alt="https://secure.travis-ci.org/azag0/mona.svg?branch=master"
+        src="https://secure.travis-ci.org/azag0/mona.svg?branch=master"
     />
 </a>
 </p>
@@ -993,21 +993,21 @@ part of the versioned public API neverthless.</p>
     
 
 <p>
-<a class="badge" href="https://codecov.io/github/azag0/calcfw">
+<a class="badge" href="https://codecov.io/github/azag0/mona">
     <img
-    alt="https://codecov.io/github/azag0/calcfw/coverage.svg?branch=master"
-    src="https://codecov.io/github/azag0/calcfw/coverage.svg?branch=master"
+    alt="https://codecov.io/github/azag0/mona/coverage.svg?branch=master"
+    src="https://codecov.io/github/azag0/mona/coverage.svg?branch=master"
     />
 </a>
 </p>
 <h3>Navigation</h3>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#module-caf">Rules and Sessions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-mona">Rules and Sessions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#directory-tasks">Directory tasks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#scientific-calculations">Scientific calculations</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#module-caf.sci.geomlib">Molecular and crystal geometries</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#module-caf.sci.aims">FHI-aims</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-mona.sci.geomlib">Molecular and crystal geometries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-mona.sci.aims">FHI-aims</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#futures-and-tasks">Futures and Tasks</a></li>
@@ -1020,7 +1020,7 @@ part of the versioned public API neverthless.</p>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="index.html" title="previous chapter">Welcome to Caf</a></li>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to Mona</a></li>
       <li>Next: <a href="cli.html" title="next chapter">CLI</a></li>
   </ul></li>
 </ul>

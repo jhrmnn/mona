@@ -1,5 +1,5 @@
-Welcome to Caf
-==============
+Welcome to Mona
+===============
 
 Only scaffolding of the planned documentation is available now.
 

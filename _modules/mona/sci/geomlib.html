@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>caf.sci.geomlib &#8212; Caf 0.4.1 documentation</title>
+    <title>mona.sci.geomlib &#8212; Mona 0.1.0 documentation</title>
     <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
@@ -32,7 +32,7 @@
 
           <div class="body" role="main">
             
-  <h1>Source code for caf.sci.geomlib</h1><div class="highlight"><pre>
+  <h1>Source code for mona.sci.geomlib</h1><div class="highlight"><pre>
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
@@ -86,7 +86,7 @@
     <span class="k">return</span> <span class="p">[</span><span class="mf">0.0</span> <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-8</span> <span class="k">else</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span>
 
 
-<div class="viewcode-block" id="Atom"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Atom">[docs]</a><span class="k">class</span> <span class="nc">Atom</span><span class="p">:</span>
+<div class="viewcode-block" id="Atom"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Atom">[docs]</a><span class="k">class</span> <span class="nc">Atom</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Represents a single atom.</span>
 
@@ -116,12 +116,12 @@
         <span class="n">r</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">species_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">species</span><span class="p">][</span><span class="s1">&#39;covalent radius&#39;</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">r</span>
 
-<div class="viewcode-block" id="Atom.copy"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Atom.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Atom&#39;</span><span class="p">:</span>
+<div class="viewcode-block" id="Atom.copy"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Atom.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Atom&#39;</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a copy.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">Atom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">species</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">coord</span><span class="p">,</span> <span class="o">**</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flags</span><span class="p">))</span></div></div>
 
 
-<div class="viewcode-block" id="Molecule"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule">[docs]</a><span class="k">class</span> <span class="nc">Molecule</span><span class="p">(</span><span class="n">Sized</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Atom</span><span class="p">]):</span>
+<div class="viewcode-block" id="Molecule"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule">[docs]</a><span class="k">class</span> <span class="nc">Molecule</span><span class="p">(</span><span class="n">Sized</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Atom</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;Represents a molecule.</span>
 
 <span class="sd">    :param atoms: atoms</span>
@@ -134,7 +134,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_atoms</span> <span class="o">=</span> <span class="n">atoms</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">flags</span>
 
-<div class="viewcode-block" id="Molecule.from_coords"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule.from_coords">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="Molecule.from_coords"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.from_coords">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">from_coords</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">_M</span><span class="p">],</span> <span class="n">species</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">coords</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Vec</span><span class="p">],</span> <span class="o">**</span><span class="n">flags</span><span class="p">:</span> <span class="n">Any</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_M</span><span class="p">:</span>
@@ -199,7 +199,7 @@
             <span class="n">counter</span><span class="p">[</span><span class="n">species</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{sp}</span><span class="s1">{n if n &gt; 1 else &quot;&quot;}&#39;</span> <span class="k">for</span> <span class="n">sp</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">counter</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
 
-<div class="viewcode-block" id="Molecule.bondmatrix"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule.bondmatrix">[docs]</a>    <span class="k">def</span> <span class="nf">bondmatrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<div class="viewcode-block" id="Molecule.bondmatrix"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.bondmatrix">[docs]</a>    <span class="k">def</span> <span class="nf">bondmatrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Return a connectivity matrix.&quot;&quot;&quot;</span>
         <span class="n">xyz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xyz</span>
         <span class="n">Rs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">atom</span><span class="o">.</span><span class="n">covalent_radius</span> <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">])</span>
@@ -207,7 +207,7 @@
         <span class="n">thrmatrix</span> <span class="o">=</span> <span class="n">scale</span> <span class="o">*</span> <span class="p">(</span><span class="n">Rs</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">+</span> <span class="n">Rs</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">])</span>
         <span class="k">return</span> <span class="n">dmatrix</span> <span class="o">&lt;</span> <span class="n">thrmatrix</span></div>
 
-<div class="viewcode-block" id="Molecule.get_fragments"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule.get_fragments">[docs]</a>    <span class="k">def</span> <span class="nf">get_fragments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="s1">&#39;Molecule&#39;</span><span class="p">]:</span>
+<div class="viewcode-block" id="Molecule.get_fragments"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.get_fragments">[docs]</a>    <span class="k">def</span> <span class="nf">get_fragments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="s1">&#39;Molecule&#39;</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Return a list of clusters of connected atoms.&quot;&quot;&quot;</span>
         <span class="n">bond</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bondmatrix</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
         <span class="n">ifragments</span> <span class="o">=</span> <span class="n">getfragments</span><span class="p">(</span><span class="n">bond</span><span class="p">)</span>
@@ -222,7 +222,7 @@
             <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">number</span>
         <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigvalsh</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inertia</span><span class="p">)),</span> <span class="mi">3</span><span class="p">)))</span>
 
-<div class="viewcode-block" id="Molecule.shifted"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule.shifted">[docs]</a>    <span class="k">def</span> <span class="nf">shifted</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">_M</span><span class="p">,</span> <span class="n">delta</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_M</span><span class="p">:</span>
+<div class="viewcode-block" id="Molecule.shifted"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.shifted">[docs]</a>    <span class="k">def</span> <span class="nf">shifted</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">_M</span><span class="p">,</span> <span class="n">delta</span><span class="p">:</span> <span class="n">Vec</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_M</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Return a new molecule shifted in space.&quot;&quot;&quot;</span>
         <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">m</span><span class="p">:</span>
@@ -237,11 +237,11 @@
         <span class="n">geom</span><span class="o">.</span><span class="n">_atoms</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
         <span class="k">return</span> <span class="n">geom</span>
 
-<div class="viewcode-block" id="Molecule.centered"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule.centered">[docs]</a>    <span class="k">def</span> <span class="nf">centered</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">_M</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_M</span><span class="p">:</span>
+<div class="viewcode-block" id="Molecule.centered"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.centered">[docs]</a>    <span class="k">def</span> <span class="nf">centered</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">_M</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_M</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Return a new molecule with a center of mass at origin.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">shifted</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">cms</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Molecule.rotated"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule.rotated">[docs]</a>    <span class="k">def</span> <span class="nf">rotated</span><span class="p">(</span>
+<div class="viewcode-block" id="Molecule.rotated"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.rotated">[docs]</a>    <span class="k">def</span> <span class="nf">rotated</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">:</span> <span class="n">_M</span><span class="p">,</span>
         <span class="n">axis</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">phi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -287,14 +287,14 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">fmt</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">fp</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
 
-<div class="viewcode-block" id="Molecule.items"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule.items">[docs]</a>    <span class="k">def</span> <span class="nf">items</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Vec</span><span class="p">]]:</span>
+<div class="viewcode-block" id="Molecule.items"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.items">[docs]</a>    <span class="k">def</span> <span class="nf">items</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Vec</span><span class="p">]]:</span>
         <span class="sd">&quot;&quot;&quot;iterator over tuples of atom type and coordinate&quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
             <span class="k">yield</span> <span class="n">atom</span><span class="o">.</span><span class="n">species</span><span class="p">,</span> <span class="n">atom</span><span class="o">.</span><span class="n">coord</span></div>
 
     <span class="n">dumps</span> <span class="o">=</span> <span class="fm">__format__</span>
 
-<div class="viewcode-block" id="Molecule.dump"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule.dump">[docs]</a>    <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="n">IO</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Molecule.dump"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.dump">[docs]</a>    <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="n">IO</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Write a molecule to a file.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
             <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
@@ -335,7 +335,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown format: &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fmt</span><span class="p">))</span></div>
 
-<div class="viewcode-block" id="Molecule.copy"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">_M</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_M</span><span class="p">:</span>
+<div class="viewcode-block" id="Molecule.copy"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">_M</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_M</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a cpoy.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)([</span><span class="n">atom</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_atoms</span><span class="p">])</span></div>
 
@@ -345,7 +345,7 @@
             <span class="n">atom</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s1">&#39;ghost&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="n">m</span>
 
-<div class="viewcode-block" id="Molecule.write"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Molecule.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Molecule.write"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Write to a file.&quot;&quot;&quot;</span>
         <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;.xyz&#39;</span><span class="p">:</span>
@@ -360,7 +360,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">fmt</span><span class="p">)</span></div></div>
 
 
-<div class="viewcode-block" id="Crystal"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Crystal">[docs]</a><span class="k">class</span> <span class="nc">Crystal</span><span class="p">(</span><span class="n">Molecule</span><span class="p">):</span>
+<div class="viewcode-block" id="Crystal"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal">[docs]</a><span class="k">class</span> <span class="nc">Crystal</span><span class="p">(</span><span class="n">Molecule</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Represents a crystal. Inherits from :class:`Molecule`.</span>
 
 <span class="sd">    :param atoms: atoms</span>
@@ -371,7 +371,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">atoms</span><span class="p">,</span> <span class="o">**</span><span class="n">flags</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">lattice</span> <span class="o">=</span> <span class="n">lattice</span>
 
-<div class="viewcode-block" id="Crystal.from_coords"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Crystal.from_coords">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="Crystal.from_coords"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.from_coords">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">from_coords</span><span class="p">(</span>  <span class="c1"># type: ignore</span>
         <span class="bp">cls</span><span class="p">,</span> <span class="n">species</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">coords</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Vec</span><span class="p">],</span> <span class="n">lattice</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Vec</span><span class="p">],</span> <span class="o">**</span><span class="n">flags</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Crystal&#39;</span><span class="p">:</span>
@@ -385,7 +385,7 @@
             <span class="p">[</span><span class="n">Atom</span><span class="p">(</span><span class="n">sp</span><span class="p">,</span> <span class="n">coord</span><span class="p">)</span> <span class="k">for</span> <span class="n">sp</span><span class="p">,</span> <span class="n">coord</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">coords</span><span class="p">)],</span> <span class="n">lattice</span><span class="p">,</span> <span class="o">**</span><span class="n">flags</span>
         <span class="p">)</span></div>
 
-<div class="viewcode-block" id="Crystal.dump"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Crystal.dump">[docs]</a>    <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="n">IO</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Crystal.dump"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.dump">[docs]</a>    <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="n">IO</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
             <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
         <span class="k">elif</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s1">&#39;aims&#39;</span><span class="p">:</span>
@@ -416,10 +416,10 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Unknown format: </span><span class="si">{fmt!r}</span><span class="s1">&#39;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Crystal.copy"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Crystal.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Crystal&#39;</span><span class="p">:</span>
+<div class="viewcode-block" id="Crystal.copy"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Crystal&#39;</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">Crystal</span><span class="p">([</span><span class="n">atom</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_atoms</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span></div>
 
-<div class="viewcode-block" id="Crystal.rotated"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Crystal.rotated">[docs]</a>    <span class="k">def</span> <span class="nf">rotated</span><span class="p">(</span>
+<div class="viewcode-block" id="Crystal.rotated"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.rotated">[docs]</a>    <span class="k">def</span> <span class="nf">rotated</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">axis</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">phi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -438,14 +438,14 @@
         <span class="sd">&quot;&quot;&quot;latice vectors as a numpy array&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lattice</span><span class="p">)</span>
 
-<div class="viewcode-block" id="Crystal.get_kgrid"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Crystal.get_kgrid">[docs]</a>    <span class="k">def</span> <span class="nf">get_kgrid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">density</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.06</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<div class="viewcode-block" id="Crystal.get_kgrid"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.get_kgrid">[docs]</a>    <span class="k">def</span> <span class="nf">get_kgrid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">density</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.06</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Return a k-point grid with a given density.&quot;&quot;&quot;</span>
         <span class="n">rec_lattice</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
         <span class="n">rec_lens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">rec_lattice</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
         <span class="n">nkpts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">rec_lens</span> <span class="o">/</span> <span class="p">(</span><span class="n">density</span> <span class="o">*</span> <span class="n">bohr</span><span class="p">))</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">nkpts</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">nkpts</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">nkpts</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span></div>
 
-<div class="viewcode-block" id="Crystal.supercell"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.Crystal.supercell">[docs]</a>    <span class="k">def</span> <span class="nf">supercell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;Crystal&#39;</span><span class="p">:</span>
+<div class="viewcode-block" id="Crystal.supercell"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.supercell">[docs]</a>    <span class="k">def</span> <span class="nf">supercell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;Crystal&#39;</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a supercell.&quot;&quot;&quot;</span>
         <span class="n">abc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">abc</span>
         <span class="n">latt_vectors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
@@ -475,7 +475,7 @@
     <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
 
 
-<div class="viewcode-block" id="load"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.load">[docs]</a><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">fp</span><span class="p">:</span> <span class="n">IO</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>  <span class="c1"># noqa: C901</span>
+<div class="viewcode-block" id="load"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.load">[docs]</a><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">fp</span><span class="p">:</span> <span class="n">IO</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>  <span class="c1"># noqa: C901</span>
     <span class="sd">&quot;&quot;&quot;Read a molecule or a crystal from a file object.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s1">&#39;xyz&#39;</span><span class="p">:</span>
         <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
@@ -526,13 +526,13 @@
     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Unknown format: </span><span class="si">{fmt}</span><span class="s1">&#39;</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="loads"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.loads">[docs]</a><span class="k">def</span> <span class="nf">loads</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+<div class="viewcode-block" id="loads"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.loads">[docs]</a><span class="k">def</span> <span class="nf">loads</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Read a molecule or a crystal from a string.&quot;&quot;&quot;</span>
     <span class="n">fp</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">fmt</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="readfile"><a class="viewcode-back" href="../../../api.html#caf.sci.geomlib.readfile">[docs]</a><span class="k">def</span> <span class="nf">readfile</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
+<div class="viewcode-block" id="readfile"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.readfile">[docs]</a><span class="k">def</span> <span class="nf">readfile</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Molecule</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Read a molecule or a crystal from a path.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">fmt</span><span class="p">:</span>
         <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
@@ -579,7 +579,7 @@
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../../../index.html">Caf</a></h1>
+<h1 class="logo"><a href="../../../index.html">Mona</a></h1>
 
 
 
@@ -589,7 +589,7 @@
 
 
 <p>
-<iframe src="https://ghbtns.com/github-btn.html?user=azag0&repo=calcfw&type=watch&count=true&size=large&v=2"
+<iframe src="https://ghbtns.com/github-btn.html?user=azag0&repo=mona&type=watch&count=true&size=large&v=2"
   allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
 </p>
 
@@ -600,10 +600,10 @@
     
 
 <p>
-<a class="badge" href="https://travis-ci.org/azag0/calcfw">
+<a class="badge" href="https://travis-ci.org/azag0/mona">
     <img
-        alt="https://secure.travis-ci.org/azag0/calcfw.svg?branch=master"
-        src="https://secure.travis-ci.org/azag0/calcfw.svg?branch=master"
+        alt="https://secure.travis-ci.org/azag0/mona.svg?branch=master"
+        src="https://secure.travis-ci.org/azag0/mona.svg?branch=master"
     />
 </a>
 </p>
@@ -614,10 +614,10 @@
     
 
 <p>
-<a class="badge" href="https://codecov.io/github/azag0/calcfw">
+<a class="badge" href="https://codecov.io/github/azag0/mona">
     <img
-    alt="https://codecov.io/github/azag0/calcfw/coverage.svg?branch=master"
-    src="https://codecov.io/github/azag0/calcfw/coverage.svg?branch=master"
+    alt="https://codecov.io/github/azag0/mona/coverage.svg?branch=master"
+    src="https://codecov.io/github/azag0/mona/coverage.svg?branch=master"
     />
 </a>
 </p>
