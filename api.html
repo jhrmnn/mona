@@ -37,14 +37,14 @@
 <span id="api"></span><h1>API<a class="headerlink" href="#module-caf" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="caf.Rule">
-<em class="property">class </em><code class="descclassname">caf.</code><code class="descname">Rule</code><span class="sig-paren">(</span><em>corofunc: Callable[[...], Awaitable[_T]]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/rules.html#Rule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Rule" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">caf.</code><code class="descname">Rule</code><span class="sig-paren">(</span><em>corofunc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/rules.html#Rule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Rule" title="Permalink to this definition">¶</a></dt>
 <dd><p>Decorator that turns a coroutine function into a rule, which is a
 callable that generates a task instead of actually calling the coroutine.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>corofunc</strong> – a coroutine function</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>corofunc</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code>[…, <code class="xref py py-class docutils literal notranslate"><span class="pre">Awaitable</span></code>[~_T]]) – a coroutine function</td>
 </tr>
 </tbody>
 </table>
@@ -52,14 +52,16 @@ callable that generates a task instead of actually calling the coroutine.</p>
 
 <dl class="function">
 <dt id="caf.labelled">
-<code class="descclassname">caf.</code><code class="descname">labelled</code><span class="sig-paren">(</span><em>label: str</em><span class="sig-paren">)</span> &#x2192; Callable[[caf.rules.rules.Rule[~_T][_T]], caf.rules.rules.Rule[~_T][_T]]<a class="reference internal" href="_modules/caf/rules/rules.html#labelled"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.labelled" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">caf.</code><code class="descname">labelled</code><span class="sig-paren">(</span><em>label</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/rules.html#labelled"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.labelled" title="Permalink to this definition">¶</a></dt>
 <dd><p>Decorator to be used on a rule that makes the rule assign a fixed label
 to all the tasks it generates.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>label</strong> – a label</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>label</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – a label</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code>[[<code class="xref py py-class docutils literal notranslate"><span class="pre">Rule</span></code>[~_T]], <code class="xref py py-class docutils literal notranslate"><span class="pre">Rule</span></code>[~_T]]</td>
 </tr>
 </tbody>
 </table>
@@ -67,7 +69,7 @@ to all the tasks it generates.</p>
 
 <dl class="function">
 <dt id="caf.run_shell">
-<code class="descclassname">caf.</code><code class="descname">run_shell</code><span class="sig-paren">(</span><em>cmd: str</em>, <em>**kwargs</em><span class="sig-paren">)</span> &#x2192; Union[bytes, Tuple[bytes, bytes]]<a class="reference internal" href="_modules/caf/runners.html#run_shell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.run_shell" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">caf.</code><code class="descname">run_shell</code><span class="sig-paren">(</span><em>cmd</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/runners.html#run_shell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.run_shell" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute a command in a shell. Wrapper around
 <code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_shell()</span></code> that handles errors and whose behavior can
 be modified by session plugins.</p>
@@ -76,8 +78,8 @@ be modified by session plugins.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>cmd</strong> – a shell command to be executed</li>
-<li><strong>kwargs</strong> – all keyword arguments are passed to
+<li><strong>cmd</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – a shell command to be executed</li>
+<li><strong>kwargs</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>) – all keyword arguments are passed to
 <code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_shell()</span></code>. <cite>PIPE</cite> is passed to
 <cite>stdin</cite> and <cite>stdout</cite> keyword arguments by default.</li>
 </ul>
@@ -87,11 +89,19 @@ be modified by session plugins.</p>
 </table>
 <p>Return the standard output as bytes if no error output was generated or a
 tuple of bytes containing standard and error outputs.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code>]]</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="caf.run_process">
-<code class="descclassname">caf.</code><code class="descname">run_process</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span> &#x2192; Union[bytes, Tuple[bytes, bytes]]<a class="reference internal" href="_modules/caf/runners.html#run_process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.run_process" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">caf.</code><code class="descname">run_process</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/runners.html#run_process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.run_process" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a subprocess. Wrapper around
 <code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_exec()</span></code> that handles errors and whose
 behavior can be modified by session plugins.</p>
@@ -100,8 +110,8 @@ behavior can be modified by session plugins.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>args</strong> – arguments of the subprocess</li>
-<li><strong>kwargs</strong> – all keyword arguments are passed to
+<li><strong>args</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – arguments of the subprocess</li>
+<li><strong>kwargs</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>) – all keyword arguments are passed to
 <code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_exec()</span></code>. <cite>PIPE</cite> is passed to
 <cite>stdin</cite> and <cite>stdout</cite> keyword arguments by default.</li>
 </ul>
@@ -111,11 +121,19 @@ behavior can be modified by session plugins.</p>
 </table>
 <p>Return the standard output as bytes if no error output was generated or a
 tuple of bytes containing standard and error outputs.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code>]]</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="caf.run_thread">
-<code class="descclassname">caf.</code><code class="descname">run_thread</code><span class="sig-paren">(</span><em>func: Callable[[...], _T], *args</em><span class="sig-paren">)</span> &#x2192; _T<a class="reference internal" href="_modules/caf/runners.html#run_thread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.run_thread" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">caf.</code><code class="descname">run_thread</code><span class="sig-paren">(</span><em>func</em>, <em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/runners.html#run_thread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.run_thread" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a callable in a new thread. Wrapper around <code class="xref py py-meth docutils literal notranslate"><span class="pre">loop.run_in_executor()</span></code>
 whose behavior can be modified by session plugins.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -123,19 +141,27 @@ whose behavior can be modified by session plugins.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>func</strong> – a callable</li>
-<li><strong>args</strong> – positional arguments to the callable.</li>
+<li><strong>func</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code>[…, ~_T]) – a callable</li>
+<li><strong>args</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>) – positional arguments to the callable.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <p>Return the result of the callable.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">~_T</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
 <dt id="caf.Session">
-<em class="property">class </em><code class="descclassname">caf.</code><code class="descname">Session</code><span class="sig-paren">(</span><em>plugins: Iterable[caf.sessions.SessionPlugin] = None</em>, <em>warn: bool = True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">caf.</code><code class="descname">Session</code><span class="sig-paren">(</span><em>plugins=None</em>, <em>warn=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session" title="Permalink to this definition">¶</a></dt>
 <dd><p>The Session context manager represents a session in which tasks can be
 created and executed.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -143,9 +169,9 @@ created and executed.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>plugins</strong> – plugins to load. This is equivalent to calling each plugin
+<li><strong>plugins</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Iterable</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">SessionPlugin</span></code>[]]]) – plugins to load. This is equivalent to calling each plugin
 with the created session as an argument</li>
-<li><strong>warn</strong> – warn at the end of session if some created tasks were not
+<li><strong>warn</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – warn at the end of session if some created tasks were not
 executed</li>
 </ul>
 </td>
@@ -154,17 +180,20 @@ executed</li>
 </table>
 <dl class="method">
 <dt id="caf.Session.create_task">
-<code class="descname">create_task</code><span class="sig-paren">(</span><em>corofunc: Callable[[...], Awaitable[_T]], *args, **kwargs</em><span class="sig-paren">)</span> &#x2192; caf.tasks.Task[~_T][_T]<a class="reference internal" href="_modules/caf/sessions.html#Session.create_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.create_task" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create new task.</p>
+<code class="descname">create_task</code><span class="sig-paren">(</span><em>corofunc</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session.create_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.create_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new task.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>corofunc</strong> – a coroutine function to be executed</li>
-<li><strong>args</strong> – arguments to the coroutine</li>
-<li><strong>kwargs</strong> – keyword arguments passed to <a class="reference internal" href="#caf.tasks.Task" title="caf.tasks.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a></li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>corofunc</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code>[…, <code class="xref py py-class docutils literal notranslate"><span class="pre">Awaitable</span></code>[~_T]]) – a coroutine function to be executed</li>
+<li><strong>args</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>) – arguments to the coroutine</li>
+<li><strong>kwargs</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>) – keyword arguments passed to <a class="reference internal" href="#caf.tasks.Task" title="caf.tasks.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a></li>
 </ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code>[~_T]</p>
 </td>
 </tr>
 </tbody>
@@ -173,20 +202,36 @@ executed</li>
 
 <dl class="method">
 <dt id="caf.Session.dot_graph">
-<code class="descname">dot_graph</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span> &#x2192; Any<a class="reference internal" href="_modules/caf/sessions.html#Session.dot_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.dot_graph" title="Permalink to this definition">¶</a></dt>
+<code class="descname">dot_graph</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session.dot_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.dot_graph" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate <a class="reference external" href="https://graphviz.readthedocs.io/en/stable/api.html#digraph">graphviz.Digraph</a> for the
 task DAG. Requires <a class="reference external" href="https://graphviz.readthedocs.io/">Graphviz</a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="caf.Session.eval">
-<code class="descname">eval</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span> &#x2192; Any<a class="reference internal" href="_modules/caf/sessions.html#Session.eval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.eval" title="Permalink to this definition">¶</a></dt>
+<code class="descname">eval</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session.eval"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.eval" title="Permalink to this definition">¶</a></dt>
 <dd><p>Blocking version of <a class="reference internal" href="#caf.Session.eval_async" title="caf.Session.eval_async"><code class="xref py py-meth docutils literal notranslate"><span class="pre">eval_async()</span></code></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="caf.Session.eval_async">
-<em class="property">coroutine </em><code class="descname">eval_async</code><span class="sig-paren">(</span><em>obj: Any, depth: bool = False, priority: Tuple[Action, Action, Action] = (&lt;Action.RESULTS: 0&gt;, &lt;Action.EXECUTE: 1&gt;, &lt;Action.TRAVERSE: 2&gt;), exception_handler: Callable[[caf.tasks.Task[typing.Any][Any], Exception], bool] = None, task_filter: Callable[[caf.tasks.Task[typing.Any][Any]], bool] = None, limit: int = None</em><span class="sig-paren">)</span> &#x2192; Any<a class="reference internal" href="_modules/caf/sessions.html#Session.eval_async"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.eval_async" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descname">eval_async</code><span class="sig-paren">(</span><em>self</em>, <em>obj</em>, <em>depth=False</em>, <em>priority=(RESULTS</em>, <em>EXECUTE</em>, <em>TRAVERSE)</em>, <em>exception_handler=None</em>, <em>task_filter=None</em>, <em>limit=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session.eval_async"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.eval_async" title="Permalink to this definition">¶</a></dt>
 <dd><p>Evaluate the given object by running all tasks it contains as well as
 any new generated tasks.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -194,37 +239,53 @@ any new generated tasks.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>obj</strong> – any hashable object</li>
-<li><strong>depth</strong> – traverse DAG depth-first if true, breadth-first otherwise</li>
-<li><strong>priority</strong> – prioritize steps in DAG traversal in order</li>
-<li><strong>exception_handler</strong> – callable that accepts a task and an exception
+<li><strong>obj</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>) – any hashable object</li>
+<li><strong>depth</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – traverse DAG depth-first if true, breadth-first otherwise</li>
+<li><strong>priority</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Action</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Action</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Action</span></code>]) – prioritize steps in DAG traversal in order</li>
+<li><strong>exception_handler</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code>[[<code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>]]) – callable that accepts a task and an exception
 it raised and returns True if the exception
 should be ignored</li>
-<li><strong>task_filter</strong> – callable that accepts a task and returns True if
+<li><strong>task_filter</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code>[[<code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>]], <code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>]]) – callable that accepts a task and returns True if
 the task should be executed</li>
-<li><strong>limit</strong> – limit of the number of executed task</li>
+<li><strong>limit</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]) – limit of the number of executed task</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <p>Return the evaluated object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="caf.Session.run_task">
-<code class="descname">run_task</code><span class="sig-paren">(</span><em>task: caf.tasks.Task[~_T][_T]</em><span class="sig-paren">)</span> &#x2192; Union[_T, caf.hashing.hashing.Hashed[~_T][_T]]<a class="reference internal" href="_modules/caf/sessions.html#Session.run_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.run_task" title="Permalink to this definition">¶</a></dt>
+<code class="descname">run_task</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sessions.html#Session.run_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Session.run_task" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a task.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>task</strong> – task to run</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>task</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code>[~_T]) – task to run</td>
 </tr>
 </tbody>
 </table>
 <p>Return the result of the task’s coroutine function or it’s hashed
 instance if hashable.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[~_T, <code class="xref py py-class docutils literal notranslate"><span class="pre">Hashed</span></code>[~_T]]</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="attribute">
@@ -232,12 +293,28 @@ instance if hashable.</p>
 <code class="descname">running_task</code><a class="headerlink" href="#caf.Session.running_task" title="Permalink to this definition">¶</a></dt>
 <dd><p>Currently running task. This would be usually used from within a task
 coroutine.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>]</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="caf.Session.storage">
 <code class="descname">storage</code><a class="headerlink" href="#caf.Session.storage" title="Permalink to this definition">¶</a></dt>
 <dd><p>A ganeral string-based dictionary available when a session is active.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code>]</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -248,27 +325,27 @@ coroutine.</p>
 part of the versioned public API neverthless.</p>
 <dl class="class">
 <dt id="caf.futures.Future">
-<em class="property">class </em><code class="descclassname">caf.futures.</code><code class="descname">Future</code><span class="sig-paren">(</span><em>parents: Iterable[_Fut]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/futures.html#Future"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.futures.Future" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">caf.futures.</code><code class="descname">Future</code><span class="sig-paren">(</span><em>parents</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/futures.html#Future"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.futures.Future" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="class">
 <dt id="caf.hashing.HashedComposite">
-<em class="property">class </em><code class="descclassname">caf.hashing.</code><code class="descname">HashedComposite</code><span class="sig-paren">(</span><em>jsonstr: str, components: Iterable[caf.hashing.hashing.Hashed[object][object]]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/hashing/hashing.html#HashedComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.hashing.HashedComposite" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">caf.hashing.</code><code class="descname">HashedComposite</code><span class="sig-paren">(</span><em>jsonstr</em>, <em>components</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/hashing/hashing.html#HashedComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.hashing.HashedComposite" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="class">
 <dt id="caf.tasks.Task">
-<em class="property">class </em><code class="descclassname">caf.tasks.</code><code class="descname">Task</code><span class="sig-paren">(</span><em>corofunc: Callable[[...], Awaitable[_T_co]], *args, label: str = None, default: Union[_T_co, Empty] = &lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/tasks.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.tasks.Task" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">caf.tasks.</code><code class="descname">Task</code><span class="sig-paren">(</span><em>corofunc</em>, <em>*args</em>, <em>label=None</em>, <em>default=&lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/tasks.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.tasks.Task" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="class">
 <dt id="caf.tasks.TaskComposite">
-<em class="property">class </em><code class="descclassname">caf.tasks.</code><code class="descname">TaskComposite</code><span class="sig-paren">(</span><em>jsonstr: str, components: Iterable[caf.hashing.hashing.Hashed[object][object]]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/tasks.html#TaskComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.tasks.TaskComposite" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">caf.tasks.</code><code class="descname">TaskComposite</code><span class="sig-paren">(</span><em>jsonstr</em>, <em>components</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/tasks.html#TaskComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.tasks.TaskComposite" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="class">
 <dt id="caf.tasks.TaskComponent">
-<em class="property">class </em><code class="descclassname">caf.tasks.</code><code class="descname">TaskComponent</code><span class="sig-paren">(</span><em>task: caf.tasks.Task[object][object], keys: List[object], default: Union[_T_co, Empty] = &lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/tasks.html#TaskComponent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.tasks.TaskComponent" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">caf.tasks.</code><code class="descname">TaskComponent</code><span class="sig-paren">(</span><em>task</em>, <em>keys</em>, <em>default=&lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/tasks.html#TaskComponent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.tasks.TaskComponent" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
