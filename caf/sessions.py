@@ -38,6 +38,7 @@ from .graph import (
     default_priority,
     NodeException,
 )
+from .futures import STATE_COLORS
 from .utils import Literal, split, call_if
 from .errors import SessionError, TaskError, FutureError, CafError
 from .pluggable import Plugin, Pluggable
@@ -378,7 +379,8 @@ class Session(Pluggable):
         tasks: Union[List[Hash], FrozenSet[Hash]]
         dot = Digraph(*args, **kwargs)
         for child, parents in self._graph.deps.items():
-            dot.node(child, repr(Literal(self._tasks[child])))
+            task_obj = self._tasks[child]
+            dot.node(child, repr(Literal(task_obj)), color=STATE_COLORS[task_obj.state])
             for parent in parents:
                 dot.edge(child, parent)
         for origin, tasks in self._graph.side_effects.items():

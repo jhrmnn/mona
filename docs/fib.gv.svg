@@ -12,13 +12,13 @@
 <!-- af8adec6eb19ffb032800f55447e629209eae7b7 -->
 <g id="node1" class="node">
 <title>af8adec6eb19ffb032800f55447e629209eae7b7</title>
-<ellipse fill="none" stroke="#000000" cx="182.836" cy="-594" rx="57.9804" ry="18"/>
+<ellipse fill="none" stroke="#00ff00" cx="182.836" cy="-594" rx="57.9804" ry="18"/>
 <text text-anchor="middle" x="182.836" y="-589.8" font-family="Times,serif" font-size="14.00" fill="#000000">af8ade: fib(5)</text>
 </g>
 <!-- f40db47d3530ec3b310d26503a8888b9dbcb6fcf -->
 <g id="node2" class="node">
 <title>f40db47d3530ec3b310d26503a8888b9dbcb6fcf</title>
-<ellipse fill="none" stroke="#000000" cx="290.836" cy="-450" rx="59.4599" ry="18"/>
+<ellipse fill="none" stroke="#00ff00" cx="290.836" cy="-450" rx="59.4599" ry="18"/>
 <text text-anchor="middle" x="290.836" y="-445.8" font-family="Times,serif" font-size="14.00" fill="#000000">f40db4: fib(4)</text>
 </g>
 <!-- af8adec6eb19ffb032800f55447e629209eae7b7&#45;&gt;f40db47d3530ec3b310d26503a8888b9dbcb6fcf -->
@@ -30,7 +30,7 @@
 <!-- 7aff5ea558853a4ef2710798ca9ad70c73b68534 -->
 <g id="node3" class="node">
 <title>7aff5ea558853a4ef2710798ca9ad70c73b68534</title>
-<ellipse fill="none" stroke="#000000" cx="132.836" cy="-306" rx="56.7095" ry="18"/>
+<ellipse fill="none" stroke="#00ff00" cx="132.836" cy="-306" rx="56.7095" ry="18"/>
 <text text-anchor="middle" x="132.836" y="-301.8" font-family="Times,serif" font-size="14.00" fill="#000000">7aff5e: fib(3)</text>
 </g>
 <!-- af8adec6eb19ffb032800f55447e629209eae7b7&#45;&gt;7aff5ea558853a4ef2710798ca9ad70c73b68534 -->
@@ -42,7 +42,7 @@
 <!-- 5193a475a3c1df1ea1eab2444a3786eeb213dfca -->
 <g id="node4" class="node">
 <title>5193a475a3c1df1ea1eab2444a3786eeb213dfca</title>
-<ellipse fill="none" stroke="#000000" cx="182.836" cy="-522" rx="112.0625" ry="18"/>
+<ellipse fill="none" stroke="#00ff00" cx="182.836" cy="-522" rx="112.0625" ry="18"/>
 <text text-anchor="middle" x="182.836" y="-517.8" font-family="Times,serif" font-size="14.00" fill="#000000">5193a4: total([fib(4), fib(3)])</text>
 </g>
 <!-- af8adec6eb19ffb032800f55447e629209eae7b7&#45;&gt;5193a475a3c1df1ea1eab2444a3786eeb213dfca -->
@@ -60,7 +60,7 @@
 <!-- 0d30956267432b4f9237214f145f984b4f54cf1b -->
 <g id="node5" class="node">
 <title>0d30956267432b4f9237214f145f984b4f54cf1b</title>
-<ellipse fill="none" stroke="#000000" cx="289.836" cy="-162" rx="60.9135" ry="18"/>
+<ellipse fill="none" stroke="#00ff00" cx="289.836" cy="-162" rx="60.9135" ry="18"/>
 <text text-anchor="middle" x="289.836" y="-157.8" font-family="Times,serif" font-size="14.00" fill="#000000">0d3095: fib(2)</text>
 </g>
 <!-- f40db47d3530ec3b310d26503a8888b9dbcb6fcf&#45;&gt;0d30956267432b4f9237214f145f984b4f54cf1b -->
@@ -72,7 +72,7 @@
 <!-- 484ba671db9b89ce860d92bcef4c68610760d3e3 -->
 <g id="node6" class="node">
 <title>484ba671db9b89ce860d92bcef4c68610760d3e3</title>
-<ellipse fill="none" stroke="#000000" cx="290.836" cy="-378" rx="112.0625" ry="18"/>
+<ellipse fill="none" stroke="#00ff00" cx="290.836" cy="-378" rx="112.0625" ry="18"/>
 <text text-anchor="middle" x="290.836" y="-373.8" font-family="Times,serif" font-size="14.00" fill="#000000">484ba6: total([fib(3), fib(2)])</text>
 </g>
 <!-- f40db47d3530ec3b310d26503a8888b9dbcb6fcf&#45;&gt;484ba671db9b89ce860d92bcef4c68610760d3e3 -->
@@ -90,7 +90,7 @@
 <!-- 9a67ddf95ff2412bcb106aebad315484a2f3a049 -->
 <g id="node7" class="node">
 <title>9a67ddf95ff2412bcb106aebad315484a2f3a049</title>
-<ellipse fill="none" stroke="#000000" cx="130.836" cy="-18" rx="60.4204" ry="18"/>
+<ellipse fill="none" stroke="#00ff00" cx="130.836" cy="-18" rx="60.4204" ry="18"/>
 <text text-anchor="middle" x="130.836" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">9a67dd: fib(1)</text>
 </g>
 <!-- 7aff5ea558853a4ef2710798ca9ad70c73b68534&#45;&gt;9a67ddf95ff2412bcb106aebad315484a2f3a049 -->
@@ -102,7 +102,7 @@
 <!-- f07f1de93128b74c8dca21ec0454d1cddf020688 -->
 <g id="node8" class="node">
 <title>f07f1de93128b74c8dca21ec0454d1cddf020688</title>
-<ellipse fill="none" stroke="#000000" cx="132.836" cy="-234" rx="109.6485" ry="18"/>
+<ellipse fill="none" stroke="#00ff00" cx="132.836" cy="-234" rx="109.6485" ry="18"/>
 <text text-anchor="middle" x="132.836" y="-229.8" font-family="Times,serif" font-size="14.00" fill="#000000">f07f1d: total([fib(2), fib(1)])</text>
 </g>
 <!-- 7aff5ea558853a4ef2710798ca9ad70c73b68534&#45;&gt;f07f1de93128b74c8dca21ec0454d1cddf020688 -->
@@ -137,7 +137,7 @@
 <!-- 432e821c4108aac9871fff294a64de53c9b2a3bc -->
 <g id="node9" class="node">
 <title>432e821c4108aac9871fff294a64de53c9b2a3bc</title>
-<ellipse fill="none" stroke="#000000" cx="359.836" cy="-18" rx="60.4204" ry="18"/>
+<ellipse fill="none" stroke="#00ff00" cx="359.836" cy="-18" rx="60.4204" ry="18"/>
 <text text-anchor="middle" x="359.836" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">432e82: fib(0)</text>
 </g>
 <!-- 0d30956267432b4f9237214f145f984b4f54cf1b&#45;&gt;432e821c4108aac9871fff294a64de53c9b2a3bc -->
@@ -149,7 +149,7 @@
 <!-- b33a55e2fbadbbe9f7503639a27f4c6758e5a648 -->
 <g id="node10" class="node">
 <title>b33a55e2fbadbbe9f7503639a27f4c6758e5a648</title>
-<ellipse fill="none" stroke="#000000" cx="289.836" cy="-90" rx="112.0625" ry="18"/>
+<ellipse fill="none" stroke="#00ff00" cx="289.836" cy="-90" rx="112.0625" ry="18"/>
 <text text-anchor="middle" x="289.836" y="-85.8" font-family="Times,serif" font-size="14.00" fill="#000000">b33a55: total([fib(1), fib(0)])</text>
 </g>
 <!-- 0d30956267432b4f9237214f145f984b4f54cf1b&#45;&gt;b33a55e2fbadbbe9f7503639a27f4c6758e5a648 -->
@@ -164,13 +164,13 @@
 <polygon fill="#000000" stroke="transparent" stroke-width="7" points="296.812,-396.4133 296.797,-398.0787 296.7624,-399.7791 296.7087,-401.5103 296.6362,-403.2682 296.5456,-405.0486 296.4371,-406.8471 296.3113,-408.6595 296.1686,-410.4816 296.0095,-412.309 295.8344,-414.1373 295.6437,-415.9622 295.4379,-417.7792 295.2174,-419.584 294.9828,-421.3719 294.7345,-423.1387 294.4729,-424.8796 294.1987,-426.59 293.9122,-428.2653 293.614,-429.9008 293.3029,-431.5126 300.2738,-432.1501 300.2636,-430.4708 300.235,-428.7371 300.1866,-426.9742 300.119,-425.1856 300.0327,-423.3754 299.9281,-421.5474 299.8059,-419.7058 299.6664,-417.8545 299.5101,-415.9977 299.3375,-414.1396 299.149,-412.2842 298.9451,-410.4358 298.7262,-408.5986 298.4927,-406.777 298.2452,-404.975 297.984,-403.1971 297.7097,-401.4476 297.4226,-399.7309 297.1232,-398.0513 296.812,-396.4133 296.812,-396.4133"/>
 </g>
 <!-- 484ba671db9b89ce860d92bcef4c68610760d3e3&#45;&gt;7aff5ea558853a4ef2710798ca9ad70c73b68534 -->
-<g id="edge4" class="edge">
+<g id="edge3" class="edge">
 <title>484ba671db9b89ce860d92bcef4c68610760d3e3&#45;&gt;7aff5ea558853a4ef2710798ca9ad70c73b68534</title>
 <path fill="none" stroke="#000000" d="M253.3922,-360.937C229.7877,-350.1805 199.2637,-336.2709 174.8364,-325.1394"/>
 <polygon fill="#000000" stroke="#000000" points="176.0125,-321.8291 165.4614,-320.8673 173.1097,-328.1989 176.0125,-321.8291"/>
 </g>
 <!-- 484ba671db9b89ce860d92bcef4c68610760d3e3&#45;&gt;0d30956267432b4f9237214f145f984b4f54cf1b -->
-<g id="edge3" class="edge">
+<g id="edge4" class="edge">
 <title>484ba671db9b89ce860d92bcef4c68610760d3e3&#45;&gt;0d30956267432b4f9237214f145f984b4f54cf1b</title>
 <path fill="none" stroke="#000000" d="M290.7524,-359.9555C290.5785,-322.3938 290.1765,-235.5541 289.9675,-190.4103"/>
 <polygon fill="#000000" stroke="#000000" points="293.4663,-190.1287 289.92,-180.1451 286.4664,-190.1612 293.4663,-190.1287"/>
@@ -181,13 +181,13 @@
 <polygon fill="#000000" stroke="transparent" stroke-width="7" points="138.812,-252.4133 138.797,-254.0787 138.7624,-255.7791 138.7087,-257.5103 138.6362,-259.2682 138.5456,-261.0486 138.4371,-262.8471 138.3113,-264.6595 138.1686,-266.4816 138.0095,-268.309 137.8344,-270.1373 137.6437,-271.9622 137.4379,-273.7792 137.2174,-275.584 136.9828,-277.3719 136.7345,-279.1387 136.4729,-280.8796 136.1987,-282.59 135.9122,-284.2653 135.614,-285.9008 135.3029,-287.5126 142.2738,-288.1501 142.2636,-286.4708 142.235,-284.7371 142.1866,-282.9742 142.119,-281.1856 142.0327,-279.3754 141.9281,-277.5474 141.8059,-275.7058 141.6664,-273.8545 141.5101,-271.9977 141.3375,-270.1396 141.149,-268.2842 140.9451,-266.4358 140.7262,-264.5986 140.4927,-262.777 140.2452,-260.975 139.984,-259.1971 139.7097,-257.4476 139.4226,-255.7309 139.1232,-254.0513 138.812,-252.4133 138.812,-252.4133"/>
 </g>
 <!-- f07f1de93128b74c8dca21ec0454d1cddf020688&#45;&gt;0d30956267432b4f9237214f145f984b4f54cf1b -->
-<g id="edge5" class="edge">
+<g id="edge6" class="edge">
 <title>f07f1de93128b74c8dca21ec0454d1cddf020688&#45;&gt;0d30956267432b4f9237214f145f984b4f54cf1b</title>
 <path fill="none" stroke="#000000" d="M170.0428,-216.937C193.2577,-206.2907 223.2082,-192.5554 247.3539,-181.4822"/>
 <polygon fill="#000000" stroke="#000000" points="249.0025,-184.5767 256.6333,-177.2267 246.0845,-178.2139 249.0025,-184.5767"/>
 </g>
 <!-- f07f1de93128b74c8dca21ec0454d1cddf020688&#45;&gt;9a67ddf95ff2412bcb106aebad315484a2f3a049 -->
-<g id="edge6" class="edge">
+<g id="edge5" class="edge">
 <title>f07f1de93128b74c8dca21ec0454d1cddf020688&#45;&gt;9a67ddf95ff2412bcb106aebad315484a2f3a049</title>
 <path fill="none" stroke="#000000" d="M132.6689,-215.9555C132.3211,-178.3938 131.517,-91.5541 131.099,-46.4103"/>
 <polygon fill="#000000" stroke="#000000" points="134.5965,-46.1122 131.004,-36.1451 127.5968,-46.1771 134.5965,-46.1122"/>
