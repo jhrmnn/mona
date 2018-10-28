@@ -2,13 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
+import shutil
 import logging
-from typing import List, Optional, Any
+from pathlib import Path
+from typing import List, Optional, Any, cast, Dict
 
 import click
 
 from ..tasks import Task
 from ..utils import import_fullname
+from ..plugins.files import HashedPath, HashingPath
+from ..rules.dirtask import checkout_files
 from .glob import match_glob
 from .app import App
 
@@ -90,3 +94,56 @@ def run(
             task_filter=task_filter,
             limit=limit,
         )
+
+
+@cli.command()
+@click.option('-p', '--pattern', multiple=True, help='Tasks to be executed')
+@click.option('-b', '--blddir', default=Path('build'), help='Where to checkout')
+@click.option('-f', '--force', is_flag=True, help='Remove PATH if exists')
+@click.option('--done', is_flag=True, help='Check out only finished tasks')
+@click.option('-c', '--copy', is_flag=True, help='Copy instead of symlinking')
+@click.argument('rulename', metavar='RULE')
+@click.pass_obj
+def checkout(
+    app: App,
+    rulename: str,
+    blddir: Path,
+    pattern: List[str],
+    force: bool,
+    done: bool,
+    copy: bool,
+) -> None:
+    if blddir.exists() and force:
+        shutil.rmtree(blddir)
+    blddir.mkdir()
+    n_tasks = 0
+    rule = import_fullname(rulename)
+    sess = app.session(warn=False, readonly=True, full_restore=True)
+    with sess:
+        rule()
+        for task in sess.all_tasks():
+            if task.label[0] != '/':
+                continue
+            if pattern and not any(match_glob(task.label, patt) for patt in pattern):
+                continue
+            if done and not task.done():
+                continue
+            exe = cast(HashedPath, task.args[0]).value
+            paths: Dict[str, HashingPath] = {
+                filename: path.value
+                for filename, path in task.args[1].resolve().items()  # type: ignore
+            }
+            if task.done():
+                paths.update(
+                    {
+                        filename: HashingPath(stored_bytes.hashid)
+                        for filename, stored_bytes in task.resolve()  # type: ignore
+                        .resolve()
+                        .items()
+                    }
+                )
+            root = blddir / task.label[1:]
+            root.mkdir(parents=True)
+            checkout_files(root, exe, paths, copy=copy)
+            n_tasks += 1
+    log.info(f'Checked out {n_tasks} tasks.')
