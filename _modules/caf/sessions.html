@@ -38,6 +38,7 @@
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
 <span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">chain</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
 <span class="kn">import</span> <span class="nn">asyncio</span>
@@ -127,7 +128,16 @@
     <span class="n">backflow</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Hash</span><span class="p">,</span> <span class="n">FrozenSet</span><span class="p">[</span><span class="n">Hash</span><span class="p">]]</span>
 
 
-<div class="viewcode-block" id="Session"><a class="viewcode-back" href="../../api.html#caf.sessions.Session">[docs]</a><span class="k">class</span> <span class="nc">Session</span><span class="p">(</span><span class="n">Pluggable</span><span class="p">):</span>
+<div class="viewcode-block" id="Session"><a class="viewcode-back" href="../../api.html#caf.Session">[docs]</a><span class="k">class</span> <span class="nc">Session</span><span class="p">(</span><span class="n">Pluggable</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The Session context manager represents a session in which tasks can be</span>
+<span class="sd">    created and executed.</span>
+
+<span class="sd">    :param plugins: plugins to load. This is equivalent to calling each plugin</span>
+<span class="sd">                    with the created session as an argument</span>
+<span class="sd">    :param warn: warn at the end of session if some created tasks were not</span>
+<span class="sd">                 executed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">plugins</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">SessionPlugin</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">warn</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -149,6 +159,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">storage</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;A ganeral string-based dictionary available when a session is active.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_active</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span>
 
@@ -187,6 +198,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">running_task</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Currently running task. This would be usually used from within a task</span>
+<span class="sd">        coroutine.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running_task</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">task</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">task</span>
@@ -240,9 +254,15 @@
     <span class="k">def</span> <span class="nf">add_side_effect_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caller</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span> <span class="n">callee</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">side_effects</span><span class="p">[</span><span class="n">caller</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callee</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">create_task</span><span class="p">(</span>
+<div class="viewcode-block" id="Session.create_task"><a class="viewcode-back" href="../../api.html#caf.Session.create_task">[docs]</a>    <span class="k">def</span> <span class="nf">create_task</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">corofunc</span><span class="p">:</span> <span class="n">Corofunc</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Create new task.</span>
+
+<span class="sd">        :param corofunc: a coroutine function to be executed</span>
+<span class="sd">        :param args: arguments to the coroutine</span>
+<span class="sd">        :param kwargs: keyword arguments passed to :class:`~caf.tasks.Task`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">corofunc</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">caller</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running_task</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">caller</span><span class="p">:</span>
@@ -250,7 +270,7 @@
         <span class="n">task</span><span class="p">,</span> <span class="n">registered</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_task</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">registered</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_create&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">task</span>
+        <span class="k">return</span> <span class="n">task</span></div>
 
     <span class="nd">@asynccontextmanager</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">run_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
@@ -264,8 +284,15 @@
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_context</span><span class="p">():</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_task_async</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">run_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
-        <span class="k">return</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_task</span><span class="p">(</span><span class="n">task</span><span class="p">))</span>
+<div class="viewcode-block" id="Session.run_task"><a class="viewcode-back" href="../../api.html#caf.Session.run_task">[docs]</a>    <span class="k">def</span> <span class="nf">run_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
+        <span class="sd">&quot;&quot;&quot;Run a task.</span>
+
+<span class="sd">        :param task: task to run</span>
+
+<span class="sd">        Return the result of the task&#39;s coroutine function or it&#39;s hashed</span>
+<span class="sd">        instance if hashable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_task</span><span class="p">(</span><span class="n">task</span><span class="p">))</span></div>
 
     <span class="k">def</span> <span class="nf">set_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="n">result</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">):</span>
@@ -305,12 +332,9 @@
         <span class="n">backflow</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">backflow</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">,</span> <span class="p">()))</span>
         <span class="n">done</span><span class="p">((</span><span class="n">task</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">backflow</span><span class="p">))</span>
 
-    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_async</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
-
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">eval_async</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_context</span><span class="p">():</span>
-            <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eval_async</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<div class="viewcode-block" id="Session.eval"><a class="viewcode-back" href="../../api.html#caf.Session.eval">[docs]</a>    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Blocking version of :meth:`eval_async`.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_async</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span></div>
 
     <span class="c1"># TODO reduce complexity</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_eval_async</span><span class="p">(</span>  <span class="c1"># noqa: C901</span>
@@ -322,6 +346,21 @@
         <span class="n">task_filter</span><span class="p">:</span> <span class="n">TaskFilter</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Evaluate the given object by running all tasks it contains as well as</span>
+<span class="sd">        any new generated tasks.</span>
+
+<span class="sd">        :param obj: any hashable object</span>
+<span class="sd">        :param depth: traverse DAG depth-first if true, breadth-first otherwise</span>
+<span class="sd">        :param priority: prioritize steps in DAG traversal in order</span>
+<span class="sd">        :param exception_handler: callable that accepts a task and an exception</span>
+<span class="sd">                                  it raised and returns True if the exception</span>
+<span class="sd">                                  should be ignored</span>
+<span class="sd">        :param task_filter: callable that accepts a task and returns True if</span>
+<span class="sd">                            the task should be executed</span>
+<span class="sd">        :param limit: limit of the number of executed task</span>
+
+<span class="sd">        Return the evaluated object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">fut</span> <span class="o">=</span> <span class="n">maybe_hashed</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fut</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">obj</span>
@@ -408,7 +447,16 @@
                     <span class="k">raise</span>
         <span class="k">return</span> <span class="n">fut</span>
 
-    <span class="k">def</span> <span class="nf">dot_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<div class="viewcode-block" id="Session.eval_async"><a class="viewcode-back" href="../../api.html#caf.Session.eval_async">[docs]</a>    <span class="nd">@wraps</span><span class="p">(</span><span class="n">_eval_async</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">eval_async</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_context</span><span class="p">():</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eval_async</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Session.dot_graph"><a class="viewcode-back" href="../../api.html#caf.Session.dot_graph">[docs]</a>    <span class="k">def</span> <span class="nf">dot_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Generate `graphviz.Digraph</span>
+<span class="sd">        &lt;https://graphviz.readthedocs.io/en/stable/api.html#digraph&gt;`_ for the</span>
+<span class="sd">        task DAG. Requires `Graphviz &lt;https://graphviz.readthedocs.io/&gt;`_.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span> <span class="nn">graphviz</span> <span class="k">import</span> <span class="n">Digraph</span>  <span class="c1"># type: ignore</span>
 
         <span class="n">tasks</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Hash</span><span class="p">],</span> <span class="n">FrozenSet</span><span class="p">[</span><span class="n">Hash</span><span class="p">]]</span>
@@ -431,7 +479,7 @@
                     <span class="nb">dir</span><span class="o">=</span><span class="s1">&#39;back&#39;</span><span class="p">,</span>
                     <span class="n">arrowtail</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">,</span>
                 <span class="p">)</span>
-        <span class="k">return</span> <span class="n">dot</span>
+        <span class="k">return</span> <span class="n">dot</span></div>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">active</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Session&#39;</span><span class="p">:</span>
