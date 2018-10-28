@@ -4,7 +4,7 @@
 import logging
 from enum import IntEnum
 from typing import Iterable, Set, Callable, List, TypeVar, NoReturn, FrozenSet
-from typing import Any  # noqa
+from typing_extensions import Final
 
 from .errors import CafError
 
@@ -23,6 +23,16 @@ class State(IntEnum):
     HAS_RUN = 4
     AWAITING = 5
     DONE = 6
+
+
+STATE_COLORS: Final = {
+    State.PENDING: None,
+    State.READY: 'magenta',
+    State.RUNNING: 'yellow',
+    State.ERROR: 'red',
+    State.AWAITING: 'cyan',
+    State.DONE: 'green',
+}
 
 
 class Future:
