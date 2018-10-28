@@ -108,7 +108,7 @@ def status(app: App, rulename: str, pattern: List[str]) -> None:
     sess = app.session(warn=False, readonly=True, full_restore=True)
     ncols = len(STATE_COLORS) + 1
     table = Table(align=['<', *(ncols * ['>'])], sep=['   ', *((ncols - 1) * ['/'])])
-    table.add_row('pattern', *(s.name for s in STATE_COLORS), 'ALL')
+    table.add_row('pattern', *(s.name.lower() for s in STATE_COLORS), 'all')
     with sess:
         rule()
         task_groups: Dict[str, List[Task[object]]] = {}

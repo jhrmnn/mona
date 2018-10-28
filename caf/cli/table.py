@@ -17,7 +17,7 @@ class lenstr(str):
         return self._len
 
 
-def alignize(s: str, align: str, width: int) -> str:
+def align(s: str, align: str, width: int) -> str:
     l = len(s)
     if l >= width:
         return s
@@ -49,7 +49,9 @@ class Table:
         self._indent = indent
 
     def sort(
-        self, key: Callable[[Tuple[Any, ...]], Any] = lambda x: x[0], **kwargs: Any
+        self,
+        key: Callable[[Tuple[object, ...]], object] = lambda x: x[0],
+        **kwargs: Any,
     ) -> None:
         self._rows.sort(key=lambda x: key(x[1]), **kwargs)
 
@@ -66,16 +68,19 @@ class Table:
             seps = self._sep
         else:
             seps = (col_num - 1) * [self._sep]
-        seps += ['\n']
+        seps += ['']
         if isinstance(self._align, list):
             aligns = self._align
         else:
             aligns = col_num * [self._align]
-        s = ''
+        lines: List[str] = []
         for free, row in self._rows:
             if free:
-                s += f'{row[0]}\n'
+                lines += row[0]
             else:
-                cells = starmap(alignize, zip(row, aligns, col_widths))
-                s += self._indent + ''.join(chain.from_iterable(zip(cells, seps)))
-        return s
+                cells = starmap(align, zip(row, aligns, col_widths))
+                lines.append(
+                    self._indent
+                    + ''.join(chain.from_iterable(zip(cells, seps))).rstrip()
+                )
+        return '\n'.join(lines)
