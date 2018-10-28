@@ -4,6 +4,7 @@
 import os
 import shutil
 import logging
+import tempfile
 from pathlib import Path
 from typing import List, Optional, Any, cast, Dict
 
@@ -97,7 +98,19 @@ def run(
 
 
 @cli.command()
-@click.option('-p', '--pattern', multiple=True, help='Tasks to be executed')
+@click.argument('rulename', metavar='RULE', envvar='CAF_RULE')
+@click.pass_obj
+def graph(app: App, rulename: str) -> None:
+    rule = import_fullname(rulename)
+    sess = app.session(warn=False, readonly=True, full_restore=True)
+    with sess:
+        rule()
+        dot = sess.dot_graph()
+    dot.render(tempfile.mkstemp()[1], view=True, cleanup=True, format='pdf')
+
+
+@cli.command()
+@click.option('-p', '--pattern', multiple=True, help='Tasks to be checked out')
 @click.option('-b', '--blddir', default=Path('build'), help='Where to checkout')
 @click.option('-f', '--force', is_flag=True, help='Remove PATH if exists')
 @click.option('--done', is_flag=True, help='Check out only finished tasks')
