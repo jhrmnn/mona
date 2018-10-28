@@ -11,39 +11,39 @@ if TYPE_CHECKING:
 __version__ = '0.1.0'
 
 
-class CafError(Exception):
+class MonaError(Exception):
     pass
 
 
-class FutureError(CafError):
+class FutureError(MonaError):
     def __init__(self, msg: str, fut: 'Future') -> None:
         super().__init__(msg)
         self.future = fut
 
 
-class TaskError(CafError):
+class TaskError(MonaError):
     def __init__(self, msg: str, task: 'Task[Any]') -> None:
         super().__init__(msg)
         self.task = task
 
 
-class CompositeError(CafError):
+class CompositeError(MonaError):
     pass
 
 
-class SessionError(CafError):
+class SessionError(MonaError):
     def __init__(self, msg: str, sess: 'Session') -> None:
         super().__init__(msg)
         self.session = sess
 
 
-class InvalidInput(CafError):
+class InvalidInput(MonaError):
     pass
 
 
-class FilesError(CafError):
+class FilesError(MonaError):
     pass
 
 
-class HashingError(CafError):
+class HashingError(MonaError):
     pass

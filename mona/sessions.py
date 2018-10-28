@@ -41,7 +41,7 @@ from .graph import (
 )
 from .futures import STATE_COLORS
 from .utils import Literal, split, call_if
-from .errors import SessionError, TaskError, FutureError, CafError
+from .errors import SessionError, TaskError, FutureError, MonaError
 from .pluggable import Plugin, Pluggable
 
 __version__ = '0.1.0'
@@ -226,7 +226,7 @@ class Session(Pluggable):
 
         :param corofunc: a coroutine function to be executed
         :param args: arguments to the coroutine
-        :param kwargs: keyword arguments passed to :class:`~caf.tasks.Task`
+        :param kwargs: keyword arguments passed to :class:`~mona.tasks.Task`
         """
         task = Task(corofunc, *args, **kwargs)
         caller = self._running_task.get()
@@ -357,7 +357,7 @@ class Session(Pluggable):
                 break
             if isinstance(step_or_exception, NodeException):
                 task, exc = step_or_exception
-                if isinstance(exc, (CafError, AssertionError, asyncio.CancelledError)):
+                if isinstance(exc, (MonaError, AssertionError, asyncio.CancelledError)):
                     raise exc
                 else:
                     assert isinstance(exc, Exception)
@@ -407,7 +407,7 @@ class Session(Pluggable):
                 tasks_not_done = self._filter_tasks(lambda t: not t.done())
                 if tasks_not_done:
                     msg = f'Task dependency cycle: {tasks_not_done}'
-                    raise CafError(msg)
+                    raise MonaError(msg)
                 else:
                     raise
         return fut
@@ -450,5 +450,5 @@ class Session(Pluggable):
     def active(cls) -> 'Session':
         session = _active_session.get()
         if session is None:
-            raise CafError('No active session')
+            raise MonaError('No active session')
         return session

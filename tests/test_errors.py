@@ -3,14 +3,14 @@ import pickle
 
 import pytest  # type: ignore
 
-from caf import Rule, Session, run_shell
-from caf.errors import TaskError, SessionError, CafError
+from mona import Rule, Session, run_shell
+from mona.errors import TaskError, SessionError, MonaError
 
 from tests.test_core import identity
 
 
 def test_no_session():
-    with pytest.raises(CafError):
+    with pytest.raises(MonaError):
         identity(10)
 
 
@@ -70,7 +70,7 @@ def test_dependency_cycle():
     async def f(x):
         return f(x)
 
-    with pytest.raises(CafError):
+    with pytest.raises(MonaError):
         with Session() as sess:
             sess.eval(f(1))
 
@@ -95,7 +95,7 @@ def test_run_already_run():
 
 
 def test_no_coroutine():
-    with pytest.raises(CafError):
+    with pytest.raises(MonaError):
 
         @Rule
         def f():
@@ -103,7 +103,7 @@ def test_no_coroutine():
 
 
 def test_pickled_future():
-    with pytest.raises(CafError):
+    with pytest.raises(MonaError):
         with Session():
             pickle.dumps(identity())
 

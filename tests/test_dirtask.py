@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest  # type: ignore
 
-from caf import Rule, Session
-from caf.rules import dir_task
-from caf.errors import InvalidInput
+from mona import Rule, Session
+from mona.rules import dir_task
+from mona.errors import InvalidInput
 
 
 @Rule

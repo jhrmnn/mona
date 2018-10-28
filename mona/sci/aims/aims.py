@@ -9,7 +9,7 @@ from typing import Dict, Any, Tuple, Callable, cast
 
 from ...rules.dirtask import dir_task, DirTaskResult
 from ...tasks import Task
-from ...errors import CafError, InvalidInput
+from ...errors import MonaError, InvalidInput
 from ...pluggable import Plugin, Pluggable
 from ...hashing import hash_function
 from ..geomlib import Molecule, Atom
@@ -67,7 +67,7 @@ class SpeciesDir(AimsPlugin):
             if not pathname:
                 pathname = shutil.which('aims-master')
             if not pathname:
-                raise CafError(f'Aims "{aims}" not found')
+                raise MonaError(f'Aims "{aims}" not found')
             path = Path(pathname)
             speciesdir = path.parents[1] / 'aimsfiles/species_defaults' / sp_def
             self._speciesdirs[sp_def_key] = speciesdir  # type: ignore

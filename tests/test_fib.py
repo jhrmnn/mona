@@ -1,4 +1,4 @@
-from caf import Rule, Session
+from mona import Rule, Session
 
 from tests.test_core import total
 

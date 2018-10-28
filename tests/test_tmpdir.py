@@ -1,9 +1,9 @@
 import subprocess
 from pathlib import Path
 
-from caf import Session
-from caf.plugins import TmpdirManager
-from caf.rules import dir_task
+from mona import Session
+from mona.plugins import TmpdirManager
+from mona.rules import dir_task
 
 from tests.test_dirtask import analysis, calcs
 

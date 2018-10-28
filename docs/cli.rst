@@ -3,7 +3,7 @@ CLI
 
 .. code-block:: none
 
-    Usage: caf [OPTIONS] COMMAND [ARGS]...
+    Usage: mona [OPTIONS] COMMAND [ARGS]...
 
     Options:
       --help  Show this message and exit.
@@ -18,7 +18,7 @@ CLI
 
 .. code-block:: none
 
-    Usage: caf run [OPTIONS] RULE
+    Usage: mona run [OPTIONS] RULE
 
       Run a given rule.
 

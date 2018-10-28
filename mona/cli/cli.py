@@ -26,7 +26,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-logging.getLogger('caf').setLevel(int(os.environ.get('CAF_DEBUG', logging.INFO)))
+logging.getLogger('mona').setLevel(int(os.environ.get('MONA_DEBUG', logging.INFO)))
 
 
 @click.group()
@@ -39,7 +39,7 @@ def cli(ctx: click.Context) -> None:
 @click.pass_obj
 def init(app: App) -> None:
     """Initialize a Git repository."""
-    app.ensure_cafdir()
+    app.ensure_monadir()
 
 
 class TaskFilter:
@@ -77,7 +77,7 @@ class ExceptionBuffer:
 @click.option('-j', '--cores', type=int, help='Number of cores')
 @click.option('-l', '--limit', type=int, help='Limit number of tasks to N')
 @click.option('--maxerror', default=5, help='Number of errors in row to quit')
-@click.argument('rulename', metavar='RULE', envvar='CAF_RULE')
+@click.argument('rulename', metavar='RULE', envvar='MONA_RULE')
 @click.pass_obj
 def run(
     app: App,
@@ -103,7 +103,7 @@ def run(
 
 @cli.command()
 @click.option('-p', '--pattern', multiple=True, help='Patterns to be reported')
-@click.argument('rulename', metavar='RULE', envvar='CAF_RULE')
+@click.argument('rulename', metavar='RULE', envvar='MONA_RULE')
 @click.pass_obj
 def status(app: App, rulename: str, pattern: List[str]) -> None:
     """Print status of tasks."""
@@ -144,7 +144,7 @@ def status(app: App, rulename: str, pattern: List[str]) -> None:
 
 
 @cli.command()
-@click.argument('rulename', metavar='RULE', envvar='CAF_RULE')
+@click.argument('rulename', metavar='RULE', envvar='MONA_RULE')
 @click.pass_obj
 def graph(app: App, rulename: str) -> None:
     """Open a pdf with the task graph."""
@@ -162,7 +162,7 @@ def graph(app: App, rulename: str) -> None:
 @click.option('-f', '--force', is_flag=True, help='Remove PATH if exists')
 @click.option('--done', is_flag=True, help='Check out only finished tasks')
 @click.option('-c', '--copy', is_flag=True, help='Copy instead of symlinking')
-@click.argument('rulename', metavar='RULE', envvar='CAF_RULE')
+@click.argument('rulename', metavar='RULE', envvar='MONA_RULE')
 @click.pass_obj
 def checkout(
     app: App,

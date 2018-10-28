@@ -3,17 +3,14 @@ py36 = true
 skip-string-normalization = true
 
 [tool.poetry]
-name = "calcfw"
-version = "0.4.1"
+name = "mona"
+version = "0.1.0"
 description = "Distributed calculation framework"
 readme = "README.md"
 authors = ["Jan Hermann <dev@janhermann.cz>"]
-repository = "https://github.com/azag0/calcfw"
-documentation = "https://azag0.github.io/calcfw"
+repository = "https://github.com/azag0/mona"
+documentation = "https://azag0.github.io/mona"
 license = "MPL-2.0"
-packages = [
-    { include = "caf" },
-]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -63,4 +60,4 @@ flake8-quotes = "^1.0"
 black = "^18.3-alpha.0"
 
 [tool.poetry.scripts]
-caf = "caf.cli:cli.main"
+mona = "mona.cli:cli.main"

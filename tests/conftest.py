@@ -1,6 +1,6 @@
 import os
 
-debug_level = os.environ.get('CAF_DEBUG')
+debug_level = os.environ.get('MONA_DEBUG')
 if debug_level:
     import logging
 
@@ -9,4 +9,4 @@ if debug_level:
         format='[{asctime}.{msecs:03.0f}] {levelname}:{name}: {message}',
         datefmt='%H:%M:%S',
     )
-    logging.getLogger('caf').setLevel(int(debug_level))
+    logging.getLogger('mona').setLevel(int(debug_level))

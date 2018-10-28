@@ -3,9 +3,9 @@ import subprocess
 
 import pytest  # type: ignore
 
-from caf import Session, Rule, run_shell, run_process, run_thread
-from caf.rules import dir_task
-from caf.plugins import Parallel
+from mona import Session, Rule, run_shell, run_process, run_thread
+from mona.rules import dir_task
+from mona.plugins import Parallel
 
 from tests.test_dirtask import analysis
 

@@ -6,7 +6,7 @@ from enum import IntEnum
 from typing import Iterable, Set, Callable, List, TypeVar, NoReturn, FrozenSet
 from typing_extensions import Final
 
-from .errors import CafError
+from .errors import MonaError
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class Future:
         self._state: State = State.PENDING if self._pending else State.READY
 
     def __getstate__(self) -> NoReturn:
-        raise CafError('Future objects cannot be pickled')
+        raise MonaError('Future objects cannot be pickled')
 
     @property
     def state(self) -> State:

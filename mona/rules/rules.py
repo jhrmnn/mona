@@ -7,7 +7,7 @@ from typing import Any, Callable, TypeVar, Generic, Tuple, Optional, cast
 
 from ..tasks import Task, Corofunc
 from ..sessions import Session
-from ..errors import CafError
+from ..errors import MonaError
 from ..hashing import hash_function
 
 _T = TypeVar('_T')
@@ -23,7 +23,7 @@ class Rule(Generic[_T]):
 
     def __init__(self, corofunc: Corofunc[_T]) -> None:
         if not inspect.iscoroutinefunction(corofunc):
-            raise CafError(f'Task function is not a coroutine: {corofunc}')
+            raise MonaError(f'Task function is not a coroutine: {corofunc}')
         self._corofunc = corofunc
         self._label: Optional[str] = None
         wraps(corofunc)(self)

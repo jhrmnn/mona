@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore', r'formatargspec\(\) is now deprecated.')
 with open('../pyproject.toml') as f:
     metadata = toml.load(f)['tool']['poetry']
 
-project = 'Caf'
+project = 'Mona'
 version = metadata['version']
 author = ' '.join(metadata['authors'][0].split()[:-1])
 description = metadata['description']
@@ -37,7 +37,7 @@ html_theme_options = {
     'description': description,
     'github_button': True,
     'github_user': 'azag0',
-    'github_repo': 'calcfw',
+    'github_repo': 'mona',
     'badge_branch': 'master',
     'codecov_button': True,
     'travis_button': True,

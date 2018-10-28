@@ -12,7 +12,7 @@ from ...rules import Rule
 
 @Rule
 async def parse_aims(outputs: Dict[str, bytes]) -> Any:
-    """Task rule with an output of :class:`caf.sci.aims.Aims` as input and a
+    """Task rule with an output of :class:`mona.sci.aims.Aims` as input and a
     dictionary of parsed results as output.
     """
     stdout = outputs['results.xml'].decode()
