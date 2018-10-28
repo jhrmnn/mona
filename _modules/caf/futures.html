@@ -39,7 +39,7 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">IntEnum</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">NoReturn</span><span class="p">,</span> <span class="n">FrozenSet</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span>  <span class="c1"># noqa</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="k">import</span> <span class="n">Final</span>
 
 <span class="kn">from</span> <span class="nn">.errors</span> <span class="k">import</span> <span class="n">CafError</span>
 
@@ -58,6 +58,16 @@
     <span class="n">HAS_RUN</span> <span class="o">=</span> <span class="mi">4</span>
     <span class="n">AWAITING</span> <span class="o">=</span> <span class="mi">5</span>
     <span class="n">DONE</span> <span class="o">=</span> <span class="mi">6</span>
+
+
+<span class="n">STATE_COLORS</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">State</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">State</span><span class="o">.</span><span class="n">READY</span><span class="p">:</span> <span class="s1">&#39;magenta&#39;</span><span class="p">,</span>
+    <span class="n">State</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">:</span> <span class="s1">&#39;yellow&#39;</span><span class="p">,</span>
+    <span class="n">State</span><span class="o">.</span><span class="n">ERROR</span><span class="p">:</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span>
+    <span class="n">State</span><span class="o">.</span><span class="n">AWAITING</span><span class="p">:</span> <span class="s1">&#39;cyan&#39;</span><span class="p">,</span>
+    <span class="n">State</span><span class="o">.</span><span class="n">DONE</span><span class="p">:</span> <span class="s1">&#39;green&#39;</span><span class="p">,</span>
+<span class="p">}</span>
 
 
 <div class="viewcode-block" id="Future"><a class="viewcode-back" href="../../api.html#caf.futures.Future">[docs]</a><span class="k">class</span> <span class="nc">Future</span><span class="p">:</span>
