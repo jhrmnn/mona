@@ -40,14 +40,18 @@ class App:
         return sess
 
     def __call__(
-        self, sess: Session, ncores: int = None, full_restore: bool = False
+        self,
+        sess: Session,
+        ncores: int = None,
+        full_restore: bool = False,
+        readonly: bool = False,
     ) -> None:
         self._plugins = {
             'parallel': Parallel(ncores),
             'tmpdir': TmpdirManager(self._cafdir / App.TMPDIR),
             'files': FileManager(self._cafdir / App.FILES),
             'cache': Cache.from_path(
-                self._cafdir / App.CACHE, full_restore=full_restore
+                self._cafdir / App.CACHE, full_restore=full_restore, readonly=readonly
             ),
         }
         for plugin in self._plugins.values():

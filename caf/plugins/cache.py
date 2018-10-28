@@ -75,13 +75,18 @@ class Cache(SessionPlugin):
     name = 'db_cache'
 
     def __init__(
-        self, db: sqlite3.Connection, eager: bool = True, full_restore: bool = False
+        self,
+        db: sqlite3.Connection,
+        eager: bool = True,
+        full_restore: bool = False,
+        readonly: bool = False,
     ) -> None:
         self._db = db
         self._pending: Set[Hash] = set()
         self._objects: Dict[Hash, Hashed[object]] = {}
         self._eager = eager
         self._full_restore = full_restore
+        self._readonly = readonly
         self._object_cache: 'WeakValueDictionary[Hash, Hashed[object]]'
         self._object_cache = WeakValueDictionary()
 
@@ -216,7 +221,7 @@ class Cache(SessionPlugin):
         assert row
         if State[row.state] < State.HAS_RUN:
             return
-        log.info(f'Restoring from cache: {task}')
+        log.debug(f'Restoring from cache: {task}')
         assert State[row.state] > State.HAS_RUN
         task.set_running()
         sess = Session.active()
@@ -232,13 +237,15 @@ class Cache(SessionPlugin):
         sess.set_result(task, self._get_result(row))
 
     def post_enter(self, sess: Session) -> None:
+        if self._readonly:
+            return
         cur = self._db.execute(
             'INSERT INTO sessions VALUES (?,?)', (None, get_timestamp())
         )
         sess.storage['cache:sessionid'] = cur.lastrowid
 
     def save_hashed(self, objs: Sequence[Hashed[object]]) -> None:
-        if hasattr(self, '_to_restore'):
+        if self._readonly:
             return
         if self._eager:
             self._store_objects_targets(objs)
@@ -250,12 +257,20 @@ class Cache(SessionPlugin):
         row = self._get_task_row(task.hashid)
         if row:
             self._to_restore = [task]
+            restored: List[Task[object]] = []
             while self._to_restore:
-                self._restore_task(self._to_restore.pop())
+                t = self._to_restore.pop()
+                self._restore_task(t)
+                restored.append(t)
             delattr(self, '_to_restore')
-            self._store_targets([task])
+            if self._readonly:
+                return
+            self._store_targets(restored)
             self._db.commit()
-        elif self._eager:
+            return
+        if self._readonly:
+            return
+        if self._eager:
             self._db.execute(
                 'INSERT INTO tasks VALUES (?,?,?,?,?)',
                 TaskRow(task.hashid, task.state.name),
@@ -266,7 +281,7 @@ class Cache(SessionPlugin):
             self._pending.add(task.hashid)
 
     def post_task_run(self, task: Task[object]) -> None:
-        if not self._eager:
+        if self._readonly or not self._eager:
             return
         self._store_result(task)
         if task.state < State.DONE:
@@ -274,7 +289,7 @@ class Cache(SessionPlugin):
         self._db.commit()
 
     def pre_exit(self, sess: Session) -> None:
-        if self._eager:
+        if self._readonly or self._eager:
             return
         tasks = [sess.get_task(hashid) for hashid in self._pending]
         for task in tasks:
