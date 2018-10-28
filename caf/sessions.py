@@ -276,7 +276,8 @@ class Session(Pluggable):
         async with self.run_context():
             return await self._eval_async(*args, **kwargs)
 
-    async def _eval_async(
+    # TODO reduce complexity
+    async def _eval_async(  # noqa: C901
         self,
         obj: Any,
         depth: bool = False,

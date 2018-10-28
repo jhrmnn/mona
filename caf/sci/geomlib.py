@@ -386,7 +386,7 @@ def get_vec(ws: List[str]) -> Vec:
     return float(ws[0]), float(ws[1]), float(ws[2])
 
 
-def load(fp: IO[str], fmt: str) -> Molecule:
+def load(fp: IO[str], fmt: str) -> Molecule:  # noqa: C901
     if fmt == 'xyz':
         n = int(fp.readline())
         try:
