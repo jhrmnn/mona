@@ -5,7 +5,6 @@ import logging
 import sqlite3
 import pickle
 from enum import Enum
-from textwrap import dedent
 from weakref import WeakValueDictionary
 from typing import (
     Any,
@@ -87,9 +86,7 @@ class Cache(SessionPlugin):
         self._object_cache = WeakValueDictionary()
 
     def __repr__(self) -> str:
-        return (
-            f'<Cache npending={len(self._pending)} ' f'nobjects={len(self._objects)}>'
-        )
+        return f'<Cache npending={len(self._pending)} nobjects={len(self._objects)}>'
 
     @property
     def db(self) -> sqlite3.Connection:
@@ -236,7 +233,7 @@ class Cache(SessionPlugin):
 
     def post_enter(self, sess: Session) -> None:
         cur = self._db.execute(
-            'INSERT into sessions VALUES (?,?)', (None, get_timestamp())
+            'INSERT INTO sessions VALUES (?,?)', (None, get_timestamp())
         )
         sess.storage['cache:sessionid'] = cur.lastrowid
 
@@ -294,53 +291,45 @@ class Cache(SessionPlugin):
     def from_path(cls, path: Pathable, **kwargs: Any) -> 'Cache':
         db = sqlite3.connect(path)
         db.execute(
-            dedent(
-                """\
-                CREATE TABLE IF NOT EXISTS objects (
-                    hashid   TEXT PRIMARY KEY,
-                    typetag  TEXT,
-                    spec     BLOB
-                )
-                """
+            """\
+            CREATE TABLE IF NOT EXISTS objects (
+                hashid  TEXT PRIMARY KEY,
+                typetag TEXT,
+                spec    BLOB
             )
+            """
         )
         db.execute(
-            dedent(
-                """\
-                CREATE TABLE IF NOT EXISTS tasks (
-                    hashid         TEXT PRIMARY KEY,
-                    state          TEXT,
-                    side_effects   TEXT,
-                    result_type    TEXT,
-                    result         BLOB,
-                    FOREIGN KEY(hashid) REFERENCES objects(hashid)
-                )
-                """
+            """\
+            CREATE TABLE IF NOT EXISTS tasks (
+                hashid       TEXT PRIMARY KEY,
+                state        TEXT,
+                side_effects TEXT,
+                result_type  TEXT,
+                result       BLOB,
+                    FOREIGN KEY (hashid) REFERENCES objects(hashid)
             )
+            """
         )
         db.execute(
-            dedent(
-                """\
-                CREATE TABLE IF NOT EXISTS sessions (
-                    sessionid   INTEGER PRIMARY KEY,
-                    created     TEXT
-                )
-                """
+            """\
+            CREATE TABLE IF NOT EXISTS sessions (
+                sessionid INTEGER PRIMARY KEY,
+                created   TEXT
             )
+            """
         )
         db.execute(
-            dedent(
-                """\
-                CREATE TABLE IF NOT EXISTS targets (
-                    objectid   TEXT,
-                    sessionid  INTEGER,
-                    label      TEXT,
-                    metadata   BLOB,
-                    PRIMARY KEY(objectid, sessionid),
-                    FOREIGN KEY(objectid) REFERENCES objects(hashid),
-                    FOREIGN KEY(sessionid) REFERENCES sessions(sessionid)
-                )
-                """
+            """\
+            CREATE TABLE IF NOT EXISTS targets (
+                objectid  TEXT,
+                sessionid INTEGER,
+                label     TEXT,
+                metadata  BLOB,
+                    PRIMARY KEY (objectid, sessionid),
+                    FOREIGN KEY (objectid) REFERENCES objects(hashid),
+                    FOREIGN KEY (sessionid) REFERENCES sessions(sessionid)
             )
+            """
         )
         return Cache(db, **kwargs)
