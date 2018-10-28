@@ -311,7 +311,8 @@
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_context</span><span class="p">():</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eval_async</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">_eval_async</span><span class="p">(</span>
+    <span class="c1"># TODO reduce complexity</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_eval_async</span><span class="p">(</span>  <span class="c1"># noqa: C901</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
         <span class="n">depth</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
