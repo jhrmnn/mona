@@ -64,17 +64,8 @@ class ExceptionBuffer:
 
 
 @cli.command()
-@click.argument('rulename', metavar='RULE')
-@click.pass_obj
-def conf(app: App, rulename: str) -> None:
-    rule = import_fullname(rulename)
-    task_filter = TaskFilter(no_path=True)
-    with app.session(full_restore=True) as sess:
-        sess.eval(rule(), task_filter=task_filter)
-
-
-@cli.command()
 @click.option('-p', '--pattern', multiple=True, help='Tasks to be executed')
+@click.option('-P', '--path', is_flag=True, help='Execute path-like tasks')
 @click.option('-j', '--cores', type=int, help='Number of cores')
 @click.option('-l', '--limit', type=int, help='Limit number of tasks to N')
 @click.option('--maxerror', default=5, help='Number of errors in row to quit')
@@ -84,12 +75,13 @@ def run(
     app: App,
     pattern: List[str],
     cores: int,
+    path: bool,
     limit: Optional[int],
     maxerror: int,
     rulename: str,
 ) -> None:
     rule = import_fullname(rulename)
-    task_filter = TaskFilter(pattern)
+    task_filter = TaskFilter(pattern, no_path=not path)
     exception_buffer = ExceptionBuffer(maxerror)
     with app.session(ncores=cores) as sess:
         sess.eval(
