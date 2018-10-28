@@ -1,10 +1,13 @@
 import os
 import sys
 import datetime
+import warnings
 
 import toml
 
 sys.path.insert(0, os.path.abspath('..'))
+
+warnings.filterwarnings('ignore', r'formatargspec\(\) is now deprecated.')
 
 with open('../pyproject.toml') as f:
     metadata = toml.load(f)['tool']['poetry']
@@ -19,6 +22,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.viewcode',
     'sphinxcontrib.asyncio',
+    'sphinx_autodoc_typehints',
 ]
 source_suffix = '.rst'
 master_doc = 'index'

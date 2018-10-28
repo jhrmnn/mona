@@ -42,6 +42,9 @@ class Action(Enum):
     EXECUTE = 1
     TRAVERSE = 2
 
+    def __repr__(self) -> str:
+        return self.name
+
 
 class Step(NamedTuple):
     action: Action

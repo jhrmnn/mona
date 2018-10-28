@@ -222,7 +222,7 @@ class Session(Pluggable):
     def create_task(
         self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
     ) -> Task[_T]:
-        """Create new task.
+        """Create a new task.
 
         :param corofunc: a coroutine function to be executed
         :param args: arguments to the coroutine
