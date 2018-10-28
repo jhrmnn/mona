@@ -6,16 +6,18 @@ import shutil
 import logging
 import tempfile
 from pathlib import Path
-from typing import List, Optional, Any, cast, Dict
+from typing import List, Optional, Any, cast, Dict, Tuple
 
 import click
 
 from ..tasks import Task
-from ..utils import import_fullname
+from ..futures import STATE_COLORS
+from ..utils import import_fullname, groupby
 from ..plugins.files import HashedPath, HashingPath
 from ..rules.dirtask import checkout_files
 from .glob import match_glob
 from .app import App
+from .table import Table, lenstr
 
 logging.basicConfig(
     style='{',
@@ -95,6 +97,47 @@ def run(
             task_filter=task_filter,
             limit=limit,
         )
+
+
+@cli.command()
+@click.option('-p', '--pattern', multiple=True, help='Patterns to be reported')
+@click.argument('rulename', metavar='RULE', envvar='CAF_RULE')
+@click.pass_obj
+def status(app: App, rulename: str, pattern: List[str]) -> None:
+    rule = import_fullname(rulename)
+    sess = app.session(warn=False, readonly=True, full_restore=True)
+    ncols = len(STATE_COLORS) + 1
+    table = Table(align=['<', *(ncols * ['>'])], sep=['   ', *((ncols - 1) * ['/'])])
+    table.add_row('pattern', *(s.name for s in STATE_COLORS), 'ALL')
+    with sess:
+        rule()
+        task_groups: Dict[str, List[Task[object]]] = {}
+        all_tasks = list(sess.all_tasks())
+    for patt in pattern or ['**']:
+        matched_any = False
+        for task in all_tasks:
+            matched = match_glob(task.label, patt)
+            if matched:
+                task_groups.setdefault(matched, []).append(task)
+                matched_any = True
+        if not matched_any:
+            task_groups[patt] = []
+    for label, tasks in task_groups.items():
+        grouped = {
+            state: group
+            for state, group in groupby(tasks, key=lambda t: t.state).items()
+        }
+        counts: List[Tuple[int, Optional[str]]] = [
+            (len(grouped.get(state, [])), color)
+            for state, color in STATE_COLORS.items()
+        ]
+        counts.append((len(tasks), None))
+        col_counts = [
+            lenstr(click.style(str(count), fg=color), len(str(count)))
+            for count, color in counts
+        ]
+        table.add_row(label, *col_counts)
+    click.echo(str(table))
 
 
 @cli.command()
