@@ -25,12 +25,20 @@ class AimsPlugin(Plugin['Aims']):
 
 
 class Aims(Pluggable):
+    """Instances of this class are task factories that create directory tasks
+    that represent calculations with FHI-aims.
+    """
+
     def __init__(self) -> None:
         Pluggable.__init__(self)
         for factory in default_plugins:
             factory()(self)
 
     def __call__(self, *, label: str = None, **kwargs: Any) -> Task[DirTaskResult]:
+        """Create an FHI-aims.
+
+        :param kwargs: processed by individual plugins
+        """
         self.run_plugins('process', kwargs, start=None)
         script = kwargs.pop('script').encode()
         inputs = {name: cont.encode() for name, cont in kwargs.pop('inputs')}
@@ -73,6 +81,9 @@ class Atoms(AimsPlugin):
 
 
 class SpeciesDefaults(AimsPlugin):
+    """Aims plugin that handles adding species defaults to control.in.
+    """
+
     def __init__(self, mod: Callable[..., Any] = None) -> None:
         self._species_defs: Dict[Tuple[Path, str], Dict[str, Any]] = {}
         self._mod = mod

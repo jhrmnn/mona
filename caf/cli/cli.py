@@ -29,7 +29,7 @@ log.setLevel(logging.INFO)
 logging.getLogger('caf').setLevel(int(os.environ.get('CAF_DEBUG', logging.INFO)))
 
 
-@click.group(chain=True)
+@click.group()
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     ctx.ensure_object(App)
@@ -38,6 +38,7 @@ def cli(ctx: click.Context) -> None:
 @cli.command()
 @click.pass_obj
 def init(app: App) -> None:
+    """Initialize a Git repository."""
     app.ensure_cafdir()
 
 
@@ -87,6 +88,7 @@ def run(
     maxerror: int,
     rulename: str,
 ) -> None:
+    """Run a given rule."""
     rule = import_fullname(rulename)
     task_filter = TaskFilter(pattern, no_path=not path)
     exception_buffer = ExceptionBuffer(maxerror)
@@ -104,6 +106,7 @@ def run(
 @click.argument('rulename', metavar='RULE', envvar='CAF_RULE')
 @click.pass_obj
 def status(app: App, rulename: str, pattern: List[str]) -> None:
+    """Print status of tasks."""
     rule = import_fullname(rulename)
     sess = app.session(warn=False, readonly=True, full_restore=True)
     ncols = len(STATE_COLORS) + 1
@@ -144,6 +147,7 @@ def status(app: App, rulename: str, pattern: List[str]) -> None:
 @click.argument('rulename', metavar='RULE', envvar='CAF_RULE')
 @click.pass_obj
 def graph(app: App, rulename: str) -> None:
+    """Open a pdf with the task graph."""
     rule = import_fullname(rulename)
     sess = app.session(warn=False, readonly=True, full_restore=True)
     with sess:
@@ -169,6 +173,7 @@ def checkout(
     done: bool,
     copy: bool,
 ) -> None:
+    """Checkout path-labeled tasks into a directory tree."""
     if blddir.exists() and force:
         shutil.rmtree(blddir)
     blddir.mkdir()

@@ -52,30 +52,46 @@ def no_neg_zeros(r: Any) -> Any:
 
 
 class Atom:
-    def __init__(self, specie: str, coord: Vec, **flags: Any) -> None:
-        self.specie = specie
+    """
+    Represents a single atom.
+
+    :param species: atom type
+    :param coord: atom coordinate
+    """
+
+    def __init__(self, species: str, coord: Vec, **flags: Any) -> None:
+        self.species = species
         self.coord: Vec = cast(Vec, tuple(coord))
         self.flags = flags
 
     @property
     def mass(self) -> float:
-        mass: float = species_data[self.specie]['mass']
+        """atom mass"""
+        mass: float = species_data[self.species]['mass']
         return mass
 
     @property
     def number(self) -> int:
-        return int(species_data[self.specie]['number'])
+        """atom number"""
+        return int(species_data[self.species]['number'])
 
     @property
     def covalent_radius(self) -> float:
-        r: float = species_data[self.specie]['covalent radius']
+        """covalent radius"""
+        r: float = species_data[self.species]['covalent radius']
         return r
 
     def copy(self) -> 'Atom':
-        return Atom(self.specie, self.coord, **deepcopy(self.flags))
+        """Create a copy."""
+        return Atom(self.species, self.coord, **deepcopy(self.flags))
 
 
 class Molecule(Sized, Iterable[Atom]):
+    """Represents a molecule.
+
+    :param atoms: atoms
+    """
+
     def __init__(self, atoms: List[Atom], **flags: Any) -> None:
         global np
         if np is None:
@@ -87,27 +103,37 @@ class Molecule(Sized, Iterable[Atom]):
     def from_coords(
         cls: Type[_M], species: List[str], coords: List[Vec], **flags: Any
     ) -> _M:
+        """Alternative constructor.
+
+        :param species: atom types
+        :param coords: coordinates
+        """
         return cls([Atom(sp, coord) for sp, coord in zip(species, coords)], **flags)
 
     @property
     def species(self) -> List[str]:
-        return [atom.specie for atom in self]
+        """atom types"""
+        return [atom.species for atom in self]
 
     @property
     def numbers(self) -> List[int]:
+        """atom numbers"""
         return [atom.number for atom in self]
 
     @property
     def mass(self) -> float:
+        """molecular mass"""
         return sum(atom.mass for atom in self)
 
     @property
     def cms(self) -> Any:
+        """center of mass"""
         masses = np.array([atom.mass for atom in self])
         return (masses[:, None] * self.xyz).sum(0) / self.mass
 
     @property
     def inertia(self) -> Any:
+        """inertia tensor"""
         masses = np.array([atom.mass for atom in self])
         coords_w = np.sqrt(masses)[:, None] * (self.xyz - self.cms)
         A = np.array([np.diag(np.full(3, r)) for r in np.sum(coords_w ** 2, 1)])
@@ -119,6 +145,7 @@ class Molecule(Sized, Iterable[Atom]):
 
     @property
     def coords(self) -> List[Vec]:
+        """coordinates"""
         return [atom.coord for atom in self]
 
     def __repr__(self) -> str:
@@ -126,16 +153,19 @@ class Molecule(Sized, Iterable[Atom]):
 
     @property
     def xyz(self) -> Any:
+        """coordinates as a numpy array"""
         return np.array(self.coords)
 
     @property
     def formula(self) -> str:
+        """formula"""
         counter = DefaultDict[str, int](int)
-        for specie in self.species:
-            counter[specie] += 1
+        for species in self.species:
+            counter[species] += 1
         return ''.join(f'{sp}{n if n > 1 else ""}' for sp, n in sorted(counter.items()))
 
     def bondmatrix(self, scale: float) -> Any:
+        """Return a connectivity matrix."""
         xyz = self.xyz
         Rs = np.array([atom.covalent_radius for atom in self])
         dmatrix = np.sqrt(np.sum((xyz[None, :] - xyz[:, None]) ** 2, 2))
@@ -143,6 +173,7 @@ class Molecule(Sized, Iterable[Atom]):
         return dmatrix < thrmatrix
 
     def get_fragments(self, scale: float = 1.3) -> List['Molecule']:
+        """Return a list of clusters of connected atoms."""
         bond = self.bondmatrix(scale)
         ifragments = getfragments(bond)
         fragments = [
@@ -157,6 +188,7 @@ class Molecule(Sized, Iterable[Atom]):
         return hash(tuple(np.round(sorted(np.linalg.eigvalsh(self.inertia)), 3)))
 
     def shifted(self: _M, delta: Vec) -> _M:
+        """Return a new molecule shifted in space."""
         m = self.copy()
         for atom in m:
             c = atom.coord
@@ -171,6 +203,7 @@ class Molecule(Sized, Iterable[Atom]):
         return geom
 
     def centered(self: _M) -> _M:
+        """Return a new molecule with a center of mass at origin."""
         return self.shifted(-self.cms)
 
     def rotated(
@@ -180,6 +213,7 @@ class Molecule(Sized, Iterable[Atom]):
         center: Vec = None,
         rotmat: Any = None,
     ) -> _M:
+        """Return a new rotated molecule."""
         if rotmat is None:
             assert axis and phi
             phi = phi * np.pi / 180
@@ -204,6 +238,7 @@ class Molecule(Sized, Iterable[Atom]):
 
     @property
     def centers(self) -> Iterator[Atom]:
+        """iterator over atoms"""
         yield from self._atoms
 
     def __iter__(self) -> Iterator[Atom]:
@@ -218,45 +253,47 @@ class Molecule(Sized, Iterable[Atom]):
         return fp.getvalue()
 
     def items(self) -> Iterator[Tuple[str, Vec]]:
+        """iterator over tuples of atom type and coordinate"""
         for atom in self:
-            yield atom.specie, atom.coord
+            yield atom.species, atom.coord
 
     dumps = __format__
 
     def dump(self, f: IO[str], fmt: str) -> None:
+        """Write a molecule to a file."""
         if fmt == '':
             f.write(repr(self))
         elif fmt == 'xyz':
             f.write('{}\n'.format(len(self)))
             f.write('Formula: {}\n'.format(self.formula))
-            for specie, coord in self.items():
+            for species, coord in self.items():
                 f.write(
                     '{:>2} {}\n'.format(
-                        specie,
+                        species,
                         ' '.join('{:15.8}'.format(x) for x in no_neg_zeros(coord)),
                     )
                 )
         elif fmt == 'aims':
             for i, atom in enumerate(self.centers):
-                specie, r = atom.specie, atom.coord
+                species, r = atom.species, atom.coord
                 ghost = atom.flags.get('ghost', False)
-                key = (specie, r, ghost, fmt)
+                key = (species, r, ghost, fmt)
                 r = no_neg_zeros(r)
                 try:
                     f.write(_string_cache[key])
                 except KeyError:
                     kind = 'atom' if not ghost else 'empty'
-                    s = f'{kind} {r[0]:15.8f} {r[1]:15.8f} {r[2]:15.8f} {specie:>2}\n'
+                    s = f'{kind} {r[0]:15.8f} {r[1]:15.8f} {r[2]:15.8f} {species:>2}\n'
                     f.write(s)
                     _string_cache[key] = s
                 for con in self.flags.get('constrains', {}).get(i, []):
                     f.write(f'constrain_relaxation {con}\n')
         elif fmt == 'mopac':
             f.write('* Formula: {}\n'.format(self.formula))
-            for specie, coord in self.items():
+            for species, coord in self.items():
                 f.write(
                     '{:>2} {}\n'.format(
-                        specie,
+                        species,
                         ' '.join('{:15.8} 1'.format(x) for x in no_neg_zeros(coord)),
                     )
                 )
@@ -264,6 +301,7 @@ class Molecule(Sized, Iterable[Atom]):
             raise ValueError("Unknown format: '{}'".format(fmt))
 
     def copy(self: _M) -> _M:
+        """Create a cpoy."""
         return type(self)([atom.copy() for atom in self._atoms])
 
     def ghost(self: _M) -> _M:
@@ -273,6 +311,7 @@ class Molecule(Sized, Iterable[Atom]):
         return m
 
     def write(self, filename: str) -> None:
+        """Write to a file."""
         ext = os.path.splitext(filename)[1]
         if ext == '.xyz':
             fmt = 'xyz'
@@ -287,6 +326,12 @@ class Molecule(Sized, Iterable[Atom]):
 
 
 class Crystal(Molecule):
+    """Represents a crystal. Inherits from :class:`Molecule`.
+
+    :param atoms: atoms
+    :param lattice: lattice vectors
+    """
+
     def __init__(self, atoms: List[Atom], lattice: List[Vec], **flags: Any) -> None:
         super().__init__(atoms, **flags)
         self.lattice = lattice
@@ -295,6 +340,12 @@ class Crystal(Molecule):
     def from_coords(  # type: ignore
         cls, species: List[str], coords: List[Vec], lattice: List[Vec], **flags
     ) -> 'Crystal':
+        """Alternative constructor.
+
+        :param species: atom types
+        :param coords: coordinates
+        :param lattice: lattice vectors
+        """
         return cls(
             [Atom(sp, coord) for sp, coord in zip(species, coords)], lattice, **flags
         )
@@ -320,7 +371,7 @@ class Crystal(Molecule):
             )
             f.write(' '.join(species.keys()) + '\n')
             for atom in self:
-                species[atom.specie].append(atom)
+                species[atom.species].append(atom)
             f.write(' '.join(str(len(atoms)) for atoms in species.values()) + '\n')
             f.write('cartesian\n')
             for atom in chain(*species.values()):
@@ -349,15 +400,18 @@ class Crystal(Molecule):
 
     @property
     def abc(self) -> Any:
+        """latice vectors as a numpy array"""
         return np.array(self.lattice)
 
     def get_kgrid(self, density: float = 0.06) -> Tuple[int, int, int]:
+        """Return a k-point grid with a given density."""
         rec_lattice = 2 * np.pi * np.linalg.inv(self.abc.T)
         rec_lens = np.sqrt((rec_lattice ** 2).sum(1))
         nkpts = np.ceil(rec_lens / (density * bohr))
         return int(nkpts[0]), int(nkpts[1]), int(nkpts[2])
 
     def supercell(self, ns: Tuple[int, int, int]) -> 'Crystal':
+        """Create a supercell."""
         abc = self.abc
         latt_vectors = np.array(
             [
@@ -387,6 +441,7 @@ def get_vec(ws: List[str]) -> Vec:
 
 
 def load(fp: IO[str], fmt: str) -> Molecule:  # noqa: C901
+    """Read a molecule or a crystal from a file object."""
     if fmt == 'xyz':
         n = int(fp.readline())
         try:
@@ -437,11 +492,13 @@ def load(fp: IO[str], fmt: str) -> Molecule:  # noqa: C901
 
 
 def loads(s: str, fmt: str) -> Molecule:
+    """Read a molecule or a crystal from a string."""
     fp = StringIO(s)
     return load(fp, fmt)
 
 
 def readfile(path: str, fmt: str = None) -> Molecule:
+    """Read a molecule or a crystal from a path."""
     if not fmt:
         ext = os.path.splitext(path)[1]
         if ext == '.xyz':
@@ -457,18 +514,6 @@ def readfile(path: str, fmt: str = None) -> Molecule:
 
 
 def getfragments(C: Any) -> List[List[int]]:
-    """Find fragments within a set of sparsely connected elements.
-
-    Given square matrix C where C_ij = 1 if i and j are connected
-    and 0 otherwise, it extends the connectedness (if i and j and j and k
-    are connected, i and k are also connected) and returns a list sets of
-    elements which are not connected by any element.
-
-    The algorithm visits all elements, checks whether it wasn't already
-    assigned to a fragment, if not, it crawls it's neighbors and their
-    neighbors etc., until it cannot find any more neighbors. Then it goes
-    to the next element until all were visited.
-    """
     n = C.shape[0]
     assigned = [-1 for _ in range(n)]  # fragment index, otherwise -1
     ifragment = 0  # current fragment index

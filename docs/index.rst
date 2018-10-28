@@ -1,8 +1,9 @@
-Caf
-===
+Welcome to Caf
+==============
 
-Caf is a distributed calculation framework for Python.
+Only scaffolding of the planned documentation is available now.
 
 .. toctree::
 
    api
+   cli

@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import inspect
+from functools import wraps
 from typing import Any, Callable, TypeVar, Generic, Tuple, Optional, cast
 
 from ..tasks import Task, Corofunc
@@ -25,6 +26,7 @@ class Rule(Generic[_T]):
             raise CafError(f'Task function is not a coroutine: {corofunc}')
         self._corofunc = corofunc
         self._label: Optional[str] = None
+        wraps(corofunc)(self)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
         kwargs.setdefault('label', self._label)

@@ -37,9 +37,12 @@ EXE_NAME: Final = 'EXE'
 
 
 class HashingPath(ABC):
+    """Represents a path that guarantees immutability."""
+
     @property
     @abstractmethod
     def path(self) -> Path:
+        """the actual path"""
         ...
 
 
@@ -104,6 +107,12 @@ def checkout_files(
 
 
 class DirtaskTmpdir:
+    """
+    Context manager of a temporary directory that collects created files.
+
+    :param output_filter: true for files to be collected
+    """
+
     def __init__(self, output_filter: Callable[[str], bool] = None) -> None:
         sess = Session.active()
         fmngr = sess.storage.get('dir_task:file_manager')
@@ -143,6 +152,10 @@ class DirtaskTmpdir:
             self._ctx.__exit__(exc_type, *args)
 
     def result(self) -> DirTaskResult:
+        """
+        The collection of files created in the temporary directory. This is
+        available only after leaving the context.
+        """
         return self._outputs
 
 
@@ -151,6 +164,10 @@ class DirtaskTmpdir:
 async def dir_task(
     exe: Union[HashingPath, bytes], inputs: Dict[str, Union[HashingPath, bytes, Path]]
 ) -> DirTaskResult:
+    """
+    Task rule with an executable and a collection of files as inputs and a
+    collection of output files as output.
+    """
     dirtask_tmpdir = DirtaskTmpdir(lambda p: p != EXE_NAME and p not in inputs)
     with dirtask_tmpdir as tmpdir:
         checkout_files(tmpdir, exe, inputs)
