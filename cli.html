@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Welcome to Caf &#8212; Caf 0.4.1 documentation</title>
+    <title>CLI &#8212; Caf 0.4.1 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -16,7 +16,7 @@
     <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="API" href="api.html" />
+    <link rel="prev" title="API" href="api.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -33,24 +33,33 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="welcome-to-caf">
-<h1>Welcome to Caf<a class="headerlink" href="#welcome-to-caf" title="Permalink to this headline">¶</a></h1>
-<p>Only scaffolding of the planned documentation is available now.</p>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="api.html">API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api.html#module-caf">Rules and Sessions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#directory-tasks">Directory tasks</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#scientific-calculations">Scientific calculations</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="api.html#module-caf.sci.geomlib">Molecular and crystal geometries</a></li>
-<li class="toctree-l3"><a class="reference internal" href="api.html#module-caf.sci.aims">FHI-aims</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#futures-and-tasks">Futures and Tasks</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI</a></li>
-</ul>
+  <div class="section" id="cli">
+<h1>CLI<a class="headerlink" href="#cli" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Usage: caf [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  checkout  Checkout path-labeled tasks into a directory tree.
+  graph     Open a pdf with the task graph.
+  init      Initialize a Git repository.
+  run       Run a given rule.
+  status    Print status of tasks.
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Usage: caf run [OPTIONS] RULE
+
+  Run a given rule.
+
+Options:
+  -p, --pattern TEXT   Tasks to be executed
+  -P, --path           Execute path-like tasks
+  -j, --cores INTEGER  Number of cores
+  -l, --limit INTEGER  Limit number of tasks to N
+  --maxerror INTEGER   Number of errors in row to quit
+  --help               Show this message and exit.
+</pre></div>
 </div>
 </div>
 
@@ -61,7 +70,7 @@
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="#">Caf</a></h1>
+<h1 class="logo"><a href="index.html">Caf</a></h1>
 
 
 
@@ -104,16 +113,16 @@
 </a>
 </p>
 <h3>Navigation</h3>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">CLI</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
-  <li><a href="#">Documentation overview</a><ul>
-      <li>Next: <a href="api.html" title="next chapter">API</a></li>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="api.html" title="previous chapter">API</a></li>
   </ul></li>
 </ul>
 </div>
@@ -141,7 +150,7 @@
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
-      <a href="_sources/index.rst.txt"
+      <a href="_sources/cli.rst.txt"
           rel="nofollow">Page source</a>
     </div>
 

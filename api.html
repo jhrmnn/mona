@@ -16,7 +16,8 @@
     <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Caf" href="index.html" />
+    <link rel="next" title="CLI" href="cli.html" />
+    <link rel="prev" title="Welcome to Caf" href="index.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -33,8 +34,10 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="module-caf">
-<span id="api"></span><h1>API<a class="headerlink" href="#module-caf" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="api">
+<h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-caf">
+<span id="rules-and-sessions"></span><h2>Rules and Sessions<a class="headerlink" href="#module-caf" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="caf.Rule">
 <em class="property">class </em><code class="descclassname">caf.</code><code class="descname">Rule</code><span class="sig-paren">(</span><em>corofunc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/rules.html#Rule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.Rule" title="Permalink to this definition">¶</a></dt>
@@ -319,6 +322,603 @@ coroutine.</p>
 
 </dd></dl>
 
+<span class="target" id="module-caf.rules"></span></div>
+<div class="section" id="directory-tasks">
+<h2>Directory tasks<a class="headerlink" href="#directory-tasks" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="caf.rules.dir_task">
+<code class="descclassname">caf.rules.</code><code class="descname">dir_task</code><span class="sig-paren">(</span><em>exe</em>, <em>inputs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/dirtask.html#dir_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.rules.dir_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Task rule with an executable and a collection of files as inputs and a
+collection of output files as output.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">HashedBytes</span></code>[]]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="caf.rules.DirtaskTmpdir">
+<em class="property">class </em><code class="descclassname">caf.rules.</code><code class="descname">DirtaskTmpdir</code><span class="sig-paren">(</span><em>output_filter=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/dirtask.html#DirtaskTmpdir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.rules.DirtaskTmpdir" title="Permalink to this definition">¶</a></dt>
+<dd><p>Context manager of a temporary directory that collects created files.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>output_filter</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code>[[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>]]) – true for files to be collected</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="caf.rules.DirtaskTmpdir.result">
+<code class="descname">result</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/rules/dirtask.html#DirtaskTmpdir.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.rules.DirtaskTmpdir.result" title="Permalink to this definition">¶</a></dt>
+<dd><p>The collection of files created in the temporary directory. This is
+available only after leaving the context.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">HashedBytes</span></code>[]]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="scientific-calculations">
+<h2>Scientific calculations<a class="headerlink" href="#scientific-calculations" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-caf.sci.geomlib">
+<span id="molecular-and-crystal-geometries"></span><h3>Molecular and crystal geometries<a class="headerlink" href="#module-caf.sci.geomlib" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="caf.sci.geomlib.Atom">
+<em class="property">class </em><code class="descclassname">caf.sci.geomlib.</code><code class="descname">Atom</code><span class="sig-paren">(</span><em>species</em>, <em>coord</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Atom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Atom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a single atom.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>species</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – atom type</li>
+<li><strong>coord</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]) – atom coordinate</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="caf.sci.geomlib.Atom.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Atom.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Atom.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a copy.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Atom" title="caf.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Atom.covalent_radius">
+<code class="descname">covalent_radius</code><a class="headerlink" href="#caf.sci.geomlib.Atom.covalent_radius" title="Permalink to this definition">¶</a></dt>
+<dd><p>covalent radius</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Atom.mass">
+<code class="descname">mass</code><a class="headerlink" href="#caf.sci.geomlib.Atom.mass" title="Permalink to this definition">¶</a></dt>
+<dd><p>atom mass</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Atom.number">
+<code class="descname">number</code><a class="headerlink" href="#caf.sci.geomlib.Atom.number" title="Permalink to this definition">¶</a></dt>
+<dd><p>atom number</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="caf.sci.geomlib.Molecule">
+<em class="property">class </em><code class="descclassname">caf.sci.geomlib.</code><code class="descname">Molecule</code><span class="sig-paren">(</span><em>atoms</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a molecule.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>atoms</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<a class="reference internal" href="#caf.sci.geomlib.Atom" title="caf.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a>]) – atoms</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="caf.sci.geomlib.Molecule.bondmatrix">
+<code class="descname">bondmatrix</code><span class="sig-paren">(</span><em>scale</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.bondmatrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.bondmatrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a connectivity matrix.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Molecule.centered">
+<code class="descname">centered</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.centered"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.centered" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new molecule with a center of mass at origin.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">~_M</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Molecule.centers">
+<code class="descname">centers</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.centers" title="Permalink to this definition">¶</a></dt>
+<dd><p>iterator over atoms</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code>[<a class="reference internal" href="#caf.sci.geomlib.Atom" title="caf.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a>]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Molecule.cms">
+<code class="descname">cms</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.cms" title="Permalink to this definition">¶</a></dt>
+<dd><p>center of mass</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Molecule.coords">
+<code class="descname">coords</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.coords" title="Permalink to this definition">¶</a></dt>
+<dd><p>coordinates</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Molecule.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a cpoy.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">~_M</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Molecule.dump">
+<code class="descname">dump</code><span class="sig-paren">(</span><em>f</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.dump" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write a molecule to a file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Molecule.dumps">
+<code class="descname">dumps</code><span class="sig-paren">(</span><em>fmt</em><span class="sig-paren">)</span><a class="headerlink" href="#caf.sci.geomlib.Molecule.dumps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default object formatter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Molecule.formula">
+<code class="descname">formula</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.formula" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="caf.sci.geomlib.Molecule.from_coords">
+<em class="property">classmethod </em><code class="descname">from_coords</code><span class="sig-paren">(</span><em>species</em>, <em>coords</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.from_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.from_coords" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alternative constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>species</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – atom types</li>
+<li><strong>coords</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]) – coordinates</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">~_M</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Molecule.get_fragments">
+<code class="descname">get_fragments</code><span class="sig-paren">(</span><em>scale=1.3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.get_fragments"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.get_fragments" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of clusters of connected atoms.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<a class="reference internal" href="#caf.sci.geomlib.Molecule" title="caf.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Molecule.inertia">
+<code class="descname">inertia</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.inertia" title="Permalink to this definition">¶</a></dt>
+<dd><p>inertia tensor</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Molecule.items">
+<code class="descname">items</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.items"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.items" title="Permalink to this definition">¶</a></dt>
+<dd><p>iterator over tuples of atom type and coordinate</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Molecule.mass">
+<code class="descname">mass</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.mass" title="Permalink to this definition">¶</a></dt>
+<dd><p>molecular mass</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Molecule.numbers">
+<code class="descname">numbers</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.numbers" title="Permalink to this definition">¶</a></dt>
+<dd><p>atom numbers</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Molecule.rotated">
+<code class="descname">rotated</code><span class="sig-paren">(</span><em>axis=None</em>, <em>phi=None</em>, <em>center=None</em>, <em>rotmat=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.rotated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.rotated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new rotated molecule.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">~_M</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Molecule.shifted">
+<code class="descname">shifted</code><span class="sig-paren">(</span><em>delta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.shifted"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.shifted" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new molecule shifted in space.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">~_M</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Molecule.species">
+<code class="descname">species</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.species" title="Permalink to this definition">¶</a></dt>
+<dd><p>atom types</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Molecule.write">
+<code class="descname">write</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Molecule.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Molecule.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write to a file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Molecule.xyz">
+<code class="descname">xyz</code><a class="headerlink" href="#caf.sci.geomlib.Molecule.xyz" title="Permalink to this definition">¶</a></dt>
+<dd><p>coordinates as a numpy array</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="caf.sci.geomlib.Crystal">
+<em class="property">class </em><code class="descclassname">caf.sci.geomlib.</code><code class="descname">Crystal</code><span class="sig-paren">(</span><em>atoms</em>, <em>lattice</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a crystal. Inherits from <a class="reference internal" href="#caf.sci.geomlib.Molecule" title="caf.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>atoms</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<a class="reference internal" href="#caf.sci.geomlib.Atom" title="caf.sci.geomlib.Atom"><code class="xref py py-class docutils literal notranslate"><span class="pre">Atom</span></code></a>]) – atoms</li>
+<li><strong>lattice</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]) – lattice vectors</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="caf.sci.geomlib.Crystal.abc">
+<code class="descname">abc</code><a class="headerlink" href="#caf.sci.geomlib.Crystal.abc" title="Permalink to this definition">¶</a></dt>
+<dd><p>latice vectors as a numpy array</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Crystal.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a cpoy.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Crystal" title="caf.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Crystal.dump">
+<code class="descname">dump</code><span class="sig-paren">(</span><em>f</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.dump" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write a molecule to a file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">None</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="caf.sci.geomlib.Crystal.from_coords">
+<em class="property">classmethod </em><code class="descname">from_coords</code><span class="sig-paren">(</span><em>species</em>, <em>coords</em>, <em>lattice</em>, <em>**flags</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.from_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.from_coords" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alternative constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>species</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]) – atom types</li>
+<li><strong>coords</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]) – coordinates</li>
+<li><strong>lattice</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]) – lattice vectors</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#caf.sci.geomlib.Crystal" title="caf.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Crystal.get_kgrid">
+<code class="descname">get_kgrid</code><span class="sig-paren">(</span><em>density=0.06</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.get_kgrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.get_kgrid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a k-point grid with a given density.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Crystal.rotated">
+<code class="descname">rotated</code><span class="sig-paren">(</span><em>axis=None</em>, <em>phi=None</em>, <em>center=None</em>, <em>rotmat=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.rotated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.rotated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new rotated molecule.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Crystal" title="caf.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="caf.sci.geomlib.Crystal.supercell">
+<code class="descname">supercell</code><span class="sig-paren">(</span><em>ns</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#Crystal.supercell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.Crystal.supercell" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a supercell.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Crystal" title="caf.sci.geomlib.Crystal"><code class="xref py py-class docutils literal notranslate"><span class="pre">Crystal</span></code></a>[]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="caf.sci.geomlib.readfile">
+<code class="descclassname">caf.sci.geomlib.</code><code class="descname">readfile</code><span class="sig-paren">(</span><em>path</em>, <em>fmt=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#readfile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.readfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a molecule or a crystal from a path.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Molecule" title="caf.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="caf.sci.geomlib.load">
+<code class="descclassname">caf.sci.geomlib.</code><code class="descname">load</code><span class="sig-paren">(</span><em>fp</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a molecule or a crystal from a file object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Molecule" title="caf.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="caf.sci.geomlib.loads">
+<code class="descclassname">caf.sci.geomlib.</code><code class="descname">loads</code><span class="sig-paren">(</span><em>s</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caf/sci/geomlib.html#loads"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caf.sci.geomlib.loads" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a molecule or a crystal from a string.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#caf.sci.geomlib.Molecule" title="caf.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>[]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-caf.sci.aims">
+<span id="fhi-aims"></span><h3>FHI-aims<a class="headerlink" href="#module-caf.sci.aims" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
 <div class="section" id="futures-and-tasks">
 <h2>Futures and Tasks<a class="headerlink" href="#futures-and-tasks" title="Permalink to this headline">¶</a></h2>
 <p>The following classes are not intended for direct use by the end user, but are
@@ -403,16 +1003,25 @@ part of the versioned public API neverthless.</p>
 <h3>Navigation</h3>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-caf">Rules and Sessions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#directory-tasks">Directory tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#scientific-calculations">Scientific calculations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-caf.sci.geomlib">Molecular and crystal geometries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-caf.sci.aims">FHI-aims</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#futures-and-tasks">Futures and Tasks</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="index.html" title="previous chapter">Caf</a></li>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to Caf</a></li>
+      <li>Next: <a href="cli.html" title="next chapter">CLI</a></li>
   </ul></li>
 </ul>
 </div>

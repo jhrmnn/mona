@@ -1,6 +1,9 @@
 API
 ===
 
+Rules and Sessions
+------------------
+
 .. module:: caf
 
 .. autoclass:: Rule
@@ -17,7 +20,51 @@ API
 
 .. autoclass:: Session
     :members:
-    :inherited-members:
+
+
+.. module:: caf.rules
+
+Directory tasks
+---------------
+
+.. autofunction:: dir_task
+
+.. autoclass:: DirtaskTmpdir
+    :members:
+
+Scientific calculations
+-----------------------
+
+Molecular and crystal geometries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. module:: caf.sci.geomlib
+
+.. autoclass:: Atom
+    :members:
+
+.. autoclass:: Molecule
+    :members:
+
+.. autoclass:: Crystal
+    :members:
+
+.. autofunction:: readfile
+
+.. autofunction:: load
+
+.. autofunction:: loads
+
+FHI-aims
+^^^^^^^^
+
+.. module:: caf.sci.aims
+
+.. autoclass:: Aims
+    :members:
+
+.. autoclass:: SpeciesDefaults
+    :members:
 
 Futures and Tasks
 -----------------
