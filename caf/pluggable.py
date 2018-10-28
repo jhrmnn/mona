@@ -13,9 +13,8 @@ _P = TypeVar('_P', bound='Pluggable')
 class Plugin(Generic[_P]):
     name: str
 
-    def __call__(self, app: _P) -> None:
-        app.register_plugin(self._name, self)
-        self._app = app
+    def __call__(self, pluggable: _P) -> None:
+        pluggable.register_plugin(self._name, self)
 
     @property
     def _name(self) -> str:

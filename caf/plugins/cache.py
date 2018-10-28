@@ -103,7 +103,7 @@ class Cache(SessionPlugin):
         self._store_targets(objs)
 
     def _store_targets(self, objs: Sequence[Hashed[object]]) -> None:
-        sessionid = self._app.storage['cache:sessionid']
+        sessionid = Session.active().storage['cache:sessionid']
         target_rows = [
             TargetRow(
                 obj.hashid,
@@ -140,7 +140,9 @@ class Cache(SessionPlugin):
                 result = pickle.dumps(hashed_or_obj)
         if result_type is ResultType.HASHED:
             result = hashed.hashid
-        side_effects = ','.join(t.hashid for t in self._app.get_side_effects(task))
+        side_effects = ','.join(
+            t.hashid for t in Session.active().get_side_effects(task)
+        )
         self._db.execute(
             'REPLACE INTO tasks VALUES (?,?,?,?,?)',
             TaskRow(
@@ -191,7 +193,7 @@ class Cache(SessionPlugin):
         if metadata is not None:
             obj.set_metadata(metadata)
         if isinstance(obj, Task):
-            obj, registered = self._app.register_task(obj)
+            obj, registered = Session.active().register_task(obj)
             if registered:
                 if not self._full_restore:
                     self._to_restore.append(obj)
@@ -220,16 +222,17 @@ class Cache(SessionPlugin):
         log.info(f'Restoring from cache: {task}')
         assert State[row.state] > State.HAS_RUN
         task.set_running()
+        sess = Session.active()
         if self._full_restore and row.side_effects:
             side_effects: List[Task[object]] = []
             for hashid in row.side_effects.split(','):
                 child_task = self._get_object(cast(Hash, hashid))
                 assert isinstance(child_task, Task)
-                self._app.add_side_effect_of(task, child_task)
+                sess.add_side_effect_of(task, child_task)
                 side_effects.append(child_task)
             self._to_restore.extend(reversed(side_effects))
         task.set_has_run()
-        self._app.set_result(task, self._get_result(row))
+        sess.set_result(task, self._get_result(row))
 
     def post_enter(self, sess: Session) -> None:
         cur = self._db.execute(
@@ -276,7 +279,7 @@ class Cache(SessionPlugin):
     def pre_exit(self, sess: Session) -> None:
         if self._eager:
             return
-        tasks = [self._app.get_task(hashid) for hashid in self._pending]
+        tasks = [sess.get_task(hashid) for hashid in self._pending]
         for task in tasks:
             if task.state > State.HAS_RUN:
                 self._store_result(task)
