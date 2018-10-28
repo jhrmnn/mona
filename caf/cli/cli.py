@@ -73,7 +73,7 @@ class ExceptionBuffer:
 @click.option('-j', '--cores', type=int, help='Number of cores')
 @click.option('-l', '--limit', type=int, help='Limit number of tasks to N')
 @click.option('--maxerror', default=5, help='Number of errors in row to quit')
-@click.argument('rulename', metavar='RULE')
+@click.argument('rulename', metavar='RULE', envvar='CAF_RULE')
 @click.pass_obj
 def run(
     app: App,
@@ -102,7 +102,7 @@ def run(
 @click.option('-f', '--force', is_flag=True, help='Remove PATH if exists')
 @click.option('--done', is_flag=True, help='Check out only finished tasks')
 @click.option('-c', '--copy', is_flag=True, help='Copy instead of symlinking')
-@click.argument('rulename', metavar='RULE')
+@click.argument('rulename', metavar='RULE', envvar='CAF_RULE')
 @click.pass_obj
 def checkout(
     app: App,
