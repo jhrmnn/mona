@@ -7,7 +7,17 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from abc import ABC, abstractmethod
-from typing import TypeVar, Dict, Union, ContextManager, Any, Optional, Mapping
+from typing import (
+    TypeVar,
+    Dict,
+    Union,
+    ContextManager,
+    Any,
+    Optional,
+    Mapping,
+    Callable,
+)
+from typing_extensions import Final
 
 from ..utils import make_executable, Pathable
 from ..sessions import Session
@@ -16,12 +26,14 @@ from ..errors import InvalidInput
 from ..rules import Rule, with_hook
 from ..runners import run_process
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
-DirTaskResult = Union[Dict[str, HashedBytes]]
+DirTaskResult = Dict[str, HashedBytes]
+
+EXE_NAME: Final = 'EXE'
 
 
 class HashingPath(ABC):
@@ -76,8 +88,8 @@ def checkout_files(
     exe: Union[HashingPath, bytes],
     files: Mapping[str, Union[bytes, Path, HashingPath]],
     copy: bool = False,
-) -> Path:
-    files = {'EXE': exe, **files}
+) -> None:
+    files = {EXE_NAME: exe, **files}
     target_from = copy_from if copy else symlink_from
     for filename, target in files.items():
         if isinstance(target, bytes):
@@ -88,9 +100,50 @@ def checkout_files(
             target_from(target.path, root / filename)
         else:
             raise InvalidInput(f'Invalid target {target!r}')
-    exefile = root / 'EXE'
-    make_executable(exefile)
-    return exefile
+    make_executable(root / EXE_NAME)
+
+
+class DirtaskTmpdir:
+    def __init__(self, output_filter: Callable[[str], bool] = None) -> None:
+        sess = Session.active()
+        fmngr = sess.storage.get('dir_task:file_manager')
+        assert not fmngr or isinstance(fmngr, FileManager)
+        self._fmngr = fmngr
+        dirmngr = sess.storage.get('dir_task:tmpdir_manager')
+        assert not dirmngr or isinstance(dirmngr, TmpdirManager)
+        self._dirmngr = dirmngr
+        self._output_filter = output_filter
+
+    def has_tmpdir_manager(self) -> bool:
+        return self._dirmngr is not None
+
+    def __enter__(self) -> Path:
+        self._ctx = (
+            TemporaryDirectory() if not self._dirmngr else self._dirmngr.tempdir()
+        )
+        self._tmpdir = Path(self._ctx.__enter__())
+        return self._tmpdir
+
+    def __exit__(self, exc_type: Any, *args: Any) -> None:
+        try:
+            if not exc_type:
+                self._outputs: DirTaskResult = {}
+                for path in self._tmpdir.glob('**/*'):
+                    if not path.is_file():
+                        continue
+                    relpath = path.relative_to(self._tmpdir)
+                    if self._output_filter and not self._output_filter(str(relpath)):
+                        continue
+                    if self._fmngr:
+                        output = self._fmngr.store_from_path(path)
+                    else:
+                        output = HashedBytes(path.read_bytes())
+                    self._outputs[str(relpath)] = output
+        finally:
+            self._ctx.__exit__(exc_type, *args)
+
+    def result(self) -> DirTaskResult:
+        return self._outputs
 
 
 @with_hook('dir_task')
@@ -98,21 +151,17 @@ def checkout_files(
 async def dir_task(
     exe: Union[HashingPath, bytes], inputs: Dict[str, Union[HashingPath, bytes, Path]]
 ) -> DirTaskResult:
-    sess = Session.active()
-    fmngr = sess.storage.get('dir_task:file_manager')
-    assert not fmngr or isinstance(fmngr, FileManager)
-    dirmngr = sess.storage.get('dir_task:tmpdir_manager')
-    assert not dirmngr or isinstance(dirmngr, TmpdirManager)
-    dirfactory = TemporaryDirectory if not dirmngr else dirmngr.tempdir
-    with dirfactory() as tmpdir:
-        root = Path(tmpdir)
-        exefile = checkout_files(root, exe, inputs)
-        out_path, err_path = root / 'STDOUT', root / 'STDERR'
+    dirtask_tmpdir = DirtaskTmpdir(lambda p: p != EXE_NAME and p not in inputs)
+    with dirtask_tmpdir as tmpdir:
+        checkout_files(tmpdir, exe, inputs)
+        out_path, err_path = tmpdir / 'STDOUT', tmpdir / 'STDERR'
         try:
             with out_path.open('w') as stdout, err_path.open('w') as stderr:
-                await run_process(str(exefile), stdout=stdout, stderr=stderr, cwd=root)
+                await run_process(
+                    str(tmpdir / EXE_NAME), stdout=stdout, stderr=stderr, cwd=tmpdir
+                )
         except subprocess.CalledProcessError as e:
-            if dirmngr:
+            if dirtask_tmpdir.has_tmpdir_manager():
                 raise
             exc: Optional[subprocess.CalledProcessError] = e
         else:
@@ -121,15 +170,4 @@ async def dir_task(
             out = out_path.read_bytes()
             err = err_path.read_bytes()
             raise DirTaskProcessError(out, err, exc.returncode, exc.cmd)
-        outputs = {}
-        for path in root.glob('**/*'):
-            if path == exefile:
-                continue
-            relpath = path.relative_to(root)
-            if str(relpath) not in inputs and path.is_file():
-                if fmngr:
-                    output = fmngr.store_from_path(path)
-                else:
-                    output = HashedBytes(path.read_bytes())
-                outputs[str(relpath)] = output
-    return outputs
+    return dirtask_tmpdir.result()
