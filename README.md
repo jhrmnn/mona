@@ -1,4 +1,4 @@
-# Calculation framework (Caf)
+# Caf
 
 [![build](https://img.shields.io/travis/azag0/calcfw/master.svg)](https://travis-ci.org/azag0/calcfw)
 [![coverage](https://img.shields.io/codecov/c/github/azag0/calcfw.svg)](https://codecov.io/gh/azag0/calcfw)
@@ -8,6 +8,22 @@
 [![last commit](https://img.shields.io/github/last-commit/azag0/calcfw.svg)](https://github.com/azag0/calcfw/commits/master)
 [![license](https://img.shields.io/github/license/azag0/calcfw.svg)](https://github.com/azag0/calcfw/blob/master/LICENSE)
 [![code style](https://img.shields.io/badge/code%20style-black-202020.svg)](https://github.com/ambv/black)
+
+Caf is a distributed calculation framework that turns normal execution of Python functions into a graph of tasks. Each task is hashed by the code of its function and its inputs, and the result of each executed task is cached. The cache can be stored persistently in an SQLite database. Tasks and their results can be exchanged between different machines via SSH.
+
+## Installing
+
+Install and update using [Pip](https://pip.pypa.io/en/stable/quickstart/).
+
+```
+pip install -U calcfw
+```
+
+## Links
+
+- Documentation: https://azag0.github.io/calcfw
+
+## A simple example
 
 ```python
 import caf
@@ -29,3 +45,4 @@ dot.render('fib.gv', view=True, format='svg')
 ```
 
 ![](https://raw.githubusercontent.com/azag0/calcfw/master/docs/fib.gv.svg?sanitize=true)
+

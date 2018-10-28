@@ -43,7 +43,7 @@ Corofunc = Callable[..., Awaitable[_T]]
 def ensure_hashed(obj: object) -> Hashed[object]:
     """Turn any object into a Hashed object.
 
-    Returns Hashed objects without change. Wraps composites into
+    Return Hashed objects without change. Wraps composites into
     a TaskComposite or a HashedComposite. Raises InvalidJSONObject when
     not possible.
     """

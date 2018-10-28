@@ -33,6 +33,18 @@ def _scheduler() -> Optional[Scheduler]:
 
 
 async def run_shell(cmd: str, **kwargs: Any) -> ProcessOutput:
+    """Execute a command in a shell. Wrapper around
+    :func:`asyncio.create_subprocess_shell` that handles errors and whose behavior can
+    be modified by session plugins.
+
+    :param cmd: a shell command to be executed
+    :param kwargs: all keyword arguments are passed to
+                   :func:`asyncio.create_subprocess_shell`. `PIPE` is passed to
+                   `stdin` and `stdout` keyword arguments by default.
+
+    Return the standard output as bytes if no error output was generated or a
+    tuple of bytes containing standard and error outputs.
+    """
     scheduler = _scheduler()
     assert 'shell' not in kwargs
     kwargs['shell'] = True
@@ -42,6 +54,18 @@ async def run_shell(cmd: str, **kwargs: Any) -> ProcessOutput:
 
 
 async def run_process(*args: str, **kwargs: Any) -> ProcessOutput:
+    """Create a subprocess. Wrapper around
+    :func:`asyncio.create_subprocess_exec` that handles errors and whose
+    behavior can be modified by session plugins.
+
+    :param args: arguments of the subprocess
+    :param kwargs: all keyword arguments are passed to
+                   :func:`asyncio.create_subprocess_exec`. `PIPE` is passed to
+                   `stdin` and `stdout` keyword arguments by default.
+
+    Return the standard output as bytes if no error output was generated or a
+    tuple of bytes containing standard and error outputs.
+    """
     scheduler = _scheduler()
     if scheduler:
         return await scheduler(_run_process, args, **kwargs)
@@ -81,6 +105,14 @@ async def _run_process(
 
 
 async def run_thread(func: Callable[..., _T], *args: Any) -> _T:
+    """Run a callable in a new thread. Wrapper around :meth:`loop.run_in_executor`
+    whose behavior can be modified by session plugins.
+
+    :param func: a callable
+    :param args: positional arguments to the callable.
+
+    Return the result of the callable.
+    """
     scheduler = _scheduler()
     if scheduler:
         return await scheduler(_run_thread, func, *args)

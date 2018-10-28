@@ -14,6 +14,12 @@ Hook = Callable[[Tuple[Any, ...]], Tuple[Any, ...]]
 
 
 class Rule(Generic[_T]):
+    """Decorator that turns a coroutine function into a rule, which is a
+    callable that generates a task instead of actually calling the coroutine.
+
+    :param corofunc: a coroutine function
+    """
+
     def __init__(self, corofunc: Corofunc[_T]) -> None:
         if not inspect.iscoroutinefunction(corofunc):
             raise CafError(f'Task function is not a coroutine: {corofunc}')
@@ -55,6 +61,12 @@ def with_hook(name: str) -> Callable[[Rule[_T]], HookedRule[_T]]:
 
 
 def labelled(label: str) -> Callable[[Rule[_T]], Rule[_T]]:
+    """Decorator to be used on a rule that makes the rule assign a fixed label
+    to all the tasks it generates.
+
+    :param label: a label
+    """
+
     def decorator(rule: Rule[_T]) -> Rule[_T]:
         rule.add_label(label)
         return rule

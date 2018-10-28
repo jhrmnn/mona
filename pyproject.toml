@@ -36,7 +36,8 @@ coverage = { version = "^4.5", optional = true }
 sphinx = { version = "^1.8", optional = true }
 toml = { version = "^0.9.6", optional = true }
 click = { version = "^7.0", optional = true }
-pytest-mock = {version = "^1.10",optional = true}
+pytest-mock = { version = "^1.10", optional = true }
+sphinxcontrib-asyncio = { version = "^0.2.0", optional = true }
 
 [tool.poetry.extras]
 cli = ["click", "toml"]
@@ -44,7 +45,7 @@ graphviz = ["graphviz"]
 sci = ["numpy", "textx"]
 test = ["pytest", "pytest-mock"]
 cov = ["coverage"]
-doc = ["sphinx", "toml"]
+doc = ["sphinx", "toml", "sphinxcontrib-asyncio"]
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.641.0"

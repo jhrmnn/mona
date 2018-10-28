@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 import warnings
+from functools import wraps
 from itertools import chain
 from collections import defaultdict
 import asyncio
@@ -93,6 +94,15 @@ class Graph(NamedTuple):
 
 
 class Session(Pluggable):
+    """The Session context manager represents a session in which tasks can be
+    created and executed.
+
+    :param plugins: plugins to load. This is equivalent to calling each plugin
+                    with the created session as an argument
+    :param warn: warn at the end of session if some created tasks were not
+                 executed
+    """
+
     def __init__(
         self, plugins: Iterable[SessionPlugin] = None, warn: bool = True
     ) -> None:
@@ -114,6 +124,7 @@ class Session(Pluggable):
 
     @property
     def storage(self) -> Dict[str, Any]:
+        """A ganeral string-based dictionary available when a session is active."""
         self._check_active()
         return self._storage
 
@@ -152,6 +163,9 @@ class Session(Pluggable):
 
     @property
     def running_task(self) -> Task[Any]:
+        """Currently running task. This would be usually used from within a task
+        coroutine.
+        """
         task = self._running_task.get()
         if task:
             return task
@@ -208,6 +222,12 @@ class Session(Pluggable):
     def create_task(
         self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
     ) -> Task[_T]:
+        """Create new task.
+
+        :param corofunc: a coroutine function to be executed
+        :param args: arguments to the coroutine
+        :param kwargs: keyword arguments passed to :class:`~caf.tasks.Task`
+        """
         task = Task(corofunc, *args, **kwargs)
         caller = self._running_task.get()
         if caller:
@@ -230,6 +250,13 @@ class Session(Pluggable):
             return await self.run_task_async(task)
 
     def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
+        """Run a task.
+
+        :param task: task to run
+
+        Return the result of the task's coroutine function or it's hashed
+        instance if hashable.
+        """
         return asyncio.run(self._run_task(task))
 
     def set_result(self, task: Task[_T], result: Union[_T, Hashed[_T]]) -> None:
@@ -271,11 +298,8 @@ class Session(Pluggable):
         done((task, None, backflow))
 
     def eval(self, *args: Any, **kwargs: Any) -> Any:
+        """Blocking version of :meth:`eval_async`."""
         return asyncio.run(self.eval_async(*args, **kwargs))
-
-    async def eval_async(self, *args: Any, **kwargs: Any) -> Any:
-        async with self.run_context():
-            return await self._eval_async(*args, **kwargs)
 
     # TODO reduce complexity
     async def _eval_async(  # noqa: C901
@@ -287,6 +311,21 @@ class Session(Pluggable):
         task_filter: TaskFilter = None,
         limit: int = None,
     ) -> Any:
+        """Evaluate the given object by running all tasks it contains as well as
+        any new generated tasks.
+
+        :param obj: any hashable object
+        :param depth: traverse DAG depth-first if true, breadth-first otherwise
+        :param priority: prioritize steps in DAG traversal in order
+        :param exception_handler: callable that accepts a task and an exception
+                                  it raised and returns True if the exception
+                                  should be ignored
+        :param task_filter: callable that accepts a task and returns True if
+                            the task should be executed
+        :param limit: limit of the number of executed task
+
+        Return the evaluated object.
+        """
         fut = maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
@@ -373,7 +412,16 @@ class Session(Pluggable):
                     raise
         return fut
 
+    @wraps(_eval_async)
+    async def eval_async(self, *args: Any, **kwargs: Any) -> Any:
+        async with self.run_context():
+            return await self._eval_async(*args, **kwargs)
+
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
+        """Generate `graphviz.Digraph
+        <https://graphviz.readthedocs.io/en/stable/api.html#digraph>`_ for the
+        task DAG. Requires `Graphviz <https://graphviz.readthedocs.io/>`_.
+        """
         from graphviz import Digraph  # type: ignore
 
         tasks: Union[List[Hash], FrozenSet[Hash]]

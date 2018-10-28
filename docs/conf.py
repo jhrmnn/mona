@@ -14,7 +14,12 @@ version = metadata['version']
 author = ' '.join(metadata['authors'][0].split()[:-1])
 description = metadata['description']
 
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.viewcode']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.todo',
+    'sphinx.ext.viewcode',
+    'sphinxcontrib.asyncio',
+]
 source_suffix = '.rst'
 master_doc = 'index'
 copyright = f'2015-{datetime.date.today().year}, {author}'
