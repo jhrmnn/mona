@@ -122,6 +122,9 @@ class Session(Pluggable):
     def get_task(self, hashid: Hash) -> Task[Any]:
         return self._tasks[hashid]
 
+    def all_tasks(self) -> Iterable[Task[object]]:
+        yield from self._tasks.values()
+
     def __enter__(self) -> 'Session':
         assert _active_session.get() is None
         self._active_session_token = _active_session.set(self)
