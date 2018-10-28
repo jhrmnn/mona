@@ -1,12 +1,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import shutil
 import logging
 import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from abc import ABC, abstractmethod
-from typing import TypeVar, Dict, Union, ContextManager, Any, Optional
+from typing import TypeVar, Dict, Union, ContextManager, Any, Optional, Mapping
 
 from ..utils import make_executable, Pathable
 from ..sessions import Session
@@ -20,7 +21,7 @@ __version__ = '0.1.0'
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
-DirTaskResult = Union[Dict[str, Union[bytes, HashedBytes]]]
+DirTaskResult = Union[Dict[str, HashedBytes]]
 
 
 class HashingPath(ABC):
@@ -62,6 +63,36 @@ class DirTaskProcessError(subprocess.CalledProcessError):
         )
 
 
+def symlink_from(src: Union[str, Path], dst: Path) -> None:
+    dst.symlink_to(src)
+
+
+def copy_from(src: Path, dst: Path) -> None:
+    shutil.copyfile(src, dst)
+
+
+def checkout_files(
+    root: Path,
+    exe: Union[HashingPath, bytes],
+    files: Mapping[str, Union[bytes, Path, HashingPath]],
+    copy: bool = False,
+) -> Path:
+    files = {'EXE': exe, **files}
+    target_from = copy_from if copy else symlink_from
+    for filename, target in files.items():
+        if isinstance(target, bytes):
+            (root / filename).write_bytes(target)
+        elif isinstance(target, Path):
+            symlink_from(target, root / filename)
+        elif isinstance(target, HashingPath):
+            target_from(target.path, root / filename)
+        else:
+            raise InvalidInput(f'Invalid target {target!r}')
+    exefile = root / 'EXE'
+    make_executable(exefile)
+    return exefile
+
+
 @with_hook('dir_task')
 @Rule
 async def dir_task(
@@ -72,25 +103,14 @@ async def dir_task(
     assert not fmngr or isinstance(fmngr, FileManager)
     dirmngr = sess.storage.get('dir_task:tmpdir_manager')
     assert not dirmngr or isinstance(dirmngr, TmpdirManager)
-    inputs = {'EXE': exe, **inputs}
     dirfactory = TemporaryDirectory if not dirmngr else dirmngr.tempdir
     with dirfactory() as tmpdir:
         root = Path(tmpdir)
-        for filename, target in inputs.items():
-            if isinstance(target, bytes):
-                (root / filename).write_bytes(target)
-            elif isinstance(target, (Path, HashingPath)):
-                if not isinstance(target, Path):
-                    target = target.path
-                (root / filename).symlink_to(target)
-            else:
-                raise InvalidInput(f'Invalid target {target!r}')
-        exefile = str(root / 'EXE')
-        make_executable(exefile)
+        exefile = checkout_files(root, exe, inputs)
         out_path, err_path = root / 'STDOUT', root / 'STDERR'
         try:
             with out_path.open('w') as stdout, err_path.open('w') as stderr:
-                await run_process(exefile, stdout=stdout, stderr=stderr, cwd=root)
+                await run_process(str(exefile), stdout=stdout, stderr=stderr, cwd=root)
         except subprocess.CalledProcessError as e:
             if dirmngr:
                 raise
@@ -103,11 +123,13 @@ async def dir_task(
             raise DirTaskProcessError(out, err, exc.returncode, exc.cmd)
         outputs = {}
         for path in root.glob('**/*'):
+            if path == exefile:
+                continue
             relpath = path.relative_to(root)
             if str(relpath) not in inputs and path.is_file():
                 if fmngr:
                     output = fmngr.store_from_path(path)
                 else:
-                    output = path.read_bytes()
+                    output = HashedBytes(path.read_bytes())
                 outputs[str(relpath)] = output
     return outputs
