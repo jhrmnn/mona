@@ -4,7 +4,7 @@ skip-string-normalization = true
 
 [tool.poetry]
 name = "calcfw"
-version = "0.4.0"
+version = "0.4.1"
 description = "Distributed calculation framework"
 readme = "README.md"
 authors = ["Jan Hermann <dev@janhermann.cz>"]
