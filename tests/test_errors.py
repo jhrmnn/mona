@@ -49,19 +49,17 @@ def test_no_running_task():
         Session().running_task
 
 
-@pytest.mark.filterwarnings('ignore:tasks have never run')
 def test_fut_not_in_session():
     with pytest.raises(TaskError):
-        with Session():
+        with Session(warn=False):
             task = identity(1)
         with Session():
             identity(task[0])
 
 
-@pytest.mark.filterwarnings('ignore:tasks have never run')
 def test_arg_not_in_session():
     with pytest.raises(TaskError):
-        with Session():
+        with Session(warn=False):
             task = identity(1)
         with Session():
             identity(task)

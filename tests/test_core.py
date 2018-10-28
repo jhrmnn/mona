@@ -80,9 +80,8 @@ def test_tasks_not_run():
             assert len(sess._tasks) == 2
 
 
-@pytest.mark.filterwarnings('ignore:tasks have never run')
 def test_partial_eval():
-    with Session() as sess:
+    with Session(warn=False) as sess:
         main = multi(5)
         sess.run_task(main)
         tasks = main.future_result().resolve()

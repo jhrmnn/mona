@@ -34,8 +34,8 @@ class App:
                 with path.open() as f:
                     self._config.update(toml.load(f))
 
-    def session(self, **kwargs: Any) -> Session:
-        sess = Session()
+    def session(self, warn: bool = False, **kwargs: Any) -> Session:
+        sess = Session(warn=warn)
         self(sess, **kwargs)
         return sess
 
