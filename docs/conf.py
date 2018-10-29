@@ -2,9 +2,19 @@ import os
 import sys
 import datetime
 import warnings
+from unittest.mock import MagicMock
 
 import toml
 
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+
+MOCK_MODULES = ['textx', 'textx.metamodel', 'numpy']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 sys.path.insert(0, os.path.abspath('..'))
 
 warnings.filterwarnings('ignore', r'formatargspec\(\) is now deprecated.')
