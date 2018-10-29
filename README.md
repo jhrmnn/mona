@@ -9,7 +9,7 @@
 [![license](https://img.shields.io/github/license/azag0/mona.svg)](https://github.com/azag0/mona/blob/master/LICENSE)
 [![code style](https://img.shields.io/badge/code%20style-black-202020.svg)](https://github.com/ambv/black)
 
-Mona is a distributed calculation framework that turns normal execution of Python functions into a graph of tasks. Each task is hashed by the code of its function and its inputs, and the result of each executed task is cached. The cache can be stored persistently in an SQLite database. Tasks and their results can be exchanged between different machines via SSH.
+Mona is a calculation framework that turns normal execution of Python functions into a graph of tasks. Each task is hashed by the code of its function and by its inputs, and the result of each executed task is cached. The cache can be stored persistently in an SQLite database. Tasks can be executed in parallel within a single Mona instance, and multiple instances can work in parallel on the same database.
 
 ## Installing
 

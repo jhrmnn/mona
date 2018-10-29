@@ -4,8 +4,8 @@ skip-string-normalization = true
 
 [tool.poetry]
 name = "mona"
-version = "0.1.0"
-description = "Distributed calculation framework"
+version = "0.1.1"
+description = "Calculation framework"
 readme = "README.md"
 authors = ["Jan Hermann <dev@janhermann.cz>"]
 repository = "https://github.com/azag0/mona"
