@@ -63,12 +63,14 @@ class ExceptionBuffer:
         self._n_errors = 0
 
     def __call__(self, task: Task[Any], exc: Exception) -> bool:
-        if self._maxerror is not None:
-            assert self._n_errors <= self._maxerror
-            if self._n_errors == self._maxerror:
-                log.warn('Maximum number of errors reached')
-                return False
-        return True
+        if self._maxerror is None:
+            return False
+        if self._n_errors == self._maxerror:
+            log.warn('Maximum number of errors reached')
+        self._n_errors += 1
+        if self._n_errors <= self._maxerror:
+            return True
+        return False
 
 
 @cli.command()
@@ -76,7 +78,7 @@ class ExceptionBuffer:
 @click.option('-P', '--path', is_flag=True, help='Execute path-like tasks')
 @click.option('-j', '--cores', type=int, help='Number of cores')
 @click.option('-l', '--limit', type=int, help='Limit number of tasks to N')
-@click.option('--maxerror', default=5, help='Number of errors in row to quit')
+@click.option('--maxerror', type=int, help='Number of errors in row to quit')
 @click.argument('rulename', metavar='RULE', envvar='MONA_RULE')
 @click.pass_obj
 def run(
