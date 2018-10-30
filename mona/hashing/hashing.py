@@ -86,7 +86,10 @@ class HashedBytes(Hashed[bytes]):
     def __init__(self, content: bytes) -> None:
         self._content = content
         Hashed.__init__(self)
-        self._label = repr(shorten_text(content, 20))
+        try:
+            self._label = repr(shorten_text(content, 20))
+        except UnicodeDecodeError:
+            self._label = '<BINARY>'
 
     @property
     def spec(self) -> bytes:
