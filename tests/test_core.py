@@ -3,7 +3,6 @@ import subprocess
 import pytest  # type: ignore
 
 from mona import Rule, Session, run_thread, run_shell
-from mona.rules import with_hook
 
 
 @Rule
@@ -94,18 +93,6 @@ def test_graphviz():
         sess.eval(identity(multi(5)))
         dot = sess.dot_graph(format='svg')
         assert len(dot.source.split('\n')) == 20
-
-
-def test_with_hook():
-    @with_hook('test')
-    @Rule
-    async def f(x):
-        return 1
-
-    with Session() as sess:
-        sess.storage['hook:test'] = lambda x: x
-        task = f(1)
-        sess.eval(task)
 
 
 def test_local_storage():

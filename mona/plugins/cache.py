@@ -68,7 +68,6 @@ class CachedTask(Task[_T_co]):
         self._hashid = hashid
         self._args = ()
         Future.__init__(self, [])  # type: ignore
-        self._hook = None
 
 
 class Cache(SessionPlugin):

@@ -128,7 +128,6 @@ class Task(HashedFuture[_T_co]):
             f'({", ".join(a.label for a in self._args)})'
         )
         self._result: Union[_T_co, Hashed[_T_co], Empty] = Empty._
-        self._hook: Optional[Callable[[_T_co], _T_co]] = None
         self._storage: Dict[str, object] = {}
 
     @property
