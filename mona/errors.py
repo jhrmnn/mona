@@ -1,12 +1,12 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from typing import Any, TYPE_CHECKING  # noqa
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .futures import Future  # noqa
-    from .tasks import Task  # noqa
-    from .sessions import Session  # noqa
+    from .futures import Future
+    from .tasks import Task
+    from .sessions import Session
 
 __version__ = '0.1.0'
 
