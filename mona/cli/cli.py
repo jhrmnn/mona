@@ -13,8 +13,8 @@ import click
 from ..tasks import Task
 from ..futures import STATE_COLORS
 from ..utils import import_fullname, groupby
-from ..plugins.files import HashedPath, HashingPath
-from ..rules.dirtask import checkout_files
+from ..files import File
+from ..rules.dirtask import checkout_files, DirtaskInput
 from .glob import match_glob
 from .app import App
 from .table import Table, lenstr
@@ -191,22 +191,12 @@ def checkout(
                 continue
             if done and not task.done():
                 continue
-            exe = cast(HashedPath, task.args[0]).value
-            paths: Dict[str, HashingPath] = {
-                filename: path.value
-                for filename, path in task.args[1].resolve().items()  # type: ignore
-            }
+            exe = cast(File, task.args[0].value)
+            paths = cast(List[DirtaskInput], task.args[1].value)
             if task.done():
-                paths.update(
-                    {
-                        filename: HashingPath(stored_bytes.hashid)
-                        for filename, stored_bytes in task.resolve()  # type: ignore
-                        .resolve()
-                        .items()
-                    }
-                )
+                paths.extend(cast(Dict[str, File], task.result()).values())
             root = blddir / task.label[1:]
             root.mkdir(parents=True)
-            checkout_files(root, exe, paths, copy=copy)
+            checkout_files(root, exe, paths, mutable=copy)
             n_tasks += 1
     log.info(f'Checked out {n_tasks} tasks.')

@@ -4,6 +4,7 @@ import subprocess
 import pytest  # type: ignore
 
 from mona import Session, Rule, run_shell, run_process, run_thread
+from mona.files import Source
 from mona.rules import dir_task
 from mona.plugins import Parallel
 
@@ -28,8 +29,8 @@ async def calcs(n):
         [
             dist,
             dir_task(
-                f'#!/bin/bash\nexpr $(cat data) "*" 2; sleep {n}'.encode(),
-                {'data': str(dist).encode()},
+                Source('script', f'#!/bin/bash\nexpr $(cat data) "*" 2; sleep {n}'),
+                [Source('data', str(dist))],
                 label=f'/calcs/dist={dist}',
             )['STDOUT'],
         ]

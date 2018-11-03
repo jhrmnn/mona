@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest  # type: ignore
 
 from mona import Rule, Session
+from mona.files import Source
 from mona.rules import dir_task
 from mona.errors import InvalidInput
 
@@ -13,10 +14,10 @@ async def calcs():
         [
             dist,
             dir_task(
-                '#!/bin/bash\nexpr $(cat input) "*" 2; true'.encode(),
-                {'data': str(dist).encode(), 'input': Path('data')},
+                Source('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
+                [Source('data', str(dist)), [Path('input'), 'data']],
                 label=f'/calcs/dist={dist}',
-            ).get('STDOUT', b'0'),
+            )['STDOUT'],
         ]
         for dist in range(5)
     ]
@@ -24,23 +25,22 @@ async def calcs():
 
 @Rule
 async def analysis(results):
-    return sum(int(res) for _, res in results)
+    return sum(int(stdout.read_text()) for _, stdout in results)
 
 
 @Rule
 async def python():
     return dir_task(
-        '#!/usr/bin/env python\n'
-        'import coverage\n'
-        'print(coverage.__name__)'.encode(),
-        {},
+        Source(
+            'script', '#!/usr/bin/env python\nimport coverage\nprint(coverage.__name__)'
+        ),
+        [],
     )['STDOUT']
 
 
 def test_calc():
     with Session() as sess:
         sess.run_task(calcs())
-        assert int(calcs()[0][1].default_result()) == 0
         assert sess.eval(analysis(calcs())) == 20
 
 
@@ -52,4 +52,4 @@ def test_invalid_file():
 
 def test_python():
     with Session() as sess:
-        assert sess.eval(python()).decode().rstrip() == 'coverage'
+        assert sess.eval(python()).read_text().rstrip() == 'coverage'

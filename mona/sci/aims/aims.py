@@ -7,13 +7,16 @@ from pathlib import Path
 from collections import OrderedDict
 from typing import Dict, Any, Tuple, Callable, cast
 
-from ...rules.dirtask import dir_task, DirTaskResult
+from ...rules.dirtask import dir_task
+from ...files import Source, HashedFile
 from ...tasks import Task
 from ...errors import MonaError, InvalidInput
 from ...pluggable import Plugin, Pluggable
 from ...hashing import hash_function
 from ..geomlib import Molecule, Atom
 from .dsl import parse_aims_input, expand_dicts
+
+__version__ = '0.1.0'
 
 
 class AimsPlugin(Plugin['Aims']):
@@ -34,14 +37,16 @@ class Aims(Pluggable):
         for factory in default_plugins:
             factory()(self)
 
-    def __call__(self, *, label: str = None, **kwargs: Any) -> Task[DirTaskResult]:
+    def __call__(
+        self, *, label: str = None, **kwargs: Any
+    ) -> Task[Dict[str, HashedFile]]:
         """Create an FHI-aims.
 
         :param kwargs: processed by individual plugins
         """
         self.run_plugins('process', kwargs, start=None)
-        script = kwargs.pop('script').encode()
-        inputs = {name: cont.encode() for name, cont in kwargs.pop('inputs')}
+        script = Source('aims.sh', kwargs.pop('script'))
+        inputs = [Source(name, cont) for name, cont in kwargs.pop('inputs')]
         if kwargs:
             raise InvalidInput(f'Unknown Aims kwargs: {list(kwargs.keys())}')
         return dir_task(script, inputs, label=label)

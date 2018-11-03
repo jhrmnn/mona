@@ -40,7 +40,7 @@ def test_postponed(db):
     with sess:
         sess.eval(analysis(calcs()), task_filter=lambda t: t.label[0] != '/')
         assert len(cache._pending) == 7
-        assert len(cache._objects) == 17
+        assert len(cache._objects) == 23
     assert not cache._pending
     assert not cache._objects
 

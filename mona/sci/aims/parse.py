@@ -7,15 +7,16 @@ from typing import Any, Type, Dict, IO
 
 import numpy as np  # type: ignore
 
+from ...files import File
 from ...rules import Rule
 
 
 @Rule
-async def parse_aims(outputs: Dict[str, bytes]) -> Any:
+async def parse_aims(outputs: Dict[str, File]) -> Any:
     """Task rule with an output of :class:`mona.sci.aims.Aims` as input and a
     dictionary of parsed results as output.
     """
-    stdout = outputs['results.xml'].decode()
+    stdout = outputs['results.xml'].read_text()
     parsed = parse_xml(io.StringIO(stdout))
     energies = {x['name']: x['value'][0] for x in parsed['energy']}
     return {'energy': energies['Total energy']}

@@ -1,59 +1,29 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import shutil
 import logging
 import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from abc import ABC, abstractmethod
-from typing import (
-    TypeVar,
-    Dict,
-    Union,
-    ContextManager,
-    Any,
-    Optional,
-    Mapping,
-    Callable,
-)
-from typing_extensions import Final
+from typing import Dict, ContextManager, Any, Optional, Callable, List, Union, Tuple
+from typing_extensions import Protocol, runtime
 
 from ..utils import make_executable, Pathable
 from ..sessions import Session
-from ..hashing import HashedBytes
-from ..errors import InvalidInput
-from ..rules import Rule, with_hook
+from ..rules import Rule
 from ..runners import run_process
+from ..errors import InvalidInput
+from ..files import HashedFile, File
 
-__version__ = '0.1.1'
+__version__ = '0.2.0'
 
 log = logging.getLogger(__name__)
 
-_T = TypeVar('_T')
-DirTaskResult = Dict[str, HashedBytes]
-
-EXE_NAME: Final = 'EXE'
+DirtaskInput = Union[File, Tuple[Path, str]]
 
 
-class HashingPath(ABC):
-    """Represents a path that guarantees immutability."""
-
-    @property
-    @abstractmethod
-    def path(self) -> Path:
-        """the actual path"""
-        ...
-
-
-class FileManager(ABC):
-    @abstractmethod
-    def store_from_path(self, path: Path) -> HashedBytes:
-        ...
-
-
-class TmpdirManager(ABC):
-    @abstractmethod
+@runtime
+class TmpdirManager(Protocol):
     def tempdir(self) -> ContextManager[Pathable]:
         ...
 
@@ -78,34 +48,6 @@ class DirTaskProcessError(subprocess.CalledProcessError):
         )
 
 
-def symlink_from(src: Union[str, Path], dst: Path) -> None:
-    dst.symlink_to(src)
-
-
-def copy_from(src: Path, dst: Path) -> None:
-    shutil.copyfile(src, dst)
-
-
-def checkout_files(
-    root: Path,
-    exe: Union[HashingPath, bytes],
-    files: Mapping[str, Union[bytes, Path, HashingPath]],
-    copy: bool = False,
-) -> None:
-    files = {EXE_NAME: exe, **files}
-    target_from = copy_from if copy else symlink_from
-    for filename, target in files.items():
-        if isinstance(target, bytes):
-            (root / filename).write_bytes(target)
-        elif isinstance(target, Path):
-            symlink_from(target, root / filename)
-        elif isinstance(target, HashingPath):
-            target_from(target.path, root / filename)
-        else:
-            raise InvalidInput(f'Invalid target {target!r}')
-    make_executable(root / EXE_NAME)
-
-
 class DirtaskTmpdir:
     """
     Context manager of a temporary directory that collects created files.
@@ -115,9 +57,6 @@ class DirtaskTmpdir:
 
     def __init__(self, output_filter: Callable[[str], bool] = None) -> None:
         sess = Session.active()
-        fmngr = sess.storage.get('dir_task:file_manager')
-        assert not fmngr or isinstance(fmngr, FileManager)
-        self._fmngr = fmngr
         dirmngr = sess.storage.get('dir_task:tmpdir_manager')
         assert not dirmngr or isinstance(dirmngr, TmpdirManager)
         self._dirmngr = dirmngr
@@ -136,22 +75,19 @@ class DirtaskTmpdir:
     def __exit__(self, exc_type: Any, *args: Any) -> None:
         try:
             if not exc_type:
-                self._outputs: DirTaskResult = {}
+                self._outputs: Dict[str, HashedFile] = {}
                 for path in self._tmpdir.glob('**/*'):
                     if not path.is_file():
                         continue
-                    relpath = path.relative_to(self._tmpdir)
-                    if self._output_filter and not self._output_filter(str(relpath)):
+                    relpath = str(path.relative_to(self._tmpdir))
+                    if self._output_filter and not self._output_filter(relpath):
                         continue
-                    if self._fmngr:
-                        output = self._fmngr.store_from_path(path)
-                    else:
-                        output = HashedBytes(path.read_bytes())
-                    self._outputs[str(relpath)] = output
+                    file = HashedFile.from_path(path, self._tmpdir, can_destroy=True)
+                    self._outputs[relpath] = file
         finally:
             self._ctx.__exit__(exc_type, *args)
 
-    def result(self) -> DirTaskResult:
+    def result(self) -> Dict[str, HashedFile]:
         """
         The collection of files created in the temporary directory. This is
         available only after leaving the context.
@@ -159,23 +95,49 @@ class DirtaskTmpdir:
         return self._outputs
 
 
-@with_hook('dir_task')
+def checkout_files(
+    root: Path, exe: File, files: List[DirtaskInput], mutable: bool = False
+) -> None:
+    assert root.exists()
+    for file in [exe, *files]:
+        if isinstance(file, File):
+            path = file.path
+        else:
+            path, target = file
+        (root / path.parent).mkdir(parents=True, exist_ok=True)
+        if isinstance(file, File):
+            file.target_in(root)
+        else:
+            (root / path).symlink_to(target)
+    make_executable(root / exe.path)
+
+
 @Rule
-async def dir_task(
-    exe: Union[HashingPath, bytes], inputs: Dict[str, Union[HashingPath, bytes, Path]]
-) -> DirTaskResult:
+async def dir_task(exe: File, inputs: List[DirtaskInput]) -> Dict[str, HashedFile]:
     """
     Task rule with an executable and a collection of files as inputs and a
     collection of output files as output.
     """
-    dirtask_tmpdir = DirtaskTmpdir(lambda p: p != EXE_NAME and p not in inputs)
+    for file in [exe, *inputs]:
+        if not (
+            isinstance(file, File)
+            or isinstance(file, list)
+            and len(file) == 2
+            and isinstance(file[0], Path)
+            and isinstance(file[1], str)
+        ):
+            raise InvalidInput(str(file))
+    input_names = {
+        str(inp if isinstance(inp, File) else inp[0]) for inp in [exe, *inputs]
+    }
+    dirtask_tmpdir = DirtaskTmpdir(lambda p: p not in input_names)
     with dirtask_tmpdir as tmpdir:
         checkout_files(tmpdir, exe, inputs)
         out_path, err_path = tmpdir / 'STDOUT', tmpdir / 'STDERR'
         try:
             with out_path.open('w') as stdout, err_path.open('w') as stderr:
                 await run_process(
-                    str(tmpdir / EXE_NAME), stdout=stdout, stderr=stderr, cwd=tmpdir
+                    str(tmpdir / exe.path), stdout=stdout, stderr=stderr, cwd=tmpdir
                 )
         except subprocess.CalledProcessError as e:
             if dirtask_tmpdir.has_tmpdir_manager():
