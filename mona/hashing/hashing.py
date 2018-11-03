@@ -61,6 +61,13 @@ class Hashed(ABC, Generic[_T_co]):
     def value(self) -> _T_co:
         ...
 
+    @property
+    def components(self) -> Iterable['Hashed[object]']:
+        """To be overwritten by derived classes when the object contains
+        references to other Hashed objects.
+        """
+        return ()
+
     def metadata(self) -> Optional[bytes]:
         return None
 

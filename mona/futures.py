@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 from enum import IntEnum
-from typing import Iterable, Set, Callable, List, TypeVar, NoReturn, FrozenSet
+from typing import Iterable, Set, Callable, List, TypeVar, NoReturn
 from typing_extensions import Final
 
 from .errors import MonaError
@@ -54,10 +54,6 @@ class Future:
 
     def done(self) -> bool:
         return self._state is State.DONE
-
-    @property
-    def parents(self) -> FrozenSet[_Fut]:
-        return self._parents
 
     def add_child(self, fut: 'Future') -> None:
         assert not self.done()

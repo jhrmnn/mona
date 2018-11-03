@@ -269,6 +269,10 @@ class TaskComponent(HashedFuture[_T_co]):
     def label(self) -> str:
         return self._label
 
+    @property
+    def components(self) -> Iterable[Hashed[object]]:
+        return (self._task,)
+
     def result(self) -> _T_co:
         return self.resolve(lambda task: task.result())
 

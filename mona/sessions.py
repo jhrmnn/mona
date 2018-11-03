@@ -28,7 +28,7 @@ from typing import (
     Sequence,
 )
 
-from .hashing import Hash, Hashed, HashedCompositeLike
+from .hashing import Hash, Hashed
 from .tasks import Task, HashedFuture, State, maybe_hashed, Corofunc
 from .graph import (
     traverse,
@@ -183,17 +183,7 @@ class Session(Pluggable):
 
     def _process_objects(self, objs: Iterable[Hashed[Any]]) -> List[Task[Any]]:
         objs = list(
-            traverse(
-                objs,
-                lambda o: (
-                    o.components
-                    if isinstance(o, HashedCompositeLike)
-                    else cast(Iterable[Hashed[Any]], o.parents)
-                    if isinstance(o, HashedFuture)
-                    else []
-                ),
-                lambda o: isinstance(o, Task),
-            )
+            traverse(objs, lambda o: o.components, lambda o: isinstance(o, Task))
         )
         tasks, objs = cast(
             Tuple[List[Task[Any]], List[Hashed[Any]]],
