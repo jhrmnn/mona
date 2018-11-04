@@ -114,7 +114,11 @@ def status(app: App, rulename: str, pattern: List[str]) -> None:
     table = Table(align=['<', *(ncols * ['>'])], sep=['   ', *((ncols - 1) * ['/'])])
     table.add_row('pattern', *(s.name.lower() for s in STATE_COLORS), 'all')
     with sess:
-        rule()
+        task = rule()
+        if task.state is State.READY:
+            # This is needed if the task always runs because of Source global
+            # TODO should be handled more transparently
+            sess.run_task(task)
         task_groups: Dict[str, List[Task[object]]] = {}
         all_tasks = list(sess.all_tasks())
     for patt in pattern or ['**']:
@@ -152,7 +156,11 @@ def graph(app: App, rulename: str) -> None:
     rule = import_fullname(rulename)
     sess = app.session(warn=False, readonly=True, full_restore=True)
     with sess:
-        rule()
+        task = rule()
+        if task.state is State.READY:
+            # This is needed if the task always runs because of Source global
+            # TODO should be handled more transparently
+            sess.run_task(task)
         dot = sess.dot_graph()
     dot.render(tempfile.mkstemp()[1], view=True, cleanup=True, format='pdf')
 
