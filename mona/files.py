@@ -69,6 +69,10 @@ class File:
     def path(self) -> Path:
         return self._path
 
+    @property
+    def name(self) -> str:
+        return self._path.name
+
     def read_bytes(self) -> bytes:
         if self._content is not None:
             return self._content
@@ -114,7 +118,7 @@ class HashedFile(Hashed[File]):
 
     @property
     def label(self) -> str:
-        return str(self._path)
+        return f'./{self._path}'
 
     @property
     def components(self) -> Iterable['Hashed[object]']:
