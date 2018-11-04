@@ -115,6 +115,7 @@ class Task(HashedFuture[_T_co]):
         *args: object,
         label: str = None,
         default: Maybe[_T_co] = Empty._,
+        rule: str = None,
     ) -> None:
         self._corofunc = corofunc
         self._args = tuple(map(ensure_hashed, args))
@@ -129,6 +130,7 @@ class Task(HashedFuture[_T_co]):
         )
         self._result: Union[_T_co, Hashed[_T_co], Empty] = Empty._
         self._storage: Dict[str, object] = {}
+        self._rule = rule
 
     @property
     def spec(self) -> bytes:
@@ -165,6 +167,10 @@ class Task(HashedFuture[_T_co]):
         return self._args
 
     @property
+    def rule(self) -> Optional[str]:
+        return self._rule
+
+    @property
     def storage(self) -> Dict[str, object]:
         return self._storage
 
@@ -194,10 +200,10 @@ class Task(HashedFuture[_T_co]):
         raise TaskError(f'Has no defualt: {self!r}', self)
 
     def metadata(self) -> Optional[bytes]:
-        return pickle.dumps((self._default, self._label))
+        return pickle.dumps((self._default, self._label, self._rule))
 
     def set_metadata(self, metadata: bytes) -> None:
-        self._default, self._label = pickle.loads(metadata)
+        self._default, self._label, self._rule = pickle.loads(metadata)
 
     def set_running(self) -> None:
         assert self._state is State.READY

@@ -29,6 +29,8 @@ class Rule(Generic[_T]):
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
         kwargs.setdefault('label', self._label)
+        assert 'rule' not in kwargs
+        kwargs['rule'] = self._corofunc.__name__
         return Session.active().create_task(self._corofunc, *args, **kwargs)
 
     def add_label(self, label: str) -> None:
