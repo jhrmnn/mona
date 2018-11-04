@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>API &#8212; Mona 0.1.1 documentation</title>
+    <title>API &#8212; Mona 0.2.0 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -48,23 +48,6 @@ callable that generates a task instead of actually calling the coroutine.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>corofunc</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code>[…, <code class="xref py py-class docutils literal notranslate"><span class="pre">Awaitable</span></code>[~_T]]) – a coroutine function</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="mona.labelled">
-<code class="descclassname">mona.</code><code class="descname">labelled</code><span class="sig-paren">(</span><em>label</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/rules/rules.html#labelled"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.labelled" title="Permalink to this definition">¶</a></dt>
-<dd><p>Decorator to be used on a rule that makes the rule assign a fixed label
-to all the tasks it generates.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>label</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – a label</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code>[[<code class="xref py py-class docutils literal notranslate"><span class="pre">Rule</span></code>[~_T]], <code class="xref py py-class docutils literal notranslate"><span class="pre">Rule</span></code>[~_T]]</td>
 </tr>
 </tbody>
 </table>
@@ -334,7 +317,7 @@ collection of output files as output.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">HashedBytes</span></code>[]]</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">HashedFile</span></code>[]]</td>
 </tr>
 </tbody>
 </table>
@@ -361,7 +344,7 @@ available only after leaving the context.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">HashedBytes</span></code>[]]</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">HashedFile</span></code>[]]</td>
 </tr>
 </tbody>
 </table>
@@ -944,22 +927,82 @@ part of the versioned public API neverthless.</p>
 <dl class="class">
 <dt id="mona.hashing.HashedComposite">
 <em class="property">class </em><code class="descclassname">mona.hashing.</code><code class="descname">HashedComposite</code><span class="sig-paren">(</span><em>jsonstr</em>, <em>components</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/hashing/hashing.html#HashedComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.hashing.HashedComposite" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><dl class="attribute">
+<dt id="mona.hashing.HashedComposite.components">
+<code class="descname">components</code><a class="headerlink" href="#mona.hashing.HashedComposite.components" title="Permalink to this definition">¶</a></dt>
+<dd><p>To be overwritten by derived classes when the object contains
+references to other Hashed objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterable</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Hashed</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code>]]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
 
 <dl class="class">
 <dt id="mona.tasks.Task">
-<em class="property">class </em><code class="descclassname">mona.tasks.</code><code class="descname">Task</code><span class="sig-paren">(</span><em>corofunc</em>, <em>*args</em>, <em>label=None</em>, <em>default=&lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/tasks.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.tasks.Task" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<em class="property">class </em><code class="descclassname">mona.tasks.</code><code class="descname">Task</code><span class="sig-paren">(</span><em>corofunc</em>, <em>*args</em>, <em>label=None</em>, <em>default=&lt;Empty._: 0&gt;</em>, <em>rule=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/tasks.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.tasks.Task" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="mona.tasks.Task.components">
+<code class="descname">components</code><a class="headerlink" href="#mona.tasks.Task.components" title="Permalink to this definition">¶</a></dt>
+<dd><p>To be overwritten by derived classes when the object contains
+references to other Hashed objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterable</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Hashed</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code>]]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
 
 <dl class="class">
 <dt id="mona.tasks.TaskComposite">
 <em class="property">class </em><code class="descclassname">mona.tasks.</code><code class="descname">TaskComposite</code><span class="sig-paren">(</span><em>jsonstr</em>, <em>components</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/tasks.html#TaskComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.tasks.TaskComposite" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><dl class="attribute">
+<dt id="mona.tasks.TaskComposite.components">
+<code class="descname">components</code><a class="headerlink" href="#mona.tasks.TaskComposite.components" title="Permalink to this definition">¶</a></dt>
+<dd><p>To be overwritten by derived classes when the object contains
+references to other Hashed objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterable</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Hashed</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code>]]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
 
 <dl class="class">
 <dt id="mona.tasks.TaskComponent">
 <em class="property">class </em><code class="descclassname">mona.tasks.</code><code class="descname">TaskComponent</code><span class="sig-paren">(</span><em>task</em>, <em>keys</em>, <em>default=&lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/tasks.html#TaskComponent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.tasks.TaskComponent" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><dl class="attribute">
+<dt id="mona.tasks.TaskComponent.components">
+<code class="descname">components</code><a class="headerlink" href="#mona.tasks.TaskComponent.components" title="Permalink to this definition">¶</a></dt>
+<dd><p>To be overwritten by derived classes when the object contains
+references to other Hashed objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterable</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">Hashed</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code>]]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
 
 </div>
 </div>

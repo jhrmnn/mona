@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>mona.rules.rules &#8212; Mona 0.1.1 documentation</title>
+    <title>mona.rules.rules &#8212; Mona 0.2.0 documentation</title>
     <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
@@ -38,7 +38,7 @@
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Generic</span>
 
 <span class="kn">from</span> <span class="nn">..tasks</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">Corofunc</span>
 <span class="kn">from</span> <span class="nn">..sessions</span> <span class="k">import</span> <span class="n">Session</span>
@@ -46,7 +46,6 @@
 <span class="kn">from</span> <span class="nn">..hashing</span> <span class="k">import</span> <span class="n">hash_function</span>
 
 <span class="n">_T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;_T&#39;</span><span class="p">)</span>
-<span class="n">Hook</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]],</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span>
 
 
 <div class="viewcode-block" id="Rule"><a class="viewcode-back" href="../../../api.html#mona.Rule">[docs]</a><span class="k">class</span> <span class="nc">Rule</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">_T</span><span class="p">]):</span>
@@ -60,15 +59,12 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">corofunc</span><span class="p">):</span>
             <span class="k">raise</span> <span class="n">MonaError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Task function is not a coroutine: </span><span class="si">{corofunc}</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_corofunc</span> <span class="o">=</span> <span class="n">corofunc</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">wraps</span><span class="p">(</span><span class="n">corofunc</span><span class="p">)(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
-        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_label</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="s1">&#39;rule&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;rule&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_corofunc</span><span class="o">.</span><span class="vm">__name__</span>
         <span class="k">return</span> <span class="n">Session</span><span class="o">.</span><span class="n">active</span><span class="p">()</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_corofunc</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">add_label</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_label</span> <span class="o">=</span> <span class="n">label</span>
 
     <span class="k">def</span> <span class="nf">_func_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">hash_function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_corofunc</span><span class="p">)</span>
@@ -76,39 +72,6 @@
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">corofunc</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Corofunc</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_corofunc</span></div>
-
-
-<span class="k">class</span> <span class="nc">HookedRule</span><span class="p">(</span><span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">]):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">corofunc</span><span class="p">:</span> <span class="n">Corofunc</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="n">hook</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">Rule</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">corofunc</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_hook</span> <span class="o">=</span> <span class="n">hook</span>
-
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
-        <span class="n">hook</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Hook</span><span class="p">,</span> <span class="n">Session</span><span class="o">.</span><span class="n">active</span><span class="p">()</span><span class="o">.</span><span class="n">storage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;hook:</span><span class="si">{self._hook}</span><span class="s1">&#39;</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">hook</span><span class="p">:</span>
-            <span class="n">args</span> <span class="o">=</span> <span class="n">hook</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">Rule</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-
-<span class="k">def</span> <span class="nf">with_hook</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">]],</span> <span class="n">HookedRule</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
-    <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">rule</span><span class="p">:</span> <span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">HookedRule</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="n">HookedRule</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">corofunc</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">decorator</span>
-
-
-<div class="viewcode-block" id="labelled"><a class="viewcode-back" href="../../../api.html#mona.labelled">[docs]</a><span class="k">def</span> <span class="nf">labelled</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">]],</span> <span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
-    <span class="sd">&quot;&quot;&quot;Decorator to be used on a rule that makes the rule assign a fixed label</span>
-<span class="sd">    to all the tasks it generates.</span>
-
-<span class="sd">    :param label: a label</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">rule</span><span class="p">:</span> <span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Rule</span><span class="p">[</span><span class="n">_T</span><span class="p">]:</span>
-        <span class="n">rule</span><span class="o">.</span><span class="n">add_label</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">rule</span>
-
-    <span class="k">return</span> <span class="n">decorator</span></div>
 </pre></div>
 
           </div>

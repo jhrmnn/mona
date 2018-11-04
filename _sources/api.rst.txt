@@ -10,8 +10,6 @@ Rules and Sessions
     :members:
     :inherited-members:
 
-.. autofunction:: labelled
-
 .. autofunction:: run_shell
 
 .. autofunction:: run_process
