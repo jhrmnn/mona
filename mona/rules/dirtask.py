@@ -106,7 +106,7 @@ def checkout_files(
             path, target = file
         (root / path.parent).mkdir(parents=True, exist_ok=True)
         if isinstance(file, File):
-            file.target_in(root)
+            file.target_in(root, mutable)
         else:
             (root / path).symlink_to(target)
     make_executable(root / exe.path)
