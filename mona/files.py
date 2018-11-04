@@ -8,13 +8,17 @@ from typing import Union, Optional, cast, Iterable, overload
 
 from .sessions import Session
 from .hashing import Hash, Hashed, HashResolver, HashedBytes
-from .utils import make_nonwritable, Pathable
+from .utils import make_nonwritable, Pathable, get_timestamp
 
 __version__ = '0.2.0'
 
 
 def Source(path: Pathable) -> 'HashedFile':
     return HashedFile.from_path(path)
+
+
+# enforce that Sources are always loaded
+Source._func_hash = get_timestamp  # type: ignore
 
 
 class FileManager(ABC):
