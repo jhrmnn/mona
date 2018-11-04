@@ -124,6 +124,10 @@ class Cache(SessionPlugin):
             (task.state.name, task.hashid),
         )
 
+    def update_state(self, task: Task[object]) -> None:
+        self._update_state(task)
+        self._db.commit()
+
     def _store_result(self, task: Task[object]) -> None:
         result: Union[Hash, bytes]
         hashed: Hashed[object]
@@ -284,7 +288,7 @@ class Cache(SessionPlugin):
             return
         self._store_result(task)
         if task.state < State.DONE:
-            task.add_done_callback(lambda task: self._update_state(task))
+            task.add_done_callback(lambda task: self.update_state(task))
         self._db.commit()
 
     def pre_exit(self, sess: Session) -> None:
