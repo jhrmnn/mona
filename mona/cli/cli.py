@@ -2,15 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
-import shutil
 import logging
 import tempfile
 from pathlib import Path
-from typing import List, Optional, Any, cast, Dict, Tuple
+from typing import List, Optional, Any, cast, Dict, Tuple, Sequence
 
 import click
 
-from ..tasks import Task
+from ..tasks import Task, State
 from ..futures import STATE_COLORS
 from ..utils import import_fullname, groupby
 from ..files import File
@@ -160,30 +159,23 @@ def graph(app: App, rulename: str) -> None:
 
 @cli.command()
 @click.option('-p', '--pattern', multiple=True, help='Tasks to be checked out')
-@click.option('-b', '--blddir', default=Path('build'), help='Where to checkout')
-@click.option('-f', '--force', is_flag=True, help='Remove PATH if exists')
 @click.option('--done', is_flag=True, help='Check out only finished tasks')
 @click.option('-c', '--copy', is_flag=True, help='Copy instead of symlinking')
 @click.argument('rulename', metavar='RULE', envvar='MONA_RULE')
 @click.pass_obj
 def checkout(
-    app: App,
-    rulename: str,
-    blddir: Path,
-    pattern: List[str],
-    force: bool,
-    done: bool,
-    copy: bool,
+    app: App, rulename: str, pattern: List[str], done: bool, copy: bool
 ) -> None:
     """Checkout path-labeled tasks into a directory tree."""
-    if blddir.exists() and force:
-        shutil.rmtree(blddir)
-    blddir.mkdir()
     n_tasks = 0
     rule = import_fullname(rulename)
     sess = app.session(warn=False, readonly=True, full_restore=True)
     with sess:
-        rule()
+        task = rule()
+        if task.state is State.READY:
+            # This is needed if the task always runs because of Source global
+            # TODO should be handled more transparently
+            sess.run_task(task)
         for task in sess.all_tasks():
             if task.label[0] != '/':
                 continue
@@ -191,12 +183,18 @@ def checkout(
                 continue
             if done and not task.done():
                 continue
-            exe = cast(File, task.args[0].value)
-            paths = cast(List[DirtaskInput], task.args[1].value)
-            if task.done():
-                paths.extend(cast(Dict[str, File], task.result()).values())
-            root = blddir / task.label[1:]
-            root.mkdir(parents=True)
+            exe: Optional[File]
+            paths: Sequence[DirtaskInput]
+            if task.rule == 'dir_task':
+                exe = cast(File, task.args[0].value)
+                paths = cast(List[DirtaskInput], task.args[1].value)
+                if task.done():
+                    paths.extend(cast(Dict[str, File], task.result()).values())
+            elif task.rule == 'file_collection':
+                exe = None
+                paths = cast(List[File], task.args[0].value)
+            root = Path(task.label[1:])
+            root.mkdir(parents=True, exist_ok=True)
             checkout_files(root, exe, paths, mutable=copy)
             n_tasks += 1
     log.info(f'Checked out {n_tasks} tasks.')
