@@ -79,6 +79,14 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
     items = chain(closure_vars.nonlocals.items(), closure_vars.globals.items())
     hashed_globals: Dict[str, str] = {}
     for name, obj in items:
+        if hasattr(obj, '_func_hash'):
+            hashid = (
+                obj._func_hash()
+                if getattr(obj, 'corofunc', None) is not func
+                else 'self'
+            )
+            hashed_globals[name] = f'func_hash:{hashid}'
+            continue
         if inspect.isclass(obj) or inspect.isfunction(obj) or inspect.ismodule(obj):
             if inspect.ismodule(obj):
                 mod = obj
@@ -97,14 +105,6 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
                 hashid = hash_function(obj) if obj is not func else 'self'
                 hashed_globals[name] = f'function:{hashid}'
                 continue
-        if hasattr(obj, '_func_hash'):
-            hashid = (
-                obj._func_hash()
-                if getattr(obj, 'corofunc', None) is not func
-                else 'self'
-            )
-            hashed_globals[name] = f'func_hash:{hashid}'
-            continue
         try:
             hashid = HashedComposite(*HashedComposite.parse_object(obj)).hashid
         except CompositeError:
