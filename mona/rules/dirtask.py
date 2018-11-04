@@ -166,8 +166,3 @@ async def dir_task(exe: File, inputs: List[DirtaskInput]) -> Dict[str, HashedFil
             err = err_path.read_bytes()
             raise DirTaskProcessError(out, err, exc.returncode, exc.cmd)
     return dirtask_tmpdir.result()
-
-
-@Rule
-async def file_collection(files: List[File]) -> None:
-    pass

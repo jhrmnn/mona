@@ -4,9 +4,10 @@
 import json
 from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import Union, Optional, cast, Iterable, overload
+from typing import Union, Optional, cast, Iterable, overload, List
 
 from .sessions import Session
+from .rules import Rule
 from .hashing import Hash, Hashed, HashResolver, HashedBytes
 from .utils import make_nonwritable, Pathable, get_timestamp
 
@@ -23,6 +24,11 @@ Source._func_hash = get_timestamp  # type: ignore
 
 def Output(path: Pathable, precious: bool = False) -> 'HashedFile':
     return HashedFile.from_path(path, precious=precious)
+
+
+@Rule
+async def file_collection(files: List['File']) -> None:
+    pass
 
 
 class FileManager(ABC):
