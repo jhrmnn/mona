@@ -21,6 +21,10 @@ def Source(path: Pathable) -> 'HashedFile':
 Source._func_hash = get_timestamp  # type: ignore
 
 
+def Output(path: Pathable, precious: bool = False) -> 'HashedFile':
+    return HashedFile.from_path(path, precious=precious)
+
+
 class FileManager(ABC):
     @abstractmethod
     def store_path(self, path: Path, precious: bool) -> 'Hash':

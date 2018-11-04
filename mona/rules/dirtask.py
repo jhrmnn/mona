@@ -5,7 +5,17 @@ import logging
 import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Dict, ContextManager, Any, Optional, Callable, List, Union, Tuple
+from typing import (
+    Dict,
+    ContextManager,
+    Any,
+    Optional,
+    Callable,
+    List,
+    Union,
+    Tuple,
+    Sequence,
+)
 from typing_extensions import Protocol, runtime
 
 from ..utils import make_executable, Pathable
@@ -96,10 +106,15 @@ class DirtaskTmpdir:
 
 
 def checkout_files(
-    root: Path, exe: File, files: List[DirtaskInput], mutable: bool = False
+    root: Path,
+    exe: Optional[File],
+    files: Sequence[DirtaskInput],
+    mutable: bool = False,
 ) -> None:
     assert root.exists()
-    for file in [exe, *files]:
+    if exe:
+        files = [exe, *files]
+    for file in files:
         if isinstance(file, File):
             path = file.path
         else:
@@ -109,7 +124,8 @@ def checkout_files(
             file.target_in(root, mutable)
         else:
             (root / path).symlink_to(target)
-    make_executable(root / exe.path)
+    if exe:
+        make_executable(root / exe.path)
 
 
 @Rule
@@ -150,3 +166,8 @@ async def dir_task(exe: File, inputs: List[DirtaskInput]) -> Dict[str, HashedFil
             err = err_path.read_bytes()
             raise DirTaskProcessError(out, err, exc.returncode, exc.cmd)
     return dirtask_tmpdir.result()
+
+
+@Rule
+async def file_collection(files: List[File]) -> None:
+    pass
