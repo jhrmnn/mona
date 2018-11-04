@@ -306,44 +306,44 @@ class Cache(SessionPlugin):
         db = sqlite3.connect(path)
         db.execute(
             """\
-            CREATE TABLE IF NOT EXISTS objects (
-                hashid  TEXT PRIMARY KEY,
-                typetag TEXT,
-                spec    BLOB
-            )
-            """
+CREATE TABLE IF NOT EXISTS objects (
+    hashid  TEXT PRIMARY KEY,
+    typetag TEXT,
+    spec    BLOB
+)
+"""
         )
         db.execute(
             """\
-            CREATE TABLE IF NOT EXISTS tasks (
-                hashid       TEXT PRIMARY KEY,
-                state        TEXT,
-                side_effects TEXT,
-                result_type  TEXT,
-                result       BLOB,
-                    FOREIGN KEY (hashid) REFERENCES objects(hashid)
-            )
-            """
+CREATE TABLE IF NOT EXISTS tasks (
+    hashid       TEXT PRIMARY KEY,
+    state        TEXT,
+    side_effects TEXT,
+    result_type  TEXT,
+    result       BLOB,
+        FOREIGN KEY (hashid) REFERENCES objects(hashid)
+)
+"""
         )
         db.execute(
             """\
-            CREATE TABLE IF NOT EXISTS sessions (
-                sessionid INTEGER PRIMARY KEY,
-                created   TEXT
-            )
-            """
+CREATE TABLE IF NOT EXISTS sessions (
+    sessionid INTEGER PRIMARY KEY,
+    created   TEXT
+)
+"""
         )
         db.execute(
             """\
-            CREATE TABLE IF NOT EXISTS targets (
-                objectid  TEXT,
-                sessionid INTEGER,
-                label     TEXT,
-                metadata  BLOB,
-                    PRIMARY KEY (objectid, sessionid),
-                    FOREIGN KEY (objectid) REFERENCES objects(hashid),
-                    FOREIGN KEY (sessionid) REFERENCES sessions(sessionid)
-            )
-            """
+CREATE TABLE IF NOT EXISTS targets (
+    objectid  TEXT,
+    sessionid INTEGER,
+    label     TEXT,
+    metadata  BLOB,
+        PRIMARY KEY (objectid, sessionid),
+        FOREIGN KEY (objectid) REFERENCES objects(hashid),
+        FOREIGN KEY (sessionid) REFERENCES sessions(sessionid)
+)
+"""
         )
         return Cache(db, **kwargs)
