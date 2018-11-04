@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ..hashing import Hash
 from ..sessions import Session, SessionPlugin
-from ..utils import make_nonwritable, Pathable
+from ..utils import make_nonwritable, make_writable, Pathable
 from ..errors import FilesError
 from ..files import FileManager as _FileManager
 
@@ -103,7 +103,10 @@ class FileManager(_FileManager, SessionPlugin):
         stored_path = self._path(hashid, must_exist=True)
         if mutable:
             shutil.copy(stored_path, path)
+            make_writable(path)
         else:
+            if path.exists():
+                path.unlink()
             path.symlink_to(stored_path)
 
     def store_cache(self) -> None:
