@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import inspect
 from functools import wraps
-from typing import Any, Callable, TypeVar, Generic, Optional
+from typing import Any, TypeVar, Generic
 
 from ..tasks import Task, Corofunc
 from ..sessions import Session
@@ -24,17 +24,12 @@ class Rule(Generic[_T]):
         if not inspect.iscoroutinefunction(corofunc):
             raise MonaError(f'Task function is not a coroutine: {corofunc}')
         self._corofunc = corofunc
-        self._label: Optional[str] = None
         wraps(corofunc)(self)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
-        kwargs.setdefault('label', self._label)
         assert 'rule' not in kwargs
         kwargs['rule'] = self._corofunc.__name__
         return Session.active().create_task(self._corofunc, *args, **kwargs)
-
-    def add_label(self, label: str) -> None:
-        self._label = label
 
     def _func_hash(self) -> str:
         return hash_function(self._corofunc)
@@ -42,17 +37,3 @@ class Rule(Generic[_T]):
     @property
     def corofunc(self) -> Corofunc[_T]:
         return self._corofunc
-
-
-def labelled(label: str) -> Callable[[Rule[_T]], Rule[_T]]:
-    """Decorator to be used on a rule that makes the rule assign a fixed label
-    to all the tasks it generates.
-
-    :param label: a label
-    """
-
-    def decorator(rule: Rule[_T]) -> Rule[_T]:
-        rule.add_label(label)
-        return rule
-
-    return decorator

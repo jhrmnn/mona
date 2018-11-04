@@ -124,10 +124,12 @@ class Task(HashedFuture[_T_co]):
             self, (arg for arg in self._args if isinstance(arg, HashedFuture))
         )
         self._default = default
-        self._label = label or (
-            f'{self._corofunc.__qualname__}'
-            f'({", ".join(a.label for a in self._args)})'
-        )
+        if label:
+            self._label = label
+        else:
+            arg_list = ', '.join(a.label for a in self._args)
+            arg_list = arg_list if len(arg_list) < 50 else '...'
+            self._label = f'{self._corofunc.__qualname__}({arg_list})'
         self._result: Union[_T_co, Hashed[_T_co], Empty] = Empty._
         self._storage: Dict[str, object] = {}
         self._rule = rule
