@@ -68,6 +68,10 @@ def make_nonwritable(path: Pathable) -> None:
     )
 
 
+def make_writable(path: Pathable) -> None:
+    os.chmod(path, stat.S_IMODE(os.lstat(path).st_mode) | stat.S_IWUSR)
+
+
 def get_timestamp() -> str:
     return datetime.now().isoformat(timespec='seconds')
 
