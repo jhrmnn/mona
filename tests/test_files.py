@@ -6,8 +6,8 @@ import pytest  # type: ignore
 from mona import Rule, Session
 from mona.rules import dir_task
 from mona.plugins import FileManager
-from mona.files import Source, HashedFile
-from mona.errors import FilesError, InvalidInput
+from mona.files import HashedFile, Source
+from mona.errors import FilesError
 
 from tests.test_dirtask import calcs
 
@@ -28,8 +28,8 @@ async def calcs2():
         [
             dist,
             dir_task(
-                Source('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
-                [Source('data', str(dist)), [Path('input'), 'data']],
+                HashedFile('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
+                [HashedFile('data', str(dist)), [Path('input'), 'data']],
                 label=f'/calcs/dist={dist}',
             ).get('STDOUT', b'0'),
         ]
@@ -52,8 +52,8 @@ def test_hashing(tmpdir):
     with_fmngr = run(calcs, fmngr)
     with Session([fmngr]) as sess:
         task = dir_task(
-            Source('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
-            [Source('data', str(0)), [Path('input'), 'data']],
+            HashedFile('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
+            [HashedFile('data', str(0)), [Path('input'), 'data']],
         )
         sess.run_task(task)
         alt_input = task, task.resolve().resolve()['STDOUT']
@@ -106,7 +106,7 @@ def test_access(tmpdir):
 def test_alt_input(datafile, tmpdir):
     def create_task():
         return dir_task(
-            Source('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
+            HashedFile('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
             [Source('data'), [Path('input'), 'data']],
         )
 
@@ -117,16 +117,8 @@ def test_alt_input(datafile, tmpdir):
 
 def test_alt_input2(datafile, tmpdir):
     with Session([FileManager(tmpdir)]) as sess:
-        assert (
-            int(
-                sess.run_task(
-                    dir_task(
-                        Source('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
-                        [Source('data'), [Path('input'), 'data']],
-                    )
-                )
-                .value['STDOUT']
-                .read_text()
-            )
-            == 4
+        task = dir_task(
+            HashedFile('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
+            [Source('data'), [Path('input'), 'data']],
         )
+        assert int(sess.run_task(task).value['STDOUT'].read_text()) == 4

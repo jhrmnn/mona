@@ -8,7 +8,7 @@ from collections import OrderedDict
 from typing import Dict, Any, Tuple, Callable, cast
 
 from ...rules.dirtask import dir_task
-from ...files import Source, HashedFile
+from ...files import HashedFile
 from ...tasks import Task
 from ...errors import MonaError, InvalidInput
 from ...pluggable import Plugin, Pluggable
@@ -45,8 +45,8 @@ class Aims(Pluggable):
         :param kwargs: processed by individual plugins
         """
         self.run_plugins('process', kwargs, start=None)
-        script = Source('aims.sh', kwargs.pop('script'))
-        inputs = [Source(name, cont) for name, cont in kwargs.pop('inputs')]
+        script = HashedFile('aims.sh', kwargs.pop('script'))
+        inputs = [HashedFile(name, cont) for name, cont in kwargs.pop('inputs')]
         if kwargs:
             raise InvalidInput(f'Unknown Aims kwargs: {list(kwargs.keys())}')
         return dir_task(script, inputs, label=label)

@@ -4,21 +4,17 @@
 import json
 from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import Union, Optional, cast, Iterable
+from typing import Union, Optional, cast, Iterable, overload
 
 from .sessions import Session
 from .hashing import Hash, Hashed, HashResolver, HashedBytes
 from .utils import make_nonwritable, Pathable
 
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 
-def Source(path: Pathable, content: Union[str, bytes] = None) -> 'HashedFile':
-    if content is None:
-        return HashedFile.from_path(path)
-    if isinstance(content, str):
-        content = content.encode()
-    return HashedFile.from_bytes(path, content)
+def Source(path: Pathable) -> 'HashedFile':
+    return HashedFile.from_path(path)
 
 
 class FileManager(ABC):
@@ -92,9 +88,37 @@ class File:
 
 
 class HashedFile(Hashed[File]):
-    def __init__(self, path: Path, content: Union[HashedBytes, Hash]):
-        self._path = path
-        self._content_hash: Hash = getattr(content, 'hashid', content)
+    @overload
+    def __init__(self, path: Pathable, content: Union[HashedBytes, bytes, str]):
+        ...
+
+    @overload  # noqa: F811
+    def __init__(self, path: Pathable, *, content_hash: Hash):
+        ...
+
+    def __init__(  # noqa: F811
+        self,
+        path: Pathable,
+        content: Union[HashedBytes, bytes, str] = None,
+        content_hash: Hash = None,
+    ):
+        self._path = Path(path)
+        assert not self._path.is_absolute()
+        assert (content is None) != (content_hash is None)
+        if isinstance(content, str):
+            content = content.encode()
+        if isinstance(content, bytes):
+            fmngr = FileManager.active()
+            if fmngr:
+                content_hash = fmngr.store_bytes(content)
+                content = None
+            else:
+                content = HashedBytes(content)
+        if content_hash:
+            self._content_hash = content_hash
+        else:
+            assert isinstance(content, HashedBytes)
+            self._content_hash = content.hashid
         Hashed.__init__(self)
         self._content = content
 
@@ -104,11 +128,11 @@ class HashedFile(Hashed[File]):
 
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedFile':
-        path, hashid = json.loads(spec)
+        path, content_hash = json.loads(spec)
         fmngr = FileManager.active()
         if fmngr:
-            return cls(Path(path), hashid)
-        return cls(Path(path), cast(HashedBytes, resolve(hashid)))
+            return cls(Path(path), content_hash=content_hash)
+        return cls(Path(path), cast(HashedBytes, resolve(content_hash)))
 
     @property
     def value(self) -> File:
@@ -137,12 +161,3 @@ class HashedFile(Hashed[File]):
         if fmngr:
             return HashedFile(relpath, fmngr.store_path(path, can_destroy))
         return HashedFile(relpath, HashedBytes(path.read_bytes()))
-
-    @classmethod
-    def from_bytes(cls, path: Pathable, content: bytes) -> 'HashedFile':
-        path = Path(path)
-        assert not path.is_absolute()
-        fmngr = FileManager.active()
-        if fmngr:
-            return HashedFile(path, fmngr.store_bytes(content))
-        return HashedFile(path, HashedBytes(content))

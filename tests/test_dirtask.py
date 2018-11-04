@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest  # type: ignore
 
 from mona import Rule, Session
-from mona.files import Source
+from mona.files import HashedFile
 from mona.rules import dir_task
 from mona.errors import InvalidInput
 
@@ -14,8 +14,8 @@ async def calcs():
         [
             dist,
             dir_task(
-                Source('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
-                [Source('data', str(dist)), [Path('input'), 'data']],
+                HashedFile('script', '#!/bin/bash\nexpr $(cat input) "*" 2; true'),
+                [HashedFile('data', str(dist)), [Path('input'), 'data']],
                 label=f'/calcs/dist={dist}',
             )['STDOUT'],
         ]
@@ -31,7 +31,7 @@ async def analysis(results):
 @Rule
 async def python():
     return dir_task(
-        Source(
+        HashedFile(
             'script', '#!/usr/bin/env python\nimport coverage\nprint(coverage.__name__)'
         ),
         [],
