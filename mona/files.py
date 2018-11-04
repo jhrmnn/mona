@@ -19,7 +19,7 @@ def Source(path: Pathable) -> 'HashedFile':
 
 class FileManager(ABC):
     @abstractmethod
-    def store_path(self, path: Path, can_destroy: bool) -> 'Hash':
+    def store_path(self, path: Path, precious: bool) -> 'Hash':
         ...
 
     @abstractmethod
@@ -152,12 +152,12 @@ class HashedFile(Hashed[File]):
 
     @classmethod
     def from_path(
-        cls, path: Pathable, root: Union[str, Path] = None, *, can_destroy: bool = False
+        cls, path: Pathable, root: Union[str, Path] = None, *, precious: bool = True
     ) -> 'HashedFile':
         path = Path(path)
         assert not path.is_absolute() or root
         relpath = path.relative_to(root) if root else path
         fmngr = FileManager.active()
         if fmngr:
-            return HashedFile(relpath, fmngr.store_path(path, can_destroy))
+            return HashedFile(relpath, content_hash=fmngr.store_path(path, precious))
         return HashedFile(relpath, HashedBytes(path.read_bytes()))

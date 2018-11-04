@@ -82,7 +82,7 @@ class DirtaskTmpdir:
                     relpath = str(path.relative_to(self._tmpdir))
                     if self._output_filter and not self._output_filter(relpath):
                         continue
-                    file = HashedFile.from_path(path, self._tmpdir, can_destroy=True)
+                    file = HashedFile.from_path(path, self._tmpdir, precious=False)
                     self._outputs[relpath] = file
         finally:
             self._ctx.__exit__(exc_type, *args)
