@@ -5,19 +5,19 @@ Rules and Sessions
 ------------------
 
 .. automodule:: mona
-   :members:
+    :members:
 
 Files
 -----
 
 .. automodule:: mona.files
-   :members:
+    :members:
 
 Directory tasks
 ---------------
 
 .. automodule:: mona.dirtask
-   :members:
+    :members:
 
 .. autofunction:: dir_task
 
@@ -37,6 +37,12 @@ FHI-aims
     :members:
 
 .. autofunction:: parse_aims
+
+LaTeX
+^^^^^^^^
+
+.. automodule:: mona.sci.tex
+    :members:
 
 Futures and Tasks
 -----------------

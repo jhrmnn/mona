@@ -670,6 +670,28 @@ dictionary of parsed results as output.</p>
 </dd></dl>
 
 </div>
+<div class="section" id="module-mona.sci.tex">
+<span id="latex"></span><h3>LaTeX<a class="headerlink" href="#module-mona.sci.tex" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="mona.sci.tex.jinja_tex">
+<code class="descclassname">mona.sci.tex.</code><code class="descname">jinja_tex</code><span class="sig-paren">(</span><em>tex_template</em>, <em>ctx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/tex.html#jinja_tex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.tex.jinja_tex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Render a Jinja TeX template. Uses <code class="docutils literal notranslate"><span class="pre">&lt;&lt;/&gt;&gt;</span></code> for variables, <code class="docutils literal notranslate"><span class="pre">&lt;+/+&gt;</span></code> for blocks,
+and <code class="docutils literal notranslate"><span class="pre">&lt;#/#&gt;</span></code> for comments.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>tex_template</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – a Jinja template</li>
+<li><strong>ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><em>dict</em></a>) – a variable context</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 </div>
 <div class="section" id="futures-and-tasks">
 <h2>Futures and Tasks<a class="headerlink" href="#futures-and-tasks" title="Permalink to this headline">¶</a></h2>
@@ -789,6 +811,7 @@ references to other Hashed objects.</p>
 <li class="toctree-l2"><a class="reference internal" href="#scientific-calculations">Scientific calculations</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#module-mona.sci.geomlib">Molecular and crystal geometries</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#module-mona.sci.aims">FHI-aims</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-mona.sci.tex">LaTeX</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#futures-and-tasks">Futures and Tasks</a></li>
