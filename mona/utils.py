@@ -39,7 +39,13 @@ def shorten_text(s: Union[str, bytes], n: int) -> str:
         shortened = True
     else:
         shortened = False
-    text = s.decode() if isinstance(s, bytes) else s
+    if isinstance(s, bytes):
+        try:
+            text = s.decode()
+        except UnicodeDecodeError:
+            return '<BINARY>'
+    else:
+        text = s
     return f'{text.rstrip()}...' if shortened else text
 
 
