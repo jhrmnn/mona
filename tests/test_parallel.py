@@ -4,7 +4,7 @@ import subprocess
 import pytest  # type: ignore
 
 from mona import Session, Rule, run_shell, run_process, run_thread
-from mona.files import HashedFile
+from mona.files import File
 from mona.rules import dir_task
 from mona.plugins import Parallel
 
@@ -29,8 +29,10 @@ async def calcs(n):
         [
             dist,
             dir_task(
-                HashedFile('script', f'#!/bin/bash\nexpr $(cat data) "*" 2; sleep {n}'),
-                [HashedFile('data', str(dist))],
+                File.from_str(
+                    'script', f'#!/bin/bash\nexpr $(cat data) "*" 2; sleep {n}'
+                ),
+                [File.from_str('data', str(dist))],
                 label=f'/calcs/dist={dist}',
             )['STDOUT'],
         ]

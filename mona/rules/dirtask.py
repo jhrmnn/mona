@@ -23,7 +23,7 @@ from ..sessions import Session
 from ..rules import Rule
 from ..runners import run_process
 from ..errors import InvalidInput
-from ..files import HashedFile, File
+from ..files import File
 
 __version__ = '0.2.0'
 
@@ -85,19 +85,19 @@ class DirtaskTmpdir:
     def __exit__(self, exc_type: Any, *args: Any) -> None:
         try:
             if not exc_type:
-                self._outputs: Dict[str, HashedFile] = {}
+                self._outputs: Dict[str, File] = {}
                 for path in self._tmpdir.glob('**/*'):
                     if not path.is_file():
                         continue
                     relpath = str(path.relative_to(self._tmpdir))
                     if self._output_filter and not self._output_filter(relpath):
                         continue
-                    file = HashedFile.from_path(path, self._tmpdir, precious=False)
+                    file = File.from_path(path, self._tmpdir, keep=False)
                     self._outputs[relpath] = file
         finally:
             self._ctx.__exit__(exc_type, *args)
 
-    def result(self) -> Dict[str, HashedFile]:
+    def result(self) -> Dict[str, File]:
         """
         The collection of files created in the temporary directory. This is
         available only after leaving the context.
@@ -121,7 +121,7 @@ def checkout_files(
             path, target = file
         (root / path.parent).mkdir(parents=True, exist_ok=True)
         if isinstance(file, File):
-            file.target_in(root, mutable)
+            file.target_in(root, mutable=mutable)
         else:
             (root / path).symlink_to(target)
     if exe:
@@ -129,7 +129,7 @@ def checkout_files(
 
 
 @Rule
-async def dir_task(exe: File, inputs: List[DirtaskInput]) -> Dict[str, HashedFile]:
+async def dir_task(exe: File, inputs: List[DirtaskInput]) -> Dict[str, File]:
     """
     Task rule with an executable and a collection of files as inputs and a
     collection of output files as output.

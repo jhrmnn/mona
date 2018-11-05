@@ -8,7 +8,7 @@ from collections import OrderedDict
 from typing import Dict, Any, Tuple, Callable, cast
 
 from ...rules.dirtask import dir_task
-from ...files import HashedFile
+from ...files import File
 from ...tasks import Task
 from ...errors import MonaError, InvalidInput
 from ...pluggable import Plugin, Pluggable
@@ -37,16 +37,14 @@ class Aims(Pluggable):
         for factory in default_plugins:
             factory()(self)
 
-    def __call__(
-        self, *, label: str = None, **kwargs: Any
-    ) -> Task[Dict[str, HashedFile]]:
+    def __call__(self, *, label: str = None, **kwargs: Any) -> Task[Dict[str, File]]:
         """Create an FHI-aims.
 
         :param kwargs: processed by individual plugins
         """
         self.run_plugins('process', kwargs, start=None)
-        script = HashedFile('aims.sh', kwargs.pop('script'))
-        inputs = [HashedFile(name, cont) for name, cont in kwargs.pop('inputs')]
+        script = File.from_str('aims.sh', kwargs.pop('script'))
+        inputs = [File.from_str(name, cont) for name, cont in kwargs.pop('inputs')]
         if kwargs:
             raise InvalidInput(f'Unknown Aims kwargs: {list(kwargs.keys())}')
         return dir_task(script, inputs, label=label)

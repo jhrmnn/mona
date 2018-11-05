@@ -58,15 +58,15 @@ class FileManager(_FileManager, SessionPlugin):
                 self._store_bytes(hashid, content)
         return hashid
 
-    def _store_path(self, hashid: Hash, path: Path, precious: bool) -> None:
+    def _store_path(self, hashid: Hash, path: Path, keep: bool) -> None:
         stored_path = self._path_primed(hashid)
-        if precious:
+        if keep:
             shutil.copy(path, stored_path)
         else:
             path.rename(stored_path)
         make_nonwritable(stored_path)
 
-    def store_path(self, path: Path, precious: bool) -> 'Hash':
+    def store_path(self, path: Path, *, keep: bool) -> 'Hash':
         hashid = self._path_cache.get(path)
         if hashid:
             return hashid
@@ -82,7 +82,7 @@ class FileManager(_FileManager, SessionPlugin):
             # TODO this is not good with large files
             self._cache[hashid] = path.read_bytes()
             if self._eager:
-                self._store_path(hashid, path, precious)
+                self._store_path(hashid, path, keep)
         return self._path_cache.setdefault(path, hashid)
 
     def get_bytes(self, hashid: Hash) -> bytes:
@@ -93,7 +93,7 @@ class FileManager(_FileManager, SessionPlugin):
         path = self._path(hashid, must_exist=True)
         return self._cache.setdefault(hashid, path.read_bytes())
 
-    def target_in(self, path: Path, hashid: Hash, mutable: bool) -> None:
+    def target_in(self, path: Path, hashid: Hash, *, mutable: bool) -> None:
         content = self._cache.get(hashid)
         if content:
             path.write_bytes(content)
