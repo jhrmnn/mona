@@ -11,7 +11,7 @@ import click
 
 from ..tasks import Task
 from ..futures import STATE_COLORS
-from ..utils import import_fullname, groupby
+from ..utils import groupby
 from ..files import File
 from ..rules.dirtask import checkout_files, DirtaskInput
 from .glob import match_glob
@@ -92,13 +92,12 @@ def run(
     rulename: str,
 ) -> None:
     """Run a given rule."""
-    rule = import_fullname(rulename)
     app.last_entry = rulename
     task_filter = TaskFilter(pattern, no_path=not path)
     exception_buffer = ExceptionBuffer(maxerror)
     with app.session(ncores=cores) as sess:
         sess.eval(
-            rule(),
+            app.last_rule(),
             exception_handler=exception_buffer,
             task_filter=task_filter,
             limit=limit,
@@ -111,12 +110,11 @@ def run(
 def status(app: App, pattern: List[str]) -> None:
     """Print status of tasks."""
     sess = app.session(warn=False, write='never', full_restore=True)
-    rule = import_fullname(app.last_entry)
     ncols = len(STATE_COLORS) + 1
     table = Table(align=['<', *(ncols * ['>'])], sep=['   ', *((ncols - 1) * ['/'])])
     table.add_row('pattern', *(s.name.lower() for s in STATE_COLORS), 'all')
     with sess:
-        rule()
+        app.last_rule()
         task_groups: Dict[str, List[Task[object]]] = {}
         all_tasks = list(sess.all_tasks())
     for patt in pattern or ['**']:
@@ -151,9 +149,8 @@ def status(app: App, pattern: List[str]) -> None:
 def graph(app: App) -> None:
     """Open a pdf with the task graph."""
     sess = app.session(warn=False, write='never', full_restore=True)
-    rule = import_fullname(app.last_entry)
     with sess:
-        rule()
+        app.last_rule()
         dot = sess.dot_graph()
     dot.render(tempfile.mkstemp()[1], view=True, cleanup=True, format='pdf')
 
@@ -167,9 +164,8 @@ def checkout(app: App, pattern: List[str], done: bool, copy: bool) -> None:
     """Checkout path-labeled tasks into a directory tree."""
     n_tasks = 0
     sess = app.session(warn=False, write='never', full_restore=True)
-    rule = import_fullname(app.last_entry)
     with sess:
-        rule()
+        app.last_rule()
         for task in sess.all_tasks():
             if task.label[0] != '/':
                 continue

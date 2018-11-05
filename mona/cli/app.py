@@ -2,15 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
+import sys
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, cast
 
 import toml
 
 from ..sessions import Session
+from ..rules import Rule
 from ..plugins import Parallel, TmpdirManager, FileManager, Cache
-from ..utils import get_timestamp, Pathable
+from ..utils import get_timestamp, Pathable, import_fullname
 
 log = logging.getLogger(__name__)
 
@@ -47,6 +49,12 @@ class App:
     @last_entry.setter
     def last_entry(self, entry: str) -> None:
         (self._monadir / App.LAST_ENTRY).write_text(entry)
+
+    @property
+    def last_rule(self) -> Rule[object]:
+        if '' not in sys.path:
+            sys.path.append('')
+        return cast(Rule[object], import_fullname(self.last_entry))
 
     def __call__(
         self,
