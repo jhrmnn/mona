@@ -34,6 +34,7 @@ else:
     np = None  # lazy-loaded in Molecule constructor
 
 __version__ = '0.1.0'
+__all__ = ['Atom', 'Molecule', 'Crystal', 'readfile', 'load', 'loads']
 
 Vec = Tuple[float, float, float]
 _M = TypeVar('_M', bound='Molecule')

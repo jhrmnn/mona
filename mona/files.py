@@ -12,12 +12,17 @@ from .hashing import Hash, Hashed, HashResolver, HashedBytes, HashedComposite
 from .utils import make_nonwritable, Pathable, shorten_text
 
 __version__ = '0.3.0'
+__all__ = ['File', 'file_collection', 'add_source']
 
 _R = TypeVar('_R', bound=Rule)  # type: ignore
 _FM = TypeVar('_FM', bound='FileManager')
 
 
 def add_source(path: Pathable) -> Callable[[_R], _R]:
+    """Decorate a rule to attach the given source to the list of arguments of a
+    task. The source is passed as a instance.
+    """
+
     def decorator(rule: _R) -> _R:
         rule.add_extra_arg(lambda: HashedFile(File.from_path(path)))
         return rule
@@ -27,6 +32,10 @@ def add_source(path: Pathable) -> Callable[[_R], _R]:
 
 @Rule
 async def file_collection(files: List['File']) -> None:
+    """A void task that serves to denote a collection of files.
+
+    :param files: a list of :class:`File`
+    """
     pass
 
 
@@ -55,6 +64,11 @@ class FileManager(ABC):
 
 
 class File:
+    """Represents a file located at an abstract relative path. Users should create
+    instances by one of the classmethod constructors documented below rather
+    than directly.
+    """
+
     def __init__(self, path: Path, content: Union[bytes, Hash]):
         assert not path.is_absolute()
         self._path = path
@@ -75,15 +89,17 @@ class File:
         return str(self._path)
 
     @property
-    def stem(self) -> str:
-        return self._path.stem
-
-    @property
     def path(self) -> Path:
         return self._path
 
     @property
+    def stem(self) -> str:
+        """Delegates to :attr:`pathlib.PurePath.stem`."""
+        return self._path.stem
+
+    @property
     def name(self) -> str:
+        """Delegates to :attr:`pathlib.PurePath.name`."""
         return self._path.name
 
     @property
@@ -91,14 +107,21 @@ class File:
         return self._content
 
     def read_bytes(self) -> bytes:
+        """Return content of the file as bytes."""
         if isinstance(self._content, bytes):
             return self._content
         return self._fmngr.get_bytes(self._content)
 
     def read_text(self) -> str:
+        """Return content of the file as string."""
         return self.read_bytes().decode()
 
     def target_in(self, path: Path, *, mutable: bool = False) -> None:
+        """Create an actual file or a symlink at the given location.
+
+        :param Path path: where the file should be created
+        :param bool mutable: whether the created file will be mutable
+        """
         target = path / self._path
         if isinstance(self._content, bytes):
             target.write_bytes(self._content)
@@ -109,6 +132,11 @@ class File:
 
     @classmethod
     def from_str(cls, path: Pathable, content: Union[str, bytes]) -> 'File':
+        """Create a file from a string or bytes.
+
+        :param path: the abstract path of the created file instance
+        :param content: the content of the file
+        """
         path = Path(path)
         if isinstance(content, str):
             content = content.encode()
@@ -121,6 +149,15 @@ class File:
     def from_path(
         cls, path: Pathable, root: Union[str, Path] = None, *, keep: bool = True
     ) -> 'File':
+        """Create a file from a physical file.
+
+        :param path: the path of the physical file. Also a basis for the
+                     abstract path of the file instance.
+        :param root: If given, the abstract path will be created from the
+                     physical path taken relative to the root. If not given,
+                     the ``path`` argument must be relative.
+        :param bool keep: whether the physical file should kept or destroyed
+        """
         path = Path(path)
         relpath = path.relative_to(root) if root else path
         fmngr = FileManager.active()

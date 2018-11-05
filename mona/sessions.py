@@ -98,9 +98,9 @@ class Session(Pluggable):
     """The Session context manager represents a session in which tasks can be
     created and executed.
 
-    :param plugins: plugins to load. This is equivalent to calling each plugin
-                    with the created session as an argument
-    :param warn: warn at the end of session if some created tasks were not
+    :param plugins: session plugins to load. This is equivalent to calling each
+                    plugin with the created session as an argument
+    :param bool warn: warn at the end of session if some created tasks were not
                  executed
     """
 
@@ -161,9 +161,7 @@ class Session(Pluggable):
 
     @property
     def running_task(self) -> ATask:
-        """Currently running task. This would be usually used from within a task
-        coroutine.
-        """
+        """Currently running task."""
         task = self._running_task.get()
         if task:
             return task
@@ -214,7 +212,7 @@ class Session(Pluggable):
 
         :param corofunc: a coroutine function to be executed
         :param args: arguments to the coroutine
-        :param kwargs: keyword arguments passed to :class:`~mona.tasks.Task`
+        :param kwargs: keyword arguments passed to :class:`~tasks.Task`
         """
         task = Task(corofunc, *args, **kwargs)
         caller = self._running_task.get()
@@ -301,14 +299,14 @@ class Session(Pluggable):
         any new generated tasks.
 
         :param obj: any hashable object
-        :param depth: traverse DAG depth-first if true, breadth-first otherwise
-        :param priority: prioritize steps in DAG traversal in order
+        :param bool depth: traverse DAG depth-first if true, breadth-first otherwise
+        :param tuple priority: prioritize steps in DAG traversal in order
         :param exception_handler: callable that accepts a task and an exception
                                   it raised and returns True if the exception
                                   should be ignored
         :param task_filter: callable that accepts a task and returns True if
                             the task should be executed
-        :param limit: limit of the number of executed task
+        :param int limit: limit of the number of executed task
 
         Return the evaluated object.
         """
@@ -404,9 +402,8 @@ class Session(Pluggable):
             return await self._eval_async(*args, **kwargs)
 
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
-        """Generate `graphviz.Digraph
-        <https://graphviz.readthedocs.io/en/stable/api.html#digraph>`_ for the
-        task DAG. Requires `Graphviz <https://graphviz.readthedocs.io/>`_.
+        """Generate :class:`~graphviz.Digraph` for the task DAG. Requires
+        `Graphviz <https://graphviz.readthedocs.io/>`_.
         """
         from graphviz import Digraph  # type: ignore
 

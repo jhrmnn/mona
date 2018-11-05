@@ -27,6 +27,7 @@ from .errors import InvalidInput
 from .files import File
 
 __version__ = '0.2.0'
+__all__ = ['dir_task', 'DirtaskTmpdir']
 
 log = logging.getLogger(__name__)
 

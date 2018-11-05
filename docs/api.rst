@@ -4,31 +4,22 @@ API
 Rules and Sessions
 ------------------
 
-.. module:: mona
-
-.. autoclass:: Rule
-    :members:
-    :inherited-members:
-
-.. autofunction:: run_shell
-
-.. autofunction:: run_process
-
-.. autofunction:: run_thread
-
-.. autoclass:: Session
+.. automodule:: mona
     :members:
 
+Files
+-----
 
-.. module:: mona.rules
+.. automodule:: mona.files
+    :members:
 
 Directory tasks
 ---------------
 
-.. autofunction:: dir_task
-
-.. autoclass:: DirtaskTmpdir
+.. automodule:: mona.dirtask
     :members:
+
+.. autofunction:: dir_task
 
 Scientific calculations
 -----------------------
@@ -36,32 +27,21 @@ Scientific calculations
 Molecular and crystal geometries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. module:: mona.sci.geomlib
-
-.. autoclass:: Atom
+.. automodule:: mona.sci.geomlib
     :members:
-
-.. autoclass:: Molecule
-    :members:
-
-.. autoclass:: Crystal
-    :members:
-
-.. autofunction:: readfile
-
-.. autofunction:: load
-
-.. autofunction:: loads
 
 FHI-aims
 ^^^^^^^^
 
-.. module:: mona.sci.aims
-
-.. autoclass:: Aims
+.. automodule:: mona.sci.aims
     :members:
 
-.. autoclass:: SpeciesDefaults
+.. autofunction:: parse_aims
+
+LaTeX
+^^^^^^^^
+
+.. automodule:: mona.sci.tex
     :members:
 
 Futures and Tasks
