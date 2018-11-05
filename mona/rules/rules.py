@@ -3,14 +3,15 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import inspect
 from functools import wraps
-from typing import Any, TypeVar, Generic
+from typing import Any, TypeVar, Generic, List, Callable
 
 from ..tasks import Task, Corofunc
 from ..sessions import Session
 from ..errors import MonaError
-from ..hashing import hash_function
+from ..hashing import Hashed, hash_function
 
 _T = TypeVar('_T')
+ArgFactory = Callable[[], Hashed[object]]
 
 
 class Rule(Generic[_T]):
@@ -24,15 +25,33 @@ class Rule(Generic[_T]):
         if not inspect.iscoroutinefunction(corofunc):
             raise MonaError(f'Task function is not a coroutine: {corofunc}')
         self._corofunc = corofunc
+        self._extra_arg_factories: List[ArgFactory] = []
         wraps(corofunc)(self)
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
-        assert 'rule' not in kwargs
-        kwargs['rule'] = self._corofunc.__name__
-        return Session.active().create_task(self._corofunc, *args, **kwargs)
+    def _ensure_extra_args(self) -> None:
+        if not hasattr(self, '_hash'):
+            self._extra_args = [factory() for factory in self._extra_arg_factories]
+            hashes = [
+                hash_function(self._corofunc),
+                *(obj.hashid for obj in self._extra_args),
+            ]
+            self._hash = ','.join(hashes)
 
     def _func_hash(self) -> str:
-        return hash_function(self._corofunc)
+        self._ensure_extra_args()
+        return self._hash
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
+        self._ensure_extra_args()
+        assert 'rule' not in kwargs
+        kwargs['rule'] = self._corofunc.__name__
+        return Session.active().create_task(
+            self._corofunc, *args, *self._extra_args, **kwargs
+        )
+
+    def add_extra_arg(self, factory: ArgFactory) -> None:
+        assert not hasattr(self, '_extra_args')
+        self._extra_arg_factories.append(factory)
 
     @property
     def corofunc(self) -> Corofunc[_T]:
