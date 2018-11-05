@@ -29,6 +29,7 @@ from ..hashing import Hash, Hashed
 log = logging.getLogger(__name__)
 
 _T_co = TypeVar('_T_co', covariant=True)
+WeakDict = WeakValueDictionary
 
 
 class TaskRow(NamedTuple):
@@ -69,37 +70,36 @@ class CachedTask(Task[_T_co]):
         Future.__init__(self, [])  # type: ignore
 
 
+class WriteAccess(Enum):
+    EAGER = 0
+    ON_EXIT = 1
+    NEVER = 2
+
+
 class Cache(SessionPlugin):
     name = 'db_cache'
 
     def __init__(
-        self,
-        db: sqlite3.Connection,
-        eager: bool = True,
-        full_restore: bool = False,
-        readonly: bool = False,
+        self, db: sqlite3.Connection, write: str = 'eager', full_restore: bool = False
     ) -> None:
         self._db = db
         self._objects: Dict[Hash, Hashed[object]] = {}
-        self._eager = eager
+        self._object_cache: WeakDict[Hash, Hashed[object]] = WeakDict()
+        self._write = WriteAccess[write.upper()]
         self._full_restore = full_restore
-        self._readonly = readonly
-        self._object_cache: 'WeakValueDictionary[Hash, Hashed[object]]'
-        self._object_cache = WeakValueDictionary()
 
     def __repr__(self) -> str:
-        return f'<Cache npending={len(self._pending)} nobjects={len(self._objects)}>'
+        return f'<Cache nobjects={len(self._objects)}>'
 
     @property
     def db(self) -> sqlite3.Connection:
         return self._db
 
-    def _store_objects_targets(self, objs: Sequence[Hashed[object]]) -> None:
+    def _store_objects(self, objs: Sequence[Hashed[object]]) -> None:
         obj_rows = [
             ObjectRow(obj.hashid, get_fullname(obj.__class__), obj.spec) for obj in objs
         ]
         self._db.executemany('INSERT OR IGNORE INTO objects VALUES (?,?,?)', obj_rows)
-        self._store_targets(objs)
 
     def _store_targets(self, objs: Sequence[Hashed[object]]) -> None:
         sessionid = Session.active().storage['cache:sessionid']
@@ -237,60 +237,47 @@ class Cache(SessionPlugin):
         task.set_has_run()
         sess.set_result(task, self._get_result(row))
 
-    def post_enter(self, sess: Session) -> None:
-        if self._readonly:
-            return
-        cur = self._db.execute(
-            'INSERT INTO sessions VALUES (?,?,?)', (None, None, get_timestamp())
-        )
-        sess.storage['cache:sessionid'] = cur.lastrowid
-        sess.storage['cache:entry'] = None
-
     def save_hashed(self, objs: Sequence[Hashed[object]]) -> None:
-        if self._readonly:
-            return
-        if self._eager:
-            self._store_objects_targets(objs)
+        if self._write is WriteAccess.EAGER:
+            self._store_objects(objs)
+            self._store_targets(objs)
             self._db.commit()
         else:
             self._objects.update({o.hashid: o for o in objs})
 
+    def _store_session(self, sess: Session) -> None:
+        cur = self._db.execute(
+            'INSERT INTO sessions VALUES (?,?)', (None, get_timestamp())
+        )
+        sess.storage['cache:sessionid'] = cur.lastrowid
+
+    def post_enter(self, sess: Session) -> None:
+        if self._write is WriteAccess.EAGER:
+            self._store_session(sess)
+
     def post_create(self, task: Task[object]) -> None:
-        if not self._readonly:
-            sess = Session.active()
-            entry = sess.storage['cache:entry']
-            if not entry:
-                sess.storage['cache:entry'] = task.hashid
-                self._db.execute(
-                    'UPDATE sessions SET entry = ? WHERE sessionid = ?',
-                    (task.hashid, sess.storage['cache:sessionid']),
-                )
         row = self._get_task_row(task.hashid)
         if row:
             self._to_restore = [task]
-            restored: List[Task[object]] = []
+            tasks: List[Task[object]] = []
             while self._to_restore:
                 t = self._to_restore.pop()
                 self._restore_task(t)
-                restored.append(t)
+                tasks.append(t)
             delattr(self, '_to_restore')
-            if self._readonly:
-                return
-            self._store_targets(restored)
-            self._db.commit()
-            return
-        if self._readonly:
-            return
-        if self._eager:
+        elif self._write is WriteAccess.EAGER:
+            tasks = [task]
             self._db.execute(
                 'INSERT INTO tasks VALUES (?,?,?,?,?)',
                 TaskRow(task.hashid, task.state.name),
             )
-            self._store_objects_targets([task])
+            self._store_objects(tasks)
+        if self._write is WriteAccess.EAGER:
+            self._store_targets(tasks)
             self._db.commit()
 
     def post_task_run(self, task: Task[object]) -> None:
-        if self._readonly or not self._eager:
+        if self._write is not WriteAccess.EAGER:
             return
         self._store_result(task)
         if task.state < State.DONE:
@@ -298,24 +285,19 @@ class Cache(SessionPlugin):
         self._db.commit()
 
     def pre_exit(self, sess: Session) -> None:
-        if self._readonly or self._eager:
+        if self._write is not WriteAccess.ON_EXIT:
             return
+        self._store_session(sess)
         for task in sess.all_tasks():
             if task.state > State.HAS_RUN:
                 self._store_result(task)
             else:
                 self._update_state(task)
-        self._store_objects_targets([*self._objects.values(), *sess.all_tasks()])
+        objects = [*self._objects.values(), *sess.all_tasks()]
+        self._store_objects(objects)
+        self._store_targets(objects)
         self._objects.clear()
         self._db.commit()
-
-    def restore_last(self) -> None:
-        hashid, = self._db.execute(
-            'SELECT entry FROM sessions ORDER BY sessionid DESC LIMIT 1'
-        ).fetchone()
-        task = self._get_object(hashid)
-        assert isinstance(task, Task)
-        self.post_create(task)
 
     @classmethod
     def from_path(cls, path: Pathable, **kwargs: Any) -> 'Cache':
@@ -345,7 +327,6 @@ CREATE TABLE IF NOT EXISTS tasks (
             """\
 CREATE TABLE IF NOT EXISTS sessions (
     sessionid INTEGER PRIMARY KEY,
-    entry     TEXT,
     created   TEXT
 )
 """

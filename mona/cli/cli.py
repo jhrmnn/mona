@@ -110,7 +110,7 @@ def run(
 @click.pass_obj
 def status(app: App, pattern: List[str]) -> None:
     """Print status of tasks."""
-    sess = app.session(warn=False, readonly=True, full_restore=True)
+    sess = app.session(warn=False, write='never', full_restore=True)
     rule = import_fullname(app.last_entry)
     ncols = len(STATE_COLORS) + 1
     table = Table(align=['<', *(ncols * ['>'])], sep=['   ', *((ncols - 1) * ['/'])])
@@ -150,7 +150,7 @@ def status(app: App, pattern: List[str]) -> None:
 @click.pass_obj
 def graph(app: App) -> None:
     """Open a pdf with the task graph."""
-    sess = app.session(warn=False, readonly=True, full_restore=True)
+    sess = app.session(warn=False, write='never', full_restore=True)
     rule = import_fullname(app.last_entry)
     with sess:
         rule()
@@ -166,7 +166,7 @@ def graph(app: App) -> None:
 def checkout(app: App, pattern: List[str], done: bool, copy: bool) -> None:
     """Checkout path-labeled tasks into a directory tree."""
     n_tasks = 0
-    sess = app.session(warn=False, readonly=True, full_restore=True)
+    sess = app.session(warn=False, write='never', full_restore=True)
     rule = import_fullname(app.last_entry)
     with sess:
         rule()

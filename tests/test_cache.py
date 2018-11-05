@@ -35,7 +35,7 @@ def test_db_files(db, tmpdir, mocker):
 
 
 def test_postponed(db):
-    cache = Cache(db, eager=False)
+    cache = Cache(db, write='on_exit')
     sess = Session([cache])
     with sess:
         sess.eval(analysis(calcs()), task_filter=lambda t: t.label[0] != '/')
