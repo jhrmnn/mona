@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>mona.sci.aims.aims &#8212; Mona 0.2.0 documentation</title>
+    <title>mona.sci.aims.aims &#8212; Mona 0.2.1 documentation</title>
     <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
@@ -43,7 +43,7 @@
 <span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">from</span> <span class="nn">...rules.dirtask</span> <span class="k">import</span> <span class="n">dir_task</span>
-<span class="kn">from</span> <span class="nn">...files</span> <span class="k">import</span> <span class="n">HashedFile</span>
+<span class="kn">from</span> <span class="nn">...files</span> <span class="k">import</span> <span class="n">File</span>
 <span class="kn">from</span> <span class="nn">...tasks</span> <span class="k">import</span> <span class="n">Task</span>
 <span class="kn">from</span> <span class="nn">...errors</span> <span class="k">import</span> <span class="n">MonaError</span><span class="p">,</span> <span class="n">InvalidInput</span>
 <span class="kn">from</span> <span class="nn">...pluggable</span> <span class="k">import</span> <span class="n">Plugin</span><span class="p">,</span> <span class="n">Pluggable</span>
@@ -72,16 +72,14 @@
         <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="n">default_plugins</span><span class="p">:</span>
             <span class="n">factory</span><span class="p">()(</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">HashedFile</span><span class="p">]]:</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">File</span><span class="p">]]:</span>
         <span class="sd">&quot;&quot;&quot;Create an FHI-aims.</span>
 
 <span class="sd">        :param kwargs: processed by individual plugins</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;process&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-        <span class="n">script</span> <span class="o">=</span> <span class="n">HashedFile</span><span class="p">(</span><span class="s1">&#39;aims.sh&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;script&#39;</span><span class="p">))</span>
-        <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">HashedFile</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">cont</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">cont</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;inputs&#39;</span><span class="p">)]</span>
+        <span class="n">script</span> <span class="o">=</span> <span class="n">File</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;aims.sh&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;script&#39;</span><span class="p">))</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">File</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">cont</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">cont</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;inputs&#39;</span><span class="p">)]</span>
         <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Unknown Aims kwargs: {list(kwargs.keys())}&#39;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">dir_task</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
