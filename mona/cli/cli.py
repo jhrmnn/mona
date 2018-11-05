@@ -9,7 +9,7 @@ from typing import List, Optional, Any, cast, Dict, Tuple, Sequence
 
 import click
 
-from ..tasks import Task, State
+from ..tasks import Task
 from ..futures import STATE_COLORS
 from ..utils import import_fullname, groupby
 from ..files import File
@@ -17,6 +17,8 @@ from ..rules.dirtask import checkout_files, DirtaskInput
 from .glob import match_glob
 from .app import App
 from .table import Table, lenstr
+
+__version__ = '0.1.0'
 
 logging.basicConfig(
     style='{',
@@ -104,21 +106,15 @@ def run(
 
 @cli.command()
 @click.option('-p', '--pattern', multiple=True, help='Patterns to be reported')
-@click.argument('rulename', metavar='RULE', envvar='MONA_RULE')
 @click.pass_obj
-def status(app: App, rulename: str, pattern: List[str]) -> None:
+def status(app: App, pattern: List[str]) -> None:
     """Print status of tasks."""
-    rule = import_fullname(rulename)
     sess = app.session(warn=False, readonly=True, full_restore=True)
     ncols = len(STATE_COLORS) + 1
     table = Table(align=['<', *(ncols * ['>'])], sep=['   ', *((ncols - 1) * ['/'])])
     table.add_row('pattern', *(s.name.lower() for s in STATE_COLORS), 'all')
     with sess:
-        task = rule()
-        if task.state is State.READY:
-            # This is needed if the task always runs because of Source global
-            # TODO should be handled more transparently
-            sess.run_task(task)
+        app.cache.restore_last()
         task_groups: Dict[str, List[Task[object]]] = {}
         all_tasks = list(sess.all_tasks())
     for patt in pattern or ['**']:
@@ -149,18 +145,12 @@ def status(app: App, rulename: str, pattern: List[str]) -> None:
 
 
 @cli.command()
-@click.argument('rulename', metavar='RULE', envvar='MONA_RULE')
 @click.pass_obj
-def graph(app: App, rulename: str) -> None:
+def graph(app: App) -> None:
     """Open a pdf with the task graph."""
-    rule = import_fullname(rulename)
     sess = app.session(warn=False, readonly=True, full_restore=True)
     with sess:
-        task = rule()
-        if task.state is State.READY:
-            # This is needed if the task always runs because of Source global
-            # TODO should be handled more transparently
-            sess.run_task(task)
+        app.cache.restore_last()
         dot = sess.dot_graph()
     dot.render(tempfile.mkstemp()[1], view=True, cleanup=True, format='pdf')
 
@@ -169,21 +159,13 @@ def graph(app: App, rulename: str) -> None:
 @click.option('-p', '--pattern', multiple=True, help='Tasks to be checked out')
 @click.option('--done', is_flag=True, help='Check out only finished tasks')
 @click.option('-c', '--copy', is_flag=True, help='Copy instead of symlinking')
-@click.argument('rulename', metavar='RULE', envvar='MONA_RULE')
 @click.pass_obj
-def checkout(
-    app: App, rulename: str, pattern: List[str], done: bool, copy: bool
-) -> None:
+def checkout(app: App, pattern: List[str], done: bool, copy: bool) -> None:
     """Checkout path-labeled tasks into a directory tree."""
     n_tasks = 0
-    rule = import_fullname(rulename)
     sess = app.session(warn=False, readonly=True, full_restore=True)
     with sess:
-        task = rule()
-        if task.state is State.READY:
-            # This is needed if the task always runs because of Source global
-            # TODO should be handled more transparently
-            sess.run_task(task)
+        app.cache.restore_last()
         for task in sess.all_tasks():
             if task.label[0] != '/':
                 continue
