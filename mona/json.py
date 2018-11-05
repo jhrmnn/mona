@@ -28,9 +28,9 @@ JSONContainer = NewType('JSONContainer', object)
 JSONValue = Union[None, bool, int, float, str, JSONContainer]
 JSONConverter = Callable[[_T], Dict[str, JSONValue]]
 JSONAdapter = Callable[[Dict[str, JSONValue]], _T]
-JSONDefault = Callable[[_T], Optional[Tuple[Any, str, Dict[str, JSONValue]]]]
+JSONDefault = Callable[[object], Optional[Tuple[object, str, Dict[str, JSONValue]]]]
 JSONHook = Callable[[str, Dict[str, JSONValue]], Union[_T, Dict[str, JSONValue]]]
-ClassRegister = Dict[Type[Any], Tuple[JSONConverter[Any], JSONAdapter[Any]]]
+ClassRegister = Dict[Type[object], Tuple[JSONConverter[Any], JSONAdapter[object]]]
 
 registered_classes: ClassRegister = {
     PosixPath: (
@@ -40,10 +40,10 @@ registered_classes: ClassRegister = {
 }
 
 
-def validate_json(obj: Any, hook: Callable[[Any], bool] = None) -> None:
+def validate_json(obj: object, hook: Callable[[object], bool] = None) -> None:
     classes = tuple(registered_classes)
 
-    def parents(o: Any) -> Iterable[Any]:
+    def parents(o: object) -> Iterable[object]:
         if o is None or isinstance(o, (str, int, float, bool)):
             return ()
         if isinstance(o, classes):
@@ -66,7 +66,7 @@ def validate_json(obj: Any, hook: Callable[[Any], bool] = None) -> None:
 
 class ClassJSONEncoder(json.JSONEncoder):
     def __init__(
-        self, *args: Any, tape: Set[Any], default: JSONDefault[Any], **kwargs: Any
+        self, *args: Any, tape: Set[object], default: JSONDefault, **kwargs: Any
     ) -> None:
         super().__init__(*args, **kwargs)
         self._default = default
@@ -76,7 +76,7 @@ class ClassJSONEncoder(json.JSONEncoder):
             cls: enc for cls, (enc, dec) in registered_classes.items()
         }
 
-    def default(self, o: Any) -> JSONValue:
+    def default(self, o: object) -> JSONValue:
         type_tag: Optional[str] = None
         if isinstance(o, self._classes):
             dct = self._default_encs[o.__class__](o)
@@ -92,7 +92,7 @@ class ClassJSONEncoder(json.JSONEncoder):
 
 
 class ClassJSONDecoder(json.JSONDecoder):
-    def __init__(self, *args: Any, hook: JSONHook[Any], **kwargs: Any) -> None:
+    def __init__(self, *args: Any, hook: JSONHook[object], **kwargs: Any) -> None:
         assert 'object_hook' not in kwargs
         kwargs['object_hook'] = self._my_object_hook
         super().__init__(*args, **kwargs)
@@ -101,7 +101,7 @@ class ClassJSONDecoder(json.JSONDecoder):
             cls.__name__: dec for cls, (enc, dec) in registered_classes.items()
         }
 
-    def _my_object_hook(self, dct: Dict[str, JSONValue]) -> Any:
+    def _my_object_hook(self, dct: Dict[str, JSONValue]) -> object:
         try:
             type_tag = dct.pop('_type')
             assert isinstance(type_tag, str)

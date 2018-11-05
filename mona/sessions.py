@@ -49,9 +49,10 @@ __version__ = '0.1.0'
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
-TaskExecute = Callable[[Task[Any], NodeExecuted[Task[Any]]], Awaitable[None]]
-ExceptionHandler = Callable[[Task[Any], Exception], bool]
-TaskFilter = Callable[[Task[Any]], bool]
+ATask = Task[object]
+TaskExecute = Callable[[ATask, NodeExecuted[ATask]], Awaitable[None]]
+ExceptionHandler = Callable[[ATask, Exception], bool]
+TaskFilter = Callable[[ATask], bool]
 
 _active_session: ContextVar[Optional['Session']] = ContextVar(
     'active_session', default=None
@@ -71,10 +72,10 @@ class SessionPlugin(Plugin['Session']):
     async def post_run(self) -> None:
         pass
 
-    def post_task_run(self, task: Task[Any]) -> None:
+    def post_task_run(self, task: ATask) -> None:
         pass
 
-    def save_hashed(self, objs: Sequence[Hashed[Any]]) -> None:
+    def save_hashed(self, objs: Sequence[Hashed[object]]) -> None:
         pass
 
     def ignored_exception(self) -> None:
@@ -83,7 +84,7 @@ class SessionPlugin(Plugin['Session']):
     def wrap_execute(self, exe: TaskExecute) -> TaskExecute:
         return exe
 
-    def post_create(self, task: Task[Any]) -> None:
+    def post_create(self, task: ATask) -> None:
         pass
 
 
@@ -109,9 +110,9 @@ class Session(Pluggable):
         Pluggable.__init__(self)
         for plugin in plugins or ():
             plugin(self)
-        self._tasks: Dict[Hash, Task[Any]] = {}
+        self._tasks: Dict[Hash, ATask] = {}
         self._graph = Graph({}, defaultdict(list), {})
-        self._running_task: ContextVar[Optional[Task[Any]]] = ContextVar('running_task')
+        self._running_task: ContextVar[Optional[ATask]] = ContextVar('running_task')
         self._running_task.set(None)
         self._storage: Dict[str, Any] = {}
         self._warn = warn
@@ -123,15 +124,15 @@ class Session(Pluggable):
             raise SessionError(f'Not active: {self!r}', self)
 
     @property
-    def storage(self) -> Dict[str, Any]:
+    def storage(self) -> Dict[str, object]:
         """A ganeral string-based dictionary available when a session is active."""
         self._check_active()
         return self._storage
 
-    def get_side_effects(self, task: Task[Any]) -> Iterable[Task[Any]]:
+    def get_side_effects(self, task: ATask) -> Iterable[ATask]:
         return tuple(self._tasks[h] for h in self._graph.side_effects[task.hashid])
 
-    def all_tasks(self) -> Iterable[Task[object]]:
+    def all_tasks(self) -> Iterable[ATask]:
         yield from self._tasks.values()
 
     def __enter__(self) -> 'Session':
@@ -140,7 +141,7 @@ class Session(Pluggable):
         self.run_plugins('post_enter', self, start=None)
         return self
 
-    def _filter_tasks(self, cond: TaskFilter) -> List[Task[Any]]:
+    def _filter_tasks(self, cond: TaskFilter) -> List[ATask]:
         return list(filter(cond, self._tasks.values()))
 
     def __exit__(self, exc_type: Any, *args: Any) -> None:
@@ -159,7 +160,7 @@ class Session(Pluggable):
         self._graph.backflow.clear()
 
     @property
-    def running_task(self) -> Task[Any]:
+    def running_task(self) -> ATask:
         """Currently running task. This would be usually used from within a task
         coroutine.
         """
@@ -169,7 +170,7 @@ class Session(Pluggable):
         raise SessionError(f'No running task: {self!r}', self)
 
     @contextmanager
-    def _running_task_ctx(self, task: Task[Any]) -> Iterator[None]:
+    def _running_task_ctx(self, task: ATask) -> Iterator[None]:
         assert not self._running_task.get()
         self._running_task.set(task)
         try:
@@ -178,12 +179,12 @@ class Session(Pluggable):
             assert self._running_task.get() is task
             self._running_task.set(None)
 
-    def _process_objects(self, objs: Iterable[Hashed[Any]]) -> List[Task[Any]]:
+    def _process_objects(self, objs: Iterable[Hashed[object]]) -> List[ATask]:
         objs = list(
             traverse(objs, lambda o: o.components, lambda o: isinstance(o, Task))
         )
         tasks, objs = cast(
-            Tuple[List[Task[Any]], List[Hashed[Any]]],
+            Tuple[List[ATask], List[Hashed[object]]],
             split(objs, lambda o: isinstance(o, Task)),
         )
         for task in tasks:
@@ -194,7 +195,7 @@ class Session(Pluggable):
 
     def register_task(self, task: Task[_T]) -> Tuple[Task[_T], bool]:
         try:
-            return self._tasks[task.hashid], False
+            return cast(Task[_T], self._tasks[task.hashid]), False
         except KeyError:
             pass
         self._tasks[task.hashid] = task
@@ -203,7 +204,7 @@ class Session(Pluggable):
         self._graph.deps[task.hashid] = frozenset(t.hashid for t in arg_tasks)
         return task, True
 
-    def add_side_effect_of(self, caller: Task[object], callee: Task[object]) -> None:
+    def add_side_effect_of(self, caller: ATask, callee: ATask) -> None:
         self._graph.side_effects[caller.hashid].append(callee.hashid)
 
     def create_task(
@@ -277,9 +278,7 @@ class Session(Pluggable):
         self.run_plugins('post_task_run', task, start=None)
         return result
 
-    async def _traverse_execute(
-        self, task: Task[Any], done: NodeExecuted[Task[Any]]
-    ) -> None:
+    async def _traverse_execute(self, task: ATask, done: NodeExecuted[ATask]) -> None:
         await self.run_task_async(task)
         backflow = (self._tasks[h] for h in self._graph.backflow.get(task.hashid, ()))
         done((task, None, backflow))
@@ -291,7 +290,7 @@ class Session(Pluggable):
     # TODO reduce complexity
     async def _eval_async(  # noqa: C901
         self,
-        obj: Any,
+        obj: object,
         depth: bool = False,
         priority: Priority = default_priority,
         exception_handler: ExceptionHandler = None,

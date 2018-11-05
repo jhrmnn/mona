@@ -12,7 +12,7 @@ _T = TypeVar('_T')
 _V = TypeVar('_V')
 Maybe = Union[_T, 'Empty']
 Pathable = Union[str, 'os.PathLike[str]']
-TypeSwaps = Dict[Type[Any], Callable[[Any], Any]]
+TypeSwaps = Dict[Type[object], Callable[[Any], object]]
 
 
 # Ideally Empty.EMPTY could be used directly, but mypy doesn't understand that
@@ -23,14 +23,14 @@ class Empty(Enum):
     _ = 0
 
 
-def get_fullname(obj: Union[Callable[..., Any], Type[Any]]) -> str:
+def get_fullname(obj: Union[Callable[..., object], Type[object]]) -> str:
     return f'{obj.__module__}:{obj.__qualname__}'
 
 
-def import_fullname(fullname: str) -> Any:
+def import_fullname(fullname: str) -> object:
     module_name, qualname = fullname.split(':')
     module = importlib.import_module(module_name)
-    return getattr(module, qualname)
+    return getattr(module, qualname)  # type: ignore
 
 
 def shorten_text(s: Union[str, bytes], n: int) -> str:
@@ -54,7 +54,7 @@ class Literal(str):
         return str.__repr__(self)[1:-1]
 
 
-def swap_type(o: Any, swaps: TypeSwaps) -> Any:
+def swap_type(o: _T, swaps: TypeSwaps) -> object:
     if o.__class__ in swaps:
         return swaps[o.__class__](o)
     return o

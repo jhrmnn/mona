@@ -132,6 +132,8 @@ class HashedCompositeLike(Hashed[Composite]):
 
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedCompositeLike':
+        jsonstr: str
+        hashids: Tuple[Hash, ...]
         jsonstr, *hashids = json.loads(spec)
         return cls(jsonstr, (resolve(h) for h in hashids))
 
@@ -151,8 +153,9 @@ class HashedCompositeLike(Hashed[Composite]):
                 return handler(self._components[cast(Hash, dct['hashid'])])
             return dct
 
-        obj = json.loads(self._jsonstr, hook=hook, cls=ClassJSONDecoder)
-        return cast(Composite, obj)
+        return cast(
+            Composite, json.loads(self._jsonstr, hook=hook, cls=ClassJSONDecoder)
+        )
 
     @classmethod
     def _default(cls, o: object) -> Optional[Tuple[object, str, Dict[str, JSONValue]]]:
@@ -163,7 +166,7 @@ class HashedCompositeLike(Hashed[Composite]):
 
     @classmethod
     def parse_object(cls, obj: object) -> Tuple[str, Set[Hashed[object]]]:
-        classes = (Hashed,) + tuple(cls.type_swaps)
+        classes = tuple(cls.type_swaps) + (Hashed,)
         validate_json(obj, lambda x: isinstance(x, classes))
         components: Set[Hashed[object]] = set()
         jsonstr = json.dumps(

@@ -5,7 +5,7 @@ import os
 import logging
 import tempfile
 from pathlib import Path
-from typing import List, Optional, Any, cast, Dict, Tuple, Sequence
+from typing import List, Optional, cast, Dict, Tuple, Sequence
 
 import click
 
@@ -48,7 +48,7 @@ class TaskFilter:
         self._patterns = patterns or []
         self._no_path = no_path
 
-    def __call__(self, task: Task[Any]) -> bool:
+    def __call__(self, task: Task[object]) -> bool:
         if self._no_path and task.label.startswith('/'):
             return False
         if self._patterns and not any(
@@ -63,7 +63,7 @@ class ExceptionBuffer:
         self._maxerror = maxerror
         self._n_errors = 0
 
-    def __call__(self, task: Task[Any], exc: Exception) -> bool:
+    def __call__(self, task: Task[object], exc: Exception) -> bool:
         if self._maxerror is None:
             return False
         if self._n_errors == self._maxerror:

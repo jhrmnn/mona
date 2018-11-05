@@ -102,7 +102,7 @@ class Cache(SessionPlugin):
         self._db.executemany('INSERT OR IGNORE INTO objects VALUES (?,?,?)', obj_rows)
 
     def _store_targets(self, objs: Sequence[Hashed[object]]) -> None:
-        sessionid = Session.active().storage['cache:sessionid']
+        sessionid = cast(int, Session.active().storage['cache:sessionid'])
         target_rows = [
             TargetRow(
                 obj.hashid,
@@ -175,7 +175,7 @@ class Cache(SessionPlugin):
         ).fetchone()
         assert raw_row
         row = ObjectRow(*raw_row)
-        factory = import_fullname(row.typetag)
+        factory = cast(Type[object], import_fullname(row.typetag))
         assert issubclass(factory, Hashed)
         return row.spec, factory
 
@@ -210,7 +210,7 @@ class Cache(SessionPlugin):
         result_type = ResultType[row.result_type]
         if result_type is ResultType.PICKLED:
             assert isinstance(row.result, bytes)
-            result: object = pickle.loads(row.result)
+            result = cast(object, pickle.loads(row.result))
         else:
             assert result_type is ResultType.HASHED
             assert isinstance(row.result, str)

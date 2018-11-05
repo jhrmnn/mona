@@ -10,7 +10,6 @@ import pickle
 from typing import (
     Callable,
     Optional,
-    List,
     TypeVar,
     cast,
     Tuple,
@@ -22,6 +21,7 @@ from typing import (
 
 from .futures import Future, State
 from .hashing import (
+    Hash,
     Hashed,
     Composite,
     HashedCompositeLike,
@@ -146,8 +146,11 @@ class Task(HashedFuture[_T_co]):
 
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'Task[_T_co]':
+        rule_name: str
+        corohash: Hash
+        arg_hashes: Tuple[Hash, ...]
         rule_name, corohash, *arg_hashes = json.loads(spec)
-        corofunc = import_fullname(rule_name).corofunc
+        corofunc: Corofunc[_T_co] = getattr(import_fullname(rule_name), 'corofunc')
         assert inspect.iscoroutinefunction(corofunc)
         assert hash_function(corofunc) == corohash
         args = (resolve(h) for h in arg_hashes)
@@ -252,10 +255,13 @@ class Task(HashedFuture[_T_co]):
 
 class TaskComponent(HashedFuture[_T_co]):
     def __init__(
-        self, task: Task[object], keys: List[object], default: Maybe[_T_co] = Empty._
+        self,
+        task: Task[object],
+        keys: Iterable[object],
+        default: Maybe[_T_co] = Empty._,
     ) -> None:
         self._task = task
-        self._keys = keys
+        self._keys = list(keys)
         Hashed.__init__(self)
         Future.__init__(self, [cast(HashedFuture[object], task)])
         self._default = default
@@ -268,6 +274,8 @@ class TaskComponent(HashedFuture[_T_co]):
 
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'TaskComponent[_T_co]':
+        task_hash: Hash
+        keys: Tuple[object, ...]
         task_hash, *keys = json.loads(spec)
         task = cast(Task[object], resolve(task_hash))
         return cls(task, keys)

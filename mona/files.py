@@ -4,7 +4,7 @@
 import json
 from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import Union, Optional, cast, Iterable, List, Callable, TypeVar
+from typing import Union, Optional, cast, Iterable, List, Callable, TypeVar, Type
 
 from .sessions import Session
 from .rules import Rule
@@ -14,6 +14,7 @@ from .utils import make_nonwritable, Pathable, shorten_text
 __version__ = '0.3.0'
 
 _R = TypeVar('_R', bound=Rule)  # type: ignore
+_FM = TypeVar('_FM', bound='FileManager')
 
 
 def add_source(path: Pathable) -> Callable[[_R], _R]:
@@ -47,8 +48,8 @@ class FileManager(ABC):
         ...
 
     @classmethod
-    def active(cls) -> Optional['FileManager']:
-        fmngr = Session.active().storage.get('file_manager')
+    def active(cls: Type[_FM]) -> Optional[_FM]:
+        fmngr = cast(Optional[_FM], Session.active().storage.get('file_manager'))
         assert not fmngr or isinstance(fmngr, cls)
         return fmngr
 
@@ -148,8 +149,10 @@ class HashedFile(Hashed[File]):
 
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedFile':
-        path, content_hash = json.loads(spec)
-        path = Path(path)
+        path_str: str
+        content_hash: Hash
+        path_str, content_hash = json.loads(spec)
+        path = Path(path_str)
         fmngr = FileManager.active()
         if fmngr:
             return cls(File(path, content_hash))

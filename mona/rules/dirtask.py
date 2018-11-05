@@ -15,6 +15,7 @@ from typing import (
     Union,
     Tuple,
     Sequence,
+    cast,
 )
 from typing_extensions import Protocol, runtime
 
@@ -67,7 +68,9 @@ class DirtaskTmpdir:
 
     def __init__(self, output_filter: Callable[[str], bool] = None) -> None:
         sess = Session.active()
-        dirmngr = sess.storage.get('dir_task:tmpdir_manager')
+        dirmngr = cast(
+            Optional[TmpdirManager], sess.storage.get('dir_task:tmpdir_manager')
+        )
         assert not dirmngr or isinstance(dirmngr, TmpdirManager)
         self._dirmngr = dirmngr
         self._output_filter = output_filter

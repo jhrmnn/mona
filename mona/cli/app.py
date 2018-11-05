@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 from pathlib import Path
-from typing import Dict, Any, cast
+from typing import Dict, Any
 
 import toml
 
@@ -54,7 +54,9 @@ class App:
     def last_rule(self) -> Rule[object]:
         if '' not in sys.path:
             sys.path.append('')
-        return cast(Rule[object], import_fullname(self.last_entry))
+        rule = import_fullname(self.last_entry)
+        assert isinstance(rule, Rule)
+        return rule
 
     def __call__(
         self,
