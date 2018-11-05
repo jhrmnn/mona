@@ -4,22 +4,28 @@
 import json
 from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import Union, Optional, cast, Iterable, overload, List
+from typing import Union, Optional, cast, Iterable, overload, List, Callable, TypeVar
 
 from .sessions import Session
 from .rules import Rule
 from .hashing import Hash, Hashed, HashResolver, HashedBytes
-from .utils import make_nonwritable, Pathable, get_timestamp
+from .utils import make_nonwritable, Pathable
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
+
+_R = TypeVar('_R', bound=Rule)  # type: ignore
 
 
 def Source(path: Pathable) -> 'HashedFile':
     return HashedFile.from_path(path)
 
 
-# enforce that Sources are always loaded
-Source._func_hash = get_timestamp  # type: ignore
+def add_source(path: Pathable) -> Callable[[_R], _R]:
+    def decorator(rule: _R) -> _R:
+        rule.add_extra_arg(lambda: Source(path))
+        return rule
+
+    return decorator
 
 
 def Output(path: Pathable, precious: bool = False) -> 'HashedFile':
