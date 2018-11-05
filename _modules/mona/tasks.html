@@ -45,7 +45,6 @@
 <span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="p">(</span>
     <span class="n">Callable</span><span class="p">,</span>
     <span class="n">Optional</span><span class="p">,</span>
-    <span class="n">List</span><span class="p">,</span>
     <span class="n">TypeVar</span><span class="p">,</span>
     <span class="n">cast</span><span class="p">,</span>
     <span class="n">Tuple</span><span class="p">,</span>
@@ -57,13 +56,14 @@
 
 <span class="kn">from</span> <span class="nn">.futures</span> <span class="k">import</span> <span class="n">Future</span><span class="p">,</span> <span class="n">State</span>
 <span class="kn">from</span> <span class="nn">.hashing</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">Hash</span><span class="p">,</span>
     <span class="n">Hashed</span><span class="p">,</span>
     <span class="n">Composite</span><span class="p">,</span>
     <span class="n">HashedCompositeLike</span><span class="p">,</span>
     <span class="n">HashedComposite</span><span class="p">,</span>
-    <span class="n">hash_function</span><span class="p">,</span>
     <span class="n">HashResolver</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.pyhash</span> <span class="k">import</span> <span class="n">hash_function</span>
 <span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">get_fullname</span><span class="p">,</span> <span class="n">Maybe</span><span class="p">,</span> <span class="n">Empty</span><span class="p">,</span> <span class="n">swap_type</span><span class="p">,</span> <span class="n">import_fullname</span>
 <span class="kn">from</span> <span class="nn">.errors</span> <span class="k">import</span> <span class="n">FutureError</span><span class="p">,</span> <span class="n">TaskError</span><span class="p">,</span> <span class="n">CompositeError</span>
 
@@ -181,8 +181,11 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Task[_T_co]&#39;</span><span class="p">:</span>
+        <span class="n">rule_name</span><span class="p">:</span> <span class="nb">str</span>
+        <span class="n">corohash</span><span class="p">:</span> <span class="n">Hash</span>
+        <span class="n">arg_hashes</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Hash</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
         <span class="n">rule_name</span><span class="p">,</span> <span class="n">corohash</span><span class="p">,</span> <span class="o">*</span><span class="n">arg_hashes</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
-        <span class="n">corofunc</span> <span class="o">=</span> <span class="n">import_fullname</span><span class="p">(</span><span class="n">rule_name</span><span class="p">)</span><span class="o">.</span><span class="n">corofunc</span>
+        <span class="n">corofunc</span><span class="p">:</span> <span class="n">Corofunc</span><span class="p">[</span><span class="n">_T_co</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">import_fullname</span><span class="p">(</span><span class="n">rule_name</span><span class="p">),</span> <span class="s1">&#39;corofunc&#39;</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">inspect</span><span class="o">.</span><span class="n">iscoroutinefunction</span><span class="p">(</span><span class="n">corofunc</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">hash_function</span><span class="p">(</span><span class="n">corofunc</span><span class="p">)</span> <span class="o">==</span> <span class="n">corohash</span>
         <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">resolve</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">arg_hashes</span><span class="p">)</span>
@@ -287,10 +290,13 @@
 
 <div class="viewcode-block" id="TaskComponent"><a class="viewcode-back" href="../../api.html#mona.tasks.TaskComponent">[docs]</a><span class="k">class</span> <span class="nc">TaskComponent</span><span class="p">(</span><span class="n">HashedFuture</span><span class="p">[</span><span class="n">_T_co</span><span class="p">]):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span> <span class="n">keys</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span> <span class="n">default</span><span class="p">:</span> <span class="n">Maybe</span><span class="p">[</span><span class="n">_T_co</span><span class="p">]</span> <span class="o">=</span> <span class="n">Empty</span><span class="o">.</span><span class="n">_</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span>
+        <span class="n">keys</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span>
+        <span class="n">default</span><span class="p">:</span> <span class="n">Maybe</span><span class="p">[</span><span class="n">_T_co</span><span class="p">]</span> <span class="o">=</span> <span class="n">Empty</span><span class="o">.</span><span class="n">_</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="n">task</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_keys</span> <span class="o">=</span> <span class="n">keys</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
         <span class="n">Hashed</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="n">Future</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="p">[</span><span class="n">cast</span><span class="p">(</span><span class="n">HashedFuture</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span> <span class="n">task</span><span class="p">)])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_default</span> <span class="o">=</span> <span class="n">default</span>
@@ -303,6 +309,8 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;TaskComponent[_T_co]&#39;</span><span class="p">:</span>
+        <span class="n">task_hash</span><span class="p">:</span> <span class="n">Hash</span>
+        <span class="n">keys</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">object</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
         <span class="n">task_hash</span><span class="p">,</span> <span class="o">*</span><span class="n">keys</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
         <span class="n">task</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span> <span class="n">resolve</span><span class="p">(</span><span class="n">task_hash</span><span class="p">))</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">keys</span><span class="p">)</span>

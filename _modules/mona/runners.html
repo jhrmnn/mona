@@ -72,10 +72,11 @@
 <span class="sd">    :func:`asyncio.create_subprocess_shell` that handles errors and whose behavior can</span>
 <span class="sd">    be modified by session plugins.</span>
 
-<span class="sd">    :param cmd: a shell command to be executed</span>
+<span class="sd">    :param str cmd: a shell command to be executed</span>
 <span class="sd">    :param kwargs: all keyword arguments are passed to</span>
-<span class="sd">                   :func:`asyncio.create_subprocess_shell`. `PIPE` is passed to</span>
-<span class="sd">                   `stdin` and `stdout` keyword arguments by default.</span>
+<span class="sd">                   :func:`~asyncio.create_subprocess_shell`.</span>
+<span class="sd">                   :data:`~subprocess.PIPE` is passed to `stdin` and `stdout`</span>
+<span class="sd">                   keyword arguments by default.</span>
 
 <span class="sd">    Return the standard output as bytes if no error output was generated or a</span>
 <span class="sd">    tuple of bytes containing standard and error outputs.</span>
@@ -93,10 +94,11 @@
 <span class="sd">    :func:`asyncio.create_subprocess_exec` that handles errors and whose</span>
 <span class="sd">    behavior can be modified by session plugins.</span>
 
-<span class="sd">    :param args: arguments of the subprocess</span>
+<span class="sd">    :param str args: arguments of the subprocess</span>
 <span class="sd">    :param kwargs: all keyword arguments are passed to</span>
-<span class="sd">                   :func:`asyncio.create_subprocess_exec`. `PIPE` is passed to</span>
-<span class="sd">                   `stdin` and `stdout` keyword arguments by default.</span>
+<span class="sd">                   :func:`~asyncio.create_subprocess_exec`.</span>
+<span class="sd">                   :data:`~subprocess.PIPE` is passed to `stdin` and `stdout`</span>
+<span class="sd">                   keyword arguments by default.</span>
 
 <span class="sd">    Return the standard output as bytes if no error output was generated or a</span>
 <span class="sd">    tuple of bytes containing standard and error outputs.</span>
@@ -140,8 +142,9 @@
 
 
 <div class="viewcode-block" id="run_thread"><a class="viewcode-back" href="../../api.html#mona.run_thread">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">run_thread</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">_T</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_T</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Run a callable in a new thread. Wrapper around :meth:`loop.run_in_executor`</span>
-<span class="sd">    whose behavior can be modified by session plugins.</span>
+    <span class="sd">&quot;&quot;&quot;Run a callable in a new thread. Wrapper around</span>
+<span class="sd">    :meth:`asyncio.AbstractEventLoop.run_in_executor` whose behavior can be</span>
+<span class="sd">    modified by session plugins.</span>
 
 <span class="sd">    :param func: a callable</span>
 <span class="sd">    :param args: positional arguments to the callable.</span>

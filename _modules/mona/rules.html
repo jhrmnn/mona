@@ -6,18 +6,18 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>mona.rules.rules &#8212; Mona 0.2.2 documentation</title>
-    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../../../_static/jquery.js"></script>
-    <script type="text/javascript" src="../../../_static/underscore.js"></script>
-    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <title>mona.rules &#8212; Mona 0.2.2 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
     <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
    
-  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
@@ -32,7 +32,7 @@
 
           <div class="body" role="main">
             
-  <h1>Source code for mona.rules.rules</h1><div class="highlight"><pre>
+  <h1>Source code for mona.rules</h1><div class="highlight"><pre>
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
@@ -40,16 +40,17 @@
 <span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Callable</span>
 
-<span class="kn">from</span> <span class="nn">..tasks</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">Corofunc</span>
-<span class="kn">from</span> <span class="nn">..sessions</span> <span class="k">import</span> <span class="n">Session</span>
-<span class="kn">from</span> <span class="nn">..errors</span> <span class="k">import</span> <span class="n">MonaError</span>
-<span class="kn">from</span> <span class="nn">..hashing</span> <span class="k">import</span> <span class="n">Hashed</span><span class="p">,</span> <span class="n">hash_function</span>
+<span class="kn">from</span> <span class="nn">.tasks</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">Corofunc</span>
+<span class="kn">from</span> <span class="nn">.sessions</span> <span class="k">import</span> <span class="n">Session</span>
+<span class="kn">from</span> <span class="nn">.errors</span> <span class="k">import</span> <span class="n">MonaError</span>
+<span class="kn">from</span> <span class="nn">.hashing</span> <span class="k">import</span> <span class="n">Hashed</span>
+<span class="kn">from</span> <span class="nn">.pyhash</span> <span class="k">import</span> <span class="n">hash_function</span>
 
 <span class="n">_T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;_T&#39;</span><span class="p">)</span>
 <span class="n">ArgFactory</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]]</span>
 
 
-<div class="viewcode-block" id="Rule"><a class="viewcode-back" href="../../../api.html#mona.Rule">[docs]</a><span class="k">class</span> <span class="nc">Rule</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">_T</span><span class="p">]):</span>
+<div class="viewcode-block" id="Rule"><a class="viewcode-back" href="../../api.html#mona.Rule">[docs]</a><span class="k">class</span> <span class="nc">Rule</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">_T</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;Decorator that turns a coroutine function into a rule, which is a</span>
 <span class="sd">    callable that generates a task instead of actually calling the coroutine.</span>
 
@@ -99,7 +100,7 @@
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../../../index.html">Mona</a></h1>
+<h1 class="logo"><a href="../../index.html">Mona</a></h1>
 
 
 
@@ -143,15 +144,15 @@
 </p>
 <h3>Navigation</h3>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">CLI</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
-  <li><a href="../../../index.html">Documentation overview</a><ul>
-  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
   </ul></li>
   </ul></li>
 </ul>
@@ -159,7 +160,7 @@
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <div class="searchformwrapper">
-    <form class="search" action="../../../search.html" method="get">
+    <form class="search" action="../../search.html" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
