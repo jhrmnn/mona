@@ -80,7 +80,7 @@ class ExceptionBuffer:
 @click.option('-j', '--cores', type=int, help='Number of cores')
 @click.option('-l', '--limit', type=int, help='Limit number of tasks to N')
 @click.option('--maxerror', type=int, help='Number of errors in row to quit')
-@click.argument('rulename', metavar='RULE', envvar='MONA_RULE')
+@click.argument('rulename', metavar='RULE')
 @click.pass_obj
 def run(
     app: App,
