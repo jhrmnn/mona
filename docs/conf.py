@@ -30,7 +30,15 @@ class Mock(MagicMock):
         return MagicMock()
 
 
-MOCK_MODULES = ['typing_extensions', 'textx', 'textx.metamodel', 'numpy']
+MOCK_MODULES = [
+    'typing_extensions',
+    'textx',
+    'textx.metamodel',
+    'numpy',
+    'contextvars',  # for python 3.6 (readthedocs)
+    'contextlib',
+    'importlib.resources',
+]
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 sys.path.insert(0, os.path.abspath('..'))
 
