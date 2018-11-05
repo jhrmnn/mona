@@ -4,7 +4,7 @@
 import os
 import logging
 from pathlib import Path
-from typing import Dict, Any, cast
+from typing import Dict, Any
 
 import toml
 
@@ -20,6 +20,7 @@ class App:
     TMPDIR = 'tmpdir'
     FILES = 'files'
     CACHE = 'cache.db'
+    LAST_ENTRY = 'LAST_ENTRY'
 
     def __init__(self, monadir: Pathable = None) -> None:
         monadir = monadir or os.environ.get('MONA_DIR') or App.MONADIR
@@ -40,22 +41,26 @@ class App:
         return sess
 
     @property
-    def cache(self) -> Cache:
-        return cast(Cache, self._plugins['cache'])
+    def last_entry(self) -> str:
+        return (self._monadir / App.LAST_ENTRY).read_text()
+
+    @last_entry.setter
+    def last_entry(self, entry: str) -> None:
+        (self._monadir / App.LAST_ENTRY).write_text(entry)
 
     def __call__(
         self,
         sess: Session,
         ncores: int = None,
+        write: str = 'eager',
         full_restore: bool = False,
-        readonly: bool = False,
     ) -> None:
         self._plugins = {
             'parallel': Parallel(ncores),
             'tmpdir': TmpdirManager(self._monadir / App.TMPDIR),
             'files': FileManager(self._monadir / App.FILES),
             'cache': Cache.from_path(
-                self._monadir / App.CACHE, full_restore=full_restore, readonly=readonly
+                self._monadir / App.CACHE, write=write, full_restore=full_restore
             ),
         }
         for plugin in self._plugins.values():
