@@ -4,7 +4,7 @@
 import os
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, cast
 
 import toml
 
@@ -38,6 +38,10 @@ class App:
         sess = Session(warn=warn)
         self(sess, **kwargs)
         return sess
+
+    @property
+    def cache(self) -> Cache:
+        return cast(Cache, self._plugins['cache'])
 
     def __call__(
         self,

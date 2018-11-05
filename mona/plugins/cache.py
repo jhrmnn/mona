@@ -243,9 +243,10 @@ class Cache(SessionPlugin):
         if self._readonly:
             return
         cur = self._db.execute(
-            'INSERT INTO sessions VALUES (?,?)', (None, get_timestamp())
+            'INSERT INTO sessions VALUES (?,?,?)', (None, None, get_timestamp())
         )
         sess.storage['cache:sessionid'] = cur.lastrowid
+        sess.storage['cache:entry'] = None
 
     def save_hashed(self, objs: Sequence[Hashed[object]]) -> None:
         if self._readonly:
@@ -257,6 +258,15 @@ class Cache(SessionPlugin):
             self._objects.update({o.hashid: o for o in objs})
 
     def post_create(self, task: Task[object]) -> None:
+        if not self._readonly:
+            sess = Session.active()
+            entry = sess.storage['cache:entry']
+            if not entry:
+                sess.storage['cache:entry'] = task.hashid
+                self._db.execute(
+                    'UPDATE sessions SET entry = ? WHERE sessionid = ?',
+                    (task.hashid, sess.storage['cache:sessionid']),
+                )
         row = self._get_task_row(task.hashid)
         if row:
             self._to_restore = [task]
@@ -305,6 +315,14 @@ class Cache(SessionPlugin):
         self._objects.clear()
         self._db.commit()
 
+    def restore_last(self) -> None:
+        hashid, = self._db.execute(
+            'SELECT entry FROM sessions ORDER BY sessionid DESC LIMIT 1'
+        ).fetchone()
+        task = self._get_object(hashid)
+        assert isinstance(task, Task)
+        self.post_create(task)
+
     @classmethod
     def from_path(cls, path: Pathable, **kwargs: Any) -> 'Cache':
         db = sqlite3.connect(path)
@@ -333,6 +351,7 @@ CREATE TABLE IF NOT EXISTS tasks (
             """\
 CREATE TABLE IF NOT EXISTS sessions (
     sessionid INTEGER PRIMARY KEY,
+    entry     TEXT,
     created   TEXT
 )
 """
