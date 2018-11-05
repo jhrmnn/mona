@@ -9,7 +9,6 @@ from weakref import WeakValueDictionary
 from typing import (
     Any,
     Optional,
-    Set,
     NamedTuple,
     Union,
     Sequence,
@@ -81,7 +80,6 @@ class Cache(SessionPlugin):
         readonly: bool = False,
     ) -> None:
         self._db = db
-        self._pending: Set[Hash] = set()
         self._objects: Dict[Hash, Hashed[object]] = {}
         self._eager = eager
         self._full_restore = full_restore
@@ -290,8 +288,6 @@ class Cache(SessionPlugin):
             )
             self._store_objects_targets([task])
             self._db.commit()
-        else:
-            self._pending.add(task.hashid)
 
     def post_task_run(self, task: Task[object]) -> None:
         if self._readonly or not self._eager:
@@ -304,14 +300,12 @@ class Cache(SessionPlugin):
     def pre_exit(self, sess: Session) -> None:
         if self._readonly or self._eager:
             return
-        tasks = [sess.get_task(hashid) for hashid in self._pending]
-        for task in tasks:
+        for task in sess.all_tasks():
             if task.state > State.HAS_RUN:
                 self._store_result(task)
             else:
                 self._update_state(task)
-        self._store_objects_targets([*self._objects.values(), *tasks])
-        self._pending.clear()
+        self._store_objects_targets([*self._objects.values(), *sess.all_tasks()])
         self._objects.clear()
         self._db.commit()
 

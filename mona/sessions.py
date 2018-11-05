@@ -131,9 +131,6 @@ class Session(Pluggable):
     def get_side_effects(self, task: Task[Any]) -> Iterable[Task[Any]]:
         return tuple(self._tasks[h] for h in self._graph.side_effects[task.hashid])
 
-    def get_task(self, hashid: Hash) -> Task[Any]:
-        return self._tasks[hashid]
-
     def all_tasks(self) -> Iterable[Task[object]]:
         yield from self._tasks.values()
 
