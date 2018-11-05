@@ -26,9 +26,9 @@ from .hashing import (
     Composite,
     HashedCompositeLike,
     HashedComposite,
-    hash_function,
     HashResolver,
 )
+from .pyhash import hash_function
 from .utils import get_fullname, Maybe, Empty, swap_type, import_fullname
 from .errors import FutureError, TaskError, CompositeError
 

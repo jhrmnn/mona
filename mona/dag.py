@@ -95,14 +95,14 @@ async def traverse_async(
     priority: Priority = default_priority,
 ) -> AsyncGenerator[Union[Step, NodeException], bool]:
     """
-    Traverse a self-extending DAG, yield steps.
+    Asynchronous generator that traverses a self-extending DAG, yields
+    potentials steps, and receives whether those should be taken.
 
     :param start: Starting nodes
     :param edges_from: Returns nodes with incoming edge from the given node
-    :param schedule: Schedule the given node for execution (not run on sentinels)
+    :param schedule: Schedule the given node for execution
     :param execute: Execute the given node and return new generated nodes
                     with incoming edge from it (run only on scheduled nodes)
-    :param sentinel: Should traversal stop at the given node?
     :param depth: Traverse depth-first if true, breadth-first otherwise
     :param priority: Priorize steps in order
     """

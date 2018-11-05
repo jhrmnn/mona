@@ -4,7 +4,7 @@ import pytest  # type: ignore
 
 from mona import Rule, Session
 from mona.files import File
-from mona.rules import dir_task
+from mona.dirtask import dir_task
 from mona.errors import InvalidInput
 
 

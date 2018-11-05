@@ -2,19 +2,19 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
+import re
 import logging
 import tempfile
 from pathlib import Path
-from typing import List, Optional, cast, Dict, Tuple, Sequence
+from typing import List, Optional, cast, Dict, Tuple, Sequence, Pattern
 
 import click
 
-from ..tasks import Task
-from ..futures import STATE_COLORS
-from ..utils import groupby
-from ..files import File
-from ..rules.dirtask import checkout_files, DirtaskInput
-from .glob import match_glob
+from .tasks import Task
+from .futures import STATE_COLORS
+from .utils import groupby
+from .files import File
+from .dirtask import checkout_files, DirtaskInput
 from .app import App
 from .table import Table, lenstr
 
@@ -28,6 +28,35 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 logging.getLogger('mona').setLevel(int(os.environ.get('MONA_DEBUG', logging.INFO)))
+
+_regexes: Dict[str, Pattern[str]] = {}
+
+
+def match_glob(path: str, pattern: str) -> Optional[str]:
+    regex = _regexes.get(pattern)
+    if not regex:
+        regex = re.compile(
+            pattern.replace('(', r'\(')
+            .replace(')', r'\)')
+            .replace('?', '[^/]')
+            .replace('<>', '([^/]*)')
+            .replace('<', '(')
+            .replace('>', ')')
+            .replace('{', '(?:')
+            .replace('}', ')')
+            .replace(',', '|')
+            .replace('**', r'\\')
+            .replace('*', '[^/]*')
+            .replace(r'\\', '.*')
+            + '$'
+        )
+        _regexes[pattern] = regex
+    m = regex.match(path)
+    if not m:
+        return None
+    for group in m.groups():
+        pattern = re.sub(r'<.*?>', group, pattern, 1)
+    return pattern
 
 
 @click.group()

@@ -5,10 +5,11 @@ import inspect
 from functools import wraps
 from typing import Any, TypeVar, Generic, List, Callable
 
-from ..tasks import Task, Corofunc
-from ..sessions import Session
-from ..errors import MonaError
-from ..hashing import Hashed, hash_function
+from .tasks import Task, Corofunc
+from .sessions import Session
+from .errors import MonaError
+from .hashing import Hashed
+from .pyhash import hash_function
 
 _T = TypeVar('_T')
 ArgFactory = Callable[[], Hashed[object]]

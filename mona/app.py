@@ -9,10 +9,10 @@ from typing import Dict, Any
 
 import toml
 
-from ..sessions import Session
-from ..rules import Rule
-from ..plugins import Parallel, TmpdirManager, FileManager, Cache
-from ..utils import get_timestamp, Pathable, import_fullname
+from .sessions import Session
+from .rules import Rule
+from .plugins import Parallel, TmpdirManager, FileManager, Cache
+from .utils import get_timestamp, Pathable, import_fullname
 
 log = logging.getLogger(__name__)
 

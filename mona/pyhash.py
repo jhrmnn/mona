@@ -12,8 +12,8 @@ from itertools import dropwhile, chain
 from types import ModuleType, CodeType
 from typing import Callable, TypeVar, Any, Dict, Optional, cast
 
-from ..errors import HashingError, CompositeError
-from ..utils import get_fullname
+from .errors import HashingError, CompositeError
+from .utils import get_fullname
 from .hashing import Hash, HashedComposite, hash_text
 
 _T = TypeVar('_T')

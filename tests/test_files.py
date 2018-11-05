@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest  # type: ignore
 
 from mona import Rule, Session
-from mona.rules import dir_task
+from mona.dirtask import dir_task
 from mona.plugins import FileManager
 from mona.files import File, HashedFile
 from mona.errors import FilesError

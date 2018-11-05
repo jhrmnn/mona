@@ -19,7 +19,7 @@ from typing import (
     Iterable,
 )
 
-from .graph import traverse_id
+from .dag import traverse_id
 from .errors import CompositeError
 
 _T = TypeVar('_T')

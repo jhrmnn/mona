@@ -7,7 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any, TypeVar, AsyncGenerator, Optional, Set, cast
 
-from ..graph import NodeExecuted
+from ..dag import NodeExecuted
 from ..tasks import Task, Corofunc
 from ..sessions import Session, SessionPlugin, TaskExecute
 

@@ -19,12 +19,12 @@ from typing import (
 )
 from typing_extensions import Protocol, runtime
 
-from ..utils import make_executable, Pathable
-from ..sessions import Session
-from ..rules import Rule
-from ..runners import run_process
-from ..errors import InvalidInput
-from ..files import File
+from .utils import make_executable, Pathable
+from .sessions import Session
+from .rules import Rule
+from .runners import run_process
+from .errors import InvalidInput
+from .files import File
 
 __version__ = '0.2.0'
 

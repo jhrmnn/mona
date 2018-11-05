@@ -5,7 +5,7 @@ import pytest  # type: ignore
 
 from mona import Session, Rule, run_shell, run_process, run_thread
 from mona.files import File
-from mona.rules import dir_task
+from mona.dirtask import dir_task
 from mona.plugins import Parallel
 
 from tests.test_dirtask import analysis

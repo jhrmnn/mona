@@ -10,7 +10,7 @@ from typing import Iterator
 
 from ..sessions import Session, SessionPlugin
 from ..utils import Pathable
-from ..rules.dirtask import TmpdirManager as _TmpdirManager
+from ..dirtask import TmpdirManager as _TmpdirManager
 
 log = logging.getLogger(__name__)
 

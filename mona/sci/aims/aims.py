@@ -7,12 +7,12 @@ from pathlib import Path
 from collections import OrderedDict
 from typing import Dict, Any, Tuple, Callable, cast
 
-from ...rules.dirtask import dir_task
+from ...dirtask import dir_task
 from ...files import File
 from ...tasks import Task
 from ...errors import MonaError, InvalidInput
 from ...pluggable import Plugin, Pluggable
-from ...hashing import hash_function
+from ...pyhash import hash_function
 from ..geomlib import Molecule, Atom
 from .dsl import parse_aims_input, expand_dicts
 

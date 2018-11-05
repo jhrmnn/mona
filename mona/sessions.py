@@ -30,7 +30,7 @@ from typing import (
 
 from .hashing import Hash, Hashed
 from .tasks import Task, HashedFuture, State, maybe_hashed, Corofunc
-from .graph import (
+from .dag import (
     traverse,
     traverse_async,
     NodeExecuted,
@@ -88,7 +88,7 @@ class SessionPlugin(Plugin['Session']):
         pass
 
 
-class Graph(NamedTuple):
+class SessionGraph(NamedTuple):
     deps: Dict[Hash, FrozenSet[Hash]]
     side_effects: Dict[Hash, List[Hash]]
     backflow: Dict[Hash, FrozenSet[Hash]]
@@ -111,7 +111,7 @@ class Session(Pluggable):
         for plugin in plugins or ():
             plugin(self)
         self._tasks: Dict[Hash, ATask] = {}
-        self._graph = Graph({}, defaultdict(list), {})
+        self._graph = SessionGraph({}, defaultdict(list), {})
         self._running_task: ContextVar[Optional[ATask]] = ContextVar('running_task')
         self._running_task.set(None)
         self._storage: Dict[str, Any] = {}

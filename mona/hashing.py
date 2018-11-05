@@ -18,8 +18,8 @@ from typing import (
     Optional,
 )
 
-from ..json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
-from ..utils import Literal, shorten_text, TypeSwaps, swap_type
+from .json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
+from .utils import Literal, shorten_text, TypeSwaps, swap_type
 
 __version__ = '0.1.0'
 

@@ -1,7 +1,7 @@
 import pytest  # type: ignore
 
 from mona.errors import HashingError
-from mona.hashing import hash_function
+from mona.pyhash import hash_function
 
 
 def test_docstring():
