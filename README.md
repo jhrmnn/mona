@@ -19,10 +19,6 @@ Install and update using [Pip](https://pip.pypa.io/en/stable/quickstart/).
 pip install -U mona
 ```
 
-## Links
-
-- Documentation: https://azag0.github.io/mona
-
 ## A simple example
 
 ```python
@@ -44,5 +40,9 @@ with Session() as sess:
 dot.render(view=True)
 ```
 
-![](https://raw.githubusercontent.com/azag0/mona/master/docs/fib.gv.svg?sanitize=true)
+<img src="https://raw.githubusercontent.com/azag0/mona/master/docs/fib.gv.svg?sanitize=true" alt width="350">
+
+## Links
+
+- Documentation: https://azag0.github.io/mona
 
