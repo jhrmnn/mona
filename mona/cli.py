@@ -5,6 +5,7 @@ import os
 import re
 import logging
 import tempfile
+import subprocess
 from pathlib import Path
 from typing import List, Optional, cast, Dict, Tuple, Sequence, Pattern
 
@@ -217,3 +218,48 @@ def checkout(app: App, pattern: List[str], done: bool, copy: bool) -> None:
             checkout_files(root, exe, paths, mutable=copy)
             n_tasks += 1
     log.info(f'Checked out {n_tasks} tasks.')
+
+
+@cli.group()
+def remote() -> None:
+    """Manage remote repositories."""
+    pass
+
+
+@remote.command('add')
+@click.argument('name')
+@click.argument('url')
+@click.pass_obj
+def remote_add(app: App, url: str, name: str = None) -> None:
+    """Add a remote."""
+    host, path = url.split(':')
+    name = name or host
+    with app.update_config() as config:
+        config.setdefault('remotes', {})[name] = {'host': host, 'path': path}
+
+
+@cli.command()
+@click.option('--delete', is_flag=True, help='Delete files when syncing')
+@click.option('--dry', is_flag=True, help='Do a dry run')
+@click.argument('remotes')
+@click.pass_obj
+def update(app: App, remotes: str, delete: bool = False, dry: bool = False) -> None:
+    """Update remotes."""
+    for remote in app.parse_remotes(remotes):
+        remote.update(delete=delete, dry=dry)
+
+
+@cli.command()
+@click.argument('shellcmd')
+def cmd(shellcmd: str) -> None:
+    """Execute a shell command."""
+    subprocess.run(shellcmd, shell=True, check=True)
+
+
+@cli.command()
+@click.argument('remotes')
+@click.pass_obj
+def go(app: App, remotes: str) -> None:
+    """SSH into the remote repository."""
+    for remote in app.parse_remotes(remotes):
+        remote.go()

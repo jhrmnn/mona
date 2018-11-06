@@ -5,7 +5,8 @@ import os
 import sys
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from contextlib import contextmanager
+from typing import Dict, Any, Iterator, MutableMapping, Iterable
 
 import toml
 
@@ -13,6 +14,7 @@ from .sessions import Session
 from .rules import Rule
 from .plugins import Parallel, TmpdirManager, FileManager, Cache
 from .utils import get_timestamp, Pathable, import_fullname
+from .remotes import Remote
 
 log = logging.getLogger(__name__)
 
@@ -27,11 +29,12 @@ class App:
     def __init__(self, monadir: Pathable = None) -> None:
         monadir = monadir or os.environ.get('MONA_DIR') or App.MONADIR
         self._monadir = Path(monadir).resolve()
+        self._configfile = self._monadir / 'config.toml'
         self._config: Dict[str, Any] = {}
         for path in [
             Path('~/.config/mona/config.toml').expanduser(),
             Path('mona.toml'),
-            self._monadir / 'config.toml',
+            self._configfile,
         ]:
             if path.exists():
                 with path.open() as f:
@@ -94,3 +97,24 @@ class App:
             for dirname in [App.TMPDIR, App.FILES]:
                 (cachedir / dirname).mkdir()
                 (self._monadir / dirname).symlink_to(cachedir / dirname)
+
+    @contextmanager
+    def update_config(self) -> Iterator[MutableMapping[str, Any]]:
+        if self._configfile.exists():
+            with self._configfile.open() as f:
+                config = toml.load(f)
+        else:
+            config = {}
+        yield config
+        self._config.update(config)
+        if config:
+            with self._configfile.open('w') as f:
+                toml.dump(config, f)
+
+    def parse_remotes(self, remote_str: str) -> Iterable[Remote]:
+        if remote_str == 'all':
+            remotes = [r for r in self._config['remotes'].values()]
+        else:
+            remotes = [self._config['remotes'][name] for name in remote_str.split(',')]
+        for remote in remotes:
+            yield Remote(remote['host'], remote['path'])
