@@ -263,3 +263,15 @@ def go(app: App, remotes: str) -> None:
     """SSH into the remote repository."""
     for remote in app.parse_remotes(remotes):
         remote.go()
+
+
+@cli.command('r', context_settings={'ignore_unknown_options': True})
+@click.argument('remotes')
+@click.argument('args', nargs=-1)
+@click.pass_obj
+def remote_mona_cmd(app: App, remotes: str, args: List[str]) -> None:
+    """Execute a Mona command on a remote."""
+    for remote in app.parse_remotes(remotes):
+        if args[0] in {'init', 'run', 'dispatch'}:
+            remote.update()
+        remote.command(args)
