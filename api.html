@@ -41,8 +41,9 @@
 <dl class="class">
 <dt id="mona.Rule">
 <em class="property">class </em><code class="descclassname">mona.</code><code class="descname">Rule</code><span class="sig-paren">(</span><em>corofunc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/rules.html#Rule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Rule" title="Permalink to this definition">¶</a></dt>
-<dd><p>Decorator that turns a coroutine function into a rule, which is a
-callable that generates a task instead of actually calling the coroutine.</p>
+<dd><p>Decorator that turns a coroutine function into a rule.</p>
+<p>A rule is a callable that generates a task instead of actually calling the
+coroutine.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -51,14 +52,35 @@ callable that generates a task instead of actually calling the coroutine.</p>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="mona.Rule.add_extra_arg">
+<code class="descname">add_extra_arg</code><span class="sig-paren">(</span><em>factory</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/rules.html#Rule.add_extra_arg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Rule.add_extra_arg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register an extra argument factory.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>factory</strong> – callable that returns an extra argument that will be
+appended to the arguments passed when creating a task.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="mona.Rule.corofunc">
+<code class="descname">corofunc</code><a class="headerlink" href="#mona.Rule.corofunc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Coroutine function associated with the rule.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="function">
 <dt id="mona.run_process">
 <em class="property">coroutine </em><code class="descclassname">mona.</code><code class="descname">run_process</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_process" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a subprocess. Wrapper around
-<a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_exec" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_exec()</span></code></a> that handles errors and whose
-behavior can be modified by session plugins.</p>
+<dd><p>Create a subprocess.</p>
+<p>Wrapper around <a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_exec" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_exec()</span></code></a> that handles errors
+and whose behavior can be modified by session plugins.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -81,9 +103,9 @@ tuple of bytes containing standard and error outputs.</p>
 <dl class="function">
 <dt id="mona.run_shell">
 <em class="property">coroutine </em><code class="descclassname">mona.</code><code class="descname">run_shell</code><span class="sig-paren">(</span><em>cmd</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_shell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_shell" title="Permalink to this definition">¶</a></dt>
-<dd><p>Execute a command in a shell. Wrapper around
-<a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_shell" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_shell()</span></code></a> that handles errors and whose behavior can
-be modified by session plugins.</p>
+<dd><p>Execute a command in a shell.</p>
+<p>Wrapper around <a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_shell" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_shell()</span></code></a> that handles errors
+and whose behavior can be modified by session plugins.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -106,9 +128,9 @@ tuple of bytes containing standard and error outputs.</p>
 <dl class="function">
 <dt id="mona.run_thread">
 <em class="property">coroutine </em><code class="descclassname">mona.</code><code class="descname">run_thread</code><span class="sig-paren">(</span><em>func</em>, <em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_thread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_thread" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run a callable in a new thread. Wrapper around
-<code class="xref py py-meth docutils literal notranslate"><span class="pre">asyncio.AbstractEventLoop.run_in_executor()</span></code> whose behavior can be
-modified by session plugins.</p>
+<dd><p>Run a callable in a new thread.</p>
+<p>Wrapper around <code class="xref py py-meth docutils literal notranslate"><span class="pre">asyncio.AbstractEventLoop.run_in_executor()</span></code> whose
+behavior can be modified by session plugins.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -127,8 +149,7 @@ modified by session plugins.</p>
 <dl class="class">
 <dt id="mona.Session">
 <em class="property">class </em><code class="descclassname">mona.</code><code class="descname">Session</code><span class="sig-paren">(</span><em>plugins=None</em>, <em>warn=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session" title="Permalink to this definition">¶</a></dt>
-<dd><p>The Session context manager represents a session in which tasks can be
-created and executed.</p>
+<dd><p>A context manager in which tasks can be created.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -143,6 +164,24 @@ executed</li>
 </tr>
 </tbody>
 </table>
+<dl class="classmethod">
+<dt id="mona.Session.active">
+<em class="property">classmethod </em><code class="descname">active</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.active"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.active" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a currently active session.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mona.Session.add_side_effect_of">
+<code class="descname">add_side_effect_of</code><span class="sig-paren">(</span><em>caller</em>, <em>callee</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.add_side_effect_of"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.add_side_effect_of" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a task created by a task.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mona.Session.all_tasks">
+<code class="descname">all_tasks</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.all_tasks"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.all_tasks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all tasks created in session.</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="mona.Session.create_task">
 <code class="descname">create_task</code><span class="sig-paren">(</span><em>corofunc</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.create_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.create_task" title="Permalink to this definition">¶</a></dt>
@@ -165,8 +204,8 @@ executed</li>
 <dl class="method">
 <dt id="mona.Session.dot_graph">
 <code class="descname">dot_graph</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.dot_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.dot_graph" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generate <a class="reference external" href="https://graphviz.readthedocs.io/en/stable/api.html#graphviz.Digraph" title="(in graphviz v0.10.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Digraph</span></code></a> for the task DAG. Requires
-<a class="reference external" href="https://graphviz.readthedocs.io/">Graphviz</a>.</p>
+<dd><p>Generate <a class="reference external" href="https://graphviz.readthedocs.io/en/stable/api.html#graphviz.Digraph" title="(in graphviz v0.10.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Digraph</span></code></a> for the task DAG.</p>
+<p>Requires <a class="reference external" href="https://graphviz.readthedocs.io/">Graphviz</a>.</p>
 </dd></dl>
 
 <dl class="method">
@@ -178,8 +217,8 @@ executed</li>
 <dl class="method">
 <dt id="mona.Session.eval_async">
 <em class="property">coroutine </em><code class="descname">eval_async</code><span class="sig-paren">(</span><em>obj</em>, <em>depth=False</em>, <em>priority=(RESULTS</em>, <em>EXECUTE</em>, <em>TRAVERSE)</em>, <em>exception_handler=None</em>, <em>task_filter=None</em>, <em>limit=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.eval_async"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.eval_async" title="Permalink to this definition">¶</a></dt>
-<dd><p>Evaluate the given object by running all tasks it contains as well as
-any new generated tasks.</p>
+<dd><p>Evaluate an object by running all tasks it references.</p>
+<p>This includes all newly created tasks that are referenced indirectly.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -203,6 +242,18 @@ the task should be executed</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="mona.Session.get_side_effects">
+<code class="descname">get_side_effects</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.get_side_effects"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.get_side_effects" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return tasks created by a given task.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mona.Session.register_task">
+<code class="descname">register_task</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.register_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.register_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a task in a session.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="mona.Session.run_task">
 <code class="descname">run_task</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.run_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.run_task" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a task.</p>
@@ -218,18 +269,69 @@ the task should be executed</li>
 instance if hashable.</p>
 </dd></dl>
 
+<dl class="method">
+<dt id="mona.Session.run_task_async">
+<em class="property">coroutine </em><code class="descname">run_task_async</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.run_task_async"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.run_task_async" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a task asynchronously.</p>
+</dd></dl>
+
 <dl class="attribute">
 <dt id="mona.Session.running_task">
 <code class="descname">running_task</code><a class="headerlink" href="#mona.Session.running_task" title="Permalink to this definition">¶</a></dt>
 <dd><p>Currently running task.</p>
 </dd></dl>
 
+<dl class="method">
+<dt id="mona.Session.set_result">
+<code class="descname">set_result</code><span class="sig-paren">(</span><em>task</em>, <em>result</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.set_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.set_result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attach a result to a task.</p>
+</dd></dl>
+
 <dl class="attribute">
 <dt id="mona.Session.storage">
 <code class="descname">storage</code><a class="headerlink" href="#mona.Session.storage" title="Permalink to this definition">¶</a></dt>
-<dd><p>A ganeral string-based dictionary available when a session is active.</p>
+<dd><p>General-purpose dictionary-based storage.</p>
 </dd></dl>
 
+</dd></dl>
+
+</div>
+<div class="section" id="module-mona.plugins">
+<span id="session-plugins"></span><h2>Session plugins<a class="headerlink" href="#module-mona.plugins" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="mona.plugins.Parallel">
+<em class="property">class </em><code class="descclassname">mona.plugins.</code><code class="descname">Parallel</code><span class="sig-paren">(</span><em>ncores=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/plugins/parallel.html#Parallel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.plugins.Parallel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plugin that enables running tasks in parallel.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="mona.plugins.Cache">
+<em class="property">class </em><code class="descclassname">mona.plugins.</code><code class="descname">Cache</code><span class="sig-paren">(</span><em>db</em>, <em>write='eager'</em>, <em>full_restore=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/plugins/cache.html#Cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.plugins.Cache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plugin that caches tasks and objects in a session to an SQLite database.</p>
+<dl class="attribute">
+<dt id="mona.plugins.Cache.db">
+<code class="descname">db</code><a class="headerlink" href="#mona.plugins.Cache.db" title="Permalink to this definition">¶</a></dt>
+<dd><p>Database connection.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="mona.plugins.Cache.from_path">
+<em class="property">classmethod </em><code class="descname">from_path</code><span class="sig-paren">(</span><em>path</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/plugins/cache.html#Cache.from_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.plugins.Cache.from_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a cache with a database at the given path.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="mona.plugins.FileManager">
+<em class="property">class </em><code class="descclassname">mona.plugins.</code><code class="descname">FileManager</code><span class="sig-paren">(</span><em>root</em>, <em>eager=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/plugins/files.html#FileManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.plugins.FileManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plugin that manages storage of abstract task files in a file system.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="mona.plugins.TmpdirManager">
+<em class="property">class </em><code class="descclassname">mona.plugins.</code><code class="descname">TmpdirManager</code><span class="sig-paren">(</span><em>root</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/plugins/tmpdir.html#TmpdirManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.plugins.TmpdirManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plugin that manages temporary directories.</p>
 </dd></dl>
 
 </div>
@@ -238,9 +340,15 @@ instance if hashable.</p>
 <dl class="class">
 <dt id="mona.files.File">
 <em class="property">class </em><code class="descclassname">mona.files.</code><code class="descname">File</code><span class="sig-paren">(</span><em>path</em>, <em>content</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/files.html#File"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.files.File" title="Permalink to this definition">¶</a></dt>
-<dd><p>Represents a file located at an abstract relative path. Users should create
-instances by one of the classmethod constructors documented below rather
-than directly.</p>
+<dd><p>Represents a file located at an abstract relative path.</p>
+<p>Users should create instances by one of the classmethod constructors
+documented below rather than directly.</p>
+<dl class="attribute">
+<dt id="mona.files.File.content">
+<code class="descname">content</code><a class="headerlink" href="#mona.files.File.content" title="Permalink to this definition">¶</a></dt>
+<dd><p>Content as bytes or its hash.</p>
+</dd></dl>
+
 <dl class="classmethod">
 <dt id="mona.files.File.from_path">
 <em class="property">classmethod </em><code class="descname">from_path</code><span class="sig-paren">(</span><em>path</em>, <em>root=None</em>, <em>*</em>, <em>keep=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/files.html#File.from_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.files.File.from_path" title="Permalink to this definition">¶</a></dt>
@@ -284,7 +392,13 @@ the <code class="docutils literal notranslate"><span class="pre">path</span></co
 <dl class="attribute">
 <dt id="mona.files.File.name">
 <code class="descname">name</code><a class="headerlink" href="#mona.files.File.name" title="Permalink to this definition">¶</a></dt>
-<dd><p>Delegates to <code class="xref py py-attr docutils literal notranslate"><span class="pre">pathlib.PurePath.name</span></code>.</p>
+<dd><p>Equivalent to <code class="xref py py-attr docutils literal notranslate"><span class="pre">path.name</span></code>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="mona.files.File.path">
+<code class="descname">path</code><a class="headerlink" href="#mona.files.File.path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract path to the file.</p>
 </dd></dl>
 
 <dl class="method">
@@ -302,7 +416,7 @@ the <code class="docutils literal notranslate"><span class="pre">path</span></co
 <dl class="attribute">
 <dt id="mona.files.File.stem">
 <code class="descname">stem</code><a class="headerlink" href="#mona.files.File.stem" title="Permalink to this definition">¶</a></dt>
-<dd><p>Delegates to <code class="xref py py-attr docutils literal notranslate"><span class="pre">pathlib.PurePath.stem</span></code>.</p>
+<dd><p>Equivalent to <code class="xref py py-attr docutils literal notranslate"><span class="pre">path.stem</span></code>.</p>
 </dd></dl>
 
 <dl class="method">
@@ -328,8 +442,9 @@ the <code class="docutils literal notranslate"><span class="pre">path</span></co
 <dl class="function">
 <dt id="mona.files.add_source">
 <code class="descclassname">mona.files.</code><code class="descname">add_source</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/files.html#add_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.files.add_source" title="Permalink to this definition">¶</a></dt>
-<dd><p>Decorate a rule to attach the given source to the list of arguments of a
-task. The source is passed as a instance.</p>
+<dd><p>Create a rule decorator to add a source to the task arguments.</p>
+<p>The source is passed as <a class="reference internal" href="#mona.files.File" title="mona.files.File"><code class="xref py py-class docutils literal notranslate"><span class="pre">File</span></code></a>. The file argument is appended to the
+directly passed arguments.</p>
 </dd></dl>
 
 </div>
@@ -348,10 +463,16 @@ task. The source is passed as a instance.</p>
 </tbody>
 </table>
 <dl class="method">
+<dt id="mona.dirtask.DirtaskTmpdir.has_tmpdir_manager">
+<code class="descname">has_tmpdir_manager</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/dirtask.html#DirtaskTmpdir.has_tmpdir_manager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.dirtask.DirtaskTmpdir.has_tmpdir_manager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Is the temporary directory managed.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="mona.dirtask.DirtaskTmpdir.result">
 <code class="descname">result</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/dirtask.html#DirtaskTmpdir.result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.dirtask.DirtaskTmpdir.result" title="Permalink to this definition">¶</a></dt>
-<dd><p>The collection of files created in the temporary directory. This is
-available only after leaving the context.</p>
+<dd><p>Return a collection of files created in the temporary directory.</p>
+<p>This is available only after leaving the context.</p>
 </dd></dl>
 
 </dd></dl>
@@ -359,8 +480,9 @@ available only after leaving the context.</p>
 <dl class="function">
 <dt id="mona.dirtask.dir_task">
 <code class="descclassname">mona.dirtask.</code><code class="descname">dir_task</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/dirtask.html#dir_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.dirtask.dir_task" title="Permalink to this definition">¶</a></dt>
-<dd><p>Task rule with an executable and a collection of files as inputs and a
-collection of output files as output.</p>
+<dd><p>Create a rule with an executable and a files as inputs.</p>
+<p>The result of the task is a dictionary of all new files created by running
+the executable.</p>
 </dd></dl>
 
 </div>
@@ -393,19 +515,19 @@ collection of output files as output.</p>
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Atom.covalent_radius">
 <code class="descname">covalent_radius</code><a class="headerlink" href="#mona.sci.geomlib.Atom.covalent_radius" title="Permalink to this definition">¶</a></dt>
-<dd><p>covalent radius</p>
+<dd><p>Covalent radius.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Atom.mass">
 <code class="descname">mass</code><a class="headerlink" href="#mona.sci.geomlib.Atom.mass" title="Permalink to this definition">¶</a></dt>
-<dd><p>atom mass</p>
+<dd><p>Atom mass.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Atom.number">
 <code class="descname">number</code><a class="headerlink" href="#mona.sci.geomlib.Atom.number" title="Permalink to this definition">¶</a></dt>
-<dd><p>atom number</p>
+<dd><p>Atom number.</p>
 </dd></dl>
 
 </dd></dl>
@@ -437,19 +559,19 @@ collection of output files as output.</p>
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Molecule.centers">
 <code class="descname">centers</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.centers" title="Permalink to this definition">¶</a></dt>
-<dd><p>iterator over atoms</p>
+<dd><p>Iterate over atoms.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Molecule.cms">
 <code class="descname">cms</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.cms" title="Permalink to this definition">¶</a></dt>
-<dd><p>center of mass</p>
+<dd><p>Center of mass.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Molecule.coords">
 <code class="descname">coords</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.coords" title="Permalink to this definition">¶</a></dt>
-<dd><p>coordinates</p>
+<dd><p>Coordinates.</p>
 </dd></dl>
 
 <dl class="method">
@@ -462,6 +584,7 @@ collection of output files as output.</p>
 <dt id="mona.sci.geomlib.Molecule.dump">
 <code class="descname">dump</code><span class="sig-paren">(</span><em>f</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.dump" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write a molecule to a file.</p>
+<p>Supported formats: ‘xyz’, ‘aims’, ‘mopac’.</p>
 </dd></dl>
 
 <dl class="method">
@@ -473,7 +596,8 @@ collection of output files as output.</p>
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Molecule.formula">
 <code class="descname">formula</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.formula" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Formula.</p>
+</dd></dl>
 
 <dl class="classmethod">
 <dt id="mona.sci.geomlib.Molecule.from_coords">
@@ -499,28 +623,40 @@ collection of output files as output.</p>
 <dd><p>Return a list of clusters of connected atoms.</p>
 </dd></dl>
 
+<dl class="method">
+<dt id="mona.sci.geomlib.Molecule.ghost">
+<code class="descname">ghost</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.ghost"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.ghost" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a copy with all atoms as ghost atoms.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mona.sci.geomlib.Molecule.hash">
+<code class="descname">hash</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.hash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.hash" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hash of a molecule from rounded moments of inertia.</p>
+</dd></dl>
+
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Molecule.inertia">
 <code class="descname">inertia</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.inertia" title="Permalink to this definition">¶</a></dt>
-<dd><p>inertia tensor</p>
+<dd><p>Inertia tensor.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="mona.sci.geomlib.Molecule.items">
 <code class="descname">items</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Molecule.items"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Molecule.items" title="Permalink to this definition">¶</a></dt>
-<dd><p>iterator over tuples of atom type and coordinate</p>
+<dd><p>Iterate over tuples of atom type and coordinate.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Molecule.mass">
 <code class="descname">mass</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.mass" title="Permalink to this definition">¶</a></dt>
-<dd><p>molecular mass</p>
+<dd><p>Molecular mass.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Molecule.numbers">
 <code class="descname">numbers</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.numbers" title="Permalink to this definition">¶</a></dt>
-<dd><p>atom numbers</p>
+<dd><p>Atom numbers.</p>
 </dd></dl>
 
 <dl class="method">
@@ -538,7 +674,7 @@ collection of output files as output.</p>
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Molecule.species">
 <code class="descname">species</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.species" title="Permalink to this definition">¶</a></dt>
-<dd><p>atom types</p>
+<dd><p>Atom types.</p>
 </dd></dl>
 
 <dl class="method">
@@ -550,7 +686,7 @@ collection of output files as output.</p>
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Molecule.xyz">
 <code class="descname">xyz</code><a class="headerlink" href="#mona.sci.geomlib.Molecule.xyz" title="Permalink to this definition">¶</a></dt>
-<dd><p>coordinates as a numpy array</p>
+<dd><p>Coordinates as a numpy array.</p>
 </dd></dl>
 
 </dd></dl>
@@ -574,19 +710,20 @@ collection of output files as output.</p>
 <dl class="attribute">
 <dt id="mona.sci.geomlib.Crystal.abc">
 <code class="descname">abc</code><a class="headerlink" href="#mona.sci.geomlib.Crystal.abc" title="Permalink to this definition">¶</a></dt>
-<dd><p>latice vectors as a numpy array</p>
+<dd><p>Latice vectors as a numpy array.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="mona.sci.geomlib.Crystal.copy">
 <code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal.copy" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a cpoy.</p>
+<dd><p>Create a copy.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="mona.sci.geomlib.Crystal.dump">
 <code class="descname">dump</code><span class="sig-paren">(</span><em>f</em>, <em>fmt</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal.dump"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal.dump" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write a molecule to a file.</p>
+<dd><p>Write a crystal to a file.</p>
+<p>Supported formats: ‘aims’, ‘vasp’.</p>
 </dd></dl>
 
 <dl class="classmethod">
@@ -615,9 +752,15 @@ collection of output files as output.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="mona.sci.geomlib.Crystal.normalized">
+<code class="descname">normalized</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal.normalized"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal.normalized" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a copy with atoms on unit cell faces normalized.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="mona.sci.geomlib.Crystal.rotated">
 <code class="descname">rotated</code><span class="sig-paren">(</span><em>axis=None</em>, <em>phi=None</em>, <em>center=None</em>, <em>rotmat=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/geomlib.html#Crystal.rotated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.geomlib.Crystal.rotated" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a new rotated molecule.</p>
+<dd><p>Return a new crystal with rotated unit cell and lattice vectors.</p>
 </dd></dl>
 
 <dl class="method">
@@ -652,8 +795,7 @@ collection of output files as output.</p>
 <dl class="class">
 <dt id="mona.sci.aims.Aims">
 <em class="property">class </em><code class="descclassname">mona.sci.aims.</code><code class="descname">Aims</code><a class="reference internal" href="_modules/mona/sci/aims/aims.html#Aims"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.aims.Aims" title="Permalink to this definition">¶</a></dt>
-<dd><p>Instances of this class are task factories that create directory tasks
-that represent calculations with FHI-aims.</p>
+<dd><p>A task factory that creates FHI-aims directory tasks.</p>
 </dd></dl>
 
 <dl class="class">
@@ -665,8 +807,9 @@ that represent calculations with FHI-aims.</p>
 <dl class="function">
 <dt id="mona.sci.aims.parse_aims">
 <code class="descclassname">mona.sci.aims.</code><code class="descname">parse_aims</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/aims/parse.html#parse_aims"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.aims.parse_aims" title="Permalink to this definition">¶</a></dt>
-<dd><p>Task rule with an output of <a class="reference internal" href="#mona.sci.aims.Aims" title="mona.sci.aims.Aims"><code class="xref py py-class docutils literal notranslate"><span class="pre">mona.sci.aims.Aims</span></code></a> as input and a
-dictionary of parsed results as output.</p>
+<dd><p>Create a task that parses outputs of FHI-aims calculations.</p>
+<p>The task takes the output of <a class="reference internal" href="#mona.sci.aims.Aims" title="mona.sci.aims.Aims"><code class="xref py py-class docutils literal notranslate"><span class="pre">mona.sci.aims.Aims</span></code></a> as an input and
+returns a dictionary of parsed results as output.</p>
 </dd></dl>
 
 </div>
@@ -675,8 +818,8 @@ dictionary of parsed results as output.</p>
 <dl class="function">
 <dt id="mona.sci.tex.jinja_tex">
 <code class="descclassname">mona.sci.tex.</code><code class="descname">jinja_tex</code><span class="sig-paren">(</span><em>tex_template</em>, <em>ctx</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/tex.html#jinja_tex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.tex.jinja_tex" title="Permalink to this definition">¶</a></dt>
-<dd><p>Render a Jinja TeX template. Uses <code class="docutils literal notranslate"><span class="pre">&lt;&lt;/&gt;&gt;</span></code> for variables, <code class="docutils literal notranslate"><span class="pre">&lt;+/+&gt;</span></code> for blocks,
-and <code class="docutils literal notranslate"><span class="pre">&lt;#/#&gt;</span></code> for comments.</p>
+<dd><p>Render a Jinja TeX template.</p>
+<p>Uses <code class="docutils literal notranslate"><span class="pre">&lt;&lt;/&gt;&gt;</span></code> for variables, <code class="docutils literal notranslate"><span class="pre">&lt;+/+&gt;</span></code> for blocks, and <code class="docutils literal notranslate"><span class="pre">&lt;#/#&gt;</span></code> for comments.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -705,50 +848,22 @@ part of the versioned public API neverthless.</p>
 <dl class="class">
 <dt id="mona.hashing.HashedComposite">
 <em class="property">class </em><code class="descclassname">mona.hashing.</code><code class="descname">HashedComposite</code><span class="sig-paren">(</span><em>jsonstr</em>, <em>components</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/hashing.html#HashedComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.hashing.HashedComposite" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="attribute">
-<dt id="mona.hashing.HashedComposite.components">
-<code class="descname">components</code><a class="headerlink" href="#mona.hashing.HashedComposite.components" title="Permalink to this definition">¶</a></dt>
-<dd><p>To be overwritten by derived classes when the object contains
-references to other Hashed objects.</p>
-</dd></dl>
-
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="class">
 <dt id="mona.tasks.Task">
 <em class="property">class </em><code class="descclassname">mona.tasks.</code><code class="descname">Task</code><span class="sig-paren">(</span><em>corofunc</em>, <em>*args</em>, <em>label=None</em>, <em>default=&lt;Empty._: 0&gt;</em>, <em>rule=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/tasks.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.tasks.Task" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="attribute">
-<dt id="mona.tasks.Task.components">
-<code class="descname">components</code><a class="headerlink" href="#mona.tasks.Task.components" title="Permalink to this definition">¶</a></dt>
-<dd><p>To be overwritten by derived classes when the object contains
-references to other Hashed objects.</p>
-</dd></dl>
-
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="class">
 <dt id="mona.tasks.TaskComposite">
 <em class="property">class </em><code class="descclassname">mona.tasks.</code><code class="descname">TaskComposite</code><span class="sig-paren">(</span><em>jsonstr</em>, <em>components</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/tasks.html#TaskComposite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.tasks.TaskComposite" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="attribute">
-<dt id="mona.tasks.TaskComposite.components">
-<code class="descname">components</code><a class="headerlink" href="#mona.tasks.TaskComposite.components" title="Permalink to this definition">¶</a></dt>
-<dd><p>To be overwritten by derived classes when the object contains
-references to other Hashed objects.</p>
-</dd></dl>
-
-</dd></dl>
+<dd></dd></dl>
 
 <dl class="class">
 <dt id="mona.tasks.TaskComponent">
 <em class="property">class </em><code class="descclassname">mona.tasks.</code><code class="descname">TaskComponent</code><span class="sig-paren">(</span><em>task</em>, <em>keys</em>, <em>default=&lt;Empty._: 0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/tasks.html#TaskComponent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.tasks.TaskComponent" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="attribute">
-<dt id="mona.tasks.TaskComponent.components">
-<code class="descname">components</code><a class="headerlink" href="#mona.tasks.TaskComponent.components" title="Permalink to this definition">¶</a></dt>
-<dd><p>To be overwritten by derived classes when the object contains
-references to other Hashed objects.</p>
-</dd></dl>
-
-</dd></dl>
+<dd></dd></dl>
 
 </div>
 </div>
@@ -806,6 +921,7 @@ references to other Hashed objects.</p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#module-mona">Rules and Sessions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-mona.plugins">Session plugins</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-mona.files">Files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-mona.dirtask">Directory tasks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#scientific-calculations">Scientific calculations</a><ul>

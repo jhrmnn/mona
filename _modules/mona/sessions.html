@@ -36,50 +36,51 @@
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">asynccontextmanager</span><span class="p">,</span> <span class="n">contextmanager</span>
+<span class="kn">from</span> <span class="nn">contextvars</span> <span class="k">import</span> <span class="n">ContextVar</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
 <span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">chain</span>
-<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
-<span class="kn">import</span> <span class="nn">asyncio</span>
-<span class="kn">from</span> <span class="nn">contextvars</span> <span class="k">import</span> <span class="n">ContextVar</span>
-<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span><span class="p">,</span> <span class="n">asynccontextmanager</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="p">(</span>
     <span class="n">Any</span><span class="p">,</span>
-    <span class="n">Dict</span><span class="p">,</span>
-    <span class="n">Callable</span><span class="p">,</span>
-    <span class="n">Optional</span><span class="p">,</span>
-    <span class="n">TypeVar</span><span class="p">,</span>
-    <span class="n">Iterator</span><span class="p">,</span>
-    <span class="n">NamedTuple</span><span class="p">,</span>
-    <span class="n">cast</span><span class="p">,</span>
-    <span class="n">Iterable</span><span class="p">,</span>
-    <span class="n">List</span><span class="p">,</span>
-    <span class="n">Tuple</span><span class="p">,</span>
-    <span class="n">Union</span><span class="p">,</span>
-    <span class="n">Awaitable</span><span class="p">,</span>
     <span class="n">AsyncGenerator</span><span class="p">,</span>
+    <span class="n">Awaitable</span><span class="p">,</span>
+    <span class="n">Callable</span><span class="p">,</span>
+    <span class="n">Dict</span><span class="p">,</span>
     <span class="n">FrozenSet</span><span class="p">,</span>
+    <span class="n">Iterable</span><span class="p">,</span>
+    <span class="n">Iterator</span><span class="p">,</span>
+    <span class="n">List</span><span class="p">,</span>
+    <span class="n">NamedTuple</span><span class="p">,</span>
+    <span class="n">Optional</span><span class="p">,</span>
     <span class="n">Sequence</span><span class="p">,</span>
+    <span class="n">Tuple</span><span class="p">,</span>
+    <span class="n">TypeVar</span><span class="p">,</span>
+    <span class="n">Union</span><span class="p">,</span>
+    <span class="n">cast</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="kn">from</span> <span class="nn">.hashing</span> <span class="k">import</span> <span class="n">Hash</span><span class="p">,</span> <span class="n">Hashed</span>
-<span class="kn">from</span> <span class="nn">.tasks</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">maybe_hashed</span><span class="p">,</span> <span class="n">Corofunc</span>
 <span class="kn">from</span> <span class="nn">.dag</span> <span class="k">import</span> <span class="p">(</span>
-    <span class="n">traverse</span><span class="p">,</span>
-    <span class="n">traverse_async</span><span class="p">,</span>
-    <span class="n">NodeExecuted</span><span class="p">,</span>
     <span class="n">Action</span><span class="p">,</span>
+    <span class="n">NodeException</span><span class="p">,</span>
+    <span class="n">NodeExecuted</span><span class="p">,</span>
     <span class="n">Priority</span><span class="p">,</span>
     <span class="n">default_priority</span><span class="p">,</span>
-    <span class="n">NodeException</span><span class="p">,</span>
+    <span class="n">traverse</span><span class="p">,</span>
+    <span class="n">traverse_async</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.errors</span> <span class="k">import</span> <span class="n">FutureError</span><span class="p">,</span> <span class="n">MonaError</span><span class="p">,</span> <span class="n">SessionError</span><span class="p">,</span> <span class="n">TaskError</span>
 <span class="kn">from</span> <span class="nn">.futures</span> <span class="k">import</span> <span class="n">STATE_COLORS</span>
-<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">call_if</span>
-<span class="kn">from</span> <span class="nn">.errors</span> <span class="k">import</span> <span class="n">SessionError</span><span class="p">,</span> <span class="n">TaskError</span><span class="p">,</span> <span class="n">FutureError</span><span class="p">,</span> <span class="n">MonaError</span>
-<span class="kn">from</span> <span class="nn">.pluggable</span> <span class="k">import</span> <span class="n">Plugin</span><span class="p">,</span> <span class="n">Pluggable</span>
+<span class="kn">from</span> <span class="nn">.hashing</span> <span class="k">import</span> <span class="n">Hash</span><span class="p">,</span> <span class="n">Hashed</span>
+<span class="kn">from</span> <span class="nn">.pluggable</span> <span class="k">import</span> <span class="n">Pluggable</span><span class="p">,</span> <span class="n">Plugin</span>
+<span class="kn">from</span> <span class="nn">.tasks</span> <span class="k">import</span> <span class="n">Corofunc</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">,</span> <span class="n">State</span><span class="p">,</span> <span class="n">Task</span><span class="p">,</span> <span class="n">maybe_hashed</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">call_if</span><span class="p">,</span> <span class="n">split</span>
 
 <span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;0.1.0&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Session&#39;</span><span class="p">]</span>
 
 <span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -130,8 +131,7 @@
 
 
 <div class="viewcode-block" id="Session"><a class="viewcode-back" href="../../api.html#mona.Session">[docs]</a><span class="k">class</span> <span class="nc">Session</span><span class="p">(</span><span class="n">Pluggable</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;The Session context manager represents a session in which tasks can be</span>
-<span class="sd">    created and executed.</span>
+    <span class="sd">&quot;&quot;&quot;A context manager in which tasks can be created.</span>
 
 <span class="sd">    :param plugins: session plugins to load. This is equivalent to calling each</span>
 <span class="sd">                    plugin with the created session as an argument</span>
@@ -160,15 +160,17 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">storage</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;A ganeral string-based dictionary available when a session is active.&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;General-purpose dictionary-based storage.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_check_active</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_storage</span>
 
-    <span class="k">def</span> <span class="nf">get_side_effects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">ATask</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">side_effects</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">])</span>
+<div class="viewcode-block" id="Session.get_side_effects"><a class="viewcode-back" href="../../api.html#mona.Session.get_side_effects">[docs]</a>    <span class="k">def</span> <span class="nf">get_side_effects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">ATask</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Return tasks created by a given task.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">side_effects</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">])</span></div>
 
-    <span class="k">def</span> <span class="nf">all_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">ATask</span><span class="p">]:</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+<div class="viewcode-block" id="Session.all_tasks"><a class="viewcode-back" href="../../api.html#mona.Session.all_tasks">[docs]</a>    <span class="k">def</span> <span class="nf">all_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">ATask</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Return all tasks created in session.&quot;&quot;&quot;</span>
+        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="o">.</span><span class="n">values</span><span class="p">()</span></div>
 
     <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Session&#39;</span><span class="p">:</span>
         <span class="k">assert</span> <span class="n">_active_session</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span>
@@ -195,7 +197,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">backflow</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">running_task</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ATask</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">running_task</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ATask</span><span class="p">:</span>  <span class="c1"># noqa: D401</span>
         <span class="sd">&quot;&quot;&quot;Currently running task.&quot;&quot;&quot;</span>
         <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_running_task</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">task</span><span class="p">:</span>
@@ -226,7 +228,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;save_hashed&#39;</span><span class="p">,</span> <span class="n">objs</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">tasks</span>
 
-    <span class="k">def</span> <span class="nf">register_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
+<div class="viewcode-block" id="Session.register_task"><a class="viewcode-back" href="../../api.html#mona.Session.register_task">[docs]</a>    <span class="k">def</span> <span class="nf">register_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Register a task in a session.&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">]),</span> <span class="kc">False</span>
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
@@ -235,10 +238,11 @@
         <span class="n">task</span><span class="o">.</span><span class="n">register</span><span class="p">()</span>
         <span class="n">arg_tasks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_objects</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">deps</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">hashid</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">arg_tasks</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">task</span><span class="p">,</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="n">task</span><span class="p">,</span> <span class="kc">True</span></div>
 
-    <span class="k">def</span> <span class="nf">add_side_effect_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caller</span><span class="p">:</span> <span class="n">ATask</span><span class="p">,</span> <span class="n">callee</span><span class="p">:</span> <span class="n">ATask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">side_effects</span><span class="p">[</span><span class="n">caller</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callee</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
+<div class="viewcode-block" id="Session.add_side_effect_of"><a class="viewcode-back" href="../../api.html#mona.Session.add_side_effect_of">[docs]</a>    <span class="k">def</span> <span class="nf">add_side_effect_of</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caller</span><span class="p">:</span> <span class="n">ATask</span><span class="p">,</span> <span class="n">callee</span><span class="p">:</span> <span class="n">ATask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Register a task created by a task.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">side_effects</span><span class="p">[</span><span class="n">caller</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callee</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Session.create_task"><a class="viewcode-back" href="../../api.html#mona.Session.create_task">[docs]</a>    <span class="k">def</span> <span class="nf">create_task</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">corofunc</span><span class="p">:</span> <span class="n">Corofunc</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
@@ -260,6 +264,7 @@
 
     <span class="nd">@asynccontextmanager</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">run_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Context in which tasks should be run.&quot;&quot;&quot;</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins_async</span><span class="p">(</span><span class="s1">&#39;pre_run&#39;</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">yield</span>
@@ -280,7 +285,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_task</span><span class="p">(</span><span class="n">task</span><span class="p">))</span></div>
 
-    <span class="k">def</span> <span class="nf">set_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="n">result</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Session.set_result"><a class="viewcode-back" href="../../api.html#mona.Session.set_result">[docs]</a>    <span class="k">def</span> <span class="nf">set_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="n">result</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Attach a result to a task.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">):</span>
             <span class="n">task</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
             <span class="k">return</span>
@@ -292,9 +298,10 @@
             <span class="n">result</span><span class="o">.</span><span class="n">add_done_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">fut</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">set_done</span><span class="p">())</span>
             <span class="n">result</span><span class="o">.</span><span class="n">register</span><span class="p">()</span>
         <span class="n">backflow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_objects</span><span class="p">([</span><span class="n">result</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">backflow</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">hashid</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">backflow</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">backflow</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">hashid</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">backflow</span><span class="p">)</span></div>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">run_task_async</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
+<div class="viewcode-block" id="Session.run_task_async"><a class="viewcode-back" href="../../api.html#mona.Session.run_task_async">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">run_task_async</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
+        <span class="sd">&quot;&quot;&quot;Run a task asynchronously.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span> <span class="o">&lt;</span> <span class="n">State</span><span class="o">.</span><span class="n">READY</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TaskError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Not ready: </span><span class="si">{task!r}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span> <span class="o">&gt;</span> <span class="n">State</span><span class="o">.</span><span class="n">READY</span><span class="p">:</span>
@@ -309,7 +316,7 @@
         <span class="n">result</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">_T</span><span class="p">,</span> <span class="n">maybe_hashed</span><span class="p">(</span><span class="n">raw_result</span><span class="p">))</span> <span class="ow">or</span> <span class="n">raw_result</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_task_run&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">result</span>
+        <span class="k">return</span> <span class="n">result</span></div>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_traverse_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">,</span> <span class="n">done</span><span class="p">:</span> <span class="n">NodeExecuted</span><span class="p">[</span><span class="n">ATask</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_task_async</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
@@ -330,8 +337,9 @@
         <span class="n">task_filter</span><span class="p">:</span> <span class="n">TaskFilter</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Evaluate the given object by running all tasks it contains as well as</span>
-<span class="sd">        any new generated tasks.</span>
+        <span class="sd">&quot;&quot;&quot;Evaluate an object by running all tasks it references.</span>
+
+<span class="sd">        This includes all newly created tasks that are referenced indirectly.</span>
 
 <span class="sd">        :param obj: any hashable object</span>
 <span class="sd">        :param bool depth: traverse DAG depth-first if true, breadth-first otherwise</span>
@@ -432,13 +440,14 @@
         <span class="k">return</span> <span class="n">fut</span>
 
 <div class="viewcode-block" id="Session.eval_async"><a class="viewcode-back" href="../../api.html#mona.Session.eval_async">[docs]</a>    <span class="nd">@wraps</span><span class="p">(</span><span class="n">_eval_async</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">eval_async</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">eval_async</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>  <span class="c1"># noqa: D102</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_context</span><span class="p">():</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eval_async</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Session.dot_graph"><a class="viewcode-back" href="../../api.html#mona.Session.dot_graph">[docs]</a>    <span class="k">def</span> <span class="nf">dot_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Generate :class:`~graphviz.Digraph` for the task DAG. Requires</span>
-<span class="sd">        `Graphviz &lt;https://graphviz.readthedocs.io/&gt;`_.</span>
+        <span class="sd">&quot;&quot;&quot;Generate :class:`~graphviz.Digraph` for the task DAG.</span>
+
+<span class="sd">        Requires `Graphviz &lt;https://graphviz.readthedocs.io/&gt;`_.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span> <span class="nn">graphviz</span> <span class="k">import</span> <span class="n">Digraph</span>  <span class="c1"># type: ignore</span>
 
@@ -464,12 +473,13 @@
                 <span class="p">)</span>
         <span class="k">return</span> <span class="n">dot</span></div>
 
-    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="Session.active"><a class="viewcode-back" href="../../api.html#mona.Session.active">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">active</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Session&#39;</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Return a currently active session.&quot;&quot;&quot;</span>
         <span class="n">session</span> <span class="o">=</span> <span class="n">_active_session</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">session</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">MonaError</span><span class="p">(</span><span class="s1">&#39;No active session&#39;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">session</span></div>
+        <span class="k">return</span> <span class="n">session</span></div></div>
 </pre></div>
 
           </div>

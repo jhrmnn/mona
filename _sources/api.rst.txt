@@ -7,6 +7,12 @@ Rules and Sessions
 .. automodule:: mona
     :members:
 
+Session plugins
+---------------
+
+.. automodule:: mona.plugins
+    :members:
+
 Files
 -----
 
@@ -51,20 +57,11 @@ The following classes are not intended for direct use by the end user, but are
 part of the versioned public API neverthless.
 
 .. autoclass:: mona.futures.Future
-    :members:
 
 .. autoclass:: mona.hashing.HashedComposite
-    :members:
-    :inherited-members:
 
 .. autoclass:: mona.tasks.Task
-    :members:
-    :inherited-members:
 
 .. autoclass:: mona.tasks.TaskComposite
-    :members:
-    :inherited-members:
 
 .. autoclass:: mona.tasks.TaskComponent
-    :members:
-    :inherited-members:

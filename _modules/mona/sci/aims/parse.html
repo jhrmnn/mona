@@ -38,18 +38,23 @@
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
 <span class="kn">import</span> <span class="nn">io</span>
 <span class="kn">import</span> <span class="nn">xml.etree.ElementTree</span> <span class="k">as</span> <span class="nn">ET</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">IO</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">IO</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Type</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>  <span class="c1"># type: ignore</span>
 
 <span class="kn">from</span> <span class="nn">...files</span> <span class="k">import</span> <span class="n">File</span>
 <span class="kn">from</span> <span class="nn">...rules</span> <span class="k">import</span> <span class="n">Rule</span>
 
+<span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;0.1.0&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;parse_aims&#39;</span><span class="p">]</span>
+
 
 <div class="viewcode-block" id="parse_aims"><a class="viewcode-back" href="../../../../api.html#mona.sci.aims.parse_aims">[docs]</a><span class="nd">@Rule</span>
 <span class="k">async</span> <span class="k">def</span> <span class="nf">parse_aims</span><span class="p">(</span><span class="n">outputs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">File</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Task rule with an output of :class:`mona.sci.aims.Aims` as input and a</span>
-<span class="sd">    dictionary of parsed results as output.</span>
+    <span class="sd">&quot;&quot;&quot;Create a task that parses outputs of FHI-aims calculations.</span>
+
+<span class="sd">    The task takes the output of :class:`mona.sci.aims.Aims` as an input and</span>
+<span class="sd">    returns a dictionary of parsed results as output.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">stdout</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">[</span><span class="s1">&#39;results.xml&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
     <span class="n">parsed</span> <span class="o">=</span> <span class="n">parse_xml</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">(</span><span class="n">stdout</span><span class="p">))</span>
