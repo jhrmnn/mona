@@ -3,14 +3,14 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 import shutil
-from tempfile import mkdtemp
-from pathlib import Path
 from contextlib import contextmanager
+from pathlib import Path
+from tempfile import mkdtemp
 from typing import Iterator
 
+from ..dirtask import TmpdirManager as _TmpdirManager
 from ..sessions import Session, SessionPlugin
 from ..utils import Pathable
-from ..dirtask import TmpdirManager as _TmpdirManager
 
 log = logging.getLogger(__name__)
 

@@ -2,29 +2,29 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
-import sqlite3
 import pickle
+import sqlite3
 from enum import Enum
 from weakref import WeakValueDictionary
 from typing import (
     Any,
-    Optional,
-    NamedTuple,
-    Union,
-    Sequence,
     Dict,
-    cast,
-    Type,
-    Tuple,
-    TypeVar,
     List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
 )
 
-from ..sessions import Session, SessionPlugin
-from ..futures import State, Future
-from ..tasks import Task
-from ..utils import Pathable, get_timestamp, get_fullname, import_fullname
+from ..futures import Future, State
 from ..hashing import Hash, Hashed
+from ..sessions import Session, SessionPlugin
+from ..tasks import Task
+from ..utils import Pathable, get_fullname, get_timestamp, import_fullname
 
 __all__ = ['Cache']
 

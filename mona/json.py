@@ -3,20 +3,19 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import json
 from pathlib import PosixPath
-
 from typing import (
     Any,
-    Set,
-    Type,
-    Dict,
     Callable,
-    cast,
-    Tuple,
-    Optional,
-    NewType,
-    Union,
-    TypeVar,
+    Dict,
     Iterable,
+    NewType,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
 )
 
 from .dag import traverse_id

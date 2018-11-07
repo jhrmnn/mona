@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import io
 import xml.etree.ElementTree as ET
-from typing import Any, Type, Dict, IO
+from typing import IO, Any, Dict, Type
 
 import numpy as np  # type: ignore
 

@@ -1,20 +1,20 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import os
 import ast
-import sys
-import json
 import inspect
+import json
+import os
+import sys
+from itertools import chain, dropwhile
 from pathlib import Path
 from textwrap import dedent
-from itertools import dropwhile, chain
-from types import ModuleType, CodeType
-from typing import Callable, TypeVar, Any, Dict, Optional, cast
+from types import CodeType, ModuleType
+from typing import Any, Callable, Dict, Optional, TypeVar, cast
 
-from .errors import HashingError, CompositeError
-from .utils import get_fullname
+from .errors import CompositeError, HashingError
 from .hashing import Hash, HashedComposite, hash_text
+from .utils import get_fullname
 
 __all__ = ()
 

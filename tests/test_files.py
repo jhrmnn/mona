@@ -5,10 +5,9 @@ import pytest  # type: ignore
 
 from mona import Rule, Session
 from mona.dirtask import dir_task
-from mona.plugins import FileManager
-from mona.files import File, HashedFile
 from mona.errors import FilesError
-
+from mona.files import File, HashedFile
+from mona.plugins import FileManager
 from tests.test_dirtask import calcs
 
 

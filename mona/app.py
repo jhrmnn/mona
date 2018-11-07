@@ -1,20 +1,20 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import logging
 import os
 import sys
-import logging
-from pathlib import Path
 from contextlib import contextmanager
-from typing import Dict, Any, Iterator, MutableMapping, Iterable
+from pathlib import Path
+from typing import Any, Dict, Iterable, Iterator, MutableMapping
 
 import toml
 
-from .sessions import Session
-from .rules import Rule
-from .plugins import Parallel, TmpdirManager, FileManager, Cache
-from .utils import get_timestamp, Pathable, import_fullname
+from .plugins import Cache, FileManager, Parallel, TmpdirManager
 from .remotes import Remote
+from .rules import Rule
+from .sessions import Session
+from .utils import Pathable, get_timestamp, import_fullname
 
 __all__ = ()
 

@@ -1,8 +1,7 @@
 import pytest  # type: ignore
 
-from mona import Session, Rule
+from mona import Rule, Session
 from mona.plugins import Cache, FileManager
-
 from tests.test_dirtask import analysis, calcs
 from tests.test_files import calcs2
 

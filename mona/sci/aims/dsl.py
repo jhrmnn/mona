@@ -1,7 +1,7 @@
 from importlib import resources
-from typing import Dict, Any, cast
+from typing import Any, Dict, cast
 
-from textx.metamodel import metamodel_from_str, TextXClass  # type: ignore
+from textx.metamodel import TextXClass, metamodel_from_str  # type: ignore
 
 from .. import aims
 

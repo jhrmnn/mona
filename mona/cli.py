@@ -1,23 +1,23 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import logging
 import os
 import re
-import logging
-import tempfile
 import subprocess
+import tempfile
 from pathlib import Path
-from typing import List, Optional, cast, Dict, Tuple, Sequence, Pattern
+from typing import Dict, List, Optional, Pattern, Sequence, Tuple, cast
 
 import click
 
-from .tasks import Task
-from .futures import STATE_COLORS
-from .utils import groupby
-from .files import File
-from .dirtask import checkout_files, DirtaskInput
 from .app import App
+from .dirtask import DirtaskInput, checkout_files
+from .files import File
+from .futures import STATE_COLORS
 from .table import Table, lenstr
+from .tasks import Task
+from .utils import groupby
 
 __version__ = '0.1.0'
 __all__ = ()

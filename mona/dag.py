@@ -4,23 +4,23 @@
 import asyncio
 from enum import Enum
 from typing import (
-    TypeVar,
-    Deque,
-    Set,
-    Callable,
-    Iterable,
-    MutableSequence,
-    Dict,
-    Awaitable,
-    Container,
-    Iterator,
-    AsyncGenerator,
-    Tuple,
-    cast,
-    Optional,
     Any,
-    Union,
+    AsyncGenerator,
+    Awaitable,
+    Callable,
+    Container,
+    Deque,
+    Dict,
+    Iterable,
+    Iterator,
+    MutableSequence,
     NamedTuple,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
 )
 
 __all__ = ['traverse_async', 'traverse', 'traverse_id']

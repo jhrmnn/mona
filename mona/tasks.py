@@ -1,36 +1,36 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import logging
-import json
-from abc import abstractmethod
 import asyncio
 import inspect
+import json
+import logging
 import pickle
+from abc import abstractmethod
 from typing import (
-    Callable,
-    Optional,
-    TypeVar,
-    cast,
-    Tuple,
-    Union,
     Awaitable,
+    Callable,
     Dict,
     Iterable,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
 )
 
+from .errors import CompositeError, FutureError, TaskError
 from .futures import Future, State
 from .hashing import (
+    Composite,
     Hash,
     Hashed,
-    Composite,
-    HashedCompositeLike,
     HashedComposite,
+    HashedCompositeLike,
     HashResolver,
 )
 from .pyhash import hash_function
-from .utils import get_fullname, Maybe, Empty, swap_type, import_fullname
-from .errors import FutureError, TaskError, CompositeError
+from .utils import Empty, Maybe, get_fullname, import_fullname, swap_type
 
 __all__ = ['ensure_hashed', 'maybe_hashed']
 

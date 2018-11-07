@@ -2,7 +2,7 @@ import subprocess
 
 import pytest  # type: ignore
 
-from mona import Rule, Session, run_thread, run_shell
+from mona import Rule, Session, run_shell, run_thread
 
 
 @Rule

@@ -2,19 +2,19 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import shutil
+from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
-from collections import OrderedDict
-from typing import Dict, Any, Tuple, Callable, cast
+from typing import Any, Callable, Dict, Tuple, cast
 
 from ...dirtask import dir_task
+from ...errors import InvalidInput, MonaError
 from ...files import File
-from ...tasks import Task
-from ...errors import MonaError, InvalidInput
-from ...pluggable import Plugin, Pluggable
+from ...pluggable import Pluggable, Plugin
 from ...pyhash import hash_function
-from ..geomlib import Molecule, Atom
-from .dsl import parse_aims_input, expand_dicts
+from ...tasks import Task
+from ..geomlib import Atom, Molecule
+from .dsl import expand_dicts, parse_aims_input
 
 __version__ = '0.1.0'
 __all__ = ['Aims', 'SpeciesDefaults']

@@ -1,7 +1,7 @@
+import datetime
+import inspect
 import os
 import sys
-import inspect
-import datetime
 import warnings
 from unittest.mock import MagicMock
 

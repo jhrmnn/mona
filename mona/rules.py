@@ -3,13 +3,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import inspect
 from functools import wraps
-from typing import Any, TypeVar, Generic, List, Callable
+from typing import Any, Callable, Generic, List, TypeVar
 
-from .tasks import Task, Corofunc
-from .sessions import Session
 from .errors import MonaError
 from .hashing import Hashed
 from .pyhash import hash_function
+from .sessions import Session
+from .tasks import Corofunc, Task
 
 _T = TypeVar('_T')
 ArgFactory = Callable[[], Hashed[object]]

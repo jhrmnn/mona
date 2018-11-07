@@ -1,25 +1,25 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import json
 import hashlib
+import json
 from abc import ABC, abstractmethod
 from typing import (
-    NewType,
-    Union,
-    Generic,
-    TypeVar,
-    Dict,
-    cast,
-    Iterable,
-    Set,
     Callable,
-    Tuple,
+    Dict,
+    Generic,
+    Iterable,
+    NewType,
     Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
 )
 
-from .json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
-from .utils import Literal, shorten_text, TypeSwaps, swap_type
+from .json import ClassJSONDecoder, ClassJSONEncoder, JSONValue, validate_json
+from .utils import Literal, TypeSwaps, shorten_text, swap_type
 
 __version__ = '0.1.0'
 __all__ = ()

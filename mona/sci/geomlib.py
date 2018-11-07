@@ -1,28 +1,28 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import os
 import csv
 import json
-from io import StringIO
+import os
+from collections import OrderedDict
 from copy import deepcopy
 from importlib import resources
-from collections import OrderedDict
+from io import StringIO
 from itertools import chain, product, repeat
 from typing import (
-    List,
-    Tuple,
-    DefaultDict,
-    Iterator,
     IO,
-    Sized,
-    Iterable,
-    Union,
-    Dict,
-    Any,
     TYPE_CHECKING,
-    TypeVar,
+    Any,
+    DefaultDict,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Sized,
+    Tuple,
     Type,
+    TypeVar,
+    Union,
     cast,
 )
 

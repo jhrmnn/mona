@@ -1,14 +1,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import logging
 import asyncio
+import logging
 import subprocess
-from typing import Any, TypeVar, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple, TypeVar, Union
 from typing_extensions import Protocol, runtime
 
-from .tasks import Corofunc
 from .sessions import Session
+from .tasks import Corofunc
 
 __version__ = '0.1.0'
 __all__ = ['run_shell', 'run_process', 'run_thread']

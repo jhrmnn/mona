@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 from enum import IntEnum
-from typing import Iterable, Set, Callable, List, TypeVar, NoReturn
+from typing import Callable, Iterable, List, NoReturn, Set, TypeVar
 from typing_extensions import Final
 
 from .errors import MonaError

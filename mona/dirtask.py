@@ -6,25 +6,25 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import (
-    Dict,
-    ContextManager,
     Any,
-    Optional,
     Callable,
+    ContextManager,
+    Dict,
     List,
-    Union,
-    Tuple,
+    Optional,
     Sequence,
+    Tuple,
+    Union,
     cast,
 )
 from typing_extensions import Protocol, runtime
 
-from .utils import make_executable, Pathable
-from .sessions import Session
-from .rules import Rule
-from .runners import run_process
 from .errors import InvalidInput
 from .files import File
+from .rules import Rule
+from .runners import run_process
+from .sessions import Session
+from .utils import Pathable, make_executable
 
 __version__ = '0.2.0'
 __all__ = ['dir_task', 'DirtaskTmpdir']

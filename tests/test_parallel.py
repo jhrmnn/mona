@@ -3,11 +3,10 @@ import subprocess
 
 import pytest  # type: ignore
 
-from mona import Session, Rule, run_shell, run_process, run_thread
-from mona.files import File
+from mona import Rule, Session, run_process, run_shell, run_thread
 from mona.dirtask import dir_task
+from mona.files import File
 from mona.plugins import Parallel
-
 from tests.test_dirtask import analysis
 
 

@@ -2,14 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import json
-from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import Union, Optional, cast, Iterable, List, Callable, TypeVar, Type
+from pathlib import Path
+from typing import Callable, Iterable, List, Optional, Type, TypeVar, Union, cast
 
-from .sessions import Session
+from .hashing import Hash, Hashed, HashedBytes, HashedComposite, HashResolver
 from .rules import Rule
-from .hashing import Hash, Hashed, HashResolver, HashedBytes, HashedComposite
-from .utils import make_nonwritable, Pathable, shorten_text
+from .sessions import Session
+from .utils import Pathable, make_nonwritable, shorten_text
 
 __version__ = '0.3.0'
 __all__ = ['File', 'file_collection', 'add_source']

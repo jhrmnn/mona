@@ -2,10 +2,9 @@ import subprocess
 from pathlib import Path
 
 from mona import Session
+from mona.dirtask import dir_task
 from mona.files import File
 from mona.plugins import TmpdirManager
-from mona.dirtask import dir_task
-
 from tests.test_dirtask import analysis, calcs
 
 

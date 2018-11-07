@@ -1,9 +1,9 @@
-import pytest  # type: ignore
-
 import json
 
-from mona.json import ClassJSONDecoder, ClassJSONEncoder, validate_json
+import pytest  # type: ignore
+
 from mona.errors import CompositeError
+from mona.json import ClassJSONDecoder, ClassJSONEncoder, validate_json
 
 
 class K:

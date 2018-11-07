@@ -2,8 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from itertools import chain, starmap
-
-from typing import Callable, Any, List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union
 
 __all__ = ()
 

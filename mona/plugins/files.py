@@ -1,17 +1,16 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-import shutil
 import hashlib
+import shutil
 from pathlib import Path
+from typing import Dict, Union
 
-from ..hashing import Hash
-from ..sessions import Session, SessionPlugin
-from ..utils import make_nonwritable, make_writable, Pathable
 from ..errors import FilesError
 from ..files import FileManager as _FileManager
-
-from typing import Dict, Union
+from ..hashing import Hash
+from ..sessions import Session, SessionPlugin
+from ..utils import Pathable, make_nonwritable, make_writable
 
 __version__ = '0.2.0'
 

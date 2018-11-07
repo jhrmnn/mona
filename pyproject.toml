@@ -57,6 +57,7 @@ flake8-comprehensions = "^1.4"
 flake8-quotes = "^1.0"
 black = "^18.3-alpha.0"
 pydocstyle = "^3.0"
+isort = "^4.3"
 
 [tool.poetry.scripts]
 mona = "mona.cli:cli"
