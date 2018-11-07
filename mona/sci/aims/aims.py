@@ -41,7 +41,7 @@ class Aims(Pluggable):
 
         :param kwargs: processed by individual plugins
         """
-        self.run_plugins('process', kwargs, start=None)
+        self.run_plugins('process', kwargs)
         script = File.from_str('aims.sh', kwargs.pop('script'))
         inputs = [File.from_str(name, cont) for name, cont in kwargs.pop('inputs')]
         if kwargs:

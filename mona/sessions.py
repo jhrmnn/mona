@@ -140,7 +140,7 @@ class Session(Pluggable):
     def __enter__(self) -> 'Session':
         assert _active_session.get() is None
         self._active_session_token = _active_session.set(self)
-        self.run_plugins('post_enter', self, start=None)
+        self.run_plugins('post_enter', self)
         return self
 
     def _filter_tasks(self, cond: TaskFilter) -> List[ATask]:
@@ -148,7 +148,7 @@ class Session(Pluggable):
 
     def __exit__(self, exc_type: Any, *args: Any) -> None:
         assert _active_session.get() is self
-        self.run_plugins('pre_exit', self, start=None)
+        self.run_plugins('pre_exit', self)
         _active_session.reset(self._active_session_token)
         del self._active_session_token
         if self._warn and not self._skipped and exc_type is None:
@@ -190,7 +190,7 @@ class Session(Pluggable):
         for task in tasks:
             if task.hashid not in self._tasks:
                 raise TaskError(f'Not in session: {task!r}', task)
-        self.run_plugins('save_hashed', objs, start=None)
+        self.run_plugins('save_hashed', objs)
         return tasks
 
     def register_task(self, task: Task[_T]) -> Tuple[Task[_T], bool]:
@@ -224,17 +224,17 @@ class Session(Pluggable):
             self.add_side_effect_of(caller, task)
         task, registered = self.register_task(task)
         if registered:
-            self.run_plugins('post_create', task, start=None)
+            self.run_plugins('post_create', task)
         return task
 
     @asynccontextmanager
     async def run_context(self) -> AsyncGenerator[None, None]:
         """Context in which tasks should be run."""
-        await self.run_plugins_async('pre_run', start=None)
+        await self.run_plugins_async('pre_run')
         try:
             yield
         finally:
-            await self.run_plugins_async('post_run', start=None)
+            await self.run_plugins_async('post_run')
 
     async def _run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         async with self.run_context():
@@ -280,7 +280,7 @@ class Session(Pluggable):
             log.debug(f'{task}: created tasks: {list(map(Literal, side_effects))}')
         result = cast(_T, maybe_hashed(raw_result)) or raw_result
         self.set_result(task, result)
-        self.run_plugins('post_task_run', task, start=None)
+        self.run_plugins('post_task_run', task)
         return result
 
     async def _traverse_execute(self, task: ATask, done: NodeExecuted[ATask]) -> None:
@@ -335,7 +335,7 @@ class Session(Pluggable):
             lambda task, reg: call_if(
                 task.state < State.RUNNING, task.add_ready_callback, lambda t: reg(t)
             ),
-            self.run_plugins('wrap_execute', start=self._traverse_execute),
+            self.run_plugins('wrap_execute', self._traverse_execute, wrap_first=True),
             depth,
             priority,
         )
@@ -354,7 +354,7 @@ class Session(Pluggable):
                 else:
                     assert isinstance(exc, Exception)
                     if exception_handler and exception_handler(task, exc):
-                        self.run_plugins('ignored_exception', start=None)
+                        self.run_plugins('ignored_exception')
                         exceptions[task] = exc
                         task.set_error()
                         log.info(f'Handled {exc!r} from {task!r}')

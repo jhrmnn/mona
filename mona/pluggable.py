@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
-from typing import Any, Awaitable, Dict, Generator, Generic, List, TypeVar, cast
+from typing import Any, Dict, Generator, Generic, List, Optional, TypeVar
 
 __all__ = ()
 
@@ -13,14 +13,14 @@ _P = TypeVar('_P', bound='Pluggable')
 
 
 class Plugin(Generic[_P]):
-    name: str
+    name: Optional[str] = None
 
     def __call__(self, pluggable: _P) -> None:
         pluggable.register_plugin(self._name, self)
 
     @property
     def _name(self) -> str:
-        return cast(str, getattr(self, 'name', self.__class__.__name__))
+        return self.name or self.__class__.__name__
 
 
 class Pluggable:
@@ -37,34 +37,39 @@ class Pluggable:
         return plugins
 
     def _run_plugins(
-        self, func: str, start: Any, *args: Any, reverse: bool = False, **kwargs: Any
+        self, func: str, args: List[Any], wrap_first: bool, reverse: bool
     ) -> Generator[Any, Any, None]:
-        for plugin in self._get_plugins():
-            all_args = args if start is None else (start, *args)
+        for plugin in self._get_plugins(reverse):
             try:
-                start = yield getattr(plugin, func)(*all_args, **kwargs)
+                result = yield getattr(plugin, func)(*args)
             except Exception:
                 log.error(f'Error in plugin {plugin._name!r}')
                 raise
+            if wrap_first:
+                args[0] = result
 
     async def run_plugins_async(
-        self, func: str, *args: Any, start: _T, reverse: bool = False, **kwargs: Any
-    ) -> _T:
-        gen = self._run_plugins(func, start, *args, reverse=reverse, **kwargs)
+        self, func: str, *args: Any, wrap_first: bool = False, reverse: bool = False
+    ) -> Any:
+        arg_list = list(args)
+        gen = self._run_plugins(func, arg_list, wrap_first, reverse)
+        result: Any = None
         try:
-            start = await cast(Awaitable[_T], next(gen))
             while True:
-                start = await cast(Awaitable[_T], gen.send(start))
+                result = await gen.send(result)
         except StopIteration:
-            return start
+            if wrap_first:
+                return arg_list[0]
 
     def run_plugins(
-        self, func: str, *args: Any, start: _T, reverse: bool = False, **kwargs: Any
-    ) -> _T:
-        gen = self._run_plugins(func, start, *args, reverse=reverse, **kwargs)
+        self, func: str, *args: Any, wrap_first: bool = False, reverse: bool = False
+    ) -> Any:
+        arg_list = list(args)
+        gen = self._run_plugins(func, arg_list, wrap_first, reverse)
+        result: Any = None
         try:
-            start = cast(_T, next(gen))
             while True:
-                start = cast(_T, gen.send(start))
+                result = gen.send(result)
         except StopIteration:
-            return start
+            if wrap_first:
+                return arg_list[0]
