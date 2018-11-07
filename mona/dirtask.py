@@ -76,6 +76,7 @@ class DirtaskTmpdir:
         self._output_filter = output_filter
 
     def has_tmpdir_manager(self) -> bool:
+        """Is the temporary directory managed."""
         return self._dirmngr is not None
 
     def __enter__(self) -> Path:

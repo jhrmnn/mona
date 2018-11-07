@@ -10,6 +10,9 @@ import numpy as np  # type: ignore
 from ...files import File
 from ...rules import Rule
 
+__version__ = '0.1.0'
+__all__ = ['parse_aims']
+
 
 @Rule
 async def parse_aims(outputs: Dict[str, File]) -> Any:

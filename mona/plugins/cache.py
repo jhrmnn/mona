@@ -26,6 +26,8 @@ from ..tasks import Task
 from ..utils import Pathable, get_timestamp, get_fullname, import_fullname
 from ..hashing import Hash, Hashed
 
+__all__ = ['Cache']
+
 log = logging.getLogger(__name__)
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -77,6 +79,8 @@ class WriteAccess(Enum):
 
 
 class Cache(SessionPlugin):
+    """Plugin that caches tasks and objects in a session to an SQLite database."""
+
     name = 'db_cache'
 
     def __init__(
@@ -93,6 +97,7 @@ class Cache(SessionPlugin):
 
     @property
     def db(self) -> sqlite3.Connection:
+        """Database connection."""
         return self._db
 
     def _store_objects(self, objs: Sequence[Hashed[object]]) -> None:
@@ -121,10 +126,6 @@ class Cache(SessionPlugin):
             'UPDATE tasks SET state = ? WHERE hashid = ?',
             (task.state.name, task.hashid),
         )
-
-    def update_state(self, task: Task[object]) -> None:
-        self._update_state(task)
-        self._db.commit()
 
     def _store_result(self, task: Task[object]) -> None:
         result: Union[Hash, bytes]
@@ -237,7 +238,7 @@ class Cache(SessionPlugin):
         task.set_has_run()
         sess.set_result(task, self._get_result(row))
 
-    def save_hashed(self, objs: Sequence[Hashed[object]]) -> None:
+    def save_hashed(self, objs: Sequence[Hashed[object]]) -> None:  # noqa: D102
         if self._write is WriteAccess.EAGER:
             self._store_objects(objs)
             self._store_targets(objs)
@@ -251,11 +252,11 @@ class Cache(SessionPlugin):
         )
         sess.storage['cache:sessionid'] = cur.lastrowid
 
-    def post_enter(self, sess: Session) -> None:
+    def post_enter(self, sess: Session) -> None:  # noqa: D102
         if self._write is WriteAccess.EAGER:
             self._store_session(sess)
 
-    def post_create(self, task: Task[object]) -> None:
+    def post_create(self, task: Task[object]) -> None:  # noqa: D102
         row = self._get_task_row(task.hashid)
         if row:
             self._to_restore = [task]
@@ -276,15 +277,15 @@ class Cache(SessionPlugin):
             self._store_targets(tasks)
             self._db.commit()
 
-    def post_task_run(self, task: Task[object]) -> None:
+    def post_task_run(self, task: Task[object]) -> None:  # noqa: D102
         if self._write is not WriteAccess.EAGER:
             return
         self._store_result(task)
         if task.state < State.DONE:
-            task.add_done_callback(lambda task: self.update_state(task))
+            task.add_done_callback(lambda task: self._update_state(task))
         self._db.commit()
 
-    def pre_exit(self, sess: Session) -> None:
+    def pre_exit(self, sess: Session) -> None:  # noqa: D102
         if self._write is not WriteAccess.ON_EXIT:
             return
         self._store_session(sess)
@@ -301,6 +302,7 @@ class Cache(SessionPlugin):
 
     @classmethod
     def from_path(cls, path: Pathable, **kwargs: Any) -> 'Cache':
+        """Create a cache with a database at the given path."""
         db = sqlite3.connect(path)
         db.execute(
             """\

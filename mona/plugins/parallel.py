@@ -17,6 +17,8 @@ _T = TypeVar('_T')
 
 
 class Parallel(SessionPlugin):
+    """Plugin that enables running tasks in parallel."""
+
     name = 'parallel'
 
     def __init__(self, ncores: int = None) -> None:
@@ -26,14 +28,14 @@ class Parallel(SessionPlugin):
         self._pending: Optional[int] = None
         self._registered_exceptions = 0
 
-    def post_enter(self, sess: Session) -> None:
-        sess.storage['scheduler'] = self.run_coro
+    def post_enter(self, sess: Session) -> None:  # noqa: D102
+        sess.storage['scheduler'] = self._run_coro
 
-    async def pre_run(self) -> None:
+    async def pre_run(self) -> None:  # noqa: D102
         self._sem = asyncio.BoundedSemaphore(self._ncores)
         self._lock = asyncio.Lock()
 
-    async def post_run(self) -> None:
+    async def post_run(self) -> None:  # noqa: D102
         if not self._asyncio_tasks:
             return
         log.info(f'Cancelling {len(self._asyncio_tasks)} running tasks...')
@@ -56,7 +58,7 @@ class Parallel(SessionPlugin):
         self._pending = 0
         log.info(f'Stopping scheduler')
 
-    def ignored_exception(self) -> None:
+    def ignored_exception(self) -> None:  # noqa: D102
         if self._registered_exceptions == 0:
             return
         self._registered_exceptions -= 1
@@ -68,7 +70,7 @@ class Parallel(SessionPlugin):
         self._pending = None
         self._release(pending)
 
-    def wrap_execute(self, execute: TaskExecute) -> TaskExecute:
+    def wrap_execute(self, execute: TaskExecute) -> TaskExecute:  # noqa: D102
         async def _execute(task: Task[Any], done: NodeExecuted[Task[Any]]) -> None:
             try:
                 await execute(task, done)
@@ -101,7 +103,7 @@ class Parallel(SessionPlugin):
         finally:
             self._release(ncores)
 
-    async def run_coro(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any) -> _T:
+    async def _run_coro(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any) -> _T:
         task = Session.active().running_task
         n = cast(int, task.storage.get('ncores', 1))
         if n > self._available:

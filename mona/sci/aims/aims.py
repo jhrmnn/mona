@@ -17,6 +17,7 @@ from ..geomlib import Molecule, Atom
 from .dsl import parse_aims_input, expand_dicts
 
 __version__ = '0.1.0'
+__all__ = ['Aims', 'SpeciesDefaults']
 
 
 class AimsPlugin(Plugin['Aims']):
@@ -88,7 +89,7 @@ class SpeciesDefaults(AimsPlugin):
         self._species_defs: Dict[Tuple[Path, str], Dict[str, Any]] = {}
         self._mod = mod
 
-    def process(self, kwargs: Dict[str, Any]) -> None:
+    def process(self, kwargs: Dict[str, Any]) -> None:  # noqa: D102
         speciesdir = kwargs.pop('speciesdir')
         all_species = {(a.number, a.species) for a in kwargs['geom'].centers}
         species_defs = []

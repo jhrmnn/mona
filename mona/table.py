@@ -5,6 +5,8 @@ from itertools import chain, starmap
 
 from typing import Callable, Any, List, Tuple, Union
 
+__all__ = ()
+
 
 class lenstr(str):
     def __new__(cls, s: Any, len: int) -> str:

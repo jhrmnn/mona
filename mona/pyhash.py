@@ -16,6 +16,8 @@ from .errors import HashingError, CompositeError
 from .utils import get_fullname
 from .hashing import Hash, HashedComposite, hash_text
 
+__all__ = ()
+
 _T = TypeVar('_T')
 
 # Travis duplicates some stdlib modules in virtualenv

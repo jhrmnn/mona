@@ -22,6 +22,8 @@ from typing import (
 from .dag import traverse_id
 from .errors import CompositeError
 
+__all__ = ()
+
 _T = TypeVar('_T')
 # JSONContainer should be Union[List[JSONValue], Dict[str, JSONValue]]
 JSONContainer = NewType('JSONContainer', object)

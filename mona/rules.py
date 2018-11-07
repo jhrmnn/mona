@@ -45,6 +45,10 @@ class Rule(Generic[_T]):
         return self._hash
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
+        """Create a task.
+
+        All arguments are passed to :class:`Task`.
+        """
         self._ensure_extra_args()
         assert 'rule' not in kwargs
         kwargs['rule'] = self._corofunc.__name__
@@ -53,9 +57,15 @@ class Rule(Generic[_T]):
         )
 
     def add_extra_arg(self, factory: ArgFactory) -> None:
+        """Register an extra argument factory.
+
+        :param factory: callable that returns an extra argument that will be
+                        appended to the arguments passed when creating a task.
+        """
         assert not hasattr(self, '_extra_args')
         self._extra_arg_factories.append(factory)
 
     @property
     def corofunc(self) -> Corofunc[_T]:
+        """Coroutine function associated with the rule."""
         return self._corofunc

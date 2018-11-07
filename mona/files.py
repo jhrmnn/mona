@@ -93,20 +93,22 @@ class File:
 
     @property
     def path(self) -> Path:
+        """Abstract path to the file."""
         return self._path
 
     @property
     def stem(self) -> str:
-        """Delegate to :attr:`pathlib.PurePath.stem`."""
+        """Equivalent to :attr:`path.stem`."""
         return self._path.stem
 
     @property
     def name(self) -> str:
-        """Delegate to :attr:`pathlib.PurePath.name`."""
+        """Equivalent to :attr:`path.name`."""
         return self._path.name
 
     @property
     def content(self) -> Union[bytes, Hash]:
+        """Content as bytes or its hash."""
         return self._content
 
     def read_bytes(self) -> bytes:

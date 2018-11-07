@@ -16,16 +16,18 @@ log = logging.getLogger(__name__)
 
 
 class TmpdirManager(_TmpdirManager, SessionPlugin):
+    """Plugin that manages temporary directories."""
+
     name = 'tmpdir_manager'
 
     def __init__(self, root: Pathable) -> None:
         self._root = Path(root).resolve()
 
-    def post_enter(self, sess: Session) -> None:
+    def post_enter(self, sess: Session) -> None:  # noqa: D102
         sess.storage['dir_task:tmpdir_manager'] = self
 
     @contextmanager
-    def tempdir(self) -> Iterator[str]:
+    def tempdir(self) -> Iterator[str]:  # noqa: D102
         task = Session.active().running_task
         path = mkdtemp(prefix=f'{task.hashid[:6]}_', dir=str(self._root))
         log.debug(f'Created tempdir for "{task.label}": {path}')

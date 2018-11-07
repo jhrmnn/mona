@@ -17,6 +17,8 @@ __version__ = '0.2.0'
 
 
 class FileManager(_FileManager, SessionPlugin):
+    """Plugin that manages storage of abstract task files in a file system."""
+
     name = 'file_manager'
 
     def __init__(self, root: Union[str, Pathable], eager: bool = True) -> None:
@@ -42,7 +44,7 @@ class FileManager(_FileManager, SessionPlugin):
     def __contains__(self, hashid: Hash) -> bool:
         return hashid in self._cache or self._path(hashid).is_file()
 
-    def post_enter(self, sess: Session) -> None:
+    def post_enter(self, sess: Session) -> None:  # noqa: D102
         sess.storage['file_manager'] = self
 
     def _store_bytes(self, hashid: Hash, content: bytes) -> None:
@@ -50,7 +52,7 @@ class FileManager(_FileManager, SessionPlugin):
         stored_path.write_bytes(content)
         make_nonwritable(stored_path)
 
-    def store_bytes(self, content: bytes) -> 'Hash':
+    def store_bytes(self, content: bytes) -> 'Hash':  # noqa: D102
         hashid = Hash(hashlib.sha1(content).hexdigest())
         if hashid not in self:
             self._cache[hashid] = content
@@ -66,7 +68,7 @@ class FileManager(_FileManager, SessionPlugin):
             path.rename(stored_path)
         make_nonwritable(stored_path)
 
-    def store_path(self, path: Path, *, keep: bool) -> 'Hash':
+    def store_path(self, path: Path, *, keep: bool) -> 'Hash':  # noqa: D102
         hashid = self._path_cache.get(path)
         if hashid:
             return hashid
@@ -85,7 +87,7 @@ class FileManager(_FileManager, SessionPlugin):
                 self._store_path(hashid, path, keep)
         return self._path_cache.setdefault(path, hashid)
 
-    def get_bytes(self, hashid: Hash) -> bytes:
+    def get_bytes(self, hashid: Hash) -> bytes:  # noqa: D102
         try:
             return self._cache[hashid]
         except KeyError:
@@ -93,7 +95,9 @@ class FileManager(_FileManager, SessionPlugin):
         path = self._path(hashid, must_exist=True)
         return self._cache.setdefault(hashid, path.read_bytes())
 
-    def target_in(self, path: Path, hashid: Hash, *, mutable: bool) -> None:
+    def target_in(
+        self, path: Path, hashid: Hash, *, mutable: bool
+    ) -> None:  # noqa: D102
         content = self._cache.get(hashid)
         if content:
             path.write_bytes(content)
@@ -109,6 +113,6 @@ class FileManager(_FileManager, SessionPlugin):
                 path.unlink()
             path.symlink_to(stored_path)
 
-    def store_cache(self) -> None:
+    def store_cache(self) -> None:  # noqa: D102
         for hashid, content in self._cache.items():
             self._store_bytes(hashid, content)

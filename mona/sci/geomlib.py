@@ -183,6 +183,7 @@ class Molecule(Sized, Iterable[Atom]):
         return fragments
 
     def hash(self) -> int:
+        """Hash of a molecule from rounded moments of inertia."""
         if len(self) == 1:
             return self[0].number
         return hash(tuple(np.round(sorted(np.linalg.eigvalsh(self.inertia)), 3)))
@@ -260,7 +261,10 @@ class Molecule(Sized, Iterable[Atom]):
     dumps = __format__
 
     def dump(self, f: IO[str], fmt: str) -> None:
-        """Write a molecule to a file."""
+        """Write a molecule to a file.
+
+        Supported formats: 'xyz', 'aims', 'mopac'.
+        """
         if fmt == '':
             f.write(repr(self))
         elif fmt == 'xyz':
@@ -305,6 +309,7 @@ class Molecule(Sized, Iterable[Atom]):
         return type(self)([atom.copy() for atom in self._atoms])
 
     def ghost(self: _M) -> _M:
+        """Create a copy with all atoms as ghost atoms."""
         m = self.copy()
         for atom in m:
             atom.flags['ghost'] = True
@@ -351,6 +356,10 @@ class Crystal(Molecule):
         )
 
     def dump(self, f: IO[str], fmt: str) -> None:
+        """Write a crystal to a file.
+
+        Supported formats: 'aims', 'vasp'.
+        """
         if fmt == '':
             f.write(repr(self))
         elif fmt == 'aims':
@@ -382,6 +391,7 @@ class Crystal(Molecule):
             raise ValueError(f'Unknown format: {fmt!r}')
 
     def copy(self) -> 'Crystal':
+        """Create a copy."""
         return Crystal([atom.copy() for atom in self._atoms], self.lattice.copy())
 
     def rotated(
@@ -391,6 +401,7 @@ class Crystal(Molecule):
         center: Vec = None,
         rotmat: Any = None,
     ) -> 'Crystal':
+        """Return a new crystal with rotated unit cell and lattice vectors."""
         assert center is None
         g = super().rotated(axis, phi, (0, 0, 0), rotmat)
         m = Molecule.from_coords(['_'] * 3, self.lattice)
@@ -430,6 +441,7 @@ class Crystal(Molecule):
         return Crystal.from_coords(species, coords, lattice)
 
     def normalized(self) -> 'Crystal':
+        """Create a copy with atoms on unit cell faces normalized."""
         xyz = (
             np.mod(self.xyz @ np.linalg.inv(self.lattice) + 1e-10, 1) - 1e-10
         ) @ self.lattice

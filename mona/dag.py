@@ -23,6 +23,8 @@ from typing import (
     NamedTuple,
 )
 
+__all__ = ['traverse_async', 'traverse', 'traverse_id']
+
 _T = TypeVar('_T')
 NodeScheduler = Callable[[_T, Callable[[_T], None]], None]
 NodeResult = Tuple[_T, Optional[Exception], Iterable[_T]]
@@ -181,6 +183,10 @@ def traverse(
 def traverse_id(
     start: Iterable[_T], edges_from: Callable[[_T], Iterable[_T]]
 ) -> Iterable[_T]:
+    """Traverse a DAG, yield visited notes.
+
+    Nodes are stored by their ids, not hashes.
+    """
     table: Dict[int, _T] = {}
 
     def ids_from(ns: Iterable[_T]) -> Iterable[int]:

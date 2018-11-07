@@ -10,12 +10,13 @@ from typing_extensions import Protocol, runtime
 from .tasks import Corofunc
 from .sessions import Session
 
+__version__ = '0.1.0'
+__all__ = ['run_shell', 'run_process', 'run_thread']
+
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
 ProcessOutput = Union[bytes, Tuple[bytes, bytes]]
-
-__version__ = '0.1.0'
 
 
 @runtime

@@ -31,7 +31,6 @@ class Mock(MagicMock):
 
 
 MOCK_MODULES = [
-    'typing_extensions',
     'textx',
     'textx.metamodel',
     'numpy',

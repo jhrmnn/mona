@@ -20,6 +20,7 @@ from .app import App
 from .table import Table, lenstr
 
 __version__ = '0.1.0'
+__all__ = ()
 
 logging.basicConfig(
     style='{',

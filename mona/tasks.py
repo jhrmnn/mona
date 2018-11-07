@@ -32,6 +32,8 @@ from .pyhash import hash_function
 from .utils import get_fullname, Maybe, Empty, swap_type, import_fullname
 from .errors import FutureError, TaskError, CompositeError
 
+__all__ = ['ensure_hashed', 'maybe_hashed']
+
 log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')

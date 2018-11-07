@@ -8,6 +8,8 @@ from enum import Enum
 from datetime import datetime
 from typing import Any, Callable, TypeVar, Union, List, Tuple, Iterable, Dict, Type
 
+__all__ = ['Empty']
+
 _T = TypeVar('_T')
 _V = TypeVar('_V')
 Maybe = Union[_T, 'Empty']

@@ -45,6 +45,7 @@ from .errors import SessionError, TaskError, FutureError, MonaError
 from .pluggable import Plugin, Pluggable
 
 __version__ = '0.1.0'
+__all__ = ['Session']
 
 log = logging.getLogger(__name__)
 
@@ -129,9 +130,11 @@ class Session(Pluggable):
         return self._storage
 
     def get_side_effects(self, task: ATask) -> Iterable[ATask]:
+        """Return tasks created by a given task."""
         return tuple(self._tasks[h] for h in self._graph.side_effects[task.hashid])
 
     def all_tasks(self) -> Iterable[ATask]:
+        """Return all tasks created in session."""
         yield from self._tasks.values()
 
     def __enter__(self) -> 'Session':
@@ -159,8 +162,8 @@ class Session(Pluggable):
         self._graph.backflow.clear()
 
     @property
-    def running_task(self) -> ATask:
-        """Currently running task."""  # noqa: D401
+    def running_task(self) -> ATask:  # noqa: D401
+        """Currently running task."""
         task = self._running_task.get()
         if task:
             return task
@@ -191,6 +194,7 @@ class Session(Pluggable):
         return tasks
 
     def register_task(self, task: Task[_T]) -> Tuple[Task[_T], bool]:
+        """Register a task in a session."""
         try:
             return cast(Task[_T], self._tasks[task.hashid]), False
         except KeyError:
@@ -202,6 +206,7 @@ class Session(Pluggable):
         return task, True
 
     def add_side_effect_of(self, caller: ATask, callee: ATask) -> None:
+        """Register a task created by a task."""
         self._graph.side_effects[caller.hashid].append(callee.hashid)
 
     def create_task(
@@ -224,6 +229,7 @@ class Session(Pluggable):
 
     @asynccontextmanager
     async def run_context(self) -> AsyncGenerator[None, None]:
+        """Context in which tasks should be run."""
         await self.run_plugins_async('pre_run', start=None)
         try:
             yield
@@ -245,6 +251,7 @@ class Session(Pluggable):
         return asyncio.run(self._run_task(task))
 
     def set_result(self, task: Task[_T], result: Union[_T, Hashed[_T]]) -> None:
+        """Attach a result to a task."""
         if not isinstance(result, Hashed):
             task.set_result(result)
             return
@@ -259,6 +266,7 @@ class Session(Pluggable):
         self._graph.backflow[task.hashid] = frozenset(t.hashid for t in backflow)
 
     async def run_task_async(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
+        """Run a task asynchronously."""
         if task.state < State.READY:
             raise TaskError(f'Not ready: {task!r}', task)
         if task.state > State.READY:
@@ -397,7 +405,7 @@ class Session(Pluggable):
         return fut
 
     @wraps(_eval_async)
-    async def eval_async(self, *args: Any, **kwargs: Any) -> Any:
+    async def eval_async(self, *args: Any, **kwargs: Any) -> Any:  # noqa: D102
         async with self.run_context():
             return await self._eval_async(*args, **kwargs)
 
@@ -432,6 +440,7 @@ class Session(Pluggable):
 
     @classmethod
     def active(cls) -> 'Session':
+        """Return a currently active session."""
         session = _active_session.get()
         if session is None:
             raise MonaError('No active session')

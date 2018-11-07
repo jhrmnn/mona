@@ -22,6 +22,7 @@ from .json import ClassJSONEncoder, ClassJSONDecoder, JSONValue, validate_json
 from .utils import Literal, shorten_text, TypeSwaps, swap_type
 
 __version__ = '0.1.0'
+__all__ = ()
 
 _T_co = TypeVar('_T_co', covariant=True)
 Hash = NewType('Hash', str)
