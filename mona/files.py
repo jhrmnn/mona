@@ -19,8 +19,10 @@ _FM = TypeVar('_FM', bound='FileManager')
 
 
 def add_source(path: Pathable) -> Callable[[_R], _R]:
-    """Decorate a rule to attach the given source to the list of arguments of a
-    task. The source is passed as a instance.
+    """Create a rule decorator to add a source to the task arguments.
+
+    The source is passed as :class:`File`. The file argument is appended to the
+    directly passed arguments.
     """
 
     def decorator(rule: _R) -> _R:
@@ -32,7 +34,7 @@ def add_source(path: Pathable) -> Callable[[_R], _R]:
 
 @Rule
 async def file_collection(files: List['File']) -> None:
-    """A void task that serves to denote a collection of files.
+    """Create a void task whose purpose is to label a file collection.
 
     :param files: a list of :class:`File`
     """
@@ -64,9 +66,10 @@ class FileManager(ABC):
 
 
 class File:
-    """Represents a file located at an abstract relative path. Users should create
-    instances by one of the classmethod constructors documented below rather
-    than directly.
+    """Represents a file located at an abstract relative path.
+
+    Users should create instances by one of the classmethod constructors
+    documented below rather than directly.
     """
 
     def __init__(self, path: Path, content: Union[bytes, Hash]):
@@ -94,12 +97,12 @@ class File:
 
     @property
     def stem(self) -> str:
-        """Delegates to :attr:`pathlib.PurePath.stem`."""
+        """Delegate to :attr:`pathlib.PurePath.stem`."""
         return self._path.stem
 
     @property
     def name(self) -> str:
-        """Delegates to :attr:`pathlib.PurePath.name`."""
+        """Delegate to :attr:`pathlib.PurePath.name`."""
         return self._path.name
 
     @property

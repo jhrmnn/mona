@@ -13,8 +13,10 @@ from ...rules import Rule
 
 @Rule
 async def parse_aims(outputs: Dict[str, File]) -> Any:
-    """Task rule with an output of :class:`mona.sci.aims.Aims` as input and a
-    dictionary of parsed results as output.
+    """Create a task that parses outputs of FHI-aims calculations.
+
+    The task takes the output of :class:`mona.sci.aims.Aims` as an input and
+    returns a dictionary of parsed results as output.
     """
     stdout = outputs['results.xml'].read_text()
     parsed = parse_xml(io.StringIO(stdout))

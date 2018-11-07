@@ -28,9 +28,7 @@ class AimsPlugin(Plugin['Aims']):
 
 
 class Aims(Pluggable):
-    """Instances of this class are task factories that create directory tasks
-    that represent calculations with FHI-aims.
-    """
+    """A task factory that creates FHI-aims directory tasks."""
 
     def __init__(self) -> None:
         Pluggable.__init__(self)
@@ -84,8 +82,7 @@ class Atoms(AimsPlugin):
 
 
 class SpeciesDefaults(AimsPlugin):
-    """Aims plugin that handles adding species defaults to control.in.
-    """
+    """Aims plugin that handles adding species defaults to control.in."""
 
     def __init__(self, mod: Callable[..., Any] = None) -> None:
         self._species_defs: Dict[Tuple[Path, str], Dict[str, Any]] = {}

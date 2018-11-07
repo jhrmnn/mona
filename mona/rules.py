@@ -16,8 +16,10 @@ ArgFactory = Callable[[], Hashed[object]]
 
 
 class Rule(Generic[_T]):
-    """Decorator that turns a coroutine function into a rule, which is a
-    callable that generates a task instead of actually calling the coroutine.
+    """Decorator that turns a coroutine function into a rule.
+
+    A rule is a callable that generates a task instead of actually calling the
+    coroutine.
 
     :param corofunc: a coroutine function
     """

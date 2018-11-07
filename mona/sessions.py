@@ -95,8 +95,7 @@ class SessionGraph(NamedTuple):
 
 
 class Session(Pluggable):
-    """The Session context manager represents a session in which tasks can be
-    created and executed.
+    """A context manager in which tasks can be created.
 
     :param plugins: session plugins to load. This is equivalent to calling each
                     plugin with the created session as an argument
@@ -125,7 +124,7 @@ class Session(Pluggable):
 
     @property
     def storage(self) -> Dict[str, object]:
-        """A ganeral string-based dictionary available when a session is active."""
+        """General-purpose dictionary-based storage."""
         self._check_active()
         return self._storage
 
@@ -161,7 +160,7 @@ class Session(Pluggable):
 
     @property
     def running_task(self) -> ATask:
-        """Currently running task."""
+        """Currently running task."""  # noqa: D401
         task = self._running_task.get()
         if task:
             return task
@@ -295,8 +294,9 @@ class Session(Pluggable):
         task_filter: TaskFilter = None,
         limit: int = None,
     ) -> Any:
-        """Evaluate the given object by running all tasks it contains as well as
-        any new generated tasks.
+        """Evaluate an object by running all tasks it references.
+
+        This includes all newly created tasks that are referenced indirectly.
 
         :param obj: any hashable object
         :param bool depth: traverse DAG depth-first if true, breadth-first otherwise
@@ -402,8 +402,9 @@ class Session(Pluggable):
             return await self._eval_async(*args, **kwargs)
 
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
-        """Generate :class:`~graphviz.Digraph` for the task DAG. Requires
-        `Graphviz <https://graphviz.readthedocs.io/>`_.
+        """Generate :class:`~graphviz.Digraph` for the task DAG.
+
+        Requires `Graphviz <https://graphviz.readthedocs.io/>`_.
         """
         from graphviz import Digraph  # type: ignore
 

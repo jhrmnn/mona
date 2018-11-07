@@ -9,7 +9,7 @@ def test_docstring():
         return 1
 
     async def g():
-        """docstring"""
+        """Docstring."""
         return 1
 
     assert hash_function(f) == hash_function(g)

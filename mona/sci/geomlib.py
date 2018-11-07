@@ -53,8 +53,7 @@ def no_neg_zeros(r: Any) -> Any:
 
 
 class Atom:
-    """
-    Represents a single atom.
+    """Represents a single atom.
 
     :param species: atom type
     :param coord: atom coordinate
@@ -67,18 +66,18 @@ class Atom:
 
     @property
     def mass(self) -> float:
-        """atom mass"""
+        """Atom mass."""
         mass: float = species_data[self.species]['mass']
         return mass
 
     @property
     def number(self) -> int:
-        """atom number"""
+        """Atom number."""
         return int(species_data[self.species]['number'])
 
     @property
     def covalent_radius(self) -> float:
-        """covalent radius"""
+        """Covalent radius."""
         r: float = species_data[self.species]['covalent radius']
         return r
 
@@ -113,28 +112,28 @@ class Molecule(Sized, Iterable[Atom]):
 
     @property
     def species(self) -> List[str]:
-        """atom types"""
+        """Atom types."""
         return [atom.species for atom in self]
 
     @property
     def numbers(self) -> List[int]:
-        """atom numbers"""
+        """Atom numbers."""
         return [atom.number for atom in self]
 
     @property
     def mass(self) -> float:
-        """molecular mass"""
+        """Molecular mass."""
         return sum(atom.mass for atom in self)
 
     @property
     def cms(self) -> Any:
-        """center of mass"""
+        """Center of mass."""
         masses = np.array([atom.mass for atom in self])
         return (masses[:, None] * self.xyz).sum(0) / self.mass
 
     @property
     def inertia(self) -> Any:
-        """inertia tensor"""
+        """Inertia tensor."""
         masses = np.array([atom.mass for atom in self])
         coords_w = np.sqrt(masses)[:, None] * (self.xyz - self.cms)
         A = np.array([np.diag(np.full(3, r)) for r in np.sum(coords_w ** 2, 1)])
@@ -146,7 +145,7 @@ class Molecule(Sized, Iterable[Atom]):
 
     @property
     def coords(self) -> List[Vec]:
-        """coordinates"""
+        """Coordinates."""
         return [atom.coord for atom in self]
 
     def __repr__(self) -> str:
@@ -154,12 +153,12 @@ class Molecule(Sized, Iterable[Atom]):
 
     @property
     def xyz(self) -> Any:
-        """coordinates as a numpy array"""
+        """Coordinates as a numpy array."""
         return np.array(self.coords)
 
     @property
     def formula(self) -> str:
-        """formula"""
+        """Formula."""
         counter = DefaultDict[str, int](int)
         for species in self.species:
             counter[species] += 1
@@ -239,7 +238,7 @@ class Molecule(Sized, Iterable[Atom]):
 
     @property
     def centers(self) -> Iterator[Atom]:
-        """iterator over atoms"""
+        """Iterate over atoms."""
         yield from self._atoms
 
     def __iter__(self) -> Iterator[Atom]:
@@ -254,7 +253,7 @@ class Molecule(Sized, Iterable[Atom]):
         return fp.getvalue()
 
     def items(self) -> Iterator[Tuple[str, Vec]]:
-        """iterator over tuples of atom type and coordinate"""
+        """Iterate over tuples of atom type and coordinate."""
         for atom in self:
             yield atom.species, atom.coord
 
@@ -401,7 +400,7 @@ class Crystal(Molecule):
 
     @property
     def abc(self) -> Any:
-        """latice vectors as a numpy array"""
+        """Latice vectors as a numpy array."""
         return np.array(self.lattice)
 
     def get_kgrid(self, density: float = 0.06) -> Tuple[int, int, int]:

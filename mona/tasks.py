@@ -57,7 +57,7 @@ def ensure_hashed(obj: object) -> Hashed[object]:
 
 
 def maybe_hashed(obj: object) -> Optional[Hashed[object]]:
-    """Wraps maybe_hashed() with return value None on error."""
+    """Turn any object into a Hashed object or None if not hashable."""
     try:
         return ensure_hashed(obj)
     except CompositeError:
@@ -68,8 +68,7 @@ def maybe_hashed(obj: object) -> Optional[Hashed[object]]:
 # dispatching all futures via a session in the same way that tasks are.
 # See test_identical_futures() for an example of what wouldn't work.
 class HashedFuture(Hashed[_T_co], Future):
-    """
-    Represents a hashed future.
+    """Represents a hashed future.
 
     Inherits abstract methods spec() and label() from Hashed, implements
     abstract property value and adds abstract method result().

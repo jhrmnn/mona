@@ -56,6 +56,7 @@ flake8-bugbear = "^18.8"
 flake8-comprehensions = "^1.4"
 flake8-quotes = "^1.0"
 black = "^18.3-alpha.0"
+flake8-docstrings = "^1.3"
 
 [tool.poetry.scripts]
 mona = "mona.cli:cli"

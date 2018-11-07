@@ -61,8 +61,7 @@ class DirTaskProcessError(subprocess.CalledProcessError):
 
 
 class DirtaskTmpdir:
-    """
-    Context manager of a temporary directory that collects created files.
+    """Context manager of a temporary directory that collects created files.
 
     :param output_filter: true for files to be collected
     """
@@ -102,9 +101,9 @@ class DirtaskTmpdir:
             self._ctx.__exit__(exc_type, *args)
 
     def result(self) -> Dict[str, File]:
-        """
-        The collection of files created in the temporary directory. This is
-        available only after leaving the context.
+        """Return a collection of files created in the temporary directory.
+
+        This is available only after leaving the context.
         """
         return self._outputs
 
@@ -134,9 +133,10 @@ def checkout_files(
 
 @Rule
 async def dir_task(exe: File, inputs: List[DirtaskInput]) -> Dict[str, File]:
-    """
-    Task rule with an executable and a collection of files as inputs and a
-    collection of output files as output.
+    """Create a rule with an executable and a files as inputs.
+
+    The result of the task is a dictionary of all new files created by running
+    the executable.
     """
     for file in [exe, *inputs]:
         if not (

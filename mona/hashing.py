@@ -63,8 +63,9 @@ class Hashed(ABC, Generic[_T_co]):
 
     @property
     def components(self) -> Iterable['Hashed[object]']:
-        """To be overwritten by derived classes when the object contains
-        references to other Hashed objects.
+        """:class:`Hashed` instances required by the constructor.
+
+        To be implemented by subclasses.
         """
         return ()
 

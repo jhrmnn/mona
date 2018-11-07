@@ -10,8 +10,9 @@ __all__ = ['jinja_tex']
 
 
 def jinja_tex(tex_template: str, ctx: Dict[str, object]) -> str:
-    """Render a Jinja TeX template. Uses ``<</>>`` for variables, ``<+/+>`` for blocks,
-    and ``<#/#>`` for comments.
+    """Render a Jinja TeX template.
+
+    Uses ``<</>>`` for variables, ``<+/+>`` for blocks, and ``<#/#>`` for comments.
 
     :param str tex_template: a Jinja template
     :param dict ctx: a variable context
