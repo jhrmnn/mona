@@ -136,9 +136,9 @@ class Molecule(Sized, Iterable[Atom]):
         """Inertia tensor."""
         masses = np.array([atom.mass for atom in self])
         coords_w = np.sqrt(masses)[:, None] * (self.xyz - self.cms)
-        A = np.array([np.diag(np.full(3, r)) for r in np.sum(coords_w ** 2, 1)])
-        B = coords_w[:, :, None] * coords_w[:, None, :]
-        return np.sum(A - B, 0)
+        a = np.array([np.diag(np.full(3, r)) for r in np.sum(coords_w ** 2, 1)])
+        b = coords_w[:, :, None] * coords_w[:, None, :]
+        return np.sum(a - b, 0)
 
     def __getitem__(self, i: int) -> Atom:
         return self._atoms[i]
@@ -167,9 +167,9 @@ class Molecule(Sized, Iterable[Atom]):
     def bondmatrix(self, scale: float) -> Any:
         """Return a connectivity matrix."""
         xyz = self.xyz
-        Rs = np.array([atom.covalent_radius for atom in self])
+        rs = np.array([atom.covalent_radius for atom in self])
         dmatrix = np.sqrt(np.sum((xyz[None, :] - xyz[:, None]) ** 2, 2))
-        thrmatrix = scale * (Rs[None, :] + Rs[:, None])
+        thrmatrix = scale * (rs[None, :] + rs[:, None])
         return dmatrix < thrmatrix
 
     def get_fragments(self, scale: float = 1.3) -> List['Molecule']:
@@ -525,8 +525,8 @@ def readfile(path: str, fmt: str = None) -> Molecule:
         return load(f, fmt)
 
 
-def getfragments(C: Any) -> List[List[int]]:
-    n = C.shape[0]
+def getfragments(conn: Any) -> List[List[int]]:
+    n = conn.shape[0]
     assigned = [-1 for _ in range(n)]  # fragment index, otherwise -1
     ifragment = 0  # current fragment index
     queue = [0 for _ in range(n)]  # allocate queue of neighbors
@@ -537,7 +537,7 @@ def getfragments(C: Any) -> List[List[int]]:
         while b - a > 0:  # until queue is exhausted
             node, a = queue[a], a + 1  # pop from queue
             assigned[node] = ifragment  # assign node
-            neighbors = np.flatnonzero(C[node, :])  # list of neighbors
+            neighbors = np.flatnonzero(conn[node, :])  # list of neighbors
             for neighbor in neighbors:
                 if not (assigned[neighbor] >= 0 or neighbor in queue[a:b]):
                     # add to queue if not assigned or in queue

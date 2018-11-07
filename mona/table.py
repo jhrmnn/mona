@@ -7,7 +7,7 @@ from typing import Any, Callable, List, Tuple, Union
 __all__ = ()
 
 
-class lenstr(str):
+class lenstr(str):  # noqa: N801
     def __new__(cls, s: Any, len: int) -> str:
         return str.__new__(cls, s)  # type: ignore
 

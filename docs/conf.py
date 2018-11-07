@@ -9,8 +9,8 @@ import toml
 from sphinx.util.inspect import Signature  # type: ignore
 
 
-def Signature__init__(self, *args, **kwargs):
-    _Signature__init__(self, *args, **kwargs)
+def signature_init(self, *args, **kwargs):
+    _signature_init(self, *args, **kwargs)
     self.annotations.clear()
     params = [
         param.replace(annotation=inspect.Parameter.empty)
@@ -21,7 +21,7 @@ def Signature__init__(self, *args, **kwargs):
     )
 
 
-Signature.__init__, _Signature__init__ = Signature__init__, Signature.__init__
+Signature.__init__, _signature_init = signature_init, Signature.__init__
 
 
 class Mock(MagicMock):
