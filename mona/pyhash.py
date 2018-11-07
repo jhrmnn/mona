@@ -118,8 +118,8 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
     return hashed_globals
 
 
-# fixed function from stdlib which parses closures in code consts as well
-# TODO submit cpython fix
+# adapted function from stdlib which parses closures in code consts as well
+# see https://bugs.python.org/issue34947
 def getclosurevars(func: Callable[..., Any]) -> inspect.ClosureVars:
     code = func.__code__
     nonlocal_vars = {

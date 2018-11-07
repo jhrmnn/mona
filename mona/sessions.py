@@ -405,7 +405,7 @@ class Session(Pluggable):
         return fut
 
     @wraps(_eval_async)
-    async def eval_async(self, *args: Any, **kwargs: Any) -> Any:  # noqa: D102
+    async def eval_async(self, *args: Any, **kwargs: Any) -> Any:
         async with self.run_context():
             return await self._eval_async(*args, **kwargs)
 

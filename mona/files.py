@@ -14,7 +14,7 @@ from .utils import Pathable, make_nonwritable, shorten_text
 __version__ = '0.3.0'
 __all__ = ['File', 'file_collection', 'add_source']
 
-_R = TypeVar('_R', bound=Rule)  # type: ignore
+_R = TypeVar('_R', bound=Rule[object])
 _FM = TypeVar('_FM', bound='FileManager')
 
 
