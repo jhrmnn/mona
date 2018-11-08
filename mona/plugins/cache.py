@@ -219,6 +219,8 @@ class Cache(SessionPlugin):
         return result
 
     def _restore_task(self, task: Task[object]) -> None:
+        if getattr(task, '_restored', None):  # TODO clean up
+            return
         row = self._get_task_row(task.hashid)
         assert row
         if State[row.state] < State.HAS_RUN:
@@ -237,6 +239,7 @@ class Cache(SessionPlugin):
             self._to_restore.extend(reversed(side_effects))
         task.set_has_run()
         sess.set_result(task, self._get_result(row))
+        task._restored = True  # type: ignore
 
     def save_hashed(self, objs: Sequence[Hashed[object]]) -> None:  # noqa: D102
         if self._write is WriteAccess.EAGER:
