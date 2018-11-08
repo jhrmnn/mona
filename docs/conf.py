@@ -56,6 +56,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.mathjax',
     'sphinxcontrib.asyncio',
 ]
 intersphinx_mapping = {
