@@ -254,6 +254,8 @@
         <span class="k">return</span> <span class="n">result</span>
 
     <span class="k">def</span> <span class="nf">_restore_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s1">&#39;_restored&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>  <span class="c1"># TODO clean up</span>
+            <span class="k">return</span>
         <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_task_row</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">row</span>
         <span class="k">if</span> <span class="n">State</span><span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">state</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">State</span><span class="o">.</span><span class="n">HAS_RUN</span><span class="p">:</span>
@@ -272,6 +274,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_to_restore</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">side_effects</span><span class="p">))</span>
         <span class="n">task</span><span class="o">.</span><span class="n">set_has_run</span><span class="p">()</span>
         <span class="n">sess</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_result</span><span class="p">(</span><span class="n">row</span><span class="p">))</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">_restored</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># type: ignore</span>
 
     <span class="k">def</span> <span class="nf">save_hashed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: D102</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write</span> <span class="ow">is</span> <span class="n">WriteAccess</span><span class="o">.</span><span class="n">EAGER</span><span class="p">:</span>
@@ -434,8 +437,10 @@
 </p>
 <h3>Navigation</h3>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+</ul>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../api.html">API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI</a></li>
 </ul>
 
 <div class="relations">

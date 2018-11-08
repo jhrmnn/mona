@@ -3,7 +3,18 @@ Welcome to Mona
 
 Only scaffolding of the planned documentation is available now.
 
-.. toctree::
+User guide
+----------
 
-   api
-   cli
+.. toctree::
+    :maxdepth: 2
+
+    quickstart
+
+API reference
+-------------
+
+.. toctree::
+    :maxdepth: 2
+
+    api

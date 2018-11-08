@@ -175,7 +175,7 @@
     <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Session&#39;</span><span class="p">:</span>
         <span class="k">assert</span> <span class="n">_active_session</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_active_session_token</span> <span class="o">=</span> <span class="n">_active_session</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_enter&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_enter&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span> <span class="nf">_filter_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cond</span><span class="p">:</span> <span class="n">TaskFilter</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ATask</span><span class="p">]:</span>
@@ -183,7 +183,7 @@
 
     <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">assert</span> <span class="n">_active_session</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="ow">is</span> <span class="bp">self</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;pre_exit&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;pre_exit&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
         <span class="n">_active_session</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_active_session_token</span><span class="p">)</span>
         <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_session_token</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warn</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_skipped</span> <span class="ow">and</span> <span class="n">exc_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -225,7 +225,7 @@
         <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">hashid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">TaskError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Not in session: </span><span class="si">{task!r}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;save_hashed&#39;</span><span class="p">,</span> <span class="n">objs</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;save_hashed&#39;</span><span class="p">,</span> <span class="n">objs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">tasks</span>
 
 <div class="viewcode-block" id="Session.register_task"><a class="viewcode-back" href="../../api.html#mona.Session.register_task">[docs]</a>    <span class="k">def</span> <span class="nf">register_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
@@ -259,17 +259,17 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">add_side_effect_of</span><span class="p">(</span><span class="n">caller</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
         <span class="n">task</span><span class="p">,</span> <span class="n">registered</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_task</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">registered</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_create&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_create&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">task</span></div>
 
     <span class="nd">@asynccontextmanager</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">run_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Context in which tasks should be run.&quot;&quot;&quot;</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins_async</span><span class="p">(</span><span class="s1">&#39;pre_run&#39;</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins_async</span><span class="p">(</span><span class="s1">&#39;pre_run&#39;</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">yield</span>
         <span class="k">finally</span><span class="p">:</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins_async</span><span class="p">(</span><span class="s1">&#39;post_run&#39;</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins_async</span><span class="p">(</span><span class="s1">&#39;post_run&#39;</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_run_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">_T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">_T</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T</span><span class="p">]]:</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_context</span><span class="p">():</span>
@@ -315,7 +315,7 @@
             <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{task}</span><span class="s1">: created tasks: {list(map(Literal, side_effects))}&#39;</span><span class="p">)</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">_T</span><span class="p">,</span> <span class="n">maybe_hashed</span><span class="p">(</span><span class="n">raw_result</span><span class="p">))</span> <span class="ow">or</span> <span class="n">raw_result</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_task_run&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;post_task_run&#39;</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span></div>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_traverse_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">,</span> <span class="n">done</span><span class="p">:</span> <span class="n">NodeExecuted</span><span class="p">[</span><span class="n">ATask</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -370,7 +370,7 @@
             <span class="k">lambda</span> <span class="n">task</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="n">call_if</span><span class="p">(</span>
                 <span class="n">task</span><span class="o">.</span><span class="n">state</span> <span class="o">&lt;</span> <span class="n">State</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">,</span> <span class="n">task</span><span class="o">.</span><span class="n">add_ready_callback</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="n">reg</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
             <span class="p">),</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;wrap_execute&#39;</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_traverse_execute</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;wrap_execute&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traverse_execute</span><span class="p">,</span> <span class="n">wrap_first</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
             <span class="n">depth</span><span class="p">,</span>
             <span class="n">priority</span><span class="p">,</span>
         <span class="p">)</span>
@@ -389,7 +389,7 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span>
                     <span class="k">if</span> <span class="n">exception_handler</span> <span class="ow">and</span> <span class="n">exception_handler</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;ignored_exception&#39;</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;ignored_exception&#39;</span><span class="p">)</span>
                         <span class="n">exceptions</span><span class="p">[</span><span class="n">task</span><span class="p">]</span> <span class="o">=</span> <span class="n">exc</span>
                         <span class="n">task</span><span class="o">.</span><span class="n">set_error</span><span class="p">()</span>
                         <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Handled </span><span class="si">{exc!r}</span><span class="s1"> from </span><span class="si">{task!r}</span><span class="s1">&#39;</span><span class="p">)</span>
@@ -440,7 +440,7 @@
         <span class="k">return</span> <span class="n">fut</span>
 
 <div class="viewcode-block" id="Session.eval_async"><a class="viewcode-back" href="../../api.html#mona.Session.eval_async">[docs]</a>    <span class="nd">@wraps</span><span class="p">(</span><span class="n">_eval_async</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">eval_async</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>  <span class="c1"># noqa: D102</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">eval_async</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_context</span><span class="p">():</span>
             <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eval_async</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
@@ -532,8 +532,10 @@
 </p>
 <h3>Navigation</h3>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a></li>
+</ul>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../api.html">API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../cli.html">CLI</a></li>
 </ul>
 
 <div class="relations">

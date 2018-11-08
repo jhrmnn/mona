@@ -1,0 +1,197 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Quickstart &#8212; Mona 0.2.2 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API" href="api.html" />
+    <link rel="prev" title="Welcome to Mona" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="quickstart">
+<h1>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="fibonacci-numbers">
+<h2>Fibonacci numbers<a class="headerlink" href="#fibonacci-numbers" title="Permalink to this headline">¶</a></h2>
+<p>A Fibonacci number <span class="math notranslate nohighlight">\(F_n\)</span> is defined recursively as <span class="math notranslate nohighlight">\(F_n=F_{n-1}+F_{n-2}\)</span>, with <span class="math notranslate nohighlight">\(F_1=F_2=1\)</span>. Because the definition contains references to two Fibonacci numbers, a naive recursive implementation of <span class="math notranslate nohighlight">\(F_n\)</span> has a factorial time complexity. With Mona, the implementation could look something like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mona</span>
+
+<span class="nd">@mona</span><span class="o">.</span><span class="n">Rule</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">total</span><span class="p">(</span><span class="n">xs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
+
+<span class="nd">@mona</span><span class="o">.</span><span class="n">Rule</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">fib</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">total</span><span class="p">([</span><span class="n">fib</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">fib</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)])</span>
+</pre></div>
+</div>
+<p>One thing to note about <code class="docutils literal notranslate"><span class="pre">fib()</span></code> and <code class="docutils literal notranslate"><span class="pre">total()</span></code> is that although they are defined as coroutine functions, they are called without <code class="docutils literal notranslate"><span class="pre">await</span></code>. Another is that if they were defined as ordinary (non-async) functions and were not decorated, <code class="docutils literal notranslate"><span class="pre">fib(n)</span></code> would evaluate directly to <span class="math notranslate nohighlight">\(F_n\)</span>, albeit with factorial time complexity.</p>
+<p>As it stands above, though, each of the two decorated functions becomes a <a class="reference internal" href="api.html#mona.Rule" title="mona.Rule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Rule</span></code></a>. Calling a rule does not execute the body of the coroutine function, nor does it create a coroutine, as coroutine functions do. Rather, calling it creates a <a class="reference internal" href="api.html#mona.tasks.Task" title="mona.tasks.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a>. Furthermore, a task can be created only in a so-called session, represented by the <a class="reference internal" href="api.html#mona.Session" title="mona.Session"><code class="xref py py-class docutils literal notranslate"><span class="pre">Session</span></code></a> context manager. The session is also used to actually execute the function associated with a task and to get its result—to evaluate the task:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">mona</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">sess</span><span class="p">:</span>
+    <span class="k">assert</span> <span class="n">sess</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">fib</span><span class="p">(</span><span class="mi">35</span><span class="p">))</span> <span class="o">==</span> <span class="mi">9227465</span>
+</pre></div>
+</div>
+<p>One result of using Mona is that here, the Fibonacci number was calculated with linear time complexity, even though the implementation looks recursive. This is achieved by caching the results of all tasks.</p>
+<p>Alternatively, one can evaluate the task with all the bells and whistles using the CLI:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mona init
+Initializing an empty repository in /home/mona/fib/.mona.
+$ ls
+.mona  fib.py
+$ mona run fib:fib 35
+1837a5: fib(35): will run
+7449e3: fib(33): will run
+248b29: fib(34): will run
+...
+0694d9: total([fib(32), fib(31)]): will run
+5a29eb: total([fib(33), fib(32)]): will run
+b628ff: total([fib(34), fib(33)]): will run
+Finished
+$ mona run fib:fib 34
+Finished
+</pre></div>
+</div>
+<p>Apart from the reduced time complexity, here the task cache was stored in an SQLite database at <code class="docutils literal notranslate"><span class="pre">.mona/cache.db</span></code>, and used in the second invocation of the <code class="docutils literal notranslate"><span class="pre">run</span></code> command.</p>
+<p>To use these cached results in Python, one uses a session created by an <code class="xref py py-class docutils literal notranslate"><span class="pre">App</span></code> instance:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mona.app</span> <span class="k">import</span> <span class="n">App</span>
+
+<span class="k">with</span> <span class="n">App</span><span class="p">()</span><span class="o">.</span><span class="n">session</span><span class="p">()</span> <span class="k">as</span> <span class="n">sess</span><span class="p">:</span>
+    <span class="n">sess</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">fib</span><span class="p">(</span><span class="mi">35</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>What exactly happened underneath in the previous examples is explained in the next section.</p>
+</div>
+<div class="section" id="under-the-hood">
+<h2>Under the hood<a class="headerlink" href="#under-the-hood" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Mona</a></h1>
+
+
+
+<p class="blurb">Calculation framework</p>
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=azag0&repo=mona&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+    
+
+<p>
+<a class="badge" href="https://travis-ci.org/azag0/mona">
+    <img
+        alt="https://secure.travis-ci.org/azag0/mona.svg?branch=master"
+        src="https://secure.travis-ci.org/azag0/mona.svg?branch=master"
+    />
+</a>
+</p>
+
+
+
+
+    
+
+<p>
+<a class="badge" href="https://codecov.io/github/azag0/mona">
+    <img
+    alt="https://codecov.io/github/azag0/mona/coverage.svg?branch=master"
+    src="https://codecov.io/github/azag0/mona/coverage.svg?branch=master"
+    />
+</a>
+</p>
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#fibonacci-numbers">Fibonacci numbers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#under-the-hood">Under the hood</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to Mona</a></li>
+      <li>Next: <a href="api.html" title="next chapter">API</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015-2018, Jan Hermann.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/quickstart.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

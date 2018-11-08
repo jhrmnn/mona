@@ -76,7 +76,7 @@
 
 <span class="sd">        :param kwargs: processed by individual plugins</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;process&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;process&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
         <span class="n">script</span> <span class="o">=</span> <span class="n">File</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;aims.sh&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;script&#39;</span><span class="p">))</span>
         <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">File</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">cont</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">cont</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;inputs&#39;</span><span class="p">)]</span>
         <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
@@ -268,8 +268,10 @@
 </p>
 <h3>Navigation</h3>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html">Quickstart</a></li>
+</ul>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api.html">API</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../cli.html">CLI</a></li>
 </ul>
 
 <div class="relations">
