@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Pattern, Sequence, Tuple, cast
+from typing_extensions import Final
 
 import click
 
@@ -22,14 +23,16 @@ from .utils import groupby
 __version__ = '0.1.0'
 __all__ = ()
 
-logging.basicConfig(
-    style='{',
-    format='[{asctime}.{msecs:03.0f}] {levelname}:{name}: {message}',
-    datefmt='%H:%M:%S',
+MONA_DEBUG: Final = int(os.environ.get('MONA_DEBUG', logging.INFO))
+LOG_FORMAT: Final = (
+    '[{asctime}.{msecs:03.0f}] {levelname}:{name}: {message}'
+    if MONA_DEBUG < logging.INFO
+    else '{message}'
 )
+logging.basicConfig(style='{', format=LOG_FORMAT, datefmt='%H:%M:%S')
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-logging.getLogger('mona').setLevel(int(os.environ.get('MONA_DEBUG', logging.INFO)))
+logging.getLogger('mona').setLevel(MONA_DEBUG)
 
 _regexes: Dict[str, Pattern[str]] = {}
 
