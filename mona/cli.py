@@ -236,7 +236,7 @@ def remote() -> None:
 @click.argument('name')
 @click.argument('url')
 @click.pass_obj
-def remote_add(app: App, url: str, name: str = None) -> None:
+def remote_add(app: App, url: str, name: str) -> None:
     """Add a remote."""
     host, path = url.split(':')
     name = name or host
@@ -249,7 +249,7 @@ def remote_add(app: App, url: str, name: str = None) -> None:
 @click.option('--dry', is_flag=True, help='Do a dry run')
 @click.argument('remotes')
 @click.pass_obj
-def update(app: App, remotes: str, delete: bool = False, dry: bool = False) -> None:
+def update(app: App, remotes: str, delete: bool, dry: bool) -> None:
     """Update remotes."""
     for remote in app.parse_remotes(remotes):
         remote.update(delete=delete, dry=dry)
