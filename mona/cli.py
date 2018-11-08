@@ -115,6 +115,7 @@ class ExceptionBuffer:
 @click.option('-l', '--limit', type=int, help='Limit number of tasks to N')
 @click.option('--maxerror', type=int, help='Number of errors in row to quit')
 @click.argument('rule')
+@click.argument('args', nargs=-1)
 @click.pass_obj
 def run(
     app: App,
@@ -124,9 +125,10 @@ def run(
     limit: Optional[int],
     maxerror: int,
     rule: str,
+    args: List[str],
 ) -> None:
     """Run a given rule."""
-    app.last_entry = rule
+    app.last_entry = [rule, *args]
     task_filter = TaskFilter(pattern, no_path=not path)
     exception_buffer = ExceptionBuffer(maxerror)
     with app.session(ncores=cores) as sess:

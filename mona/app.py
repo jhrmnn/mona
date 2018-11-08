@@ -1,12 +1,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import json
 import logging
 import os
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, MutableMapping
+from typing import Any, Dict, Iterable, Iterator, List, MutableMapping, cast
 
 import toml
 
@@ -14,6 +15,7 @@ from .plugins import Cache, FileManager, Parallel, TmpdirManager
 from .remotes import Remote
 from .rules import Rule
 from .sessions import Session
+from .tasks import Task
 from .utils import Pathable, get_timestamp, import_fullname
 
 __all__ = ()
@@ -48,20 +50,20 @@ class App:
         return sess
 
     @property
-    def last_entry(self) -> str:
-        return (self._monadir / App.LAST_ENTRY).read_text()
+    def last_entry(self) -> List[str]:
+        return cast(List[str], json.loads((self._monadir / App.LAST_ENTRY).read_text()))
 
     @last_entry.setter
-    def last_entry(self, entry: str) -> None:
-        (self._monadir / App.LAST_ENTRY).write_text(entry)
+    def last_entry(self, entry: List[str]) -> None:
+        (self._monadir / App.LAST_ENTRY).write_text(json.dumps(entry))
 
-    @property
-    def last_rule(self) -> Rule[object]:
+    def last_rule(self) -> Task[object]:
         if '' not in sys.path:
             sys.path.append('')
-        rule = import_fullname(self.last_entry)
+        rulename, *args = self.last_entry
+        rule = import_fullname(rulename)
         assert isinstance(rule, Rule)
-        return rule
+        return rule(*(eval(arg) for arg in args))
 
     def __call__(
         self,
