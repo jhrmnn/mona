@@ -7,10 +7,22 @@ import os
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, MutableMapping, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    MutableMapping,
+    Tuple,
+    TypeVar,
+    cast,
+)
 
 import toml
 
+from .files import HashedFile, file_from_path
 from .plugins import Cache, FileManager, Parallel, TmpdirManager
 from .remotes import Remote
 from .rules import Rule
@@ -21,6 +33,9 @@ from .utils import Pathable, get_timestamp, import_fullname
 __all__ = ()
 
 log = logging.getLogger(__name__)
+
+_R = TypeVar('_R', bound=Rule[object])
+ArgFactory = Callable[[str], object]
 
 
 class Mona:
@@ -124,3 +139,16 @@ class Mona:
             remotes = [self._config['remotes'][name] for name in remote_str.split(',')]
         for remote in remotes:
             yield Remote(remote['host'], remote['path'])
+
+    def add_source(self, path: Pathable) -> Callable[[_R], _R]:
+        """Create a rule decorator to add a source to the task arguments.
+
+        The source is passed as :class:`File`. The file argument is appended to the
+        directly passed arguments.
+        """
+
+        def decorator(rule: _R) -> _R:
+            rule.add_extra_arg(lambda: HashedFile(file_from_path(path)))
+            return rule
+
+        return decorator

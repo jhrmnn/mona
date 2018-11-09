@@ -4,7 +4,7 @@
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Type, TypeVar, Union, cast
+from typing import Any, Iterable, List, Optional, Type, TypeVar, Union, cast
 
 from .hashing import Hash, Hashed, HashedBytes, HashedComposite, HashResolver
 from .rules import Rule
@@ -12,24 +12,9 @@ from .sessions import Session
 from .utils import Pathable, make_nonwritable, shorten_text
 
 __version__ = '0.3.0'
-__all__ = ['file_from_path', 'file_collection', 'add_source']
+__all__ = ['file_from_path', 'file_collection', 'File']
 
-_R = TypeVar('_R', bound=Rule[object])
 _FM = TypeVar('_FM', bound='FileManager')
-
-
-def add_source(path: Pathable) -> Callable[[_R], _R]:
-    """Create a rule decorator to add a source to the task arguments.
-
-    The source is passed as :class:`File`. The file argument is appended to the
-    directly passed arguments.
-    """
-
-    def decorator(rule: _R) -> _R:
-        rule.add_extra_arg(lambda: HashedFile(File.from_path(path)))
-        return rule
-
-    return decorator
 
 
 @Rule
@@ -174,7 +159,9 @@ class File:
         return file
 
 
-file_from_path = File.from_path
+def file_from_path(*args: Any, **kwargs: Any) -> File:
+    """Alias for :meth:`File.from_path`"""
+    return File.from_path(*args, **kwargs)
 
 
 class HashedFile(Hashed[File]):
