@@ -3,11 +3,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 import os
-import re
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Pattern, Sequence, Tuple, cast
+from typing import Dict, List, Optional, Sequence, Tuple, cast
 from typing_extensions import Final
 
 import click
@@ -18,7 +17,7 @@ from .files import File
 from .futures import STATE_COLORS
 from .table import Table, lenstr
 from .tasks import Task
-from .utils import groupby
+from .utils import groupby, import_fullname, match_glob
 
 __version__ = '0.1.0'
 __all__ = ()
@@ -33,35 +32,6 @@ logging.basicConfig(style='{', format=LOG_FORMAT, datefmt='%H:%M:%S')
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 logging.getLogger('mona').setLevel(MONA_DEBUG)
-
-_regexes: Dict[str, Pattern[str]] = {}
-
-
-def match_glob(path: str, pattern: str) -> Optional[str]:
-    regex = _regexes.get(pattern)
-    if not regex:
-        regex = re.compile(
-            pattern.replace('(', r'\(')
-            .replace(')', r'\)')
-            .replace('?', '[^/]')
-            .replace('<>', '([^/]*)')
-            .replace('<', '(')
-            .replace('>', ')')
-            .replace('{', '(?:')
-            .replace('}', ')')
-            .replace(',', '|')
-            .replace('**', r'\\')
-            .replace('*', '[^/]*')
-            .replace(r'\\', '.*')
-            + '$'
-        )
-        _regexes[pattern] = regex
-    m = regex.match(path)
-    if not m:
-        return None
-    for group in m.groups():
-        pattern = re.sub(r'<.*?>', group, pattern, 1)
-    return pattern
 
 
 @click.group()

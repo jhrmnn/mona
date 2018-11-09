@@ -3,10 +3,23 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import importlib
 import os
+import re
 import stat
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Pattern,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 __all__ = ['Empty']
 
@@ -104,3 +117,33 @@ def groupby(iterable: Iterable[_T], key: Callable[[_T], _V]) -> Dict[_V, List[_T
     for x in iterable:
         groups.setdefault(key(x), []).append(x)
     return groups
+
+
+_regexes: Dict[str, Pattern[str]] = {}
+
+
+def match_glob(path: str, pattern: str) -> Optional[str]:
+    regex = _regexes.get(pattern)
+    if not regex:
+        regex = re.compile(
+            pattern.replace('(', r'\(')
+            .replace(')', r'\)')
+            .replace('?', '[^/]')
+            .replace('<>', '([^/]*)')
+            .replace('<', '(')
+            .replace('>', ')')
+            .replace('{', '(?:')
+            .replace('}', ')')
+            .replace(',', '|')
+            .replace('**', r'\\')
+            .replace('*', '[^/]*')
+            .replace(r'\\', '.*')
+            + '$'
+        )
+        _regexes[pattern] = regex
+    m = regex.match(path)
+    if not m:
+        return None
+    for group in m.groups():
+        pattern = re.sub(r'<.*?>', group, pattern, 1)
+    return pattern
