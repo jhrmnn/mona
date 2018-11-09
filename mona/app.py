@@ -14,6 +14,7 @@ from typing import (
     Iterator,
     List,
     MutableMapping,
+    NamedTuple,
     Tuple,
     TypeVar,
     cast,
@@ -37,6 +38,12 @@ _R = TypeVar('_R', bound=Rule[object])
 ArgFactory = Callable[[str], object]
 
 
+class Entry(NamedTuple):
+    rule: Rule[object]
+    factories: Tuple[ArgFactory, ...]
+    stdout: bool
+
+
 class Mona:
     MONADIR = '.mona'
     TMPDIR = 'tmpdir'
@@ -49,7 +56,7 @@ class Mona:
         self._monadir = Path(monadir).resolve()
         self._configfile = self._monadir / 'config.toml'
         self._config: Dict[str, Any] = {}
-        self._entries: Dict[str, Tuple[Rule[object], Tuple[ArgFactory, ...]]] = {}
+        self._entries: Dict[str, Entry] = {}
         for path in [
             Path('~/.config/mona/config.toml').expanduser(),
             Path('mona.toml'),
@@ -60,16 +67,19 @@ class Mona:
                     self._config.update(toml.load(f))
 
     def entry(
-        self, name: str, *factories: Callable[[str], object]
+        self, name: str, *factories: ArgFactory, stdout: bool = False
     ) -> Callable[[_R], _R]:
         def decorator(rule: _R) -> _R:
-            self._entries[name] = rule, factories
+            self._entries[name] = Entry(rule, factories, stdout)
             return rule
 
         return decorator
 
+    def get_entry(self, name: str) -> Entry:
+        return self._entries[name]
+
     def call_entry(self, name: str, *arg_strings: str) -> Task[object]:
-        rule, factories = self._entries[name]
+        rule, factories, _ = self._entries[name]
         args = [factory(arg_str) for factory, arg_str in zip(factories, arg_strings)]
         return rule(*args)
 

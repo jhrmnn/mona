@@ -106,12 +106,14 @@ def run(
     task_filter = TaskFilter(pattern, no_path=not path)
     exception_buffer = ExceptionBuffer(maxerror)
     with app.create_session(ncores=cores) as sess:
-        sess.eval(
+        result = sess.eval(
             app.call_entry(*entry_args),
             exception_handler=exception_buffer,
             task_filter=task_filter,
             limit=limit,
         )
+    if app.get_entry(entry).stdout:
+        print(result)
 
 
 @cli.command()
