@@ -4,6 +4,7 @@
 import logging
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, cast
@@ -35,9 +36,14 @@ logging.getLogger('mona').setLevel(MONA_DEBUG)
 
 
 @click.group()
+@click.option('--app', 'appname', envvar='MONA_APP', required=True)
 @click.pass_context
-def cli(ctx: click.Context) -> None:
-    ctx.ensure_object(Mona)
+def cli(ctx: click.Context, appname: str) -> None:
+    package = Path(appname.split(':')[0].split('.')[0])
+    if package.is_dir() or package.with_suffix('.py').is_file():
+        sys.path.insert(0, '')
+    ctx.obj = import_fullname(appname)
+    assert isinstance(ctx.obj, Mona)
 
 
 @cli.command()
@@ -84,7 +90,7 @@ class ExceptionBuffer:
 @click.option('-j', '--cores', type=int, help='Number of cores')
 @click.option('-l', '--limit', type=int, help='Limit number of tasks to N')
 @click.option('--maxerror', type=int, help='Number of errors in row to quit')
-@click.argument('rule')
+@click.argument('entry')
 @click.argument('args', nargs=-1)
 @click.pass_obj
 def run(
@@ -94,16 +100,16 @@ def run(
     path: bool,
     limit: Optional[int],
     maxerror: int,
-    rule: str,
+    entry: str,
     args: List[str],
 ) -> None:
     """Run a given rule."""
-    app.last_entry = [rule, *args]
+    app.last_entry = entry_args = [entry, *args]
     task_filter = TaskFilter(pattern, no_path=not path)
     exception_buffer = ExceptionBuffer(maxerror)
     with app.create_session(ncores=cores) as sess:
         sess.eval(
-            app.last_rule(),
+            app.call_entry(*entry_args),
             exception_handler=exception_buffer,
             task_filter=task_filter,
             limit=limit,
@@ -119,7 +125,7 @@ def status(app: Mona, pattern: List[str]) -> None:
     table = Table(align=['<', *(ncols * ['>'])], sep=['   ', *((ncols - 1) * ['/'])])
     table.add_row('pattern', *(s.name.lower() for s in STATE_COLORS), 'all')
     with app.create_session(warn=False, write='never', full_restore=True) as sess:
-        app.last_rule()
+        app.call_last_entry()
         task_groups: Dict[str, List[Task[object]]] = {}
         all_tasks = list(sess.all_tasks())
     for patt in pattern or ['**']:
@@ -154,7 +160,7 @@ def status(app: Mona, pattern: List[str]) -> None:
 def graph(app: Mona) -> None:
     """Open a pdf with the task graph."""
     with app.create_session(warn=False, write='never', full_restore=True) as sess:
-        app.last_rule()
+        app.call_last_entry()
         dot = sess.dot_graph()
     dot.render(tempfile.mkstemp()[1], view=True, cleanup=True, format='pdf')
 
@@ -168,7 +174,7 @@ def checkout(app: Mona, pattern: List[str], done: bool, copy: bool) -> None:
     """Checkout path-labeled tasks into a directory tree."""
     n_tasks = 0
     with app.create_session(warn=False, write='never', full_restore=True) as sess:
-        app.last_rule()
+        app.call_last_entry()
         for task in sess.all_tasks():
             if task.label[0] != '/':
                 continue

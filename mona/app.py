@@ -4,7 +4,6 @@
 import json
 import logging
 import os
-import sys
 from contextlib import contextmanager
 from pathlib import Path
 from typing import (
@@ -28,7 +27,7 @@ from .remotes import Remote
 from .rules import Rule
 from .sessions import Session
 from .tasks import Task
-from .utils import Pathable, get_timestamp, import_fullname
+from .utils import Pathable, get_timestamp
 
 __all__ = ()
 
@@ -50,6 +49,7 @@ class Mona:
         self._monadir = Path(monadir).resolve()
         self._configfile = self._monadir / 'config.toml'
         self._config: Dict[str, Any] = {}
+        self._entries: Dict[str, Tuple[Rule[object], Tuple[ArgFactory, ...]]] = {}
         for path in [
             Path('~/.config/mona/config.toml').expanduser(),
             Path('mona.toml'),
@@ -58,6 +58,20 @@ class Mona:
             if path.exists():
                 with path.open() as f:
                     self._config.update(toml.load(f))
+
+    def entry(
+        self, name: str, *factories: Callable[[str], object]
+    ) -> Callable[[_R], _R]:
+        def decorator(rule: _R) -> _R:
+            self._entries[name] = rule, factories
+            return rule
+
+        return decorator
+
+    def call_entry(self, name: str, *arg_strings: str) -> Task[object]:
+        rule, factories = self._entries[name]
+        args = [factory(arg_str) for factory, arg_str in zip(factories, arg_strings)]
+        return rule(*args)
 
     def create_session(self, warn: bool = False, **kwargs: Any) -> Session:
         sess = Session(warn=warn)
@@ -74,13 +88,8 @@ class Mona:
     def last_entry(self, entry: List[str]) -> None:
         (self._monadir / Mona.LAST_ENTRY).write_text(json.dumps(entry))
 
-    def last_rule(self) -> Task[object]:
-        if '' not in sys.path:
-            sys.path.append('')
-        rulename, *args = self.last_entry
-        rule = import_fullname(rulename)
-        assert isinstance(rule, Rule)
-        return rule(*(eval(arg) for arg in args))
+    def call_last_entry(self) -> Task[object]:
+        return self.call_entry(*self.last_entry)
 
     def __call__(
         self,
