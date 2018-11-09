@@ -12,7 +12,7 @@ from .sessions import Session
 from .utils import Pathable, make_nonwritable, shorten_text
 
 __version__ = '0.3.0'
-__all__ = ['File', 'file_collection', 'add_source']
+__all__ = ['file_from_path', 'file_collection', 'add_source']
 
 _R = TypeVar('_R', bound=Rule[object])
 _FM = TypeVar('_FM', bound='FileManager')
@@ -172,6 +172,9 @@ class File:
         if not keep:
             path.unlink()
         return file
+
+
+file_from_path = File.from_path
 
 
 class HashedFile(Hashed[File]):
