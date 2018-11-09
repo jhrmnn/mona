@@ -2,13 +2,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
-import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, cast
-from typing_extensions import Final
 
 import click
 
@@ -23,27 +21,27 @@ from .utils import groupby, import_fullname, match_glob
 __version__ = '0.1.0'
 __all__ = ()
 
-MONA_DEBUG: Final = int(os.environ.get('MONA_DEBUG', logging.INFO))
-LOG_FORMAT: Final = (
-    '[{asctime}.{msecs:03.0f}] {levelname}:{name}: {message}'
-    if MONA_DEBUG < logging.INFO
-    else '{message}'
-)
-logging.basicConfig(style='{', format=LOG_FORMAT, datefmt='%H:%M:%S')
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
-logging.getLogger('mona').setLevel(MONA_DEBUG)
 
 
 @click.group()
 @click.option('--app', 'appname', envvar='MONA_APP', required=True)
+@click.option('--debug', is_flag=True, envvar='MONA_DEBUG')
 @click.pass_context
-def cli(ctx: click.Context, appname: str) -> None:
+def cli(ctx: click.Context, appname: str, debug: int) -> None:
     package = Path(appname.split(':')[0].split('.')[0])
     if package.is_dir() or package.with_suffix('.py').is_file():
         sys.path.insert(0, '')
     ctx.obj = import_fullname(appname)
     assert isinstance(ctx.obj, Mona)
+    if debug:
+        log_format = '[{asctime}.{msecs:03.0f}] {levelname}:{name}: {message}'
+        log_level = logging.DEBUG
+    else:
+        log_format = '{message}'
+        log_level = logging.INFO
+    logging.basicConfig(style='{', format=log_format, datefmt='%H:%M:%S')
+    logging.getLogger('mona').setLevel(log_level)
 
 
 @cli.command()
