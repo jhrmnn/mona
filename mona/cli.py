@@ -12,7 +12,7 @@ from typing_extensions import Final
 
 import click
 
-from .app import App
+from .app import Mona
 from .dirtask import DirtaskInput, checkout_files
 from .files import File
 from .futures import STATE_COLORS
@@ -67,12 +67,12 @@ def match_glob(path: str, pattern: str) -> Optional[str]:
 @click.group()
 @click.pass_context
 def cli(ctx: click.Context) -> None:
-    ctx.ensure_object(App)
+    ctx.ensure_object(Mona)
 
 
 @cli.command()
 @click.pass_obj
-def init(app: App) -> None:
+def init(app: Mona) -> None:
     """Initialize a Git repository."""
     app.ensure_monadir()
 
@@ -118,7 +118,7 @@ class ExceptionBuffer:
 @click.argument('args', nargs=-1)
 @click.pass_obj
 def run(
-    app: App,
+    app: Mona,
     pattern: List[str],
     cores: int,
     path: bool,
@@ -131,7 +131,7 @@ def run(
     app.last_entry = [rule, *args]
     task_filter = TaskFilter(pattern, no_path=not path)
     exception_buffer = ExceptionBuffer(maxerror)
-    with app.session(ncores=cores) as sess:
+    with app.create_session(ncores=cores) as sess:
         sess.eval(
             app.last_rule(),
             exception_handler=exception_buffer,
@@ -143,13 +143,12 @@ def run(
 @cli.command()
 @click.option('-p', '--pattern', multiple=True, help='Patterns to be reported')
 @click.pass_obj
-def status(app: App, pattern: List[str]) -> None:
+def status(app: Mona, pattern: List[str]) -> None:
     """Print status of tasks."""
-    sess = app.session(warn=False, write='never', full_restore=True)
     ncols = len(STATE_COLORS) + 1
     table = Table(align=['<', *(ncols * ['>'])], sep=['   ', *((ncols - 1) * ['/'])])
     table.add_row('pattern', *(s.name.lower() for s in STATE_COLORS), 'all')
-    with sess:
+    with app.create_session(warn=False, write='never', full_restore=True) as sess:
         app.last_rule()
         task_groups: Dict[str, List[Task[object]]] = {}
         all_tasks = list(sess.all_tasks())
@@ -182,10 +181,9 @@ def status(app: App, pattern: List[str]) -> None:
 
 @cli.command()
 @click.pass_obj
-def graph(app: App) -> None:
+def graph(app: Mona) -> None:
     """Open a pdf with the task graph."""
-    sess = app.session(warn=False, write='never', full_restore=True)
-    with sess:
+    with app.create_session(warn=False, write='never', full_restore=True) as sess:
         app.last_rule()
         dot = sess.dot_graph()
     dot.render(tempfile.mkstemp()[1], view=True, cleanup=True, format='pdf')
@@ -196,11 +194,10 @@ def graph(app: App) -> None:
 @click.option('--done', is_flag=True, help='Check out only finished tasks')
 @click.option('-c', '--copy', is_flag=True, help='Copy instead of symlinking')
 @click.pass_obj
-def checkout(app: App, pattern: List[str], done: bool, copy: bool) -> None:
+def checkout(app: Mona, pattern: List[str], done: bool, copy: bool) -> None:
     """Checkout path-labeled tasks into a directory tree."""
     n_tasks = 0
-    sess = app.session(warn=False, write='never', full_restore=True)
-    with sess:
+    with app.create_session(warn=False, write='never', full_restore=True) as sess:
         app.last_rule()
         for task in sess.all_tasks():
             if task.label[0] != '/':
@@ -236,7 +233,7 @@ def remote() -> None:
 @click.argument('name')
 @click.argument('url')
 @click.pass_obj
-def remote_add(app: App, url: str, name: str) -> None:
+def remote_add(app: Mona, url: str, name: str) -> None:
     """Add a remote."""
     host, path = url.split(':')
     name = name or host
@@ -249,7 +246,7 @@ def remote_add(app: App, url: str, name: str) -> None:
 @click.option('--dry', is_flag=True, help='Do a dry run')
 @click.argument('remotes')
 @click.pass_obj
-def update(app: App, remotes: str, delete: bool, dry: bool) -> None:
+def update(app: Mona, remotes: str, delete: bool, dry: bool) -> None:
     """Update remotes."""
     for remote in app.parse_remotes(remotes):
         remote.update(delete=delete, dry=dry)
@@ -265,7 +262,7 @@ def cmd(shellcmd: str) -> None:
 @cli.command()
 @click.argument('remotes')
 @click.pass_obj
-def go(app: App, remotes: str) -> None:
+def go(app: Mona, remotes: str) -> None:
     """SSH into the remote repository."""
     for remote in app.parse_remotes(remotes):
         remote.go()
@@ -275,7 +272,7 @@ def go(app: App, remotes: str) -> None:
 @click.argument('remotes')
 @click.argument('args', nargs=-1)
 @click.pass_obj
-def remote_mona_cmd(app: App, remotes: str, args: List[str]) -> None:
+def remote_mona_cmd(app: Mona, remotes: str, args: List[str]) -> None:
     """Execute a Mona command on a remote."""
     for remote in app.parse_remotes(remotes):
         if args[0] in {'init', 'run', 'dispatch'}:
