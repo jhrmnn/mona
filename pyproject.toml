@@ -4,7 +4,7 @@ skip-string-normalization = true
 
 [tool.poetry]
 name = "mona"
-version = "0.2.3"
+version = "0.2.4"
 description = "Calculation framework"
 readme = "README.md"
 authors = ["Jan Hermann <dev@janhermann.cz>"]
@@ -24,29 +24,23 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.7"
 typing_extensions = "^3.6"
-graphviz = { version = "^0.10.0", optional = true }
+graphviz = "^0.10.0"
+toml = "^0.9.6"
+click = "^7.0"
 numpy = { version = "^1.15", optional = true }
 textx = { version = "~1.5", optional = true }
 pytest = { version = "^3.8", optional = true }
 coverage = { version = "^4.5", optional = true }
 sphinx = { version = "^1.8", optional = true }
-toml = { version = "^0.9.6", optional = true }
-click = { version = "^7.0", optional = true }
 pytest-mock = { version = "^1.10", optional = true }
 sphinxcontrib-asyncio = { version = "^0.2.0", optional = true }
 jinja2 = { version = "^2.10", optional = true }
 
 [tool.poetry.extras]
-cli = ["click", "toml"]
-graphviz = ["graphviz"]
-sci = ["numpy", "textx", "jinja"]
+sci = ["numpy", "textx", "jinja2"]
 test = ["pytest", "pytest-mock"]
 cov = ["coverage"]
-doc = [
-    "sphinx",
-    "toml",
-    "sphinxcontrib-asyncio",
-]
+doc = ["sphinx", "sphinxcontrib-asyncio"]
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.641.0"

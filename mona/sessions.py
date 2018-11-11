@@ -410,10 +410,7 @@ class Session(Pluggable):
             return await self._eval_async(*args, **kwargs)
 
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
-        """Generate :class:`~graphviz.Digraph` for the task DAG.
-
-        Requires `Graphviz <https://graphviz.readthedocs.io/>`_.
-        """
+        """Generate :class:`~graphviz.Digraph` for the task DAG."""
         from graphviz import Digraph  # type: ignore
 
         tasks: Union[List[Hash], FrozenSet[Hash]]
