@@ -1,7 +1,7 @@
 API
 ===
 
-Rules and Sessions
+Rules and sessions
 ------------------
 
 .. automodule:: mona
@@ -50,7 +50,7 @@ LaTeX
 .. automodule:: mona.sci.tex
     :members:
 
-Futures and Tasks
+Futures and tasks
 -----------------
 
 The following classes are not intended for direct use by the end user, but are
