@@ -9,7 +9,7 @@
 [![license](https://img.shields.io/github/license/azag0/mona.svg)](https://github.com/azag0/mona/blob/master/LICENSE)
 [![code style](https://img.shields.io/badge/code%20style-black-202020.svg)](https://github.com/ambv/black)
 
-Mona is a calculation framework that turns normal execution of Python functions into a graph of tasks. Each task is hashed by the code of its function and by its inputs, and the result of each executed task is cached. The cache can be stored persistently in an SQLite database. Tasks can be executed in parallel within a single Mona instance, and multiple instances can work in parallel on the same database.
+Mona is a calculation framework that provides [persistent](https://en.wikipedia.org/wiki/Persistence_(computer_science)) [memoization](https://en.wikipedia.org/wiki/Memoization) and turns the Python call stack into a task [dependency graph](https://en.wikipedia.org/wiki/Dependency_graph).
 
 ## Installing
 
@@ -22,25 +22,47 @@ pip install -U mona
 ## A simple example
 
 ```python
-from mona import Rule, Session
+from mona import Mona, Rule
+
+app = Mona()
 
 @Rule
 async def total(xs):
     return sum(xs)
 
+@app.entry('fib', int)
 @Rule
 async def fib(n):
-    if n < 2:
-        return n
+    if n <= 2:
+        return 1
     return total([fib(n - 1), fib(n - 2)])
-
-with Session() as sess:
-    sess.eval(fib(5))
-    dot = sess.dot_graph()
-dot.render(view=True)
 ```
 
-<img src="https://raw.githubusercontent.com/azag0/mona/master/docs/fib.gv.svg?sanitize=true" alt width="350">
+```
+$ export MONA_APP=fib:app
+$ mona init
+Initializing an empty repository in /home/mona/fib/.mona.
+$ mona run fib 5
+7c3947: fib(5): will run
+0383f6: fib(3): will run
+b0287d: fib(4): will run
+f47d51: fib(1): will run
+9fd61c: fib(2): will run
+45c92d: total([fib(2), fib(1)]): will run
+2c136c: total([fib(3), fib(2)]): will run
+521a8b: total([fib(4), fib(3)]): will run
+Finished
+$ mona graph
+```
+
+<img src="https://raw.githubusercontent.com/azag0/mona/master/docs/fib.svg?sanitize=true" alt width="350">
+
+```python
+from fib import app, fib
+
+with app.create_session() as sess:
+    assert sess.eval(fib(5)) == sum(sess.eval([fib(4), fib(3)]))
+```
 
 ## Links
 

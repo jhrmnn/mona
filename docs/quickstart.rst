@@ -4,58 +4,60 @@ Quickstart
 Fibonacci numbers
 -----------------
 
-A Fibonacci number :math:`F_n` is defined recursively as :math:`F_n=F_{n-1}+F_{n-2}`, with :math:`F_1=F_2=1`. Because the definition contains references to two Fibonacci numbers, a naive recursive implementation of :math:`F_n` has a factorial time complexity. With Mona, the implementation could look something like this::
+A Fibonacci number :math:`F_n` is defined recursively as :math:`F_n=F_{n-1}+F_{n-2}`, with :math:`F_1=F_2=1`. A naive Python implementation is a four-liner::
 
-    from mona import Rule
+    def fib(n):
+        if n <= 2:
+            return 1
+        return fib(n - 1) + fib(n - 2)
 
-    @Rule
-    async def total(xs):
-        return sum(xs)
+The major issue of this approach is that to evaluate :math:`F_n`, :math:`F_{n-k}` must be called :math:`\sim2^k` times, leading to overall exponential time complexity in :math:`n`. A common remedy is to *memoize* ``fib()``---to make it remember its results for a given argument. This circumvents the exponentially branching recursion.
 
+This takes only a little work with Mona, and as an extra bonus, the memoization will be persistent---``fib()`` will remember its results between different invocations of the Python interpreter::
+
+    from mona import Mona, Rule
+
+    app = Mona()
+
+    @app.entry('fib', int)
     @Rule
     async def fib(n):
         if n <= 2:
             return 1
         return total([fib(n - 1), fib(n - 2)])
 
-One thing to note about ``fib()`` and ``total()`` is that although they are defined as coroutine functions, they are called without ``await``. Another is that if they were defined as ordinary (non-async) functions and were not decorated, ``fib(n)`` would evaluate directly to :math:`F_n`, albeit with factorial time complexity.
+    @Rule
+    async def total(xs):
+        return sum(xs)
 
-As it stands above, though, each of the two decorated functions becomes a :class:`~mona.Rule`. Calling a rule does not execute the body of the coroutine function, nor does it create a coroutine, as coroutine functions do. Rather, calling it creates a :class:`~mona.tasks.Task`. Furthermore, a task can be created only in a so-called session, represented by the :class:`~mona.Session` context manager. The session is also used to actually execute the function associated with a task and to get its result---to evaluate the task::
 
-    from mona import Session
+One thing to note about ``fib()`` and ``total()`` is that although they are defined as coroutine functions, they are called without ``await``. Another is that if they were defined as ordinary (non-async) functions and were not decorated, ``fib(n)`` would evaluate directly to :math:`F_n`.
 
-    with Session() as sess:
-        assert sess.eval(fib(35)) == 9227465
+As it stands above, though, each of the two decorated functions becomes a :class:`~mona.Rule`. Calling a rule does not execute the body of the coroutine function, nor does it create a coroutine, as coroutine functions do. Rather, calling it creates a :class:`~mona.tasks.Task`.
 
-One result of using Mona is that here, the Fibonacci number was calculated with linear time complexity, even though the implementation looks recursive. This is achieved by caching the results of all tasks.
+The ::
 
-Alternatively, one can evaluate the task with all the bells and whistles using the CLI::
-
+    $ export MONA_APP=fib:app
     $ mona init
     Initializing an empty repository in /home/mona/fib/.mona.
-    $ ls
-    .mona  fib.py
-    $ mona run fib:fib 35
-    1837a5: fib(35): will run
-    7449e3: fib(33): will run
-    248b29: fib(34): will run
-    ...
-    0694d9: total([fib(32), fib(31)]): will run
-    5a29eb: total([fib(33), fib(32)]): will run
-    b628ff: total([fib(34), fib(33)]): will run
+    $ mona run fib 5
+    7c3947: fib(5): will run
+    0383f6: fib(3): will run
+    b0287d: fib(4): will run
+    f47d51: fib(1): will run
+    9fd61c: fib(2): will run
+    45c92d: total([fib(2), fib(1)]): will run
+    2c136c: total([fib(3), fib(2)]): will run
+    521a8b: total([fib(4), fib(3)]): will run
     Finished
-    $ mona run fib:fib 34
-    Finished
+    $ mona graph
 
-Apart from the reduced time complexity, here the task cache was stored in an SQLite database at ``.mona/cache.db``, and used in the second invocation of the ``run`` command.
+To use these cached results in Python, one uses a session created by the :class:`~mona.Mona` application::
 
-To use these cached results in Python, one uses a session created by an :class:`~mona.Mona` instance::
+    from fib import app, fib
 
-    from mona import Mona
-
-    with Mona().create_session() as sess:
-        assert fib(35).done()
-        assert fib(35).result() == 9227465
+    with app.create_session() as sess:
+        assert sess.eval(fib(5)) == sum(sess.eval([fib(4), fib(3)]))
 
 What exactly happened underneath in the previous examples is explained in the next section.
 
