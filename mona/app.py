@@ -119,7 +119,7 @@ class Mona:
         for plugin in self._plugins.values():
             plugin(sess)
 
-    def ensure_monadir(self) -> None:
+    def ensure_initialized(self) -> None:
         if self._monadir.is_dir():
             log.info(f'Already initialized in {self._monadir}.')
             return

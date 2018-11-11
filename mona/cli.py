@@ -48,7 +48,7 @@ def cli(ctx: click.Context, appname: str, debug: int) -> None:
 @click.pass_obj
 def init(app: Mona) -> None:
     """Initialize a Git repository."""
-    app.ensure_monadir()
+    app.ensure_initialized()
 
 
 class TaskFilter:
@@ -113,6 +113,7 @@ def run(
             limit=limit,
         )
     if app.get_entry(entry).stdout:
+        log.info(f'Printing result to standard output.')
         print(result)
 
 
@@ -156,13 +157,17 @@ def status(app: Mona, pattern: List[str]) -> None:
 
 
 @cli.command()
+@click.argument('file', type=Path, required=False)
 @click.pass_obj
-def graph(app: Mona) -> None:
-    """Open a pdf with the task graph."""
+def graph(app: Mona, file: Optional[Path]) -> None:
+    """Create or open a pdf with the task graph."""
     with app.create_session(warn=False, write='never', full_restore=True) as sess:
         app.call_last_entry()
         dot = sess.dot_graph()
-    dot.render(tempfile.mkstemp()[1], view=True, cleanup=True, format='pdf')
+    fmt = file.suffix[1:] if file else 'pdf'
+    tgt = dot.render(tempfile.mkstemp()[1], cleanup=True, format=fmt, view=not file)
+    if file:
+        Path(tgt).rename(file)
 
 
 @cli.command()
