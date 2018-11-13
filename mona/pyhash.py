@@ -13,7 +13,7 @@ from types import CodeType, ModuleType
 from typing import Any, Callable, Dict, Optional, TypeVar, cast
 
 from .errors import CompositeError, HashingError
-from .hashing import Hash, HashedComposite, hash_text
+from .hashing import Hash, Hashed, HashedComposite, hash_text
 from .utils import get_fullname
 
 __all__ = ()
@@ -88,6 +88,9 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
                 else 'self'
             )
             hashed_globals[name] = f'func_hash:{hashid}'
+            continue
+        if isinstance(obj, Hashed):
+            hashed_globals[name] = f'hashed:{obj.hashid}'
             continue
         if inspect.isclass(obj) or inspect.isfunction(obj) or inspect.ismodule(obj):
             if inspect.ismodule(obj):
