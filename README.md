@@ -9,7 +9,7 @@
 [![license](https://img.shields.io/github/license/azag0/mona.svg)](https://github.com/azag0/mona/blob/master/LICENSE)
 [![code style](https://img.shields.io/badge/code%20style-black-202020.svg)](https://github.com/ambv/black)
 
-Mona is a calculation framework that provides [persistent](https://en.wikipedia.org/wiki/Persistence_(computer_science)) [memoization](https://en.wikipedia.org/wiki/Memoization) and turns the Python call stack into a task [dependency graph](https://en.wikipedia.org/wiki/Dependency_graph).
+Mona is a calculation framework that provides [persistent](https://en.wikipedia.org/wiki/Persistence_(computer_science)) [memoization](https://en.wikipedia.org/wiki/Memoization) and turns the Python call stack into a task [dependency graph](https://en.wikipedia.org/wiki/Dependency_graph). The graph contains three types of edges: a task input depending on outputs of other tasks, a task creating new tasks, and a task output referencing outputs of other tasks.
 
 ## Installing
 
