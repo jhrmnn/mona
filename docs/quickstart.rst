@@ -11,31 +11,46 @@ A Fibonacci number :math:`F_n` is defined recursively as :math:`F_n=F_{n-1}+F_{n
             return 1
         return fib(n - 1) + fib(n - 2)
 
-The major issue of this approach is that to evaluate :math:`F_n`, :math:`F_{n-k}` must be called :math:`\sim2^k` times, leading to overall exponential time complexity in :math:`n`. A common remedy is to *memoize* ``fib()``---to make it remember its results for a given argument. This circumvents the exponentially branching recursion.
+The major issue of this approach is that to evaluate :math:`F_n`, :math:`F_{n-k}` must be called :math:`\sim2^k` times, leading to overall exponential time complexity in :math:`n`. A common remedy is to *memoize* ``fib()``---to make it remember its results for given arguments. This circumvents the exponentially branching recursion.
 
-This takes only a little work with Mona, and as an extra bonus, the memoization will be persistent---``fib()`` will remember its results between different invocations of the Python interpreter::
+This takes only a little work with Mona::
+
+    from mona import Rule
+
+    @Rule
+    async def add(x, y):
+        return x + y
+
+    @Rule
+    async def fib(n):
+        if n <= 2:
+            return 1
+        return add(fib(n - 1), fib(n - 2))
+
+We have turned ``fib()`` into a coroutine function (requirement by Mona), decorated it with :class:`~mona.Rule`, and replaced ``x + y`` by ``add(x, y)``. Calling a rule is similar to calling a coroutine function in the sense that neither actually runs the body of the function (unlike calling an ordinary function does). The similarity ends there, however---calling a coroutine function creates a coroutine object, whereas calling a rule creates a :class:`~mona.tasks.Task`.
+
+The extra ``add()`` rule is needed, because tasks created by calling rules may be yet unevaluated, and their results inaccessible. But Mona ensures that a task (such as ``add(fib(2), fib(1))``) is run only when its inputs (``fib(2)`` and ``fib(1)``) have been evaluated, and passes in the evaluated arguments.
+
+The rules cannot be called anytime, but only in an active :class:`~mona.Session`. The session tracks the tasks created by calling rules and provides means to evaluate the tasks. A bare session object memoizes rules only non-persistently and executes tasks sequentially, but is extensible by session plugins, which add all the extra functionality. Rather than working with sessions directly, this tutorial uses the :class:`~mona.Mona` application, which bootstraps a fully equipped session and provides additional utilities. The extra functionality includes persistent memoization, parallel execution, file handling, and handling of temporary directories for task execution.
+
+To make a rule accessible to the command-line interface of Mona, one decorates it with :meth:`Mona.entry`::
 
     from mona import Mona, Rule
 
     app = Mona()
+
+    @Rule
+    async def add(x, y):
+        return x + y
 
     @app.entry('fib', int)
     @Rule
     async def fib(n):
         if n <= 2:
             return 1
-        return total([fib(n - 1), fib(n - 2)])
+        return add(fib(n - 1), fib(n - 2))
 
-    @Rule
-    async def total(xs):
-        return sum(xs)
-
-
-One thing to note about ``fib()`` and ``total()`` is that although they are defined as coroutine functions, they are called without ``await``. Another is that if they were defined as ordinary (non-async) functions and were not decorated, ``fib(n)`` would evaluate directly to :math:`F_n`.
-
-As it stands above, though, each of the two decorated functions becomes a :class:`~mona.Rule`. Calling a rule does not execute the body of the coroutine function, nor does it create a coroutine, as coroutine functions do. Rather, calling it creates a :class:`~mona.tasks.Task`.
-
-The ::
+Saving this file in ``fib.py``, one can then call the ``fib()`` rule from a terminal::
 
     $ export MONA_APP=fib:app
     $ mona init
@@ -50,9 +65,8 @@ The ::
     2c136c: total([fib(3), fib(2)]): will run
     521a8b: total([fib(4), fib(3)]): will run
     Finished
-    $ mona graph
 
-To use these cached results in Python, one uses a session created by the :class:`~mona.Mona` application::
+To use the cached results in Python, one uses a session created by the :class:`~mona.Mona` application::
 
     from fib import app, fib
 
