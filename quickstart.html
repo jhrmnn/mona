@@ -45,27 +45,42 @@
     <span class="k">return</span> <span class="n">fib</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">fib</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The major issue of this approach is that to evaluate <span class="math notranslate nohighlight">\(F_n\)</span>, <span class="math notranslate nohighlight">\(F_{n-k}\)</span> must be called <span class="math notranslate nohighlight">\(\sim2^k\)</span> times, leading to overall exponential time complexity in <span class="math notranslate nohighlight">\(n\)</span>. A common remedy is to <em>memoize</em> <code class="docutils literal notranslate"><span class="pre">fib()</span></code>—to make it remember its results for a given argument. This circumvents the exponentially branching recursion.</p>
-<p>This takes only a little work with Mona, and as an extra bonus, the memoization will be persistent—<code class="docutils literal notranslate"><span class="pre">fib()</span></code> will remember its results between different invocations of the Python interpreter:</p>
+<p>The major issue of this approach is that to evaluate <span class="math notranslate nohighlight">\(F_n\)</span>, <span class="math notranslate nohighlight">\(F_{n-k}\)</span> must be called <span class="math notranslate nohighlight">\(\sim2^k\)</span> times, leading to overall exponential time complexity in <span class="math notranslate nohighlight">\(n\)</span>. A common remedy is to <em>memoize</em> <code class="docutils literal notranslate"><span class="pre">fib()</span></code>—to make it remember its results for given arguments. This circumvents the exponentially branching recursion.</p>
+<p>This takes only a little work with Mona:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mona</span> <span class="k">import</span> <span class="n">Rule</span>
+
+<span class="nd">@Rule</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+
+<span class="nd">@Rule</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">fib</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">add</span><span class="p">(</span><span class="n">fib</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">fib</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>We have turned <code class="docutils literal notranslate"><span class="pre">fib()</span></code> into a coroutine function (requirement by Mona), decorated it with <a class="reference internal" href="api.html#mona.Rule" title="mona.Rule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Rule</span></code></a>, and replaced <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">+</span> <span class="pre">y</span></code> by <code class="docutils literal notranslate"><span class="pre">add(x,</span> <span class="pre">y)</span></code>. Calling a rule is similar to calling a coroutine function in the sense that neither actually runs the body of the function (unlike calling an ordinary function does). The similarity ends there, however—calling a coroutine function creates a coroutine object, whereas calling a rule creates a <a class="reference internal" href="api.html#mona.tasks.Task" title="mona.tasks.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a>.</p>
+<p>The extra <code class="docutils literal notranslate"><span class="pre">add()</span></code> rule is needed, because tasks created by calling rules may be yet unevaluated, and their results inaccessible. But Mona ensures that a task (such as <code class="docutils literal notranslate"><span class="pre">add(fib(2),</span> <span class="pre">fib(1))</span></code>) is run only when its inputs (<code class="docutils literal notranslate"><span class="pre">fib(2)</span></code> and <code class="docutils literal notranslate"><span class="pre">fib(1)</span></code>) have been evaluated, and passes in the evaluated arguments.</p>
+<p>The rules cannot be called anytime, but only in an active <a class="reference internal" href="api.html#mona.Session" title="mona.Session"><code class="xref py py-class docutils literal notranslate"><span class="pre">Session</span></code></a>. The session tracks the tasks created by calling rules and provides means to evaluate the tasks. A bare session object memoizes rules only non-persistently and executes tasks sequentially, but is extensible by session plugins, which add all the extra functionality. Rather than working with sessions directly, this tutorial uses the <code class="xref py py-class docutils literal notranslate"><span class="pre">Mona</span></code> application, which bootstraps a fully equipped session and provides additional utilities. The extra functionality includes persistent memoization, parallel execution, file handling, and handling of temporary directories for task execution.</p>
+<p>To make a rule accessible to the command-line interface of Mona, one decorates it with <code class="xref py py-meth docutils literal notranslate"><span class="pre">Mona.entry()</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mona</span> <span class="k">import</span> <span class="n">Mona</span><span class="p">,</span> <span class="n">Rule</span>
 
 <span class="n">app</span> <span class="o">=</span> <span class="n">Mona</span><span class="p">()</span>
+
+<span class="nd">@Rule</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
 
 <span class="nd">@app</span><span class="o">.</span><span class="n">entry</span><span class="p">(</span><span class="s1">&#39;fib&#39;</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
 <span class="nd">@Rule</span>
 <span class="k">async</span> <span class="k">def</span> <span class="nf">fib</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">return</span> <span class="mi">1</span>
-    <span class="k">return</span> <span class="n">total</span><span class="p">([</span><span class="n">fib</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">fib</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)])</span>
-
-<span class="nd">@Rule</span>
-<span class="k">async</span> <span class="k">def</span> <span class="nf">total</span><span class="p">(</span><span class="n">xs</span><span class="p">):</span>
-    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">add</span><span class="p">(</span><span class="n">fib</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">fib</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>One thing to note about <code class="docutils literal notranslate"><span class="pre">fib()</span></code> and <code class="docutils literal notranslate"><span class="pre">total()</span></code> is that although they are defined as coroutine functions, they are called without <code class="docutils literal notranslate"><span class="pre">await</span></code>. Another is that if they were defined as ordinary (non-async) functions and were not decorated, <code class="docutils literal notranslate"><span class="pre">fib(n)</span></code> would evaluate directly to <span class="math notranslate nohighlight">\(F_n\)</span>.</p>
-<p>As it stands above, though, each of the two decorated functions becomes a <a class="reference internal" href="api.html#mona.Rule" title="mona.Rule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Rule</span></code></a>. Calling a rule does not execute the body of the coroutine function, nor does it create a coroutine, as coroutine functions do. Rather, calling it creates a <a class="reference internal" href="api.html#mona.tasks.Task" title="mona.tasks.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a>.</p>
-<p>The</p>
+<p>Saving this file in <code class="docutils literal notranslate"><span class="pre">fib.py</span></code>, one can then call the <code class="docutils literal notranslate"><span class="pre">fib()</span></code> rule from a terminal:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export MONA_APP=fib:app
 $ mona init
 Initializing an empty repository in /home/mona/fib/.mona.
@@ -79,10 +94,9 @@ f47d51: fib(1): will run
 2c136c: total([fib(3), fib(2)]): will run
 521a8b: total([fib(4), fib(3)]): will run
 Finished
-$ mona graph
 </pre></div>
 </div>
-<p>To use these cached results in Python, one uses a session created by the <code class="xref py py-class docutils literal notranslate"><span class="pre">Mona</span></code> application:</p>
+<p>To use the cached results in Python, one uses a session created by the <code class="xref py py-class docutils literal notranslate"><span class="pre">Mona</span></code> application:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fib</span> <span class="k">import</span> <span class="n">app</span><span class="p">,</span> <span class="n">fib</span>
 
 <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">create_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">sess</span><span class="p">:</span>
