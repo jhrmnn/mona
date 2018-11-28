@@ -114,7 +114,7 @@ class HashedBytes(Hashed[bytes]):
         return self._content
 
 
-class HashedCompositeLike(Hashed[Composite]):
+class HashedComposite(Hashed[Composite]):
     type_swaps: TypeSwaps = {bytes: HashedBytes}
 
     def __init__(self, jsonstr: str, components: Iterable[Hashed[object]]) -> None:
@@ -124,16 +124,17 @@ class HashedCompositeLike(Hashed[Composite]):
         self._label = repr(self.resolve(lambda hashed: Literal(hashed.label)))
 
     @property
-    @abstractmethod
     def value(self) -> Composite:
-        ...
+        if not hasattr(self, '_value'):
+            self._value = self.resolve(lambda comp: comp.value)
+        return self._value
 
     @property
     def spec(self) -> bytes:
         return json.dumps([self._jsonstr, *sorted(self._components)]).encode()
 
     @classmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedCompositeLike':
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedComposite':
         jsonstr: str
         hashids: Tuple[Hash, ...]
         jsonstr, *hashids = json.loads(spec)
@@ -179,13 +180,3 @@ class HashedCompositeLike(Hashed[Composite]):
             cls=ClassJSONEncoder,
         )
         return jsonstr, components
-
-
-class HashedComposite(HashedCompositeLike):
-    def __init__(self, jsonstr: str, components: Iterable[Hashed[object]]) -> None:
-        HashedCompositeLike.__init__(self, jsonstr, components)
-        self._value = self.resolve(lambda comp: comp.value)
-
-    @property
-    def value(self) -> Composite:
-        return self._value

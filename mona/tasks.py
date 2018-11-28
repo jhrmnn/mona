@@ -21,14 +21,7 @@ from typing import (
 
 from .errors import CompositeError, FutureError, TaskError
 from .futures import Future, State
-from .hashing import (
-    Composite,
-    Hash,
-    Hashed,
-    HashedComposite,
-    HashedCompositeLike,
-    HashResolver,
-)
+from .hashing import Composite, Hash, Hashed, HashedComposite, HashResolver
 from .pyhash import hash_function
 from .utils import Empty, Maybe, get_fullname, import_fullname, swap_type
 
@@ -325,16 +318,16 @@ class TaskComponent(HashedFuture[_T_co]):
 # the semantics may imply that the component is taken immediately after
 # execution, but it is only taken by the child task, so that if the component
 # does not exist, the exception is raised only later
-class TaskComposite(HashedCompositeLike, HashedFuture[Composite]):  # type: ignore
+class TaskComposite(HashedComposite, HashedFuture[Composite]):  # type: ignore
     def __init__(self, jsonstr: str, components: Iterable[Hashed[object]]) -> None:
         components = list(components)
         futures = [comp for comp in components if isinstance(comp, HashedFuture)]
         assert futures
         Future.__init__(self, futures)
-        HashedCompositeLike.__init__(self, jsonstr, components)
+        HashedComposite.__init__(self, jsonstr, components)
         self.add_ready_callback(lambda self: self.set_done())
 
-    # override abstract property in HashedCompositeLike
+    # override definition from HashedComposite
     value = HashedFuture.value  # type: ignore
 
     def result(self) -> Composite:
