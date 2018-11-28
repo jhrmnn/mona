@@ -113,7 +113,6 @@ class Task(HashedFuture[_T_co]):
     ) -> None:
         self._corofunc = corofunc
         self._args = tuple(map(ensure_hashed, args))
-        Hashed.__init__(self)
         Future.__init__(
             self, (arg for arg in self._args if isinstance(arg, HashedFuture))
         )
@@ -256,7 +255,6 @@ class TaskComponent(HashedFuture[_T_co]):
     ) -> None:
         self._task = task
         self._keys = list(keys)
-        Hashed.__init__(self)
         Future.__init__(self, [cast(HashedFuture[object], task)])
         self._default = default
         self._label = ''.join([self._task.label, *(f'[{k!r}]' for k in self._keys)])

@@ -173,7 +173,6 @@ class HashedFile(Hashed[File]):
         else:
             self._content = None
             self._content_hash = file.content
-        Hashed.__init__(self)
 
     @property
     def spec(self) -> bytes:

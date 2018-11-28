@@ -38,10 +38,6 @@ def hash_text(text: Union[str, bytes]) -> Hash:
 
 
 class Hashed(ABC, Generic[_T_co]):
-    def __init__(self) -> None:
-        assert not hasattr(self, '_hashid')
-        self._hashid = hash_text(self.spec)
-
     @property
     @abstractmethod
     def spec(self) -> bytes:
@@ -82,8 +78,13 @@ class Hashed(ABC, Generic[_T_co]):
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} {self}>'
 
+    def get_hash(self) -> Hash:
+        return hash_text(self.spec)
+
     @property
     def hashid(self) -> Hash:
+        if not hasattr(self, '_hashid'):
+            self._hashid = self.get_hash()
         return self._hashid
 
     @property
@@ -94,7 +95,6 @@ class Hashed(ABC, Generic[_T_co]):
 class HashedBytes(Hashed[bytes]):
     def __init__(self, content: bytes) -> None:
         self._content = content
-        Hashed.__init__(self)
         self._label = repr(shorten_text(content, 20))
 
     @property
@@ -120,7 +120,6 @@ class HashedComposite(Hashed[Composite]):
     def __init__(self, jsonstr: str, components: Iterable[Hashed[object]]) -> None:
         self._jsonstr = jsonstr
         self._components = {comp.hashid: comp for comp in components}
-        Hashed.__init__(self)
         self._label = repr(self.resolve(lambda hashed: Literal(hashed.label)))
 
     @property
