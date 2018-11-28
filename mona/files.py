@@ -164,6 +164,7 @@ def file_from_path(*args: Any, **kwargs: Any) -> File:
     return File.from_path(*args, **kwargs)
 
 
+@HashedComposite.register_type(File)
 class HashedFile(Hashed[File]):
     def __init__(self, file: File):
         self._path = file.path
@@ -204,6 +205,3 @@ class HashedFile(Hashed[File]):
         if self._content:
             return (self._content,)
         return ()
-
-
-HashedComposite.type_swaps[File] = HashedFile

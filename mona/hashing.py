@@ -13,6 +13,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    Type,
     TypeVar,
     Union,
     cast,
@@ -24,6 +25,7 @@ from .utils import Literal, TypeSwaps, shorten_text, swap_type
 __version__ = '0.1.0'
 __all__ = ()
 
+_T = TypeVar('_T')
 _T_co = TypeVar('_T_co', covariant=True)
 Hash = NewType('Hash', str)
 # symbolic type for a JSON-like container including custom classes
@@ -92,30 +94,8 @@ class Hashed(ABC, Generic[_T_co]):
         return self.hashid[:6]
 
 
-class HashedBytes(Hashed[bytes]):
-    def __init__(self, content: bytes) -> None:
-        self._content = content
-        self._label = repr(shorten_text(content, 20))
-
-    @property
-    def spec(self) -> bytes:
-        return self.value
-
-    @classmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedBytes':
-        return cls(spec)
-
-    @property
-    def label(self) -> str:
-        return self._label
-
-    @property
-    def value(self) -> bytes:
-        return self._content
-
-
 class HashedComposite(Hashed[Composite]):
-    type_swaps: TypeSwaps = {bytes: HashedBytes}
+    type_swaps: TypeSwaps = {}
 
     def __init__(self, jsonstr: str, components: Iterable[Hashed[object]]) -> None:
         self._jsonstr = jsonstr
@@ -179,3 +159,36 @@ class HashedComposite(Hashed[Composite]):
             cls=ClassJSONEncoder,
         )
         return jsonstr, components
+
+    @classmethod
+    def register_type(
+        cls, klass: Type[_T]
+    ) -> Callable[[Type[Hashed[_T]]], Type[Hashed[_T]]]:
+        def decorator(hashed_klass: Type[Hashed[_T]]) -> Type[Hashed[_T]]:
+            cls.type_swaps[klass] = hashed_klass
+            return hashed_klass
+
+        return decorator
+
+
+@HashedComposite.register_type(bytes)
+class HashedBytes(Hashed[bytes]):
+    def __init__(self, content: bytes) -> None:
+        self._content = content
+        self._label = repr(shorten_text(content, 20))
+
+    @property
+    def spec(self) -> bytes:
+        return self.value
+
+    @classmethod
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedBytes':
+        return cls(spec)
+
+    @property
+    def label(self) -> str:
+        return self._label
+
+    @property
+    def value(self) -> bytes:
+        return self._content
