@@ -45,10 +45,7 @@ def ensure_hashed(obj: object) -> Hashed[object]:
     obj = swap_type(obj, TaskComposite.type_swaps)
     if isinstance(obj, Hashed):
         return obj
-    jsonstr, components = TaskComposite.parse_object(obj)
-    if any(isinstance(comp, HashedFuture) for comp in components):
-        return TaskComposite(jsonstr, components)
-    return HashedComposite(jsonstr, components)
+    return TaskComposite.from_object(obj)
 
 
 def maybe_hashed(obj: object) -> Optional[Hashed[object]]:
@@ -324,6 +321,13 @@ class TaskComposite(HashedComposite, HashedFuture[Composite]):  # type: ignore
         Future.__init__(self, futures)
         HashedComposite.__init__(self, jsonstr, components)
         self.add_ready_callback(lambda self: self.set_done())
+
+    @classmethod
+    def from_object(cls, obj: object) -> 'HashedComposite':
+        jsonstr, components = cls.parse_object(obj)
+        if any(isinstance(comp, HashedFuture) for comp in components):
+            return cls(jsonstr, components)
+        return HashedComposite(jsonstr, components)
 
     # override definition from HashedComposite
     value = HashedFuture.value  # type: ignore

@@ -111,7 +111,7 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
                 hashed_globals[name] = f'function:{hashid}'
                 continue
         try:
-            hashid = HashedComposite(*HashedComposite.parse_object(obj)).hashid
+            hashid = HashedComposite.from_object(obj).hashid
         except CompositeError:
             pass
         else:

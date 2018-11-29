@@ -102,6 +102,10 @@ class HashedComposite(Hashed[Composite]):
         self._components = {comp.hashid: comp for comp in components}
         self._label = repr(self.resolve(lambda hashed: Literal(hashed.label)))
 
+    @classmethod
+    def from_object(cls, obj: object) -> 'HashedComposite':
+        return cls(*cls.parse_object(obj))
+
     @property
     def value(self) -> Composite:
         if not hasattr(self, '_value'):
