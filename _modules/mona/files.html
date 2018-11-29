@@ -39,7 +39,7 @@
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="k">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">from</span> <span class="nn">.hashing</span> <span class="k">import</span> <span class="n">Hash</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">,</span> <span class="n">HashedBytes</span><span class="p">,</span> <span class="n">HashedComposite</span><span class="p">,</span> <span class="n">HashResolver</span>
 <span class="kn">from</span> <span class="nn">.rules</span> <span class="k">import</span> <span class="n">Rule</span>
@@ -47,7 +47,7 @@
 <span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">Pathable</span><span class="p">,</span> <span class="n">make_nonwritable</span><span class="p">,</span> <span class="n">shorten_text</span>
 
 <span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;0.3.0&#39;</span>
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;file_from_path&#39;</span><span class="p">,</span> <span class="s1">&#39;file_collection&#39;</span><span class="p">,</span> <span class="s1">&#39;File&#39;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;file_collection&#39;</span><span class="p">,</span> <span class="s1">&#39;File&#39;</span><span class="p">]</span>
 
 <span class="n">_FM</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s1">&#39;_FM&#39;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s1">&#39;FileManager&#39;</span><span class="p">)</span>
 
@@ -194,15 +194,10 @@
         <span class="k">return</span> <span class="n">file</span></div></div>
 
 
-<div class="viewcode-block" id="file_from_path"><a class="viewcode-back" href="../../api.html#mona.files.file_from_path">[docs]</a><span class="k">def</span> <span class="nf">file_from_path</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">File</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Alias for :meth:`File.from_path`&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">File</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-
 <span class="nd">@HashedComposite</span><span class="o">.</span><span class="n">register_type</span><span class="p">(</span><span class="n">File</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">HashedFile</span><span class="p">(</span><span class="n">Hashed</span><span class="p">[</span><span class="n">File</span><span class="p">]):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">:</span> <span class="n">File</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="o">=</span> <span class="n">file</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_content</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">HashedBytes</span><span class="p">]</span> <span class="o">=</span> <span class="n">HashedBytes</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_content_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span><span class="o">.</span><span class="n">hashid</span>
@@ -212,28 +207,26 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">spec</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content_hash</span><span class="p">])</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="o">.</span><span class="n">path</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content_hash</span><span class="p">])</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;HashedFile&#39;</span><span class="p">:</span>
-        <span class="n">path_str</span><span class="p">:</span> <span class="nb">str</span>
-        <span class="n">content_hash</span><span class="p">:</span> <span class="n">Hash</span>
-        <span class="n">path_str</span><span class="p">,</span> <span class="n">content_hash</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+        <span class="n">path_str</span><span class="p">,</span> <span class="n">content_hash</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Hash</span><span class="p">],</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="p">))</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path_str</span><span class="p">)</span>
         <span class="n">fmngr</span> <span class="o">=</span> <span class="n">FileManager</span><span class="o">.</span><span class="n">active</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">fmngr</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">content_hash</span><span class="p">))</span>
-        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cast</span><span class="p">(</span><span class="n">HashedBytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">(</span><span class="n">content_hash</span><span class="p">))</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">content_hash</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cast</span><span class="p">(</span><span class="n">HashedBytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">(</span><span class="n">content_hash</span><span class="p">))</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">File</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">File</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content_hash</span>
-        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">label</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">f</span><span class="s1">&#39;./</span><span class="si">{self._path}</span><span class="s1">&#39;</span>
+        <span class="k">return</span> <span class="n">f</span><span class="s1">&#39;./</span><span class="si">{self._file.path}</span><span class="s1">&#39;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">components</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="s1">&#39;Hashed[object]&#39;</span><span class="p">]:</span>
