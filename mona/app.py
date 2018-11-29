@@ -22,7 +22,7 @@ from typing import (
 
 import toml
 
-from .files import HashedFile, file_from_path
+from .files import File, HashedFile
 from .plugins import Cache, FileManager, Parallel, TmpdirManager
 from .remotes import Remote
 from .rules import Rule
@@ -167,7 +167,7 @@ class Mona:
         """
 
         def decorator(rule: _R) -> _R:
-            rule.add_extra_arg(lambda: HashedFile(file_from_path(path)))
+            rule.add_extra_arg(lambda: HashedFile(File.from_path(path)))
             return rule
 
         return decorator

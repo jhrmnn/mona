@@ -4,15 +4,15 @@
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Type, TypeVar, Union, cast
+from typing import Iterable, List, Optional, Type, TypeVar, Union, cast
 
 from .hashing import Hash, Hashed, HashedBytes, HashedComposite, HashResolver
 from .rules import Rule
 from .sessions import Session
 from .utils import Pathable, make_nonwritable, shorten_text
 
-__version__ = '0.3.0'
-__all__ = ['file_from_path', 'file_collection', 'File']
+__version__ = '0.4.0'
+__all__ = ['file_collection', 'File']
 
 _FM = TypeVar('_FM', bound='FileManager')
 
@@ -157,11 +157,6 @@ class File:
         if not keep:
             path.unlink()
         return file
-
-
-def file_from_path(*args: Any, **kwargs: Any) -> File:
-    """Alias for :meth:`File.from_path`"""
-    return File.from_path(*args, **kwargs)
 
 
 @HashedComposite.register_type(File)
