@@ -5,6 +5,7 @@ import hashlib
 import json
 from abc import ABC, abstractmethod
 from typing import (
+    Any,
     Callable,
     Dict,
     Generic,
@@ -20,7 +21,7 @@ from typing import (
 )
 
 from .json import ClassJSONDecoder, ClassJSONEncoder, JSONValue, validate_json
-from .utils import Literal, TypeSwaps, shorten_text, swap_type
+from .utils import Literal, shorten_text
 
 __version__ = '0.2.0'
 __all__ = ()
@@ -31,6 +32,7 @@ Hash = NewType('Hash', str)
 # symbolic type for a JSON-like container including custom classes
 Composite = NewType('Composite', object)
 HashResolver = Callable[[Hash], 'Hashed[object]']
+TypeRegister = Dict[Type[object], Callable[[Any], object]]
 
 
 def hash_text(text: Union[str, bytes]) -> Hash:
@@ -95,7 +97,7 @@ class Hashed(ABC, Generic[_T_co]):
 
 
 class HashedComposite(Hashed[Composite]):
-    type_swaps: TypeSwaps = {}
+    _type_register: TypeRegister = {}
 
     def __init__(self, jsonstr: str, components: Iterable[Hashed[object]]) -> None:
         self._jsonstr = jsonstr
@@ -144,23 +146,24 @@ class HashedComposite(Hashed[Composite]):
         )
 
     @classmethod
-    def _default(cls, o: object) -> Optional[Tuple[object, str, Dict[str, JSONValue]]]:
-        o = swap_type(o, cls.type_swaps)
-        if isinstance(o, Hashed):
-            return (o, 'Hashed', {'hashid': o.hashid})
-        return None
+    def _wrap_type(cls, obj: _T) -> Union[_T, Hashed[_T]]:
+        if obj.__class__ in cls._type_register:
+            return cast(Hashed[_T], cls._type_register[obj.__class__](obj))
+        return obj
 
     @classmethod
     def parse_object(cls, obj: object) -> Tuple[str, Set[Hashed[object]]]:
-        classes = tuple(cls.type_swaps) + (Hashed,)
+        def default(o: object) -> Optional[Tuple[object, str, Dict[str, JSONValue]]]:
+            o = cls._wrap_type(o)
+            if isinstance(o, Hashed):
+                return (o, 'Hashed', {'hashid': o.hashid})
+            return None
+
+        classes = tuple(cls._type_register) + (Hashed,)
         validate_json(obj, lambda x: isinstance(x, classes))
         components: Set[Hashed[object]] = set()
         jsonstr = json.dumps(
-            obj,
-            sort_keys=True,
-            tape=components,
-            default=cls._default,
-            cls=ClassJSONEncoder,
+            obj, sort_keys=True, tape=components, default=default, cls=ClassJSONEncoder
         )
         return jsonstr, components
 
@@ -169,7 +172,7 @@ class HashedComposite(Hashed[Composite]):
         cls, klass: Type[_T]
     ) -> Callable[[Type[Hashed[_T]]], Type[Hashed[_T]]]:
         def decorator(hashed_klass: Type[Hashed[_T]]) -> Type[Hashed[_T]]:
-            cls.type_swaps[klass] = hashed_klass
+            cls._type_register[klass] = hashed_klass
             return hashed_klass
 
         return decorator

@@ -23,7 +23,7 @@ from .errors import CompositeError, FutureError, TaskError
 from .futures import Future, State
 from .hashing import Composite, Hash, Hashed, HashedComposite, HashResolver
 from .pyhash import hash_function
-from .utils import Empty, Maybe, get_fullname, import_fullname, swap_type
+from .utils import Empty, Maybe, get_fullname, import_fullname
 
 __all__ = ()
 
@@ -329,7 +329,7 @@ class TaskComposite(HashedComposite, HashedFuture[Composite]):  # type: ignore
         a TaskComposite or a HashedComposite. Raises InvalidJSONObject when
         not possible.
         """
-        obj = swap_type(obj, cls.type_swaps)
+        obj = cls._wrap_type(obj)
         if isinstance(obj, Hashed):
             return obj
         return cls.from_object(obj)
