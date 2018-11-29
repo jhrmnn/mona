@@ -4,7 +4,7 @@
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Iterable, List, Optional, Type, TypeVar, Union, cast
+from typing import Iterable, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 from .hashing import Hash, Hashed, HashedBytes, HashedComposite, HashResolver
 from .rules import Rule
@@ -162,7 +162,7 @@ class File:
 @HashedComposite.register_type(File)
 class HashedFile(Hashed[File]):
     def __init__(self, file: File):
-        self._path = file.path
+        self._file = file
         if isinstance(file.content, bytes):
             self._content: Optional[HashedBytes] = HashedBytes(file.content)
             self._content_hash = self._content.hashid
@@ -172,28 +172,26 @@ class HashedFile(Hashed[File]):
 
     @property
     def spec(self) -> bytes:
-        return json.dumps([str(self._path), self._content_hash]).encode()
+        return json.dumps([str(self._file.path), self._content_hash]).encode()
 
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedFile':
-        path_str: str
-        content_hash: Hash
-        path_str, content_hash = json.loads(spec)
+        path_str, content_hash = cast(Tuple[str, Hash], json.loads(spec))
         path = Path(path_str)
         fmngr = FileManager.active()
         if fmngr:
-            return cls(File(path, content_hash))
-        return cls(File(path, cast(HashedBytes, resolve(content_hash)).value))
+            file = File(path, content_hash)
+        else:
+            file = File(path, cast(HashedBytes, resolve(content_hash)).value)
+        return cls(file)
 
     @property
     def value(self) -> File:
-        return File(
-            self._path, self._content.value if self._content else self._content_hash
-        )
+        return self._file
 
     @property
     def label(self) -> str:
-        return f'./{self._path}'
+        return f'./{self._file.path}'
 
     @property
     def components(self) -> Iterable['Hashed[object]']:
