@@ -25,7 +25,7 @@ from .hashing import Composite, Hash, Hashed, HashedComposite, HashResolver
 from .pyhash import hash_function
 from .utils import Empty, Maybe, get_fullname, import_fullname, swap_type
 
-__all__ = ['ensure_hashed', 'maybe_hashed']
+__all__ = ()
 
 log = logging.getLogger(__name__)
 
@@ -33,27 +33,6 @@ _T = TypeVar('_T')
 _T_co = TypeVar('_T_co', covariant=True)
 _U = TypeVar('_U')
 Corofunc = Callable[..., Awaitable[_T]]
-
-
-def ensure_hashed(obj: object) -> Hashed[object]:
-    """Turn any object into a Hashed object.
-
-    Return Hashed objects without change. Wraps composites into
-    a TaskComposite or a HashedComposite. Raises InvalidJSONObject when
-    not possible.
-    """
-    obj = swap_type(obj, TaskComposite.type_swaps)
-    if isinstance(obj, Hashed):
-        return obj
-    return TaskComposite.from_object(obj)
-
-
-def maybe_hashed(obj: object) -> Optional[Hashed[object]]:
-    """Turn any object into a Hashed object or None if not hashable."""
-    try:
-        return ensure_hashed(obj)
-    except CompositeError:
-        return None
 
 
 # Although this class could be hashable in principle, this would require
@@ -109,7 +88,7 @@ class Task(HashedFuture[_T_co]):
         rule: str = None,
     ) -> None:
         self._corofunc = corofunc
-        self._args = tuple(map(ensure_hashed, args))
+        self._args = tuple(map(TaskComposite.ensure_hashed, args))
         Future.__init__(
             self, (arg for arg in self._args if isinstance(arg, HashedFuture))
         )
@@ -341,3 +320,24 @@ class TaskComposite(HashedComposite, HashedFuture[Composite]):  # type: ignore
             if isinstance(comp, HashedFuture)
             else comp.value
         )
+
+    @classmethod
+    def ensure_hashed(cls, obj: object) -> Hashed[object]:
+        """Turn any object into a Hashed object.
+
+        Return Hashed objects without change. Wraps composites into
+        a TaskComposite or a HashedComposite. Raises InvalidJSONObject when
+        not possible.
+        """
+        obj = swap_type(obj, cls.type_swaps)
+        if isinstance(obj, Hashed):
+            return obj
+        return cls.from_object(obj)
+
+    @classmethod
+    def maybe_hashed(cls, obj: object) -> Optional[Hashed[object]]:
+        """Turn any object into a Hashed object or None if not hashable."""
+        try:
+            return cls.ensure_hashed(obj)
+        except CompositeError:
+            return None

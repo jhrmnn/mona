@@ -22,7 +22,7 @@ from typing import (
 from .json import ClassJSONDecoder, ClassJSONEncoder, JSONValue, validate_json
 from .utils import Literal, TypeSwaps, shorten_text, swap_type
 
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 __all__ = ()
 
 _T = TypeVar('_T')

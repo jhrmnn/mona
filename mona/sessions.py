@@ -41,7 +41,7 @@ from .errors import FutureError, MonaError, SessionError, TaskError
 from .futures import STATE_COLORS
 from .hashing import Hash, Hashed
 from .pluggable import Pluggable, Plugin
-from .tasks import Corofunc, HashedFuture, State, Task, maybe_hashed
+from .tasks import Corofunc, HashedFuture, State, Task, TaskComposite
 from .utils import Literal, call_if, split
 
 __version__ = '0.1.0'
@@ -278,7 +278,7 @@ class Session(Pluggable):
         side_effects = self.get_side_effects(task)
         if side_effects:
             log.debug(f'{task}: created tasks: {list(map(Literal, side_effects))}')
-        result = cast(_T, maybe_hashed(raw_result)) or raw_result
+        result = cast(_T, TaskComposite.maybe_hashed(raw_result)) or raw_result
         self.set_result(task, result)
         self.run_plugins('post_task_run', task)
         return result
@@ -318,7 +318,7 @@ class Session(Pluggable):
 
         Return the evaluated object.
         """
-        fut = maybe_hashed(obj)
+        fut = TaskComposite.maybe_hashed(obj)
         if not isinstance(fut, HashedFuture):
             return obj
         fut.register()
