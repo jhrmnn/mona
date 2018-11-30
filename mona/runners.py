@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import asyncio
 import logging
+import os
 import subprocess
 from typing import Any, Callable, Optional, Tuple, TypeVar, Union
 from typing_extensions import Protocol, runtime
@@ -10,7 +11,7 @@ from typing_extensions import Protocol, runtime
 from .sessions import Session
 from .tasks import Corofunc
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 __all__ = ['run_shell', 'run_process', 'run_thread']
 
 log = logging.getLogger(__name__)
@@ -33,14 +34,15 @@ def _scheduler() -> Optional[Scheduler]:
     return scheduler
 
 
-async def run_shell(cmd: str, **kwargs: Any) -> ProcessOutput:
+async def run_shell(cmd: str, ncores: int = None, **kwargs: Any) -> ProcessOutput:
     """Execute a command in a shell.
 
     Wrapper around :func:`asyncio.create_subprocess_shell` that handles errors
     and whose behavior can be modified by session plugins.
 
     :param str cmd: a shell command to be executed
-    :param kwargs: all keyword arguments are passed to
+    :param int ncores: number of cores that should be taken by the process
+    :param kwargs: all other keyword arguments are passed to
                    :func:`~asyncio.create_subprocess_shell`.
                    :data:`~subprocess.PIPE` is passed to `stdin` and `stdout`
                    keyword arguments by default.
@@ -56,14 +58,15 @@ async def run_shell(cmd: str, **kwargs: Any) -> ProcessOutput:
     return await _run_process(cmd, **kwargs)
 
 
-async def run_process(*args: str, **kwargs: Any) -> ProcessOutput:
+async def run_process(*args: str, ncores: int = None, **kwargs: Any) -> ProcessOutput:
     """Create a subprocess.
 
     Wrapper around :func:`asyncio.create_subprocess_exec` that handles errors
     and whose behavior can be modified by session plugins.
 
     :param str args: arguments of the subprocess
-    :param kwargs: all keyword arguments are passed to
+    :param int ncores: number of cores that should be taken by the process
+    :param kwargs: all other keyword arguments are passed to
                    :func:`~asyncio.create_subprocess_exec`.
                    :data:`~subprocess.PIPE` is passed to `stdin` and `stdout`
                    keyword arguments by default.
@@ -73,7 +76,7 @@ async def run_process(*args: str, **kwargs: Any) -> ProcessOutput:
     """
     scheduler = _scheduler()
     if scheduler:
-        return await scheduler(_run_process, args, **kwargs)
+        return await scheduler(_run_process, args, ncores=ncores, **kwargs)
     return await _run_process(args, **kwargs)
 
 
@@ -81,10 +84,14 @@ async def _run_process(
     args: Union[str, Tuple[str, ...]],
     shell: bool = False,
     input: bytes = None,
+    ncores: int = None,
     **kwargs: Any,
 ) -> Union[bytes, Tuple[bytes, bytes]]:
     kwargs.setdefault('stdin', subprocess.PIPE)
     kwargs.setdefault('stdout', subprocess.PIPE)
+    kwargs.setdefault('env', os.environ.copy())
+    if ncores is not None:
+        kwargs['env']['MONA_NCORES'] = str(ncores)
     if shell:
         assert isinstance(args, str)
         proc = await asyncio.create_subprocess_shell(args, **kwargs)

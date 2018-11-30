@@ -105,11 +105,16 @@ class Parallel(SessionPlugin):
 
     async def _run_coro(self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any) -> _T:
         task = Session.active().running_task
-        n = cast(int, task.storage.get('ncores', 1))
+        n: Optional[int] = kwargs.get('ncores')
+        if n is not None:
+            if n == -1:
+                n = self._ncores
+            kwargs['ncores'] = n
+        else:
+            n = 1
         if n > self._available:
             log.debug(
-                f'Waiting for {n-self._available}/{n} '
-                f'unavailable cores for "{task}"'
+                f'Waiting for {n-self._available}/{n} unavailable cores for {task}'
             )
             waited = True
         else:

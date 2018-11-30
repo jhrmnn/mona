@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
+import os
 import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -151,6 +152,7 @@ async def dir_task(exe: File, inputs: List[DirtaskInput]) -> Dict[str, File]:
     input_names = {
         str(inp if isinstance(inp, File) else inp[0]) for inp in [exe, *inputs]
     }
+    ncores = Session.active().running_task.storage.get('ncores')
     dirtask_tmpdir = DirtaskTmpdir(lambda p: p not in input_names)
     with dirtask_tmpdir as tmpdir:
         checkout_files(tmpdir, exe, inputs)
@@ -158,7 +160,11 @@ async def dir_task(exe: File, inputs: List[DirtaskInput]) -> Dict[str, File]:
         try:
             with out_path.open('w') as stdout, err_path.open('w') as stderr:
                 await run_process(
-                    str(tmpdir / exe.path), stdout=stdout, stderr=stderr, cwd=tmpdir
+                    str(tmpdir / exe.path),
+                    stdout=stdout,
+                    stderr=stderr,
+                    cwd=tmpdir,
+                    ncores=ncores,
                 )
         except subprocess.CalledProcessError as e:
             if dirtask_tmpdir.has_tmpdir_manager():
