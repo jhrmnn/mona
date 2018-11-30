@@ -4,7 +4,7 @@ skip-string-normalization = true
 
 [tool.poetry]
 name = "mona"
-version = "0.2.5"
+version = "0.2.6"
 description = "Calculation framework"
 readme = "README.md"
 authors = ["Jan Hermann <dev@janhermann.cz>"]

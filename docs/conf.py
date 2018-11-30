@@ -34,7 +34,8 @@ MOCK_MODULES = [
     'textx',
     'textx.metamodel',
     'numpy',
-    'contextvars',  # for python 3.6 (readthedocs)
+    # for python 3.6 (readthedocs)
+    'contextvars',
     'contextlib',
     'importlib.resources',
 ]
@@ -85,3 +86,4 @@ html_sidebars = {
     '**': ['about.html', 'navigation.html', 'relations.html', 'searchbox.html']
 }
 htmlhelp_basename = f'{project}doc'
+autodoc_default_options = {'special-members': '__call__'}
