@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>API &#8212; Mona 0.2.5 documentation</title>
+    <title>API &#8212; Mona 0.2.6 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -16,7 +16,7 @@
     <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Quickstart" href="quickstart.html" />
+    <link rel="prev" title="Glossary" href="glossary.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -52,6 +52,13 @@ coroutine.</p>
 </tbody>
 </table>
 <dl class="method">
+<dt id="mona.Rule.__call__">
+<code class="descname">__call__</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/rules.html#Rule.__call__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Rule.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a task.</p>
+<p>All arguments are passed to <code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="mona.Rule.add_extra_arg">
 <code class="descname">add_extra_arg</code><span class="sig-paren">(</span><em>factory</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/rules.html#Rule.add_extra_arg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Rule.add_extra_arg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Register an extra argument factory.</p>
@@ -76,7 +83,7 @@ appended to the arguments passed when creating a task.</td>
 
 <dl class="function">
 <dt id="mona.run_process">
-<em class="property">coroutine </em><code class="descclassname">mona.</code><code class="descname">run_process</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_process" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descclassname">mona.</code><code class="descname">run_process</code><span class="sig-paren">(</span><em>*args</em>, <em>ncores=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_process" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a subprocess.</p>
 <p>Wrapper around <a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_exec" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_exec()</span></code></a> that handles errors
 and whose behavior can be modified by session plugins.</p>
@@ -86,7 +93,8 @@ and whose behavior can be modified by session plugins.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – arguments of the subprocess</li>
-<li><strong>kwargs</strong> – all keyword arguments are passed to
+<li><strong>ncores</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – number of cores that should be taken by the process</li>
+<li><strong>kwargs</strong> – all other keyword arguments are passed to
 <a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_exec" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_subprocess_exec()</span></code></a>.
 <a class="reference external" href="https://docs.python.org/3/library/subprocess.html#subprocess.PIPE" title="(in Python v3.7)"><code class="xref py py-data docutils literal notranslate"><span class="pre">PIPE</span></code></a> is passed to <cite>stdin</cite> and <cite>stdout</cite>
 keyword arguments by default.</li>
@@ -101,7 +109,7 @@ tuple of bytes containing standard and error outputs.</p>
 
 <dl class="function">
 <dt id="mona.run_shell">
-<em class="property">coroutine </em><code class="descclassname">mona.</code><code class="descname">run_shell</code><span class="sig-paren">(</span><em>cmd</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_shell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_shell" title="Permalink to this definition">¶</a></dt>
+<em class="property">coroutine </em><code class="descclassname">mona.</code><code class="descname">run_shell</code><span class="sig-paren">(</span><em>cmd</em>, <em>ncores=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_shell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_shell" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute a command in a shell.</p>
 <p>Wrapper around <a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_shell" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_shell()</span></code></a> that handles errors
 and whose behavior can be modified by session plugins.</p>
@@ -111,7 +119,8 @@ and whose behavior can be modified by session plugins.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>cmd</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – a shell command to be executed</li>
-<li><strong>kwargs</strong> – all keyword arguments are passed to
+<li><strong>ncores</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – number of cores that should be taken by the process</li>
+<li><strong>kwargs</strong> – all other keyword arguments are passed to
 <a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_shell" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_subprocess_shell()</span></code></a>.
 <a class="reference external" href="https://docs.python.org/3/library/subprocess.html#subprocess.PIPE" title="(in Python v3.7)"><code class="xref py py-data docutils literal notranslate"><span class="pre">PIPE</span></code></a> is passed to <cite>stdin</cite> and <cite>stdout</cite>
 keyword arguments by default.</li>
@@ -785,13 +794,101 @@ the executable.</p>
 <dl class="class">
 <dt id="mona.sci.aims.Aims">
 <em class="property">class </em><code class="descclassname">mona.sci.aims.</code><code class="descname">Aims</code><a class="reference internal" href="_modules/mona/sci/aims/aims.html#Aims"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.aims.Aims" title="Permalink to this definition">¶</a></dt>
-<dd><p>A task factory that creates FHI-aims directory tasks.</p>
+<dd><p><a class="reference internal" href="glossary.html#term-task-factory"><span class="xref std std-term">Task factory</span></a> that creates an FHI-aims <a class="reference internal" href="glossary.html#term-directory-task"><span class="xref std std-term">directory task</span></a>.</p>
+<p>The creation of a task is handeld by a series of plugins that process
+keyword arguments passed to the instance of <a class="reference internal" href="#mona.sci.aims.Aims" title="mona.sci.aims.Aims"><code class="xref py py-class docutils literal notranslate"><span class="pre">Aims</span></code></a> to generate
+<code class="docutils literal notranslate"><span class="pre">control.in</span></code> and <code class="docutils literal notranslate"><span class="pre">geometry.in</span></code>. The default plugins are created with no
+extra arguments. Custom plugins can be registered by calling them with the
+<a class="reference internal" href="#mona.sci.aims.Aims" title="mona.sci.aims.Aims"><code class="xref py py-class docutils literal notranslate"><span class="pre">Aims</span></code></a> instance as an argument.</p>
+<p>Aims tasks require two prerequisites to function:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">mona_aims</span></code> executable in <code class="docutils literal notranslate"><span class="pre">PATH</span></code>, which runs Aims and accepts these
+environment variables:<ul>
+<li><code class="docutils literal notranslate"><span class="pre">MONA_AIMS</span></code> specifies the Aims executable to run.</li>
+<li><code class="docutils literal notranslate"><span class="pre">MONA_NCORES</span></code> specifies the number of processor cores to run Aims
+with.</li>
+</ul>
+</li>
+<li><code class="docutils literal notranslate"><span class="pre">AIMS_SPECIES_DEFAULTS</span></code> environment variable that points to the
+<code class="docutils literal notranslate"><span class="pre">species_defaults</span></code> Aims directory.</li>
+</ul>
+<dl class="method">
+<dt id="mona.sci.aims.Aims.__call__">
+<code class="descname">__call__</code><span class="sig-paren">(</span><em>*</em>, <em>label=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/aims/aims.html#Aims.__call__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.aims.Aims.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an Aims task.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>kwargs</strong> – keyword arguments processed by plugins</li>
+<li><strong>label</strong> – passed to <a class="reference internal" href="#mona.dirtask.dir_task" title="mona.dirtask.dir_task"><code class="xref py py-func docutils literal notranslate"><span class="pre">dir_task()</span></code></a></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Existing keywords (some are generated by plugins, see below):</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">atoms</span></code>: List of two-tuples of a species and a coordinate.</li>
+<li><code class="docutils literal notranslate"><span class="pre">geom</span></code>: Instance of <a class="reference internal" href="#mona.sci.geomlib.Molecule" title="mona.sci.geomlib.Molecule"><code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></a>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">species_specs</span></code>: List of species specifications.</li>
+<li><code class="docutils literal notranslate"><span class="pre">tags</span></code>: Dictionary of tags for <code class="docutils literal notranslate"><span class="pre">control.in</span></code>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">aims</span></code>: Aims executable, must be present in <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">check</span></code>: Whether task should error out on abnormal Aims exit.</li>
+<li><code class="docutils literal notranslate"><span class="pre">ncores</span></code>: Number of cores to use, all available if not given.</li>
+</ul>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="mona.sci.aims.Aims.plugin_factories">
+<code class="descname">plugin_factories</code><em class="property"> = [&lt;class 'mona.sci.aims.aims.Atoms'&gt;, &lt;class 'mona.sci.aims.aims.SpeciesDefaults'&gt;, &lt;class 'mona.sci.aims.aims.Control'&gt;, &lt;class 'mona.sci.aims.aims.Geom'&gt;, &lt;class 'mona.sci.aims.aims.Script'&gt;]</em><a class="headerlink" href="#mona.sci.aims.Aims.plugin_factories" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of plugins run in this order.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="mona.sci.aims.Atoms">
+<em class="property">class </em><code class="descclassname">mona.sci.aims.</code><code class="descname">Atoms</code><a class="reference internal" href="_modules/mona/sci/aims/aims.html#Atoms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.aims.Atoms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aims plugin handling geometry.</p>
+<p>Keywords processed: <code class="docutils literal notranslate"><span class="pre">atoms</span></code>. Keywords added: <code class="docutils literal notranslate"><span class="pre">geom</span></code>.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="mona.sci.aims.SpeciesDefaults">
 <em class="property">class </em><code class="descclassname">mona.sci.aims.</code><code class="descname">SpeciesDefaults</code><span class="sig-paren">(</span><em>mod=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sci/aims/aims.html#SpeciesDefaults"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.aims.SpeciesDefaults" title="Permalink to this definition">¶</a></dt>
-<dd><p>Aims plugin that handles adding species defaults to control.in.</p>
+<dd><p>Aims plugin handling species specifications.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mod</strong> – Callable that is passed the species specifications for modification.</td>
+</tr>
+</tbody>
+</table>
+<p>Keywords added: <code class="docutils literal notranslate"><span class="pre">species_specs</span></code>. Keywords used: <code class="docutils literal notranslate"><span class="pre">geom</span></code>, <code class="docutils literal notranslate"><span class="pre">species_defaults</span></code>.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="mona.sci.aims.Control">
+<em class="property">class </em><code class="descclassname">mona.sci.aims.</code><code class="descname">Control</code><a class="reference internal" href="_modules/mona/sci/aims/aims.html#Control"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.aims.Control" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aims plugin generating <code class="docutils literal notranslate"><span class="pre">control.in</span></code>.</p>
+<p>Keywords processed: <code class="docutils literal notranslate"><span class="pre">species_specs</span></code>, <code class="docutils literal notranslate"><span class="pre">tags</span></code>. Keywords added: <code class="docutils literal notranslate"><span class="pre">control.in</span></code>.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="mona.sci.aims.Geom">
+<em class="property">class </em><code class="descclassname">mona.sci.aims.</code><code class="descname">Geom</code><a class="reference internal" href="_modules/mona/sci/aims/aims.html#Geom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.aims.Geom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aims plugin generating <code class="docutils literal notranslate"><span class="pre">geometry.in</span></code>.</p>
+<p>Keywords processed: <code class="docutils literal notranslate"><span class="pre">geom</span></code>. Keywords added: <code class="docutils literal notranslate"><span class="pre">geometry.in</span></code>.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="mona.sci.aims.Script">
+<em class="property">class </em><code class="descclassname">mona.sci.aims.</code><code class="descname">Script</code><a class="reference internal" href="_modules/mona/sci/aims/aims.html#Script"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.sci.aims.Script" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aims plugin generating script for the Aims taks.</p>
+<p>Keywords processed: <code class="docutils literal notranslate"><span class="pre">aims</span></code>, <code class="docutils literal notranslate"><span class="pre">check</span></code>. Keywords added: <code class="docutils literal notranslate"><span class="pre">script</span></code>.</p>
 </dd></dl>
 
 <dl class="function">
@@ -910,6 +1007,7 @@ part of the versioned public API neverthless.</p>
 <h3>Navigation</h3>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
@@ -927,7 +1025,7 @@ part of the versioned public API neverthless.</p>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="quickstart.html" title="previous chapter">Quickstart</a></li>
+      <li>Previous: <a href="glossary.html" title="previous chapter">Glossary</a></li>
   </ul></li>
 </ul>
 </div>

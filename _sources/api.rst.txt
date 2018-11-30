@@ -45,7 +45,7 @@ FHI-aims
 .. autofunction:: parse_aims
 
 LaTeX
-^^^^^^^^
+^^^^^
 
 .. automodule:: mona.sci.tex
     :members:

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>mona.sci.aims.aims &#8212; Mona 0.2.5 documentation</title>
+    <title>mona.sci.aims.aims &#8212; Mona 0.2.6 documentation</title>
     <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
@@ -36,14 +36,14 @@
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
-<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
 <span class="kn">from</span> <span class="nn">copy</span> <span class="k">import</span> <span class="n">deepcopy</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="k">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">from</span> <span class="nn">...dirtask</span> <span class="k">import</span> <span class="n">dir_task</span>
-<span class="kn">from</span> <span class="nn">...errors</span> <span class="k">import</span> <span class="n">InvalidInput</span><span class="p">,</span> <span class="n">MonaError</span>
+<span class="kn">from</span> <span class="nn">...errors</span> <span class="k">import</span> <span class="n">InvalidInput</span>
 <span class="kn">from</span> <span class="nn">...files</span> <span class="k">import</span> <span class="n">File</span>
 <span class="kn">from</span> <span class="nn">...pluggable</span> <span class="k">import</span> <span class="n">Pluggable</span><span class="p">,</span> <span class="n">Plugin</span>
 <span class="kn">from</span> <span class="nn">...pyhash</span> <span class="k">import</span> <span class="n">hash_function</span>
@@ -51,8 +51,8 @@
 <span class="kn">from</span> <span class="nn">..geomlib</span> <span class="k">import</span> <span class="n">Atom</span><span class="p">,</span> <span class="n">Molecule</span>
 <span class="kn">from</span> <span class="nn">.dsl</span> <span class="k">import</span> <span class="n">expand_dicts</span><span class="p">,</span> <span class="n">parse_aims_input</span>
 
-<span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;0.1.0&#39;</span>
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Aims&#39;</span><span class="p">,</span> <span class="s1">&#39;SpeciesDefaults&#39;</span><span class="p">]</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;0.2.0&#39;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">()</span>
 
 
 <span class="k">class</span> <span class="nc">AimsPlugin</span><span class="p">(</span><span class="n">Plugin</span><span class="p">[</span><span class="s1">&#39;Aims&#39;</span><span class="p">]):</span>
@@ -64,24 +64,62 @@
 
 
 <div class="viewcode-block" id="Aims"><a class="viewcode-back" href="../../../../api.html#mona.sci.aims.Aims">[docs]</a><span class="k">class</span> <span class="nc">Aims</span><span class="p">(</span><span class="n">Pluggable</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;A task factory that creates FHI-aims directory tasks.&quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot;:term:`Task factory` that creates an FHI-aims :term:`directory task`.</span>
+
+<span class="sd">    The creation of a task is handeld by a series of plugins that process</span>
+<span class="sd">    keyword arguments passed to the instance of :class:`Aims` to generate</span>
+<span class="sd">    ``control.in`` and ``geometry.in``. The default plugins are created with no</span>
+<span class="sd">    extra arguments. Custom plugins can be registered by calling them with the</span>
+<span class="sd">    :class:`Aims` instance as an argument.</span>
+
+<span class="sd">    Aims tasks require two prerequisites to function:</span>
+
+<span class="sd">    - ``mona_aims`` executable in ``PATH``, which runs Aims and accepts these</span>
+<span class="sd">      environment variables:</span>
+
+<span class="sd">      - ``MONA_AIMS`` specifies the Aims executable to run.</span>
+<span class="sd">      - ``MONA_NCORES`` specifies the number of processor cores to run Aims</span>
+<span class="sd">        with.</span>
+
+<span class="sd">    - ``AIMS_SPECIES_DEFAULTS`` environment variable that points to the</span>
+<span class="sd">      ``species_defaults`` Aims directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">plugin_factories</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">AimsPlugin</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="sd">&quot;&quot;&quot;List of plugins run in this order.&quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">Pluggable</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="n">default_plugins</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="n">Aims</span><span class="o">.</span><span class="n">plugin_factories</span><span class="p">:</span>
             <span class="n">factory</span><span class="p">()(</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">File</span><span class="p">]]:</span>
-        <span class="sd">&quot;&quot;&quot;Create an FHI-aims.</span>
+<div class="viewcode-block" id="Aims.__call__"><a class="viewcode-back" href="../../../../api.html#mona.sci.aims.Aims.__call__">[docs]</a>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">File</span><span class="p">]]:</span>
+        <span class="sd">&quot;&quot;&quot;Create an Aims task.</span>
 
-<span class="sd">        :param kwargs: processed by individual plugins</span>
+<span class="sd">        :param kwargs: keyword arguments processed by plugins</span>
+<span class="sd">        :param label: passed to :func:`~mona.dirtask.dir_task`</span>
+
+<span class="sd">        Existing keywords (some are generated by plugins, see below):</span>
+
+<span class="sd">        - ``atoms``: List of two-tuples of a species and a coordinate.</span>
+<span class="sd">        - ``geom``: Instance of :class:`~mona.sci.geomlib.Molecule`.</span>
+<span class="sd">        - ``species_specs``: List of species specifications.</span>
+<span class="sd">        - ``tags``: Dictionary of tags for ``control.in``.</span>
+<span class="sd">        - ``aims``: Aims executable, must be present in ``PATH``.</span>
+<span class="sd">        - ``check``: Whether task should error out on abnormal Aims exit.</span>
+<span class="sd">        - ``ncores``: Number of cores to use, all available if not given.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;process&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
         <span class="n">script</span> <span class="o">=</span> <span class="n">File</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s1">&#39;aims.sh&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;script&#39;</span><span class="p">))</span>
-        <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">File</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">cont</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">cont</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;inputs&#39;</span><span class="p">)]</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">File</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;control.in&#39;</span><span class="p">,</span> <span class="s1">&#39;geometry.in&#39;</span><span class="p">]</span>
+        <span class="p">]</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">dir_task</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">storage</span><span class="p">[</span><span class="s1">&#39;ncores&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;ncores&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Unknown Aims kwargs: {list(kwargs.keys())}&#39;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">dir_task</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">task</span></div>
 
     <span class="k">def</span> <span class="nf">_func_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
@@ -92,42 +130,35 @@
         <span class="p">)</span></div>
 
 
-<span class="k">class</span> <span class="nc">SpeciesDir</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_speciesdirs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<div class="viewcode-block" id="Atoms"><a class="viewcode-back" href="../../../../api.html#mona.sci.aims.Atoms">[docs]</a><span class="k">class</span> <span class="nc">Atoms</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Aims plugin handling geometry.</span>
 
-    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">sp_def_key</span> <span class="o">=</span> <span class="n">aims</span><span class="p">,</span> <span class="n">sp_def</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;aims&#39;</span><span class="p">],</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;species_defaults&#39;</span><span class="p">)</span>
-        <span class="n">speciesdir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_speciesdirs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sp_def_key</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">speciesdir</span><span class="p">:</span>
-            <span class="n">pathname</span> <span class="o">=</span> <span class="n">shutil</span><span class="o">.</span><span class="n">which</span><span class="p">(</span><span class="n">aims</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">pathname</span><span class="p">:</span>
-                <span class="n">pathname</span> <span class="o">=</span> <span class="n">shutil</span><span class="o">.</span><span class="n">which</span><span class="p">(</span><span class="s1">&#39;aims-master&#39;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">pathname</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">MonaError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Aims &quot;</span><span class="si">{aims}</span><span class="s1">&quot; not found&#39;</span><span class="p">)</span>
-            <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">pathname</span><span class="p">)</span>
-            <span class="n">speciesdir</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="s1">&#39;aimsfiles/species_defaults&#39;</span> <span class="o">/</span> <span class="n">sp_def</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_speciesdirs</span><span class="p">[</span><span class="n">sp_def_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">speciesdir</span>  <span class="c1"># type: ignore</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;speciesdir&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">speciesdir</span>
+<span class="sd">    Keywords processed: ``atoms``. Keywords added: ``geom``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
-
-<span class="k">class</span> <span class="nc">Atoms</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="s1">&#39;atoms&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
-            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;geom&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Molecule</span><span class="p">([</span><span class="n">Atom</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="k">for</span> <span class="n">args</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;atoms&#39;</span><span class="p">)])</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;geom&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Molecule</span><span class="p">([</span><span class="n">Atom</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span> <span class="k">for</span> <span class="n">args</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;atoms&#39;</span><span class="p">)])</span></div>
 
 
 <div class="viewcode-block" id="SpeciesDefaults"><a class="viewcode-back" href="../../../../api.html#mona.sci.aims.SpeciesDefaults">[docs]</a><span class="k">class</span> <span class="nc">SpeciesDefaults</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Aims plugin that handles adding species defaults to control.in.&quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot;Aims plugin handling species specifications.</span>
+
+<span class="sd">    :param mod: Callable that is passed the species specifications for modification.</span>
+
+<span class="sd">    Keywords added: ``species_specs``. Keywords used: ``geom``, ``species_defaults``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mod</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_species_defs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_mod</span> <span class="o">=</span> <span class="n">mod</span>
 
     <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: D102</span>
-        <span class="n">speciesdir</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;speciesdir&#39;</span><span class="p">)</span>
+        <span class="n">speciesdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;AIMS_SPECIES_DEFAULTS&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
+            <span class="s1">&#39;species_defaults&#39;</span>
+        <span class="p">)</span>
         <span class="n">all_species</span> <span class="o">=</span> <span class="p">{(</span><span class="n">a</span><span class="o">.</span><span class="n">number</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">species</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;geom&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">centers</span><span class="p">}</span>
-        <span class="n">species_defs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">species_specs</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">Z</span><span class="p">,</span> <span class="n">species</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">all_species</span><span class="p">):</span>
             <span class="k">if</span> <span class="p">(</span><span class="n">speciesdir</span><span class="p">,</span> <span class="n">species</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_species_defs</span><span class="p">:</span>
                 <span class="n">species_def</span> <span class="o">=</span> <span class="n">parse_aims_input</span><span class="p">(</span>
@@ -136,11 +167,11 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_species_defs</span><span class="p">[</span><span class="n">speciesdir</span><span class="p">,</span> <span class="n">species</span><span class="p">]</span> <span class="o">=</span> <span class="n">species_def</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">species_def</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_species_defs</span><span class="p">[</span><span class="n">speciesdir</span><span class="p">,</span> <span class="n">species</span><span class="p">]</span>
-            <span class="n">species_defs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">species_def</span><span class="p">)</span>
+            <span class="n">species_specs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">species_def</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mod</span><span class="p">:</span>
-            <span class="n">species_defs</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">species_defs</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_mod</span><span class="p">(</span><span class="n">species_defs</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;species_defs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">species_defs</span>
+            <span class="n">species_specs</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">species_specs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_mod</span><span class="p">(</span><span class="n">species_specs</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;species_specs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">species_specs</span>
 
     <span class="k">def</span> <span class="nf">_func_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mod</span><span class="p">:</span>
@@ -149,10 +180,15 @@
         <span class="k">return</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hash_function</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">funcs</span><span class="p">)</span>  <span class="c1"># type: ignore</span></div>
 
 
-<span class="k">class</span> <span class="nc">Control</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
+<div class="viewcode-block" id="Control"><a class="viewcode-back" href="../../../../api.html#mona.sci.aims.Control">[docs]</a><span class="k">class</span> <span class="nc">Control</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Aims plugin generating ``control.in``.</span>
+
+<span class="sd">    Keywords processed: ``species_specs``, ``tags``. Keywords added: ``control.in``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">species_tags</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;species_defs&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;species_specs&#39;</span><span class="p">):</span>
             <span class="n">spec</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
             <span class="k">while</span> <span class="n">spec</span><span class="p">:</span>
                 <span class="n">tag</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">popitem</span><span class="p">(</span><span class="n">last</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -177,32 +213,34 @@
                 <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{tag}</span><span class="s1">  {p2f(v)}&#39;</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{tag}</span><span class="s1">  {p2f(value)}&#39;</span><span class="p">)</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;control&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;control.in&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
 
 
-<span class="k">class</span> <span class="nc">Geom</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
+<div class="viewcode-block" id="Geom"><a class="viewcode-back" href="../../../../api.html#mona.sci.aims.Geom">[docs]</a><span class="k">class</span> <span class="nc">Geom</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Aims plugin generating ``geometry.in``.</span>
+
+<span class="sd">    Keywords processed: ``geom``. Keywords added: ``geometry.in``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;geom&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="s1">&#39;aims&#39;</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;geometry.in&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;geom&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="s1">&#39;aims&#39;</span><span class="p">)</span></div>
 
 
-<span class="k">class</span> <span class="nc">Core</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;inputs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="p">(</span><span class="s1">&#39;control.in&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;control&#39;</span><span class="p">)),</span>
-            <span class="p">(</span><span class="s1">&#39;geometry.in&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;geometry&#39;</span><span class="p">)),</span>
-        <span class="p">]</span>
+<div class="viewcode-block" id="Script"><a class="viewcode-back" href="../../../../api.html#mona.sci.aims.Script">[docs]</a><span class="k">class</span> <span class="nc">Script</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Aims plugin generating script for the Aims taks.</span>
 
+<span class="sd">    Keywords processed: ``aims``, ``check``. Keywords added: ``script``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
-<span class="k">class</span> <span class="nc">Script</span><span class="p">(</span><span class="n">AimsPlugin</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">aims</span><span class="p">,</span> <span class="n">check</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;aims&#39;</span><span class="p">),</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;check&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
-        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;#!/bin/bash&#39;</span><span class="p">,</span> <span class="s1">&#39;set -e&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;AIMS=</span><span class="si">{aims}</span><span class="s1"> run_aims&#39;</span><span class="p">]</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;#!/bin/bash&#39;</span><span class="p">,</span> <span class="s1">&#39;set -e&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;MONA_AIMS=</span><span class="si">{aims}</span><span class="s1"> mona_aims&#39;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">check</span><span class="p">:</span>
             <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;egrep &quot;Have a nice day|stop_if_parser&quot; STDOUT &gt;/dev/null&#39;</span><span class="p">)</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;script&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;script&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
 
 
-<span class="n">default_plugins</span> <span class="o">=</span> <span class="p">[</span><span class="n">SpeciesDir</span><span class="p">,</span> <span class="n">Atoms</span><span class="p">,</span> <span class="n">SpeciesDefaults</span><span class="p">,</span> <span class="n">Control</span><span class="p">,</span> <span class="n">Geom</span><span class="p">,</span> <span class="n">Core</span><span class="p">,</span> <span class="n">Script</span><span class="p">]</span>
+<span class="n">Aims</span><span class="o">.</span><span class="n">plugin_factories</span> <span class="o">=</span> <span class="p">[</span><span class="n">Atoms</span><span class="p">,</span> <span class="n">SpeciesDefaults</span><span class="p">,</span> <span class="n">Control</span><span class="p">,</span> <span class="n">Geom</span><span class="p">,</span> <span class="n">Script</span><span class="p">]</span>
 
 
 <span class="k">def</span> <span class="nf">p2f</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">nospace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -269,6 +307,7 @@
 <h3>Navigation</h3>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../glossary.html">Glossary</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../api.html">API</a></li>

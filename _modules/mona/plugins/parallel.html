@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>mona.plugins.parallel &#8212; Mona 0.2.5 documentation</title>
+    <title>mona.plugins.parallel &#8212; Mona 0.2.6 documentation</title>
     <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
@@ -140,11 +140,16 @@
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_run_coro</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">corofunc</span><span class="p">:</span> <span class="n">Corofunc</span><span class="p">[</span><span class="n">_T</span><span class="p">],</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_T</span><span class="p">:</span>
         <span class="n">task</span> <span class="o">=</span> <span class="n">Session</span><span class="o">.</span><span class="n">active</span><span class="p">()</span><span class="o">.</span><span class="n">running_task</span>
-        <span class="n">n</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">task</span><span class="o">.</span><span class="n">storage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ncores&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">n</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ncores&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ncores</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;ncores&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">n</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_available</span><span class="p">:</span>
             <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                <span class="n">f</span><span class="s1">&#39;Waiting for {n-self._available}/</span><span class="si">{n}</span><span class="s1"> &#39;</span>
-                <span class="n">f</span><span class="s1">&#39;unavailable cores for &quot;</span><span class="si">{task}</span><span class="s1">&quot;&#39;</span>
+                <span class="n">f</span><span class="s1">&#39;Waiting for {n-self._available}/</span><span class="si">{n}</span><span class="s1"> unavailable cores for </span><span class="si">{task}</span><span class="s1">&#39;</span>
             <span class="p">)</span>
             <span class="n">waited</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">else</span><span class="p">:</span>
@@ -206,6 +211,7 @@
 <h3>Navigation</h3>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary.html">Glossary</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../api.html">API</a></li>

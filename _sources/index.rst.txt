@@ -10,6 +10,7 @@ User guide
     :maxdepth: 2
 
     quickstart
+    glossary
 
 API reference
 -------------
