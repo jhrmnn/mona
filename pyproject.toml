@@ -8,8 +8,8 @@ version = "0.2.6"
 description = "Calculation framework"
 readme = "README.md"
 authors = ["Jan Hermann <dev@janhermann.cz>"]
-repository = "https://github.com/azag0/mona"
-documentation = "https://azag0.github.io/mona"
+repository = "https://github.com/jhrmnn/mona"
+documentation = "https://jhrmnn.github.io/mona"
 license = "MPL-2.0"
 classifiers = [
     "Development Status :: 3 - Alpha",

@@ -1,12 +1,12 @@
 # Mona
 
-[![build](https://img.shields.io/travis/azag0/mona/master.svg)](https://travis-ci.org/azag0/mona)
-[![coverage](https://img.shields.io/codecov/c/github/azag0/mona.svg)](https://codecov.io/gh/azag0/mona)
+[![build](https://img.shields.io/travis/jhrmnn/mona/master.svg)](https://travis-ci.org/jhrmnn/mona)
+[![coverage](https://img.shields.io/codecov/c/github/jhrmnn/mona.svg)](https://codecov.io/gh/jhrmnn/mona)
 ![python](https://img.shields.io/pypi/pyversions/mona.svg)
 [![pypi](https://img.shields.io/pypi/v/mona.svg)](https://pypi.org/project/mona/)
-[![commits since](https://img.shields.io/github/commits-since/azag0/mona/latest.svg)](https://github.com/azag0/mona/releases)
-[![last commit](https://img.shields.io/github/last-commit/azag0/mona.svg)](https://github.com/azag0/mona/commits/master)
-[![license](https://img.shields.io/github/license/azag0/mona.svg)](https://github.com/azag0/mona/blob/master/LICENSE)
+[![commits since](https://img.shields.io/github/commits-since/jhrmnn/mona/latest.svg)](https://github.com/jhrmnn/mona/releases)
+[![last commit](https://img.shields.io/github/last-commit/jhrmnn/mona.svg)](https://github.com/jhrmnn/mona/commits/master)
+[![license](https://img.shields.io/github/license/jhrmnn/mona.svg)](https://github.com/jhrmnn/mona/blob/master/LICENSE)
 [![code style](https://img.shields.io/badge/code%20style-black-202020.svg)](https://github.com/ambv/black)
 
 Mona is a calculation framework that provides [persistent](https://en.wikipedia.org/wiki/Persistence_(computer_science)) [memoization](https://en.wikipedia.org/wiki/Memoization) and turns the Python call stack into a task [dependency graph](https://en.wikipedia.org/wiki/Dependency_graph). The graph contains three types of edges: a task input depending on outputs of other tasks, a task creating new tasks, and a task output referencing outputs of other tasks.
@@ -55,7 +55,7 @@ Finished
 $ mona graph
 ```
 
-<img src="https://raw.githubusercontent.com/azag0/mona/master/docs/fib.svg?sanitize=true" alt width="350">
+<img src="https://raw.githubusercontent.com/jhrmnn/mona/master/docs/fib.svg?sanitize=true" alt width="350">
 
 ```python
 from fib import app, fib
@@ -66,5 +66,5 @@ with app.create_session() as sess:
 
 ## Links
 
-- Documentation: https://azag0.github.io/mona
+- Documentation: https://jhrmnn.github.io/mona
 
