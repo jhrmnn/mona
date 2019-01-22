@@ -115,6 +115,11 @@ class Molecule(Sized, Iterable[Atom]):
     def xyz(self) -> 'np.ndarray':
         return np.array(self.coords)
 
+    @xyz.setter
+    def xyz(self, xyz: 'np.ndarray') -> None:
+        for atom, coord in zip(self._atoms, xyz):
+            atom.coord = tuple(coord)
+
     @property
     def formula(self) -> str:
         counter = DefaultDict[str, int](int)
@@ -405,6 +410,22 @@ def load(fp: IO[str], fmt: str) -> Molecule:
             return Crystal(atoms, lattice)
         else:
             return Molecule(atoms)
+    if fmt == 'vasp':
+        fp.readline()
+        scale = float(fp.readline())
+        assert scale == 1.
+        lattice = [get_vec(fp.readline().split()) for _ in range(3)]
+        species_types = fp.readline().split()
+        n_species = [int(x) for x in fp.readline().split()]
+        species = list(chain(
+            *(repeat(sp, n) for sp, n in zip(species_types, n_species))
+        ))
+        kind = fp.readline()[0].lower()
+        atoms = [Atom(sp, get_vec(fp.readline().split())) for sp in species]
+        geom = Crystal(atoms, lattice)
+        if kind == 'd':
+            geom.xyz = geom.xyz@geom.abc
+        return geom
     raise ValueError(f'Unknown format: {fmt}')
 
 
@@ -422,6 +443,8 @@ def readfile(path: str, fmt: str = None) -> Molecule:
             fmt = 'aims'
         elif ext == '.xyzc':
             fmt = 'xyzc'
+        elif ext == '.vasp':
+            fmt = 'vasp'
         else:
             raise RuntimeError('Cannot determine format')
     with open(path) as f:
