@@ -56,3 +56,7 @@ isort = "^4.3"
 
 [tool.poetry.scripts]
 mona = "mona.cli:cli"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
