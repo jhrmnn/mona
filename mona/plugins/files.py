@@ -86,7 +86,7 @@ class FileManager(_FileManager, SessionPlugin):
                 self._store_path(hashid, path, keep)
         return self._path_cache.setdefault(path, hashid)
 
-    def get_bytes(self, hashid: Hash) -> bytes:  # noqa: D102
+    def bytes_for(self, hashid: Hash) -> bytes:  # noqa: D102
         try:
             return self._cache[hashid]
         except KeyError:

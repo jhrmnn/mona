@@ -15,7 +15,7 @@ from typing import Any, Callable, Dict, Optional, TypeVar, cast
 
 from .errors import CompositeError, HashingError
 from .hashing import Hash, Hashed, HashedComposite, hash_text
-from .utils import get_fullname
+from .utils import fullname_of
 
 __all__ = ()
 
@@ -101,7 +101,7 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
                 fullname = obj.__name__
             else:
                 mod = sys.modules[obj.__module__]
-                fullname = get_fullname(obj)
+                fullname = fullname_of(obj)
             if is_stdlib(mod):
                 hashed_globals[name] = f'{fullname}(stdlib)'
                 continue

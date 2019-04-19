@@ -25,7 +25,7 @@ from .errors import CompositeError, FutureError, TaskError
 from .futures import Future, State
 from .hashing import Composite, Hash, Hashed, HashedComposite, HashResolver
 from .pyhash import hash_function
-from .utils import Empty, Maybe, get_fullname, import_fullname
+from .utils import Empty, Maybe, fullname_of, import_fullname
 
 __all__ = ()
 
@@ -109,7 +109,7 @@ class Task(HashedFuture[_T_co]):
     def spec(self) -> bytes:
         return json.dumps(
             [
-                get_fullname(self._corofunc),
+                fullname_of(self._corofunc),
                 hash_function(self._corofunc),
                 *(fut.hashid for fut in self._args),
             ]

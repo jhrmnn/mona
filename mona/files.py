@@ -38,7 +38,7 @@ class FileManager(ABC):
         ...
 
     @abstractmethod
-    def get_bytes(self, content_hash: Hash) -> bytes:
+    def bytes_for(self, content_hash: Hash) -> bytes:
         ...
 
     @abstractmethod
@@ -102,7 +102,7 @@ class File:
         """Return content of the file as bytes."""
         if isinstance(self._content, bytes):
             return self._content
-        return self._fmngr.get_bytes(self._content)
+        return self._fmngr.bytes_for(self._content)
 
     def read_text(self) -> str:
         """Return content of the file as string."""

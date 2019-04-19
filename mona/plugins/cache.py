@@ -26,7 +26,7 @@ from ..futures import Future, State
 from ..hashing import Hash, Hashed
 from ..sessions import Session, SessionPlugin
 from ..tasks import Task
-from ..utils import Pathable, get_fullname, get_timestamp, import_fullname
+from ..utils import Pathable, fullname_of, get_timestamp, import_fullname
 
 __all__ = ['Cache']
 
@@ -104,7 +104,7 @@ class Cache(SessionPlugin):
 
     def _store_objects(self, objs: Sequence[Hashed[object]]) -> None:
         obj_rows = [
-            ObjectRow(obj.hashid, get_fullname(obj.__class__), obj.spec) for obj in objs
+            ObjectRow(obj.hashid, fullname_of(obj.__class__), obj.spec) for obj in objs
         ]
         self._db.executemany('INSERT OR IGNORE INTO objects VALUES (?,?,?)', obj_rows)
 
@@ -147,7 +147,7 @@ class Cache(SessionPlugin):
         if result_type is ResultType.HASHED:
             result = hashed.hashid
         side_effects = ','.join(
-            t.hashid for t in Session.active().get_side_effects(task)
+            t.hashid for t in Session.active().side_effects_of(task)
         )
         self._db.execute(
             'REPLACE INTO tasks VALUES (?,?,?,?,?)',
@@ -156,7 +156,7 @@ class Cache(SessionPlugin):
             ),
         )
 
-    def _get_task_row(self, hashid: Hash) -> Optional[TaskRow]:
+    def _task_row_for(self, hashid: Hash) -> Optional[TaskRow]:
         raw_row = self._db.execute(
             'SELECT * FROM tasks WHERE hashid = ?', (hashid,)
         ).fetchone()
@@ -164,7 +164,7 @@ class Cache(SessionPlugin):
             return None
         return TaskRow(*raw_row)
 
-    def _get_target_row(self, hashid: Hash) -> TargetRow:
+    def _target_row_for(self, hashid: Hash) -> TargetRow:
         raw_row = self._db.execute(
             'SELECT * FROM targets WHERE objectid = ? ORDER BY sessionid DESC LIMIT 1',
             (hashid,),
@@ -172,7 +172,7 @@ class Cache(SessionPlugin):
         assert raw_row
         return TargetRow(*raw_row)
 
-    def _get_object_factory(self, hashid: Hash) -> Tuple[bytes, Type[Hashed[object]]]:
+    def _object_factory_for(self, hashid: Hash) -> Tuple[bytes, Type[Hashed[object]]]:
         raw_row = self._db.execute(
             'SELECT * FROM objects WHERE hashid = ?', (hashid,)
         ).fetchone()
@@ -182,20 +182,20 @@ class Cache(SessionPlugin):
         assert issubclass(factory, Hashed)
         return row.spec, factory
 
-    def _get_object(self, hashid: Hash) -> Hashed[object]:
+    def _object_for(self, hashid: Hash) -> Hashed[object]:
         obj: Optional[Hashed[object]] = self._object_cache.get(hashid)
         if obj:
             return obj
-        spec, factory = self._get_object_factory(hashid)
+        spec, factory = self._object_factory_for(hashid)
         if factory is Task and not self._full_restore:
-            task_row = self._get_task_row(hashid)
+            task_row = self._task_row_for(hashid)
             assert task_row
             if State[task_row.state] > State.HAS_RUN:
                 obj = CachedTask(hashid)
         if not obj:
-            obj = factory.from_spec(spec, self._get_object)
+            obj = factory.from_spec(spec, self._object_for)
         assert hashid == obj.hashid
-        metadata = self._get_target_row(hashid).metadata
+        metadata = self._target_row_for(hashid).metadata
         if metadata is not None:
             obj.set_metadata(metadata)
         if isinstance(obj, Task):
@@ -206,7 +206,7 @@ class Cache(SessionPlugin):
         self._object_cache[hashid] = obj
         return obj
 
-    def _get_result(self, row: TaskRow) -> object:
+    def _result_from(self, row: TaskRow) -> object:
         if State[row.state] < State.HAS_RUN:
             return None
         assert row.result_type
@@ -217,13 +217,13 @@ class Cache(SessionPlugin):
         else:
             assert result_type is ResultType.HASHED
             assert isinstance(row.result, str)
-            result = self._get_object(row.result)
+            result = self._object_for(row.result)
         return result
 
     def _restore_task(self, task: Task[object]) -> None:
         if getattr(task, '_restored', None):  # TODO clean up
             return
-        row = self._get_task_row(task.hashid)
+        row = self._task_row_for(task.hashid)
         assert row
         if State[row.state] < State.HAS_RUN:
             return
@@ -234,13 +234,13 @@ class Cache(SessionPlugin):
         if self._full_restore and row.side_effects:
             side_effects: List[Task[object]] = []
             for hashid in row.side_effects.split(','):
-                child_task = self._get_object(cast(Hash, hashid))
+                child_task = self._object_for(cast(Hash, hashid))
                 assert isinstance(child_task, Task)
                 sess.add_side_effect_of(task, child_task)
                 side_effects.append(child_task)
             self._to_restore.extend(reversed(side_effects))
         task.set_has_run()
-        sess.set_result(task, self._get_result(row))
+        sess.set_result(task, self._result_from(row))
         task._restored = True  # type: ignore
 
     def save_hashed(self, objs: Sequence[Hashed[object]]) -> None:  # noqa: D102
@@ -262,7 +262,7 @@ class Cache(SessionPlugin):
             self._store_session(sess)
 
     def post_create(self, task: Task[object]) -> None:  # noqa: D102
-        row = self._get_task_row(task.hashid)
+        row = self._task_row_for(task.hashid)
         if row:
             self._to_restore = [task]
             tasks: List[Task[object]] = []

@@ -450,7 +450,7 @@ class Crystal(Molecule):
         return Crystal.from_coords(self.species, xyz, self.lattice.copy())
 
 
-def get_vec(ws: List[str]) -> Vec:
+def vec_from(ws: List[str]) -> Vec:
     return float(ws[0]), float(ws[1]), float(ws[2])
 
 
@@ -467,19 +467,19 @@ def load(fp: IO[str], fmt: str) -> Molecule:  # noqa: C901
         for _ in range(n):
             ws = fp.readline().split()
             species.append(ws[0])
-            coords.append(get_vec(ws[1:4]))
+            coords.append(vec_from(ws[1:4]))
         return Molecule.from_coords(species, coords, **flags)
     elif fmt == 'xyzc':
         n = int(fp.readline())
         lattice = []
         for _ in range(3):
-            lattice.append(get_vec(fp.readline().split()))
+            lattice.append(vec_from(fp.readline().split()))
         species = []
         coords = []
         for _ in range(n):
             ws = fp.readline().split()
             species.append(ws[0])
-            coords.append(get_vec(ws[1:4]))
+            coords.append(vec_from(ws[1:4]))
         return Crystal.from_coords(species, coords, lattice)
     if fmt == 'aims':
         atoms = []
@@ -494,9 +494,9 @@ def load(fp: IO[str], fmt: str) -> Molecule:  # noqa: C901
             ws = line.split()
             what = ws[0]
             if what in ['atom', 'empty']:
-                atoms.append(Atom(ws[4], get_vec(ws[1:4]), ghost=what == 'empty'))
+                atoms.append(Atom(ws[4], vec_from(ws[1:4]), ghost=what == 'empty'))
             elif what == 'lattice_vector':
-                lattice.append(get_vec(ws[1:4]))
+                lattice.append(vec_from(ws[1:4]))
         if lattice:
             assert len(lattice) == 3
             return Crystal(atoms, lattice)

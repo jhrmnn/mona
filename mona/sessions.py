@@ -118,7 +118,7 @@ class Session(Pluggable):
         self._running_task.set(None)
         self._storage: Dict[str, Any] = {}
         self._warn = warn
-        self._skipped = False
+        self._skipped = False  # has any task execution been explicitly skipped
 
     def _check_active(self) -> None:
         sess = _active_session.get()
@@ -131,7 +131,7 @@ class Session(Pluggable):
         self._check_active()
         return self._storage
 
-    def get_side_effects(self, task: ATask) -> Iterable[ATask]:
+    def side_effects_of(self, task: ATask) -> Iterable[ATask]:
         """Return tasks created by a given task."""
         return tuple(self._tasks[h] for h in self._graph.side_effects[task.hashid])
 
@@ -185,10 +185,7 @@ class Session(Pluggable):
         objs = list(
             traverse(objs, lambda o: o.components, lambda o: isinstance(o, Task))
         )
-        tasks, objs = cast(
-            Tuple[List[ATask], List[Hashed[object]]],
-            split(objs, lambda o: isinstance(o, Task)),
-        )
+        tasks, objs = split(objs, Task)
         for task in tasks:
             if task.hashid not in self._tasks:
                 raise TaskError(f'Not in session: {task!r}', task)
@@ -277,7 +274,7 @@ class Session(Pluggable):
         with self._running_task_ctx(task):
             raw_result = await task.corofunc(*(arg.value for arg in task.args))
         task.set_has_run()
-        side_effects = self.get_side_effects(task)
+        side_effects = self.side_effects_of(task)
         if side_effects:
             log.debug(f'{task}: created tasks: {list(map(Literal, side_effects))}')
         result = cast(_T, TaskComposite.maybe_hashed(raw_result)) or raw_result
@@ -415,7 +412,6 @@ class Session(Pluggable):
         """Generate :class:`~graphviz.Digraph` for the task DAG."""
         from graphviz import Digraph  # type: ignore
 
-        tasks: Union[List[Hash], FrozenSet[Hash]]
         dot = Digraph(*args, **kwargs)
         for child, parents in self._graph.deps.items():
             task_obj = self._tasks[child]

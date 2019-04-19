@@ -37,7 +37,7 @@ class Empty(Enum):
     _ = 0
 
 
-def get_fullname(obj: Union[Callable[..., object], Type[object]]) -> str:
+def fullname_of(obj: Union[Callable[..., object], Type[object]]) -> str:
     return f'{obj.__module__}:{obj.__qualname__}'
 
 
@@ -95,13 +95,14 @@ def call_if(cond: bool, func: Callable[..., None], *args: Any, **kwargs: Any) ->
         func(*args, **kwargs)
 
 
-def split(
-    iterable: Iterable[_T], first: Callable[[_T], bool]
-) -> Tuple[List[_T], List[_T]]:
-    left: List[_T] = []
+def split(iterable: Iterable[_T], type: Type[_V]) -> Tuple[List[_V], List[_T]]:
+    left: List[_V] = []
     right: List[_T] = []
     for item in iterable:
-        (left if first(item) else right).append(item)
+        if isinstance(item, type):
+            left.append(item)
+        else:
+            right.append(item)
     return left, right
 
 
