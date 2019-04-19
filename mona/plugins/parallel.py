@@ -5,7 +5,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Optional, Set, TypeVar, cast
+from typing import Any, AsyncGenerator, Optional, Set, TypeVar
 
 from ..dag import NodeExecuted
 from ..sessions import Session, SessionPlugin, TaskExecute
