@@ -1,6 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -18,7 +20,7 @@ _FM = TypeVar('_FM', bound='FileManager')
 
 
 @Rule
-async def file_collection(files: List['File']) -> None:
+async def file_collection(files: List[File]) -> None:
     """Create a void task whose purpose is to label a file collection.
 
     :param files: a list of :class:`File`
@@ -28,11 +30,11 @@ async def file_collection(files: List['File']) -> None:
 
 class FileManager(ABC):
     @abstractmethod
-    def store_path(self, path: Path, *, keep: bool) -> 'Hash':
+    def store_path(self, path: Path, *, keep: bool) -> Hash:
         ...
 
     @abstractmethod
-    def store_bytes(self, content: bytes) -> 'Hash':
+    def store_bytes(self, content: bytes) -> Hash:
         ...
 
     @abstractmethod
@@ -121,7 +123,7 @@ class File:
             self._fmngr.target_in(target, self._content, mutable=mutable)
 
     @classmethod
-    def from_str(cls, path: Pathable, content: Union[str, bytes]) -> 'File':
+    def from_str(cls, path: Pathable, content: Union[str, bytes]) -> File:
         """Create a file from a string or bytes.
 
         :param path: the abstract path of the created file instance
@@ -138,7 +140,7 @@ class File:
     @classmethod
     def from_path(
         cls, path: Pathable, root: Union[str, Path] = None, *, keep: bool = True
-    ) -> 'File':
+    ) -> File:
         """Create a file from a physical file.
 
         :param path: the path of the physical file. Also a basis for the
@@ -175,7 +177,7 @@ class HashedFile(Hashed[File]):
         return json.dumps([str(self._file.path), self._content_hash]).encode()
 
     @classmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedFile':
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> HashedFile:
         path_str, content_hash = cast(Tuple[str, Hash], json.loads(spec))
         path = Path(path_str)
         fmngr = FileManager.active()

@@ -1,6 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 import logging
 from enum import IntEnum
 from typing import Callable, Iterable, List, NoReturn, Set, TypeVar
@@ -41,7 +43,7 @@ class Future:
     def __init__(self: _Fut, parents: Iterable[_Fut]) -> None:
         self._parents = frozenset(parents)
         self._pending = {fut for fut in self._parents if not fut.done()}
-        self._children: Set['Future'] = set()
+        self._children: Set[Future] = set()
         self._done_callbacks: List[Callback[_Fut]] = []
         self._ready_callbacks: List[Callback[_Fut]] = []
         self._registered = False
@@ -57,7 +59,7 @@ class Future:
     def done(self) -> bool:
         return self._state is State.DONE
 
-    def add_child(self, fut: 'Future') -> None:
+    def add_child(self, fut: Future) -> None:
         assert not self.done()
         self._children.add(fut)
 

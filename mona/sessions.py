@@ -1,6 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 import asyncio
 import logging
 import warnings
@@ -55,16 +57,16 @@ TaskExecute = Callable[[ATask, NodeExecuted[ATask]], Awaitable[None]]
 ExceptionHandler = Callable[[ATask, Exception], bool]
 TaskFilter = Callable[[ATask], bool]
 
-_active_session: ContextVar[Optional['Session']] = ContextVar(
+_active_session: ContextVar[Optional[Session]] = ContextVar(
     'active_session', default=None
 )
 
 
 class SessionPlugin(Plugin['Session']):
-    def post_enter(self, sess: 'Session') -> None:
+    def post_enter(self, sess: Session) -> None:
         pass
 
-    def pre_exit(self, sess: 'Session') -> None:
+    def pre_exit(self, sess: Session) -> None:
         pass
 
     async def pre_run(self) -> None:
@@ -137,7 +139,7 @@ class Session(Pluggable):
         """Return all tasks created in session."""
         yield from self._tasks.values()
 
-    def __enter__(self) -> 'Session':
+    def __enter__(self) -> Session:
         assert _active_session.get() is None
         self._active_session_token = _active_session.set(self)
         self.run_plugins('post_enter', self)
@@ -436,7 +438,7 @@ class Session(Pluggable):
         return dot
 
     @classmethod
-    def active(cls) -> 'Session':
+    def active(cls) -> Session:
         """Return a currently active session."""
         session = _active_session.get()
         if session is None:

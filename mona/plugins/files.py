@@ -51,7 +51,7 @@ class FileManager(_FileManager, SessionPlugin):
         stored_path.write_bytes(content)
         make_nonwritable(stored_path)
 
-    def store_bytes(self, content: bytes) -> 'Hash':  # noqa: D102
+    def store_bytes(self, content: bytes) -> Hash:  # noqa: D102
         hashid = Hash(hashlib.sha1(content).hexdigest())
         if hashid not in self:
             self._cache[hashid] = content
@@ -67,7 +67,7 @@ class FileManager(_FileManager, SessionPlugin):
             path.rename(stored_path)
         make_nonwritable(stored_path)
 
-    def store_path(self, path: Path, *, keep: bool) -> 'Hash':  # noqa: D102
+    def store_path(self, path: Path, *, keep: bool) -> Hash:  # noqa: D102
         hashid = self._path_cache.get(path)
         if hashid:
             return hashid

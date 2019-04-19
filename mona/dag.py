@@ -1,6 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 import asyncio
 from enum import Enum
 from typing import (
@@ -110,7 +112,7 @@ async def traverse_async(
     """
     visited: Set[_T] = set()
     to_visit, to_execute = SetDeque[_T](), Deque[_T]()
-    done: 'asyncio.Queue[NodeResult[_T]]' = asyncio.Queue()
+    done: asyncio.Queue[NodeResult[_T]] = asyncio.Queue()
     executing, executed = 0, 0
     actionable: Dict[Action, Callable[[], bool]] = {
         Action.RESULTS: lambda: not done.empty(),

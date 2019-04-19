@@ -1,6 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 import asyncio
 import inspect
 import json
@@ -114,7 +116,7 @@ class Task(HashedFuture[_T_co]):
         ).encode()
 
     @classmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'Task[_T_co]':
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> Task[_T_co]:
         rule_name: str
         corohash: Hash
         arg_hashes: Tuple[Hash, ...]
@@ -148,12 +150,12 @@ class Task(HashedFuture[_T_co]):
     def storage(self) -> Dict[str, object]:
         return self._storage
 
-    def __getitem__(self, key: object) -> 'TaskComponent[object]':
+    def __getitem__(self, key: object) -> TaskComponent[object]:
         return self.get(key)
 
     def get(
         self, key: object, default: Maybe[object] = Empty._
-    ) -> 'TaskComponent[object]':
+    ) -> TaskComponent[object]:
         return TaskComponent(self, [key], default)
 
     def resolve(
@@ -241,7 +243,7 @@ class TaskComponent(HashedFuture[_T_co]):
         return json.dumps([self._task.hashid, *self._keys]).encode()
 
     @classmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'TaskComponent[_T_co]':
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> TaskComponent[_T_co]:
         task_hash: Hash
         keys: Tuple[object, ...]
         task_hash, *keys = json.loads(spec)
@@ -259,12 +261,12 @@ class TaskComponent(HashedFuture[_T_co]):
     def result(self) -> _T_co:
         return self.resolve(lambda task: task.result())
 
-    def __getitem__(self, key: object) -> 'TaskComponent[object]':
+    def __getitem__(self, key: object) -> TaskComponent[object]:
         return self.get(key)
 
     def get(
         self, key: object, default: Maybe[object] = Empty._
-    ) -> 'TaskComponent[object]':
+    ) -> TaskComponent[object]:
         return TaskComponent(self._task, self._keys + [key], default)
 
     @property
@@ -302,7 +304,7 @@ class TaskComposite(HashedComposite, HashedFuture[Composite]):  # type: ignore
         self.add_ready_callback(lambda self: self.set_done())
 
     @classmethod
-    def from_object(cls, obj: object) -> 'HashedComposite':
+    def from_object(cls, obj: object) -> HashedComposite:
         jsonstr, components = cls.parse_object(obj)
         if any(isinstance(comp, HashedFuture) for comp in components):
             return cls(jsonstr, components)

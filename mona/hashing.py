@@ -1,6 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 import hashlib
 import json
 from abc import ABC, abstractmethod
@@ -49,7 +51,7 @@ class Hashed(ABC, Generic[_T_co]):
 
     @classmethod
     @abstractmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'Hashed[_T_co]':
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> Hashed[_T_co]:
         ...
 
     @property
@@ -105,7 +107,7 @@ class HashedComposite(Hashed[Composite]):
         self._label = repr(self.resolve(lambda hashed: Literal(hashed.label)))
 
     @classmethod
-    def from_object(cls, obj: object) -> 'HashedComposite':
+    def from_object(cls, obj: object) -> HashedComposite:
         return cls(*cls.parse_object(obj))
 
     @property
@@ -119,7 +121,7 @@ class HashedComposite(Hashed[Composite]):
         return json.dumps([self._jsonstr, *sorted(self._components)]).encode()
 
     @classmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedComposite':
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> HashedComposite:
         jsonstr: str
         hashids: Tuple[Hash, ...]
         jsonstr, *hashids = json.loads(spec)
@@ -134,7 +136,7 @@ class HashedComposite(Hashed[Composite]):
         return self._components.values()
 
     def resolve(
-        self, handler: Callable[['Hashed[object]'], object] = lambda x: x
+        self, handler: Callable[[Hashed[object]], object] = lambda x: x
     ) -> Composite:
         def hook(type_tag: str, dct: Dict[str, JSONValue]) -> object:
             if type_tag == 'Hashed':
@@ -189,7 +191,7 @@ class HashedBytes(Hashed[bytes]):
         return self.value
 
     @classmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> 'HashedBytes':
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> HashedBytes:
         return cls(spec)
 
     @property

@@ -1,6 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 import csv
 import json
 import os
@@ -81,7 +83,7 @@ class Atom:
         r: float = species_data[self.species]['covalent radius']
         return r
 
-    def copy(self) -> 'Atom':
+    def copy(self) -> Atom:
         """Create a copy."""
         return Atom(self.species, self.coord, **deepcopy(self.flags))
 
@@ -172,7 +174,7 @@ class Molecule(Sized, Iterable[Atom]):
         thrmatrix = scale * (rs[None, :] + rs[:, None])
         return dmatrix < thrmatrix
 
-    def get_fragments(self, scale: float = 1.3) -> List['Molecule']:
+    def get_fragments(self, scale: float = 1.3) -> List[Molecule]:
         """Return a list of clusters of connected atoms."""
         bond = self.bondmatrix(scale)
         ifragments = getfragments(bond)
@@ -344,7 +346,7 @@ class Crystal(Molecule):
     @classmethod
     def from_coords(  # type: ignore
         cls, species: List[str], coords: List[Vec], lattice: List[Vec], **flags
-    ) -> 'Crystal':
+    ) -> Crystal:
         """Alternative constructor.
 
         :param species: atom types
@@ -390,7 +392,7 @@ class Crystal(Molecule):
         else:
             raise ValueError(f'Unknown format: {fmt!r}')
 
-    def copy(self) -> 'Crystal':
+    def copy(self) -> Crystal:
         """Create a copy."""
         return Crystal([atom.copy() for atom in self._atoms], self.lattice.copy())
 
@@ -400,7 +402,7 @@ class Crystal(Molecule):
         phi: float = None,
         center: Vec = None,
         rotmat: Any = None,
-    ) -> 'Crystal':
+    ) -> Crystal:
         """Return a new crystal with rotated unit cell and lattice vectors."""
         assert center is None
         g = super().rotated(axis, phi, (0, 0, 0), rotmat)
@@ -421,7 +423,7 @@ class Crystal(Molecule):
         nkpts = np.ceil(rec_lens / (density * bohr))
         return int(nkpts[0]), int(nkpts[1]), int(nkpts[2])
 
-    def supercell(self, ns: Tuple[int, int, int]) -> 'Crystal':
+    def supercell(self, ns: Tuple[int, int, int]) -> Crystal:
         """Create a supercell."""
         abc = self.abc
         latt_vectors = np.array(
@@ -440,7 +442,7 @@ class Crystal(Molecule):
         lattice = [(x, y, z) for x, y, z in abc * np.array(ns)[:, None]]
         return Crystal.from_coords(species, coords, lattice)
 
-    def normalized(self) -> 'Crystal':
+    def normalized(self) -> Crystal:
         """Create a copy with atoms on unit cell faces normalized."""
         xyz = (
             np.mod(self.xyz @ np.linalg.inv(self.lattice) + 1e-10, 1) - 1e-10

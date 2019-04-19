@@ -1,6 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -17,13 +19,13 @@ class MonaError(Exception):
 
 
 class FutureError(MonaError):
-    def __init__(self, msg: str, fut: 'Future') -> None:
+    def __init__(self, msg: str, fut: Future) -> None:
         super().__init__(msg)
         self.future = fut
 
 
 class TaskError(MonaError):
-    def __init__(self, msg: str, task: 'Task[object]') -> None:
+    def __init__(self, msg: str, task: Task[object]) -> None:
         super().__init__(msg)
         self.task = task
 
@@ -33,7 +35,7 @@ class CompositeError(MonaError):
 
 
 class SessionError(MonaError):
-    def __init__(self, msg: str, sess: 'Session') -> None:
+    def __init__(self, msg: str, sess: Session) -> None:
         super().__init__(msg)
         self.session = sess
 
