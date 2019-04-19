@@ -69,7 +69,7 @@ class CachedTask(Task[_T_co]):
     def __init__(self, hashid: Hash) -> None:
         self._hashid = hashid
         self._args = ()
-        Future.__init__(self, [])  # type: ignore
+        Future.__init__(self, [])
 
 
 class WriteAccess(Enum):

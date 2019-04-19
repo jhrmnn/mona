@@ -10,6 +10,7 @@ from itertools import chain, dropwhile
 from pathlib import Path
 from textwrap import dedent
 from types import CodeType, ModuleType
+import typing
 from typing import Any, Callable, Dict, Optional, TypeVar, cast
 
 from .errors import CompositeError, HashingError
@@ -55,7 +56,7 @@ def ast_code_of(func: Callable[..., Any]) -> str:
     lines = dedent(inspect.getsource(func)).split('\n')
     lines = list(dropwhile(lambda l: l[0] == '@', lines))
     code = '\n'.join(lines)
-    module = ast.parse(code)
+    module: Any = ast.parse(code)
     assert len(module.body) == 1
     assert isinstance(module.body[0], (ast.AsyncFunctionDef, ast.FunctionDef))
     for node in ast.walk(module):
@@ -91,6 +92,8 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
             continue
         if isinstance(obj, Hashed):
             hashed_globals[name] = f'hashed:{obj.hashid}'
+            continue
+        if isinstance(obj, typing._SpecialForm):
             continue
         if inspect.isclass(obj) or inspect.isfunction(obj) or inspect.ismodule(obj):
             if inspect.ismodule(obj):

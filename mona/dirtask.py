@@ -151,7 +151,7 @@ async def dir_task(exe: File, inputs: List[DirtaskInput]) -> Dict[str, File]:
     input_names = {
         str(inp if isinstance(inp, File) else inp[0]) for inp in [exe, *inputs]
     }
-    ncores = Session.active().running_task.storage.get('ncores')
+    ncores = cast(Optional[int], Session.active().running_task.storage.get('ncores'))
     dirtask_tmpdir = DirtaskTmpdir(lambda p: p not in input_names)
     with dirtask_tmpdir as tmpdir:
         checkout_files(tmpdir, exe, inputs)
