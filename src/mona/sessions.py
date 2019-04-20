@@ -14,7 +14,6 @@ from itertools import chain
 from typing import (
     Any,
     AsyncGenerator,
-    Awaitable,
     Callable,
     Dict,
     FrozenSet,
@@ -34,6 +33,7 @@ from .dag import (
     Action,
     NodeException,
     NodeExecuted,
+    NodeExecutor,
     Priority,
     default_priority,
     traverse,
@@ -53,7 +53,8 @@ log = logging.getLogger(__name__)
 
 _T = TypeVar('_T')
 ATask = Task[object]
-TaskExecute = Callable[[ATask, NodeExecuted[ATask]], Awaitable[None]]
+TaskExecuted = NodeExecuted[ATask]
+TaskExecutor = NodeExecutor[ATask]
 ExceptionHandler = Callable[[ATask, Exception], bool]
 TaskFilter = Callable[[ATask], bool]
 
@@ -84,7 +85,7 @@ class SessionPlugin(Plugin['Session']):
     def ignored_exception(self) -> None:
         pass
 
-    def wrap_execute(self, exe: TaskExecute) -> TaskExecute:
+    def wrap_execute(self, exe: TaskExecutor) -> TaskExecutor:
         return exe
 
     def post_create(self, task: ATask) -> None:
@@ -282,10 +283,11 @@ class Session(Pluggable):
         self.run_plugins('post_task_run', task)
         return result
 
-    async def _traverse_execute(self, task: ATask, done: NodeExecuted[ATask]) -> None:
+    async def _traverse_execute(self, task: ATask, done: TaskExecuted) -> bool:
         await self.run_task_async(task)
         backflow = (self._tasks[h] for h in self._graph.backflow.get(task.hashid, ()))
         done((task, None, backflow))
+        return True
 
     def eval(self, *args: Any, **kwargs: Any) -> Any:
         """Blocking version of :meth:`eval_async`."""

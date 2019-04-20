@@ -31,7 +31,7 @@ _T = TypeVar('_T')
 NodeScheduler = Callable[[_T, Callable[[_T], None]], None]
 NodeResult = Tuple[_T, Optional[Exception], Iterable[_T]]
 NodeExecuted = Callable[[NodeResult[_T]], None]
-NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[None]]
+NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[bool]]
 Priority = Tuple['Action', 'Action', 'Action']
 
 
@@ -90,7 +90,7 @@ class SetDeque(Deque[_T]):
         return x
 
 
-async def traverse_async(
+async def traverse_async(  # noqa: C901
     start: Iterable[_T],
     edges_from: Callable[[_T], Iterable[_T]],
     schedule: NodeScheduler[_T],
@@ -158,7 +158,8 @@ async def traverse_async(
                 continue
             executing += 1
             try:
-                await execute(node, done.put_nowait)
+                if not (await execute(node, done.put_nowait)):
+                    executing -= 1
             except Exception as exc:
                 yield NodeException(node, exc)
 

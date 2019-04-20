@@ -7,8 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Optional, Set, TypeVar
 
-from ..dag import NodeExecuted
-from ..sessions import Session, SessionPlugin, TaskExecute
+from ..sessions import Session, SessionPlugin, TaskExecuted, TaskExecutor
 from ..tasks import Corofunc, Task
 
 log = logging.getLogger(__name__)
@@ -70,10 +69,10 @@ class Parallel(SessionPlugin):
         self._pending = None
         self._release(pending)
 
-    def wrap_execute(self, execute: TaskExecute) -> TaskExecute:  # noqa: D102
-        async def _execute(task: Task[Any], done: NodeExecuted[Task[Any]]) -> None:
+    def wrap_execute(self, execute: TaskExecutor) -> TaskExecutor:  # noqa: D102
+        async def _execute(task: Task[object], done: TaskExecuted) -> None:
             try:
-                await execute(task, done)
+                assert await execute(task, done)
             except Exception as e:
                 if not isinstance(e, asyncio.CancelledError):
                     done((task, e, ()))
@@ -81,9 +80,10 @@ class Parallel(SessionPlugin):
             assert asyncio_task
             self._asyncio_tasks.remove(asyncio_task)
 
-        async def spawn_execute(*args: Any) -> None:
+        async def spawn_execute(*args: Any) -> bool:
             asyncio_task = asyncio.create_task(_execute(*args))
             self._asyncio_tasks.add(asyncio_task)
+            return True
 
         return spawn_execute
 
