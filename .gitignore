@@ -8,5 +8,4 @@
 /dist/
 /poetry.lock
 /docs/build/
-/setup.py
 /pip-wheel-metadata/
