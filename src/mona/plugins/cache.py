@@ -6,11 +6,13 @@ from __future__ import annotations
 import logging
 import pickle
 import sqlite3
+from contextlib import contextmanager
 from enum import Enum
 from weakref import WeakValueDictionary
 from typing import (
     Any,
     Dict,
+    Iterator,
     List,
     NamedTuple,
     Optional,
@@ -24,7 +26,7 @@ from typing import (
 
 from ..futures import Future, State
 from ..hashing import Hash, Hashed
-from ..sessions import Session, SessionPlugin
+from ..sessions import Session, SessionPlugin, TaskExecuted, TaskExecutor
 from ..tasks import Task
 from ..utils import Pathable, fullname_of, get_timestamp, import_fullname
 
@@ -304,6 +306,29 @@ class Cache(SessionPlugin):
         self._store_targets(objects)
         self._objects.clear()
         self._db.commit()
+
+    @contextmanager
+    def _db_lock(self) -> Iterator[None]:
+        self._db.execute('BEGIN IMMEDIATE TRANSACTION')
+        try:
+            yield
+        finally:
+            self._db.execute('END TRANSACTION')
+
+    def wrap_execute(self, execute: TaskExecutor) -> TaskExecutor:  # noqa: D102
+        async def _execute(task: Task[object], done: TaskExecuted) -> bool:
+            if self._write is WriteAccess.EAGER:
+                with self._db_lock():
+                    task_row = self._task_row_for(task.hashid)
+                    assert task_row
+                    assert State[task_row.state] <= task.state
+                    self._db.execute(
+                        'UPDATE tasks SET state = ? WHERE hashid = ?',
+                        (State.RUNNING.name, task.hashid),
+                    )
+            return await execute(task, done)
+
+        return _execute
 
     @classmethod
     def from_path(cls, path: Pathable, **kwargs: Any) -> Cache:
