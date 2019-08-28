@@ -44,7 +44,7 @@ cov = ["coverage"]
 doc = ["sphinx", "sphinxcontrib-asyncio"]
 
 [tool.poetry.dev-dependencies]
-mypy = "^0.700"
+mypy = "^0.720"
 lxml = "^4.2"
 flake8 = "^3.5"
 flake8-bugbear = "^18.8"

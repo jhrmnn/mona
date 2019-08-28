@@ -31,6 +31,7 @@ __all__ = ['dir_task', 'DirtaskTmpdir']
 
 log = logging.getLogger(__name__)
 
+DirtaskInputRaw = Union[File, List[Union[Path, str]]]
 DirtaskInput = Union[File, Tuple[Path, str]]
 
 
@@ -132,22 +133,35 @@ def checkout_files(
         make_executable(root / exe.path)
 
 
+def validate_file_inputs(
+    exe: Any, raw_inputs: List[Any]
+) -> Tuple[File, List[DirtaskInput]]:
+    if not isinstance(exe, File):
+        raise InvalidInput(str(exe))
+    inputs: List[DirtaskInput] = []
+    for file in raw_inputs:
+        if isinstance(file, File):
+            inputs.append(file)
+        elif (
+            isinstance(file, list)
+            and len(file) == 2
+            and isinstance(file[0], Path)
+            and isinstance(file[1], str)
+        ):
+            inputs.append((file[0], file[1]))
+        else:
+            raise InvalidInput(str(file))
+    return exe, inputs
+
+
 @Rule
-async def dir_task(exe: File, inputs: List[DirtaskInput]) -> Dict[str, File]:
+async def dir_task(exe: File, inputs: List[DirtaskInputRaw]) -> Dict[str, File]:
     """Create a rule with an executable and a files as inputs.
 
     The result of the task is a dictionary of all new files created by running
     the executable.
     """
-    for file in [exe, *inputs]:
-        if not (
-            isinstance(file, File)
-            or isinstance(file, list)
-            and len(file) == 2
-            and isinstance(file[0], Path)
-            and isinstance(file[1], str)
-        ):
-            raise InvalidInput(str(file))
+    exe, inputs = validate_file_inputs(exe, inputs)
     input_names = {
         str(inp if isinstance(inp, File) else inp[0]) for inp in [exe, *inputs]
     }

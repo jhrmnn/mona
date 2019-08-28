@@ -112,7 +112,7 @@ async def _run_process(
         log.error(f'Got nonzero exit code in {args!r}')
         raise subprocess.CalledProcessError(proc.returncode, args)
     if stderr is None:
-        return stdout
+        return stdout  # type: ignore
     return stdout, stderr
 
 
