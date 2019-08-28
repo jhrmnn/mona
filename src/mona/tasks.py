@@ -10,6 +10,7 @@ import logging
 import pickle
 from abc import abstractmethod
 from typing import (
+    TYPE_CHECKING,
     Awaitable,
     Callable,
     Dict,
@@ -26,6 +27,9 @@ from .futures import Future, State
 from .hashing import Composite, Hash, Hashed, HashedComposite, HashResolver
 from .pyhash import hash_function
 from .utils import Empty, Maybe, fullname_of, import_fullname
+
+if TYPE_CHECKING:
+    from .rules import Rule
 
 __all__ = ()
 
@@ -116,12 +120,13 @@ class Task(HashedFuture[_T_co]):
         ).encode()
 
     @classmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> Task[_T_co]:
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> Task[_T]:
         rule_name: str
         corohash: Hash
         arg_hashes: Tuple[Hash, ...]
         rule_name, corohash, *arg_hashes = json.loads(spec)
-        corofunc: Corofunc[_T_co] = getattr(import_fullname(rule_name), 'corofunc')
+        rule: Rule[_T] = import_fullname(rule_name)  # type: ignore
+        corofunc = rule.corofunc
         assert inspect.iscoroutinefunction(corofunc)
         assert hash_function(corofunc) == corohash
         args = (resolve(h) for h in arg_hashes)

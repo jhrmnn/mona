@@ -124,10 +124,10 @@ class SpeciesDefaults(AimsPlugin):
         )
         all_species = {(a.number, a.species) for a in kwargs['geom'].centers}
         species_specs = []
-        for Z, species in sorted(all_species):
+        for charge, species in sorted(all_species):
             if (speciesdir, species) not in self._species_defs:
                 species_def = parse_aims_input(
-                    (speciesdir / f'{Z:02d}_{species}_default').read_text()
+                    (speciesdir / f'{charge:02d}_{species}_default').read_text()
                 )['species'][0]
                 self._species_defs[speciesdir, species] = species_def
             else:

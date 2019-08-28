@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import io
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # noqa: N814
 from typing import IO, Any, Dict, Type
 
 import numpy as np  # type: ignore

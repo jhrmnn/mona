@@ -34,10 +34,9 @@ def version_of(mod: ModuleType) -> Optional[str]:
     parts = mod.__name__.split('.')
     for n in range(len(parts), 0, -1):
         mod = sys.modules['.'.join(parts[:n])]
-        try:
-            return cast(str, getattr(mod, '__version__'))
-        except AttributeError:
-            pass
+        version = cast(Optional[str], getattr(mod, '__version__', None))
+        if version:
+            return version
     return None
 
 
