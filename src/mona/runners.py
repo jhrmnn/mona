@@ -54,7 +54,7 @@ async def run_shell(cmd: str, ncores: int = None, **kwargs: Any) -> ProcessOutpu
     assert 'shell' not in kwargs
     kwargs['shell'] = True
     if scheduler:
-        return await scheduler(_run_process, cmd, **kwargs)
+        return await scheduler(_run_process, cmd, ncores=ncores, **kwargs)
     return await _run_process(cmd, **kwargs)
 
 
