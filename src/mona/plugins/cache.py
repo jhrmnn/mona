@@ -223,15 +223,19 @@ class Cache(SessionPlugin):
         return result
 
     def _restore_task(self, task: Task[object]) -> None:
-        if getattr(task, '_restored', None):  # TODO clean up
+        if getattr(task, '_restored', False):  # TODO clean up
             return
         row = self._task_row_for(task.hashid)
         assert row
-        if State[row.state] < State.HAS_RUN:
+        state = State[row.state]
+        if state < State.RUNNING:
+            assert state is task.state
             return
         log.debug(f'Restoring from cache: {task}')
-        assert State[row.state] > State.HAS_RUN
         task.set_running()
+        if state < State.HAS_RUN:
+            return
+        assert state > State.HAS_RUN
         sess = Session.active()
         if self._full_restore and row.side_effects:
             side_effects: List[Task[object]] = []
@@ -272,7 +276,7 @@ class Cache(SessionPlugin):
                 t = self._to_restore.pop()
                 self._restore_task(t)
                 tasks.append(t)
-            delattr(self, '_to_restore')
+            del self._to_restore
         elif self._write is WriteAccess.EAGER:
             tasks = [task]
             self._db.execute(
