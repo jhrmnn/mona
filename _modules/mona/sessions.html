@@ -134,6 +134,95 @@
     <span class="n">backflow</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Hash</span><span class="p">,</span> <span class="n">FrozenSet</span><span class="p">[</span><span class="n">Hash</span><span class="p">]]</span>
 
 
+<span class="k">class</span> <span class="nc">TraversalManager</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">edges_from</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">ATask</span><span class="p">],</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">ATask</span><span class="p">]],</span>
+        <span class="n">execute</span><span class="p">:</span> <span class="n">TaskExecutor</span><span class="p">,</span>
+        <span class="n">exception_handler</span><span class="p">:</span> <span class="n">ExceptionHandler</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">task_filter</span><span class="p">:</span> <span class="n">TaskFilter</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_edges_from</span> <span class="o">=</span> <span class="n">edges_from</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span> <span class="o">=</span> <span class="n">execute</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exc_handler</span> <span class="o">=</span> <span class="n">exception_handler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_filter</span> <span class="o">=</span> <span class="n">task_filter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_limit</span> <span class="o">=</span> <span class="n">limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exceptions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">ATask</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_executed</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_wont_schedule</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ATask</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filtered</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ATask</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">_append_filtered_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ATask</span><span class="p">],</span> <span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_filter</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_filter</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_filtered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">edges_from</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ATask</span><span class="p">]:</span>
+        <span class="n">tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ATask</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_edges_from</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">task</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_append_filtered_to</span><span class="p">(</span><span class="n">tasks</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tasks</span>
+
+    <span class="k">def</span> <span class="nf">schedule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">,</span> <span class="n">register</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">ATask</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span> <span class="o">&lt;</span> <span class="n">State</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">:</span>
+            <span class="n">task</span><span class="o">.</span><span class="n">add_ready_callback</span><span class="p">(</span><span class="n">register</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_wont_schedule</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">,</span> <span class="n">done</span><span class="p">:</span> <span class="n">TaskExecuted</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">def</span> <span class="nf">_done</span><span class="p">(</span><span class="n">execute_results</span><span class="p">:</span> <span class="n">NodeResult</span><span class="p">[</span><span class="n">ATask</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">n</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">candidates</span> <span class="o">=</span> <span class="n">execute_results</span>
+            <span class="n">tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ATask</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_append_filtered_to</span><span class="p">(</span><span class="n">tasks</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span>
+            <span class="n">done</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">tasks</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_executed</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_executed</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_executed</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Maximum number of executed tasks reached&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_n_executed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{task}</span><span class="s1">: will run&#39;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">_done</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">handle_exception</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="p">(</span><span class="n">MonaError</span><span class="p">,</span> <span class="ne">AssertionError</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="n">exc</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exc_handler</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exc_handler</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_exceptions</span><span class="p">[</span><span class="n">task</span><span class="p">]</span> <span class="o">=</span> <span class="n">exc</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Handled </span><span class="si">{exc!r}</span><span class="s1"> from </span><span class="si">{task!r}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">exc</span>
+
+    <span class="k">def</span> <span class="nf">has_filtered</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_filtered</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">has_abnormalities</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">has_filtered</span><span class="p">()</span> <span class="ow">or</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_wont_schedule</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_exceptions</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">report_abnormalities</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exceptions</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;Cannot evaluate future because of errors: </span><span class="si">{self._exceptions}</span><span class="s1">&#39;</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wont_schedule</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;Cannot evaluate future (&quot;won</span><span class="se">\&#39;</span><span class="s1">t schedule&quot;): </span><span class="si">{self._wont_schedule}</span><span class="s1">&#39;</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filtered</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">f</span><span class="s1">&#39;Cannot evaluate future because tasks were filtered: </span><span class="si">{self._filtered}</span><span class="s1">&#39;</span>
+            <span class="p">)</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="Session"><a class="viewcode-back" href="../../api.html#mona.Session">[docs]</a><span class="k">class</span> <span class="nc">Session</span><span class="p">(</span><span class="n">Pluggable</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;A context manager in which tasks can be created.</span>
 
@@ -328,7 +417,7 @@
         <span class="sd">&quot;&quot;&quot;Blocking version of :meth:`eval_async`.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_async</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span></div>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">_eval_async</span><span class="p">(</span>  <span class="c1"># noqa: C901</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_eval_async</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">obj</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
         <span class="n">depth</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -357,97 +446,46 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fut</span><span class="p">,</span> <span class="n">HashedFuture</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">obj</span>
         <span class="n">fut</span><span class="o">.</span><span class="n">register</span><span class="p">()</span>
-        <span class="n">exceptions</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">wont_schedule</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">filtered</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">n_executed</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="k">def</span> <span class="nf">edges_from</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ATask</span><span class="p">]:</span>
-            <span class="n">hashes</span> <span class="o">=</span> <span class="n">chain</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">deps</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">backflow</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">,</span> <span class="p">[])</span>
-            <span class="p">)</span>
-            <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hashes</span><span class="p">]</span>
-            <span class="n">tasks</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
-                    <span class="k">pass</span>
-                <span class="k">elif</span> <span class="n">task_filter</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">task_filter</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
-                    <span class="n">filtered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">tasks</span>
-
-        <span class="k">def</span> <span class="nf">schedule</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">,</span> <span class="n">register</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">ATask</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span> <span class="o">&lt;</span> <span class="n">State</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">:</span>
-                <span class="n">task</span><span class="o">.</span><span class="n">add_ready_callback</span><span class="p">(</span><span class="n">register</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">wont_schedule</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
-
-        <span class="k">async</span> <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">,</span> <span class="n">done</span><span class="p">:</span> <span class="n">TaskExecuted</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-            <span class="k">nonlocal</span> <span class="n">n_executed</span>
-
-            <span class="k">def</span> <span class="nf">_done</span><span class="p">(</span><span class="n">execute_results</span><span class="p">:</span> <span class="n">NodeResult</span><span class="p">[</span><span class="n">ATask</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">n</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">candidates</span> <span class="o">=</span> <span class="n">execute_results</span>
-                <span class="n">tasks</span> <span class="o">=</span> <span class="p">[]</span>
-                <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">task_filter</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">task_filter</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
-                        <span class="n">filtered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
-                <span class="n">done</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">tasks</span><span class="p">))</span>
-
-            <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">assert</span> <span class="n">n_executed</span> <span class="o">&lt;=</span> <span class="n">limit</span>
-                <span class="k">if</span> <span class="n">n_executed</span> <span class="o">==</span> <span class="n">limit</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="kc">False</span>
-                <span class="k">elif</span> <span class="n">n_executed</span> <span class="o">==</span> <span class="n">limit</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
-                    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Maximum number of executed tasks reached&#39;</span><span class="p">)</span>
-            <span class="n">n_executed</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{task}</span><span class="s1">: will run&#39;</span><span class="p">)</span>
-            <span class="k">assert</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span>
-                <span class="s1">&#39;wrap_execute&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traverse_execute</span><span class="p">,</span> <span class="n">wrap_first</span><span class="o">=</span><span class="kc">True</span>
-            <span class="p">)(</span><span class="n">task</span><span class="p">,</span> <span class="n">_done</span><span class="p">)</span>
-            <span class="k">return</span> <span class="kc">True</span>
-
+        <span class="n">mngr</span> <span class="o">=</span> <span class="n">TraversalManager</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">[</span><span class="n">h</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">chain</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">deps</span><span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">hashid</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_graph</span><span class="o">.</span><span class="n">backflow</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">hashid</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="p">)</span>
+            <span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;wrap_execute&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_traverse_execute</span><span class="p">,</span> <span class="n">wrap_first</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+            <span class="n">exception_handler</span><span class="p">,</span>
+            <span class="n">task_filter</span><span class="p">,</span>
+            <span class="n">limit</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="k">async</span> <span class="k">for</span> <span class="n">step_or_exception</span> <span class="ow">in</span> <span class="n">traverse_async</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_process_objects</span><span class="p">([</span><span class="n">fut</span><span class="p">]),</span> <span class="n">edges_from</span><span class="p">,</span> <span class="n">schedule</span><span class="p">,</span> <span class="n">execute</span><span class="p">,</span> <span class="n">depth</span><span class="p">,</span> <span class="n">priority</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process_objects</span><span class="p">([</span><span class="n">fut</span><span class="p">]),</span>
+            <span class="n">mngr</span><span class="o">.</span><span class="n">edges_from</span><span class="p">,</span>
+            <span class="n">mngr</span><span class="o">.</span><span class="n">schedule</span><span class="p">,</span>
+            <span class="n">mngr</span><span class="o">.</span><span class="n">execute</span><span class="p">,</span>
+            <span class="n">depth</span><span class="p">,</span>
+            <span class="n">priority</span><span class="p">,</span>
         <span class="p">):</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_or_exception</span><span class="p">,</span> <span class="n">NodeException</span><span class="p">):</span>
                 <span class="n">task</span><span class="p">,</span> <span class="n">exc</span> <span class="o">=</span> <span class="n">step_or_exception</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="p">(</span><span class="n">MonaError</span><span class="p">,</span> <span class="ne">AssertionError</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">)):</span>
-                    <span class="k">raise</span> <span class="n">exc</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">exception_handler</span> <span class="ow">and</span> <span class="n">exception_handler</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;ignored_exception&#39;</span><span class="p">)</span>
-                        <span class="n">exceptions</span><span class="p">[</span><span class="n">task</span><span class="p">]</span> <span class="o">=</span> <span class="n">exc</span>
-                        <span class="n">task</span><span class="o">.</span><span class="n">set_error</span><span class="p">()</span>
-                        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Handled </span><span class="si">{exc!r}</span><span class="s1"> from </span><span class="si">{task!r}</span><span class="s1">&#39;</span><span class="p">)</span>
-                        <span class="k">continue</span>
-                    <span class="k">raise</span> <span class="n">exc</span>
-            <span class="n">action</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">progress</span> <span class="o">=</span> <span class="n">step_or_exception</span>
-            <span class="n">progress_line</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{k}</span><span class="s1">=</span><span class="si">{v}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">progress</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
-            <span class="n">tag</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">name</span>
-            <span class="k">if</span> <span class="n">task</span><span class="p">:</span>
-                <span class="n">tag</span> <span class="o">+=</span> <span class="n">f</span><span class="s1">&#39;: </span><span class="si">{task.label}</span><span class="s1">&#39;</span>
-            <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{tag}</span><span class="s1">, progress: </span><span class="si">{progress_line}</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="n">mngr</span><span class="o">.</span><span class="n">handle_exception</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">run_plugins</span><span class="p">(</span><span class="s1">&#39;ignored_exception&#39;</span><span class="p">)</span>
+                <span class="n">task</span><span class="o">.</span><span class="n">set_error</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">action</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">progress</span> <span class="o">=</span> <span class="n">step_or_exception</span>
+                <span class="n">progress_line</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{k}</span><span class="s1">=</span><span class="si">{v}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">progress</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+                <span class="n">tag</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">name</span>
+                <span class="k">if</span> <span class="n">task</span><span class="p">:</span>
+                    <span class="n">tag</span> <span class="o">+=</span> <span class="n">f</span><span class="s1">&#39;: </span><span class="si">{task.label}</span><span class="s1">&#39;</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{tag}</span><span class="s1">, progress: </span><span class="si">{progress_line}</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Finished&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warn</span> <span class="ow">and</span> <span class="n">filtered</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_warn</span> <span class="ow">and</span> <span class="n">mngr</span><span class="o">.</span><span class="n">has_filtered</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_warn</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">fut</span><span class="o">.</span><span class="n">value</span>
         <span class="k">except</span> <span class="n">FutureError</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">exceptions</span><span class="p">:</span>
-                <span class="n">msg</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;Cannot evaluate future because of errors: </span><span class="si">{exceptions}</span><span class="s1">&#39;</span>
-                <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">wont_schedule</span><span class="p">:</span>
-                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="n">f</span><span class="s1">&#39;Cannot evaluate future because &quot;won</span><span class="se">\&#39;</span><span class="s1">t schedule&quot;: </span><span class="si">{wont_schedule}</span><span class="s1">&#39;</span>
-                <span class="p">)</span>
-                <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">filtered</span><span class="p">:</span>
-                <span class="n">msg</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;Cannot evaluate future because tasks were filtered: </span><span class="si">{filtered}</span><span class="s1">&#39;</span>
-                <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mngr</span><span class="o">.</span><span class="n">has_abnormalities</span><span class="p">():</span>
+                <span class="n">mngr</span><span class="o">.</span><span class="n">report_abnormalities</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">tasks_not_done</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filter_tasks</span><span class="p">(</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">done</span><span class="p">())</span>
                 <span class="k">if</span> <span class="n">tasks_not_done</span><span class="p">:</span>
