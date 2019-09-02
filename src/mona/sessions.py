@@ -98,6 +98,95 @@ class SessionGraph(NamedTuple):
     backflow: Dict[Hash, FrozenSet[Hash]]
 
 
+class TraversalManager:
+    def __init__(
+        self,
+        edges_from: Callable[[ATask], Iterable[ATask]],
+        execute: TaskExecutor,
+        exception_handler: ExceptionHandler = None,
+        task_filter: TaskFilter = None,
+        limit: int = None,
+    ):
+        self._edges_from = edges_from
+        self._execute = execute
+        self._exc_handler = exception_handler
+        self._task_filter = task_filter
+        self._limit = limit
+        self._exceptions: Dict[ATask, Exception] = {}
+        self._n_executed = 0
+        self._wont_schedule: List[ATask] = []
+        self._filtered: List[ATask] = []
+
+    def _append_filtered_to(self, tasks: List[ATask], task: ATask) -> None:
+        if self._task_filter and not self._task_filter(task):
+            self._filtered.append(task)
+        else:
+            tasks.append(task)
+
+    def edges_from(self, task: ATask) -> List[ATask]:
+        tasks: List[ATask] = []
+        for task in self._edges_from(task):
+            if not task.done():
+                self._append_filtered_to(tasks, task)
+        return tasks
+
+    def schedule(self, task: ATask, register: Callable[[ATask], None]) -> None:
+        if task.state < State.RUNNING:
+            task.add_ready_callback(register)
+        else:
+            self._wont_schedule.append(task)
+
+    async def execute(self, task: ATask, done: TaskExecuted) -> bool:
+        def _done(execute_results: NodeResult[ATask]) -> None:
+            n, e, candidates = execute_results
+            tasks: List[ATask] = []
+            for task in candidates:
+                self._append_filtered_to(tasks, task)
+            done((n, e, tasks))
+
+        if self._limit is not None:
+            assert self._n_executed <= self._limit
+            if self._n_executed == self._limit:
+                return False
+            elif self._n_executed == self._limit - 1:
+                log.info('Maximum number of executed tasks reached')
+        self._n_executed += 1
+        log.info(f'{task}: will run')
+        assert await self._execute(task, _done)
+        return True
+
+    def handle_exception(self, task: ATask, exc: Exception) -> None:
+        if isinstance(exc, (MonaError, AssertionError, asyncio.CancelledError)):
+            raise exc
+        assert isinstance(exc, Exception)
+        if self._exc_handler and self._exc_handler(task, exc):
+            self._exceptions[task] = exc
+            log.info(f'Handled {exc!r} from {task!r}')
+        else:
+            raise exc
+
+    def has_filtered(self) -> bool:
+        return bool(self._filtered)
+
+    def has_abnormalities(self) -> bool:
+        return (
+            self.has_filtered() or bool(self._wont_schedule) or bool(self._exceptions)
+        )
+
+    def report_abnormalities(self) -> None:
+        if self._exceptions:
+            msg = f'Cannot evaluate future because of errors: {self._exceptions}'
+            log.warning(msg)
+        if self._wont_schedule:
+            msg = f'Cannot evaluate future ("won\'t schedule"): {self._wont_schedule}'
+            log.warning(msg)
+        if self._filtered:
+            msg = (
+                f'Cannot evaluate future because tasks were filtered: {self._filtered}'
+            )
+            log.info(msg)
+
+
 class Session(Pluggable):
     """A context manager in which tasks can be created.
 
@@ -292,7 +381,7 @@ class Session(Pluggable):
         """Blocking version of :meth:`eval_async`."""
         return asyncio.run(self.eval_async(*args, **kwargs))
 
-    async def _eval_async(  # noqa: C901
+    async def _eval_async(
         self,
         obj: object,
         depth: bool = False,
@@ -321,97 +410,46 @@ class Session(Pluggable):
         if not isinstance(fut, HashedFuture):
             return obj
         fut.register()
-        exceptions = {}
-        wont_schedule = []
-        filtered = []
-        n_executed = 0
-
-        def edges_from(task: ATask) -> List[ATask]:
-            hashes = chain(
-                self._graph.deps[task.hashid], self._graph.backflow.get(task.hashid, [])
-            )
-            candidates = [self._tasks[h] for h in hashes]
-            tasks = []
-            for task in candidates:
-                if task.done():
-                    pass
-                elif task_filter and not task_filter(task):
-                    filtered.append(task)
-                else:
-                    tasks.append(task)
-            return tasks
-
-        def schedule(task: ATask, register: Callable[[ATask], None]) -> None:
-            if task.state < State.RUNNING:
-                task.add_ready_callback(register)
-            else:
-                wont_schedule.append(task)
-
-        async def execute(task: ATask, done: TaskExecuted) -> bool:
-            nonlocal n_executed
-
-            def _done(execute_results: NodeResult[ATask]) -> None:
-                n, e, candidates = execute_results
-                tasks = []
-                for task in candidates:
-                    if task_filter and not task_filter(task):
-                        filtered.append(task)
-                    else:
-                        tasks.append(task)
-                done((n, e, tasks))
-
-            if limit is not None:
-                assert n_executed <= limit
-                if n_executed == limit:
-                    return False
-                elif n_executed == limit - 1:
-                    log.info('Maximum number of executed tasks reached')
-            n_executed += 1
-            log.info(f'{task}: will run')
-            assert await self.run_plugins(
-                'wrap_execute', self._traverse_execute, wrap_first=True
-            )(task, _done)
-            return True
-
+        mngr = TraversalManager(
+            lambda t: (
+                self._tasks[h]
+                for h in chain(
+                    self._graph.deps[t.hashid], self._graph.backflow.get(t.hashid, [])
+                )
+            ),
+            self.run_plugins('wrap_execute', self._traverse_execute, wrap_first=True),
+            exception_handler,
+            task_filter,
+            limit,
+        )
         async for step_or_exception in traverse_async(
-            self._process_objects([fut]), edges_from, schedule, execute, depth, priority
+            self._process_objects([fut]),
+            mngr.edges_from,
+            mngr.schedule,
+            mngr.execute,
+            depth,
+            priority,
         ):
             if isinstance(step_or_exception, NodeException):
                 task, exc = step_or_exception
-                if isinstance(exc, (MonaError, AssertionError, asyncio.CancelledError)):
-                    raise exc
-                else:
-                    assert isinstance(exc, Exception)
-                    if exception_handler and exception_handler(task, exc):
-                        self.run_plugins('ignored_exception')
-                        exceptions[task] = exc
-                        task.set_error()
-                        log.info(f'Handled {exc!r} from {task!r}')
-                        continue
-                    raise exc
-            action, task, progress = step_or_exception
-            progress_line = ' '.join(f'{k}={v}' for k, v in progress.items())
-            tag = action.name
-            if task:
-                tag += f': {task.label}'
-            log.debug(f'{tag}, progress: {progress_line}')
+                mngr.handle_exception(task, exc)
+                self.run_plugins('ignored_exception')
+                task.set_error()
+            else:
+                action, task, progress = step_or_exception
+                progress_line = ' '.join(f'{k}={v}' for k, v in progress.items())
+                tag = action.name
+                if task:
+                    tag += f': {task.label}'
+                log.debug(f'{tag}, progress: {progress_line}')
         log.info('Finished')
-        if self._warn and filtered:
+        if self._warn and mngr.has_filtered():
             self._warn = False
         try:
             return fut.value
         except FutureError:
-            if exceptions:
-                msg = f'Cannot evaluate future because of errors: {exceptions}'
-                log.warning(msg)
-            elif wont_schedule:
-                msg = (
-                    f'Cannot evaluate future because "won\'t schedule": {wont_schedule}'
-                )
-                log.warning(msg)
-            elif filtered:
-                msg = f'Cannot evaluate future because tasks were filtered: {filtered}'
-                log.info(msg)
+            if mngr.has_abnormalities():
+                mngr.report_abnormalities()
             else:
                 tasks_not_done = self._filter_tasks(lambda t: not t.done())
                 if tasks_not_done:
