@@ -183,7 +183,7 @@ class Session(Pluggable):
 
     def _process_objects(self, objs: Iterable[Hashed[object]]) -> List[ATask]:
         objs = list(
-            traverse(objs, lambda o: o.components, lambda o: isinstance(o, Task))
+            traverse(objs, lambda o: o.components if not isinstance(o, Task) else [])
         )
         tasks, objs = split(objs, Task)
         for task in tasks:

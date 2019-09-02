@@ -164,10 +164,7 @@ async def traverse_async(
 
 
 def traverse(
-    start: Iterable[_T],
-    edges_from: Callable[[_T], Iterable[_T]],
-    sentinel: Callable[[_T], bool] = None,
-    depth: bool = False,
+    start: Iterable[_T], edges_from: Callable[[_T], Iterable[_T]], depth: bool = False
 ) -> Iterator[_T]:
     """Traverse a DAG, yield visited notes."""
     visited: Set[_T] = set()
@@ -177,8 +174,6 @@ def traverse(
         n = queue.pop() if depth else queue.popleft()
         visited.add(n)
         yield n
-        if sentinel and sentinel(n):
-            continue
         queue.extend(m for m in edges_from(n) if m not in visited)
 
 
