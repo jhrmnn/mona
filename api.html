@@ -167,7 +167,7 @@ behavior can be modified by session plugins.</p>
 <li><strong>plugins</strong> – session plugins to load. This is equivalent to calling each
 plugin with the created session as an argument</li>
 <li><strong>warn</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – warn at the end of session if some created tasks were not
-executed</li>
+executed and no tasks were explicitly filtered</li>
 </ul>
 </td>
 </tr>
@@ -213,7 +213,7 @@ executed</li>
 <dl class="method">
 <dt id="mona.Session.dot_graph">
 <code class="descname">dot_graph</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.dot_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.dot_graph" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generate <a class="reference external" href="https://graphviz.readthedocs.io/en/stable/api.html#graphviz.Digraph" title="(in graphviz v0.10.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Digraph</span></code></a> for the task DAG.</p>
+<dd><p>Generate <a class="reference external" href="https://graphviz.readthedocs.io/en/stable/api.html#graphviz.Digraph" title="(in graphviz v0.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Digraph</span></code></a> for the task DAG.</p>
 </dd></dl>
 
 <dl class="method">
@@ -247,12 +247,6 @@ the task should be executed</li>
 </tbody>
 </table>
 <p>Return the evaluated object.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="mona.Session.get_side_effects">
-<code class="descname">get_side_effects</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.get_side_effects"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.get_side_effects" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return tasks created by a given task.</p>
 </dd></dl>
 
 <dl class="method">
@@ -293,6 +287,12 @@ instance if hashable.</p>
 <dt id="mona.Session.set_result">
 <code class="descname">set_result</code><span class="sig-paren">(</span><em>task</em>, <em>result</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.set_result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.set_result" title="Permalink to this definition">¶</a></dt>
 <dd><p>Attach a result to a task.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="mona.Session.side_effects_of">
+<code class="descname">side_effects_of</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.side_effects_of"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.side_effects_of" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return tasks created by a given task.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -1050,7 +1050,7 @@ part of the versioned public API neverthless.</p>
       &copy;2015-2019, Jan Hermann.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

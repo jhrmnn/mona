@@ -37,6 +37,8 @@
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">annotations</span>
+
 <span class="kn">import</span> <span class="nn">csv</span>
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">os</span>
@@ -117,7 +119,7 @@
         <span class="n">r</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">species_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">species</span><span class="p">][</span><span class="s1">&#39;covalent radius&#39;</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">r</span>
 
-<div class="viewcode-block" id="Atom.copy"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Atom.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Atom&#39;</span><span class="p">:</span>
+<div class="viewcode-block" id="Atom.copy"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Atom.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Atom</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a copy.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">Atom</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">species</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">coord</span><span class="p">,</span> <span class="o">**</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flags</span><span class="p">))</span></div></div>
 
@@ -208,7 +210,7 @@
         <span class="n">thrmatrix</span> <span class="o">=</span> <span class="n">scale</span> <span class="o">*</span> <span class="p">(</span><span class="n">rs</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">+</span> <span class="n">rs</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">])</span>
         <span class="k">return</span> <span class="n">dmatrix</span> <span class="o">&lt;</span> <span class="n">thrmatrix</span></div>
 
-<div class="viewcode-block" id="Molecule.get_fragments"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.get_fragments">[docs]</a>    <span class="k">def</span> <span class="nf">get_fragments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="s1">&#39;Molecule&#39;</span><span class="p">]:</span>
+<div class="viewcode-block" id="Molecule.get_fragments"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Molecule.get_fragments">[docs]</a>    <span class="k">def</span> <span class="nf">get_fragments</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Molecule</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Return a list of clusters of connected atoms.&quot;&quot;&quot;</span>
         <span class="n">bond</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bondmatrix</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
         <span class="n">ifragments</span> <span class="o">=</span> <span class="n">getfragments</span><span class="p">(</span><span class="n">bond</span><span class="p">)</span>
@@ -380,7 +382,7 @@
 <div class="viewcode-block" id="Crystal.from_coords"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.from_coords">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">from_coords</span><span class="p">(</span>  <span class="c1"># type: ignore</span>
         <span class="bp">cls</span><span class="p">,</span> <span class="n">species</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">coords</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Vec</span><span class="p">],</span> <span class="n">lattice</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Vec</span><span class="p">],</span> <span class="o">**</span><span class="n">flags</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Crystal&#39;</span><span class="p">:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Crystal</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Alternative constructor.</span>
 
 <span class="sd">        :param species: atom types</span>
@@ -426,7 +428,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Unknown format: </span><span class="si">{fmt!r}</span><span class="s1">&#39;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Crystal.copy"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Crystal&#39;</span><span class="p">:</span>
+<div class="viewcode-block" id="Crystal.copy"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Crystal</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a copy.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">Crystal</span><span class="p">([</span><span class="n">atom</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_atoms</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span></div>
 
@@ -436,7 +438,7 @@
         <span class="n">phi</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">center</span><span class="p">:</span> <span class="n">Vec</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">rotmat</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Crystal&#39;</span><span class="p">:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Crystal</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Return a new crystal with rotated unit cell and lattice vectors.&quot;&quot;&quot;</span>
         <span class="k">assert</span> <span class="n">center</span> <span class="ow">is</span> <span class="kc">None</span>
         <span class="n">g</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">rotated</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">rotmat</span><span class="p">)</span>
@@ -457,7 +459,7 @@
         <span class="n">nkpts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">rec_lens</span> <span class="o">/</span> <span class="p">(</span><span class="n">density</span> <span class="o">*</span> <span class="n">bohr</span><span class="p">))</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">nkpts</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">nkpts</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">nkpts</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span></div>
 
-<div class="viewcode-block" id="Crystal.supercell"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.supercell">[docs]</a>    <span class="k">def</span> <span class="nf">supercell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;Crystal&#39;</span><span class="p">:</span>
+<div class="viewcode-block" id="Crystal.supercell"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.supercell">[docs]</a>    <span class="k">def</span> <span class="nf">supercell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ns</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Crystal</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a supercell.&quot;&quot;&quot;</span>
         <span class="n">abc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">abc</span>
         <span class="n">latt_vectors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
@@ -476,7 +478,7 @@
         <span class="n">lattice</span> <span class="o">=</span> <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">abc</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ns</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]]</span>
         <span class="k">return</span> <span class="n">Crystal</span><span class="o">.</span><span class="n">from_coords</span><span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span> <span class="n">lattice</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Crystal.normalized"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.normalized">[docs]</a>    <span class="k">def</span> <span class="nf">normalized</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Crystal&#39;</span><span class="p">:</span>
+<div class="viewcode-block" id="Crystal.normalized"><a class="viewcode-back" href="../../../api.html#mona.sci.geomlib.Crystal.normalized">[docs]</a>    <span class="k">def</span> <span class="nf">normalized</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Crystal</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a copy with atoms on unit cell faces normalized.&quot;&quot;&quot;</span>
         <span class="n">xyz</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">np</span><span class="o">.</span><span class="n">mod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xyz</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lattice</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1e-10</span>
@@ -484,7 +486,7 @@
         <span class="k">return</span> <span class="n">Crystal</span><span class="o">.</span><span class="n">from_coords</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">species</span><span class="p">,</span> <span class="n">xyz</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span></div></div>
 
 
-<span class="k">def</span> <span class="nf">get_vec</span><span class="p">(</span><span class="n">ws</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Vec</span><span class="p">:</span>
+<span class="k">def</span> <span class="nf">vec_from</span><span class="p">(</span><span class="n">ws</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Vec</span><span class="p">:</span>
     <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
 
 
@@ -501,19 +503,19 @@
         <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
             <span class="n">ws</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
             <span class="n">species</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="n">coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">get_vec</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]))</span>
+            <span class="n">coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vec_from</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]))</span>
         <span class="k">return</span> <span class="n">Molecule</span><span class="o">.</span><span class="n">from_coords</span><span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span> <span class="o">**</span><span class="n">flags</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s1">&#39;xyzc&#39;</span><span class="p">:</span>
         <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
         <span class="n">lattice</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
-            <span class="n">lattice</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">get_vec</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()))</span>
+            <span class="n">lattice</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vec_from</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()))</span>
         <span class="n">species</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">coords</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
             <span class="n">ws</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
             <span class="n">species</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="n">coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">get_vec</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]))</span>
+            <span class="n">coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vec_from</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]))</span>
         <span class="k">return</span> <span class="n">Crystal</span><span class="o">.</span><span class="n">from_coords</span><span class="p">(</span><span class="n">species</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span> <span class="n">lattice</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s1">&#39;aims&#39;</span><span class="p">:</span>
         <span class="n">atoms</span> <span class="o">=</span> <span class="p">[]</span>
@@ -528,9 +530,9 @@
             <span class="n">ws</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
             <span class="n">what</span> <span class="o">=</span> <span class="n">ws</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">what</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;atom&#39;</span><span class="p">,</span> <span class="s1">&#39;empty&#39;</span><span class="p">]:</span>
-                <span class="n">atoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Atom</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">get_vec</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]),</span> <span class="n">ghost</span><span class="o">=</span><span class="n">what</span> <span class="o">==</span> <span class="s1">&#39;empty&#39;</span><span class="p">))</span>
+                <span class="n">atoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Atom</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">vec_from</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]),</span> <span class="n">ghost</span><span class="o">=</span><span class="n">what</span> <span class="o">==</span> <span class="s1">&#39;empty&#39;</span><span class="p">))</span>
             <span class="k">elif</span> <span class="n">what</span> <span class="o">==</span> <span class="s1">&#39;lattice_vector&#39;</span><span class="p">:</span>
-                <span class="n">lattice</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">get_vec</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]))</span>
+                <span class="n">lattice</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vec_from</span><span class="p">(</span><span class="n">ws</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]))</span>
         <span class="k">if</span> <span class="n">lattice</span><span class="p">:</span>
             <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">lattice</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span>
             <span class="k">return</span> <span class="n">Crystal</span><span class="p">(</span><span class="n">atoms</span><span class="p">,</span> <span class="n">lattice</span><span class="p">)</span>
@@ -672,7 +674,7 @@
       &copy;2015-2019, Jan Hermann.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

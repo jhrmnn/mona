@@ -37,6 +37,8 @@
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">annotations</span>
+
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="k">import</span> <span class="n">Path</span>
@@ -54,7 +56,7 @@
 
 
 <span class="nd">@Rule</span>
-<span class="k">async</span> <span class="k">def</span> <span class="nf">file_collection</span><span class="p">(</span><span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="s1">&#39;File&#39;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">file_collection</span><span class="p">(</span><span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">File</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Create a void task whose purpose is to label a file collection.</span>
 
 <span class="sd">    :param files: a list of :class:`File`</span>
@@ -64,15 +66,15 @@
 
 <span class="k">class</span> <span class="nc">FileManager</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">store_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">keep</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Hash&#39;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">store_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">keep</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Hash</span><span class="p">:</span>
         <span class="o">...</span>
 
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">store_bytes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Hash&#39;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">store_bytes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Hash</span><span class="p">:</span>
         <span class="o">...</span>
 
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">get_bytes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content_hash</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">bytes_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content_hash</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
         <span class="o">...</span>
 
     <span class="nd">@abstractmethod</span>
@@ -136,7 +138,7 @@
         <span class="sd">&quot;&quot;&quot;Return content of the file as bytes.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_content</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fmngr</span><span class="o">.</span><span class="n">get_bytes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_content</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fmngr</span><span class="o">.</span><span class="n">bytes_for</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_content</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="File.read_text"><a class="viewcode-back" href="../../api.html#mona.files.File.read_text">[docs]</a>    <span class="k">def</span> <span class="nf">read_text</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Return content of the file as string.&quot;&quot;&quot;</span>
@@ -157,7 +159,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_fmngr</span><span class="o">.</span><span class="n">target_in</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content</span><span class="p">,</span> <span class="n">mutable</span><span class="o">=</span><span class="n">mutable</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="File.from_str"><a class="viewcode-back" href="../../api.html#mona.files.File.from_str">[docs]</a>    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_str</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Pathable</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;File&#39;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">from_str</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Pathable</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">File</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a file from a string or bytes.</span>
 
 <span class="sd">        :param path: the abstract path of the created file instance</span>
@@ -174,7 +176,7 @@
 <div class="viewcode-block" id="File.from_path"><a class="viewcode-back" href="../../api.html#mona.files.File.from_path">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">from_path</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Pathable</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">keep</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;File&#39;</span><span class="p">:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">File</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a file from a physical file.</span>
 
 <span class="sd">        :param path: the path of the physical file. Also a basis for the</span>
@@ -211,7 +213,7 @@
         <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="o">.</span><span class="n">path</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_content_hash</span><span class="p">])</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;HashedFile&#39;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HashedFile</span><span class="p">:</span>
         <span class="n">path_str</span><span class="p">,</span> <span class="n">content_hash</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Hash</span><span class="p">],</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="p">))</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path_str</span><span class="p">)</span>
         <span class="n">fmngr</span> <span class="o">=</span> <span class="n">FileManager</span><span class="o">.</span><span class="n">active</span><span class="p">()</span>
@@ -322,7 +324,7 @@
       &copy;2015-2019, Jan Hermann.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

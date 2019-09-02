@@ -37,6 +37,8 @@
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">annotations</span>
+
 <span class="kn">import</span> <span class="nn">hashlib</span>
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
@@ -85,7 +87,7 @@
 
     <span class="nd">@classmethod</span>
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Hashed[_T_co]&#39;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Hashed</span><span class="p">[</span><span class="n">_T_co</span><span class="p">]:</span>
         <span class="o">...</span>
 
     <span class="nd">@property</span>
@@ -141,7 +143,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_label</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="k">lambda</span> <span class="n">hashed</span><span class="p">:</span> <span class="n">Literal</span><span class="p">(</span><span class="n">hashed</span><span class="o">.</span><span class="n">label</span><span class="p">)))</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_object</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;HashedComposite&#39;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">from_object</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HashedComposite</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="o">*</span><span class="bp">cls</span><span class="o">.</span><span class="n">parse_object</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span>
 
     <span class="nd">@property</span>
@@ -155,7 +157,7 @@
         <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_jsonstr</span><span class="p">,</span> <span class="o">*</span><span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_components</span><span class="p">)])</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;HashedComposite&#39;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HashedComposite</span><span class="p">:</span>
         <span class="n">jsonstr</span><span class="p">:</span> <span class="nb">str</span>
         <span class="n">hashids</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Hash</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
         <span class="n">jsonstr</span><span class="p">,</span> <span class="o">*</span><span class="n">hashids</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
@@ -170,7 +172,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_components</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">resolve</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="s1">&#39;Hashed[object]&#39;</span><span class="p">],</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]],</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Composite</span><span class="p">:</span>
         <span class="k">def</span> <span class="nf">hook</span><span class="p">(</span><span class="n">type_tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dct</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">JSONValue</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">object</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">type_tag</span> <span class="o">==</span> <span class="s1">&#39;Hashed&#39;</span><span class="p">:</span>
@@ -225,7 +227,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;HashedBytes&#39;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">from_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">resolve</span><span class="p">:</span> <span class="n">HashResolver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HashedBytes</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
 
     <span class="nd">@property</span>
@@ -323,7 +325,7 @@
       &copy;2015-2019, Jan Hermann.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

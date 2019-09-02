@@ -41,10 +41,9 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">asynccontextmanager</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">AsyncGenerator</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">AsyncGenerator</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">TypeVar</span>
 
-<span class="kn">from</span> <span class="nn">..dag</span> <span class="k">import</span> <span class="n">NodeExecuted</span>
-<span class="kn">from</span> <span class="nn">..sessions</span> <span class="k">import</span> <span class="n">Session</span><span class="p">,</span> <span class="n">SessionPlugin</span><span class="p">,</span> <span class="n">TaskExecute</span>
+<span class="kn">from</span> <span class="nn">..sessions</span> <span class="k">import</span> <span class="n">Session</span><span class="p">,</span> <span class="n">SessionPlugin</span><span class="p">,</span> <span class="n">TaskExecuted</span><span class="p">,</span> <span class="n">TaskExecutor</span>
 <span class="kn">from</span> <span class="nn">..tasks</span> <span class="k">import</span> <span class="n">Corofunc</span><span class="p">,</span> <span class="n">Task</span>
 
 <span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -106,10 +105,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_pending</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_release</span><span class="p">(</span><span class="n">pending</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">wrap_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="n">TaskExecute</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskExecute</span><span class="p">:</span>  <span class="c1"># noqa: D102</span>
-        <span class="k">async</span> <span class="k">def</span> <span class="nf">_execute</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">done</span><span class="p">:</span> <span class="n">NodeExecuted</span><span class="p">[</span><span class="n">Task</span><span class="p">[</span><span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">wrap_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="n">TaskExecutor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskExecutor</span><span class="p">:</span>  <span class="c1"># noqa: D102</span>
+        <span class="k">async</span> <span class="k">def</span> <span class="nf">_execute</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span> <span class="n">done</span><span class="p">:</span> <span class="n">TaskExecuted</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">await</span> <span class="n">execute</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">done</span><span class="p">)</span>
+                <span class="k">assert</span> <span class="k">await</span> <span class="n">execute</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">done</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">):</span>
                     <span class="n">done</span><span class="p">((</span><span class="n">task</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="p">()))</span>
@@ -117,9 +116,10 @@
             <span class="k">assert</span> <span class="n">asyncio_task</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_asyncio_tasks</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">asyncio_task</span><span class="p">)</span>
 
-        <span class="k">async</span> <span class="k">def</span> <span class="nf">spawn_execute</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">async</span> <span class="k">def</span> <span class="nf">spawn_execute</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
             <span class="n">asyncio_task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">_execute</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_asyncio_tasks</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">asyncio_task</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
 
         <span class="k">return</span> <span class="n">spawn_execute</span>
 
@@ -247,7 +247,7 @@
       &copy;2015-2019, Jan Hermann.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

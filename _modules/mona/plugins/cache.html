@@ -37,14 +37,18 @@
 <span></span><span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
 <span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
 <span class="c1"># file, You can obtain one at http://mozilla.org/MPL/2.0/.</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">annotations</span>
+
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">pickle</span>
 <span class="kn">import</span> <span class="nn">sqlite3</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span>
 <span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
 <span class="kn">from</span> <span class="nn">weakref</span> <span class="k">import</span> <span class="n">WeakValueDictionary</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="p">(</span>
     <span class="n">Any</span><span class="p">,</span>
     <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">Iterator</span><span class="p">,</span>
     <span class="n">List</span><span class="p">,</span>
     <span class="n">NamedTuple</span><span class="p">,</span>
     <span class="n">Optional</span><span class="p">,</span>
@@ -58,9 +62,9 @@
 
 <span class="kn">from</span> <span class="nn">..futures</span> <span class="k">import</span> <span class="n">Future</span><span class="p">,</span> <span class="n">State</span>
 <span class="kn">from</span> <span class="nn">..hashing</span> <span class="k">import</span> <span class="n">Hash</span><span class="p">,</span> <span class="n">Hashed</span>
-<span class="kn">from</span> <span class="nn">..sessions</span> <span class="k">import</span> <span class="n">Session</span><span class="p">,</span> <span class="n">SessionPlugin</span>
+<span class="kn">from</span> <span class="nn">..sessions</span> <span class="k">import</span> <span class="n">Session</span><span class="p">,</span> <span class="n">SessionPlugin</span><span class="p">,</span> <span class="n">TaskExecuted</span><span class="p">,</span> <span class="n">TaskExecutor</span>
 <span class="kn">from</span> <span class="nn">..tasks</span> <span class="k">import</span> <span class="n">Task</span>
-<span class="kn">from</span> <span class="nn">..utils</span> <span class="k">import</span> <span class="n">Pathable</span><span class="p">,</span> <span class="n">get_fullname</span><span class="p">,</span> <span class="n">get_timestamp</span><span class="p">,</span> <span class="n">import_fullname</span>
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="k">import</span> <span class="n">Pathable</span><span class="p">,</span> <span class="n">fullname_of</span><span class="p">,</span> <span class="n">get_timestamp</span><span class="p">,</span> <span class="n">import_fullname</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Cache&#39;</span><span class="p">]</span>
 
@@ -105,7 +109,7 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hashid</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_hashid</span> <span class="o">=</span> <span class="n">hashid</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_args</span> <span class="o">=</span> <span class="p">()</span>
-        <span class="n">Future</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="p">[])</span>  <span class="c1"># type: ignore</span>
+        <span class="n">Future</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="p">[])</span>
 
 
 <span class="k">class</span> <span class="nc">WriteAccess</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
@@ -138,7 +142,7 @@
 
     <span class="k">def</span> <span class="nf">_store_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">obj_rows</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">ObjectRow</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">hashid</span><span class="p">,</span> <span class="n">get_fullname</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="vm">__class__</span><span class="p">),</span> <span class="n">obj</span><span class="o">.</span><span class="n">spec</span><span class="p">)</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">objs</span>
+            <span class="n">ObjectRow</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">hashid</span><span class="p">,</span> <span class="n">fullname_of</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="vm">__class__</span><span class="p">),</span> <span class="n">obj</span><span class="o">.</span><span class="n">spec</span><span class="p">)</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">objs</span>
         <span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s1">&#39;INSERT OR IGNORE INTO objects VALUES (?,?,?)&#39;</span><span class="p">,</span> <span class="n">obj_rows</span><span class="p">)</span>
 
@@ -181,7 +185,7 @@
         <span class="k">if</span> <span class="n">result_type</span> <span class="ow">is</span> <span class="n">ResultType</span><span class="o">.</span><span class="n">HASHED</span><span class="p">:</span>
             <span class="n">result</span> <span class="o">=</span> <span class="n">hashed</span><span class="o">.</span><span class="n">hashid</span>
         <span class="n">side_effects</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-            <span class="n">t</span><span class="o">.</span><span class="n">hashid</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">Session</span><span class="o">.</span><span class="n">active</span><span class="p">()</span><span class="o">.</span><span class="n">get_side_effects</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+            <span class="n">t</span><span class="o">.</span><span class="n">hashid</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">Session</span><span class="o">.</span><span class="n">active</span><span class="p">()</span><span class="o">.</span><span class="n">side_effects_of</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
             <span class="s1">&#39;REPLACE INTO tasks VALUES (?,?,?,?,?)&#39;</span><span class="p">,</span>
@@ -190,7 +194,7 @@
             <span class="p">),</span>
         <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_get_task_row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hashid</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TaskRow</span><span class="p">]:</span>
+    <span class="k">def</span> <span class="nf">_task_row_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hashid</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TaskRow</span><span class="p">]:</span>
         <span class="n">raw_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
             <span class="s1">&#39;SELECT * FROM tasks WHERE hashid = ?&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">hashid</span><span class="p">,)</span>
         <span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
@@ -198,7 +202,7 @@
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">TaskRow</span><span class="p">(</span><span class="o">*</span><span class="n">raw_row</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_get_target_row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hashid</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TargetRow</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">_target_row_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hashid</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TargetRow</span><span class="p">:</span>
         <span class="n">raw_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
             <span class="s1">&#39;SELECT * FROM targets WHERE objectid = ? ORDER BY sessionid DESC LIMIT 1&#39;</span><span class="p">,</span>
             <span class="p">(</span><span class="n">hashid</span><span class="p">,),</span>
@@ -206,7 +210,7 @@
         <span class="k">assert</span> <span class="n">raw_row</span>
         <span class="k">return</span> <span class="n">TargetRow</span><span class="p">(</span><span class="o">*</span><span class="n">raw_row</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_get_object_factory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hashid</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">Type</span><span class="p">[</span><span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]]]:</span>
+    <span class="k">def</span> <span class="nf">_object_factory_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hashid</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">Type</span><span class="p">[</span><span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]]]:</span>
         <span class="n">raw_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
             <span class="s1">&#39;SELECT * FROM objects WHERE hashid = ?&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">hashid</span><span class="p">,)</span>
         <span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
@@ -216,20 +220,20 @@
         <span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">factory</span><span class="p">,</span> <span class="n">Hashed</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">row</span><span class="o">.</span><span class="n">spec</span><span class="p">,</span> <span class="n">factory</span>
 
-    <span class="k">def</span> <span class="nf">_get_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hashid</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]:</span>
+    <span class="k">def</span> <span class="nf">_object_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hashid</span><span class="p">:</span> <span class="n">Hash</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]:</span>
         <span class="n">obj</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_object_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">hashid</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">obj</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">obj</span>
-        <span class="n">spec</span><span class="p">,</span> <span class="n">factory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_object_factory</span><span class="p">(</span><span class="n">hashid</span><span class="p">)</span>
+        <span class="n">spec</span><span class="p">,</span> <span class="n">factory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_object_factory_for</span><span class="p">(</span><span class="n">hashid</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">factory</span> <span class="ow">is</span> <span class="n">Task</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_full_restore</span><span class="p">:</span>
-            <span class="n">task_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_task_row</span><span class="p">(</span><span class="n">hashid</span><span class="p">)</span>
+            <span class="n">task_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_row_for</span><span class="p">(</span><span class="n">hashid</span><span class="p">)</span>
             <span class="k">assert</span> <span class="n">task_row</span>
             <span class="k">if</span> <span class="n">State</span><span class="p">[</span><span class="n">task_row</span><span class="o">.</span><span class="n">state</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">State</span><span class="o">.</span><span class="n">HAS_RUN</span><span class="p">:</span>
                 <span class="n">obj</span> <span class="o">=</span> <span class="n">CachedTask</span><span class="p">(</span><span class="n">hashid</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">obj</span><span class="p">:</span>
-            <span class="n">obj</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">from_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_object</span><span class="p">)</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">from_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_object_for</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">hashid</span> <span class="o">==</span> <span class="n">obj</span><span class="o">.</span><span class="n">hashid</span>
-        <span class="n">metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_target_row</span><span class="p">(</span><span class="n">hashid</span><span class="p">)</span><span class="o">.</span><span class="n">metadata</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target_row_for</span><span class="p">(</span><span class="n">hashid</span><span class="p">)</span><span class="o">.</span><span class="n">metadata</span>
         <span class="k">if</span> <span class="n">metadata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">obj</span><span class="o">.</span><span class="n">set_metadata</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Task</span><span class="p">):</span>
@@ -240,7 +244,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_object_cache</span><span class="p">[</span><span class="n">hashid</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span>
         <span class="k">return</span> <span class="n">obj</span>
 
-    <span class="k">def</span> <span class="nf">_get_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">TaskRow</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">_result_from</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">TaskRow</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">State</span><span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">state</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">State</span><span class="o">.</span><span class="n">HAS_RUN</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">assert</span> <span class="n">row</span><span class="o">.</span><span class="n">result_type</span>
@@ -251,30 +255,34 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">assert</span> <span class="n">result_type</span> <span class="ow">is</span> <span class="n">ResultType</span><span class="o">.</span><span class="n">HASHED</span>
             <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">result</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
-            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_object</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">result</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_object_for</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">result</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span>
 
     <span class="k">def</span> <span class="nf">_restore_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s1">&#39;_restored&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>  <span class="c1"># TODO clean up</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s1">&#39;_restored&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>  <span class="c1"># TODO clean up</span>
             <span class="k">return</span>
-        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_task_row</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_row_for</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">row</span>
-        <span class="k">if</span> <span class="n">State</span><span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">state</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">State</span><span class="o">.</span><span class="n">HAS_RUN</span><span class="p">:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">State</span><span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">state</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">state</span> <span class="o">&lt;</span> <span class="n">State</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">state</span> <span class="ow">is</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span>
             <span class="k">return</span>
         <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Restoring from cache: </span><span class="si">{task}</span><span class="s1">&#39;</span><span class="p">)</span>
-        <span class="k">assert</span> <span class="n">State</span><span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">state</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">State</span><span class="o">.</span><span class="n">HAS_RUN</span>
         <span class="n">task</span><span class="o">.</span><span class="n">set_running</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">state</span> <span class="o">&lt;</span> <span class="n">State</span><span class="o">.</span><span class="n">HAS_RUN</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">assert</span> <span class="n">state</span> <span class="o">&gt;</span> <span class="n">State</span><span class="o">.</span><span class="n">HAS_RUN</span>
         <span class="n">sess</span> <span class="o">=</span> <span class="n">Session</span><span class="o">.</span><span class="n">active</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_full_restore</span> <span class="ow">and</span> <span class="n">row</span><span class="o">.</span><span class="n">side_effects</span><span class="p">:</span>
             <span class="n">side_effects</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">hashid</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">side_effects</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">):</span>
-                <span class="n">child_task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_object</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">Hash</span><span class="p">,</span> <span class="n">hashid</span><span class="p">))</span>
+                <span class="n">child_task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_object_for</span><span class="p">(</span><span class="n">cast</span><span class="p">(</span><span class="n">Hash</span><span class="p">,</span> <span class="n">hashid</span><span class="p">))</span>
                 <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">child_task</span><span class="p">,</span> <span class="n">Task</span><span class="p">)</span>
                 <span class="n">sess</span><span class="o">.</span><span class="n">add_side_effect_of</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">child_task</span><span class="p">)</span>
                 <span class="n">side_effects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">child_task</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_to_restore</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">side_effects</span><span class="p">))</span>
         <span class="n">task</span><span class="o">.</span><span class="n">set_has_run</span><span class="p">()</span>
-        <span class="n">sess</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_result</span><span class="p">(</span><span class="n">row</span><span class="p">))</span>
+        <span class="n">sess</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result_from</span><span class="p">(</span><span class="n">row</span><span class="p">))</span>
         <span class="n">task</span><span class="o">.</span><span class="n">_restored</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># type: ignore</span>
 
     <span class="k">def</span> <span class="nf">save_hashed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Hashed</span><span class="p">[</span><span class="nb">object</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: D102</span>
@@ -296,7 +304,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_store_session</span><span class="p">(</span><span class="n">sess</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">post_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># noqa: D102</span>
-        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_task_row</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_row_for</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">row</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_to_restore</span> <span class="o">=</span> <span class="p">[</span><span class="n">task</span><span class="p">]</span>
             <span class="n">tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -304,7 +312,7 @@
                 <span class="n">t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_restore</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_restore_task</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
                 <span class="n">tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
-            <span class="nb">delattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_to_restore&#39;</span><span class="p">)</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_restore</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write</span> <span class="ow">is</span> <span class="n">WriteAccess</span><span class="o">.</span><span class="n">EAGER</span><span class="p">:</span>
             <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">task</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
@@ -339,8 +347,31 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_objects</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 
+    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">_db_lock</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="kc">None</span><span class="p">]:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;BEGIN IMMEDIATE TRANSACTION&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;END TRANSACTION&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">wrap_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="n">TaskExecutor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskExecutor</span><span class="p">:</span>  <span class="c1"># noqa: D102</span>
+        <span class="k">async</span> <span class="k">def</span> <span class="nf">_execute</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span> <span class="n">done</span><span class="p">:</span> <span class="n">TaskExecuted</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write</span> <span class="ow">is</span> <span class="n">WriteAccess</span><span class="o">.</span><span class="n">EAGER</span><span class="p">:</span>
+                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db_lock</span><span class="p">():</span>
+                    <span class="n">task_row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_row_for</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">)</span>
+                    <span class="k">assert</span> <span class="n">task_row</span>
+                    <span class="k">assert</span> <span class="n">State</span><span class="p">[</span><span class="n">task_row</span><span class="o">.</span><span class="n">state</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">task</span><span class="o">.</span><span class="n">state</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                        <span class="s1">&#39;UPDATE tasks SET state = ? WHERE hashid = ?&#39;</span><span class="p">,</span>
+                        <span class="p">(</span><span class="n">State</span><span class="o">.</span><span class="n">RUNNING</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">task</span><span class="o">.</span><span class="n">hashid</span><span class="p">),</span>
+                    <span class="p">)</span>
+            <span class="k">return</span> <span class="k">await</span> <span class="n">execute</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">done</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">_execute</span>
+
 <div class="viewcode-block" id="Cache.from_path"><a class="viewcode-back" href="../../../api.html#mona.plugins.Cache.from_path">[docs]</a>    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_path</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Pathable</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Cache&#39;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">from_path</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Pathable</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Cache</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a cache with a database at the given path.&quot;&quot;&quot;</span>
         <span class="n">db</span> <span class="o">=</span> <span class="n">sqlite3</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
         <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
@@ -474,7 +505,7 @@
       &copy;2015-2019, Jan Hermann.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>
