@@ -8,7 +8,6 @@ import stat
 from datetime import datetime
 from enum import Enum
 from typing import (
-    Any,
     Callable,
     Dict,
     Iterable,
@@ -88,11 +87,6 @@ def make_writable(path: Pathable) -> None:
 
 def get_timestamp() -> str:
     return datetime.now().isoformat(timespec='seconds')
-
-
-def call_if(cond: bool, func: Callable[..., None], *args: Any, **kwargs: Any) -> None:
-    if cond:
-        func(*args, **kwargs)
 
 
 def split(iterable: Iterable[_T], type: Type[_V]) -> Tuple[List[_V], List[_T]]:

@@ -7,7 +7,7 @@ import asyncio
 from enum import Enum
 from typing import (
     Any,
-    AsyncGenerator,
+    AsyncIterator,
     Awaitable,
     Callable,
     Container,
@@ -90,17 +90,15 @@ class SetDeque(Deque[_T]):
         return x
 
 
-async def traverse_async(  # noqa: C901
+async def traverse_async(
     start: Iterable[_T],
     edges_from: Callable[[_T], Iterable[_T]],
     schedule: NodeScheduler[_T],
     execute: NodeExecutor[_T],
     depth: bool = False,
     priority: Priority = default_priority,
-) -> AsyncGenerator[Union[Step, NodeException], bool]:
-    """Asynchronous generator that traverses a self-extending DAG.
-
-    Yields potentials steps, and receives whether those should be taken.
+) -> AsyncIterator[Union[Step, NodeException]]:
+    """Traverse a self-extending DAG, yield steps.
 
     :param start: Starting nodes
     :param edges_from: Returns nodes with incoming edge from the given node
@@ -138,9 +136,8 @@ async def traverse_async(  # noqa: C901
         }
         if action is Action.TRAVERSE:
             node = to_visit.pop() if depth else to_visit.popleft()
+            yield Step(action, node, progress)
             visited.add(node)
-            if not (yield Step(action, node, progress)):
-                continue
             schedule(node, to_execute.append)
             extend_from(edges_from(node), to_visit, filter=visited)
         elif action is Action.RESULTS:
@@ -154,8 +151,7 @@ async def traverse_async(  # noqa: C901
         else:
             assert action is Action.EXECUTE
             node = to_execute.popleft()
-            if not (yield Step(action, node, progress)):
-                continue
+            yield Step(action, node, progress)
             executing += 1
             try:
                 if not (await execute(node, done.put_nowait)):
