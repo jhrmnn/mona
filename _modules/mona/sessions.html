@@ -148,6 +148,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_exc_handler</span> <span class="o">=</span> <span class="n">exception_handler</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_task_filter</span> <span class="o">=</span> <span class="n">task_filter</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_limit</span> <span class="o">=</span> <span class="n">limit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_limit_reached</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_exceptions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">ATask</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_n_executed</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_wont_schedule</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ATask</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -183,6 +184,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_executed</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_executed</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_limit_reached</span> <span class="o">=</span> <span class="kc">True</span>
                 <span class="k">return</span> <span class="kc">False</span>
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_executed</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Maximum number of executed tasks reached&#39;</span><span class="p">)</span>
@@ -192,6 +194,7 @@
         <span class="k">return</span> <span class="kc">True</span>
 
     <span class="k">def</span> <span class="nf">handle_exception</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ATask</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># TODO CancelledError can be removed for &gt;=3.8</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="p">(</span><span class="n">MonaError</span><span class="p">,</span> <span class="ne">AssertionError</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">)):</span>
             <span class="k">raise</span> <span class="n">exc</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span>
@@ -205,8 +208,11 @@
         <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_filtered</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">has_abnormalities</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-        <span class="k">return</span> <span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">has_filtered</span><span class="p">()</span> <span class="ow">or</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_wont_schedule</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_exceptions</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_filtered</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wont_schedule</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exceptions</span>
+            <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit_reached</span>
         <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">report_abnormalities</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -220,6 +226,9 @@
             <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">f</span><span class="s1">&#39;Cannot evaluate future because tasks were filtered: </span><span class="si">{self._filtered}</span><span class="s1">&#39;</span>
             <span class="p">)</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_limit_reached</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;Cannot evaluate future because limit was reached&#39;</span>
             <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
 

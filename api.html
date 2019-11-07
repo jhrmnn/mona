@@ -86,18 +86,18 @@ appended to the arguments passed when creating a task.</td>
 <dt id="mona.run_process">
 <em class="property">coroutine </em><code class="descclassname">mona.</code><code class="descname">run_process</code><span class="sig-paren">(</span><em>*args</em>, <em>ncores=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_process" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a subprocess.</p>
-<p>Wrapper around <a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_exec" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_exec()</span></code></a> that handles errors
+<p>Wrapper around <a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_exec" title="(in Python v3.8)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_exec()</span></code></a> that handles errors
 and whose behavior can be modified by session plugins.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – arguments of the subprocess</li>
-<li><strong>ncores</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – number of cores that should be taken by the process</li>
+<li><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a>) – arguments of the subprocess</li>
+<li><strong>ncores</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a>) – number of cores that should be taken by the process</li>
 <li><strong>kwargs</strong> – all other keyword arguments are passed to
-<a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_exec" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_subprocess_exec()</span></code></a>.
-<a class="reference external" href="https://docs.python.org/3/library/subprocess.html#subprocess.PIPE" title="(in Python v3.7)"><code class="xref py py-data docutils literal notranslate"><span class="pre">PIPE</span></code></a> is passed to <cite>stdin</cite> and <cite>stdout</cite>
+<a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_exec" title="(in Python v3.8)"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_subprocess_exec()</span></code></a>.
+<a class="reference external" href="https://docs.python.org/3/library/subprocess.html#subprocess.PIPE" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">PIPE</span></code></a> is passed to <cite>stdin</cite> and <cite>stdout</cite>
 keyword arguments by default.</li>
 </ul>
 </td>
@@ -112,18 +112,18 @@ tuple of bytes containing standard and error outputs.</p>
 <dt id="mona.run_shell">
 <em class="property">coroutine </em><code class="descclassname">mona.</code><code class="descname">run_shell</code><span class="sig-paren">(</span><em>cmd</em>, <em>ncores=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/runners.html#run_shell"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.run_shell" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute a command in a shell.</p>
-<p>Wrapper around <a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_shell" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_shell()</span></code></a> that handles errors
+<p>Wrapper around <a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_shell" title="(in Python v3.8)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.create_subprocess_shell()</span></code></a> that handles errors
 and whose behavior can be modified by session plugins.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>cmd</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – a shell command to be executed</li>
-<li><strong>ncores</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – number of cores that should be taken by the process</li>
+<li><strong>cmd</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a>) – a shell command to be executed</li>
+<li><strong>ncores</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a>) – number of cores that should be taken by the process</li>
 <li><strong>kwargs</strong> – all other keyword arguments are passed to
-<a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_shell" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_subprocess_shell()</span></code></a>.
-<a class="reference external" href="https://docs.python.org/3/library/subprocess.html#subprocess.PIPE" title="(in Python v3.7)"><code class="xref py py-data docutils literal notranslate"><span class="pre">PIPE</span></code></a> is passed to <cite>stdin</cite> and <cite>stdout</cite>
+<a class="reference external" href="https://docs.python.org/3/library/asyncio-subprocess.html#asyncio.create_subprocess_shell" title="(in Python v3.8)"><code class="xref py py-func docutils literal notranslate"><span class="pre">create_subprocess_shell()</span></code></a>.
+<a class="reference external" href="https://docs.python.org/3/library/subprocess.html#subprocess.PIPE" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">PIPE</span></code></a> is passed to <cite>stdin</cite> and <cite>stdout</cite>
 keyword arguments by default.</li>
 </ul>
 </td>
@@ -166,7 +166,7 @@ behavior can be modified by session plugins.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>plugins</strong> – session plugins to load. This is equivalent to calling each
 plugin with the created session as an argument</li>
-<li><strong>warn</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – warn at the end of session if some created tasks were not
+<li><strong>warn</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a>) – warn at the end of session if some created tasks were not
 executed and no tasks were explicitly filtered</li>
 </ul>
 </td>
@@ -213,7 +213,7 @@ executed and no tasks were explicitly filtered</li>
 <dl class="method">
 <dt id="mona.Session.dot_graph">
 <code class="descname">dot_graph</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mona/sessions.html#Session.dot_graph"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mona.Session.dot_graph" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generate <a class="reference external" href="https://graphviz.readthedocs.io/en/stable/api.html#graphviz.Digraph" title="(in graphviz v0.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Digraph</span></code></a> for the task DAG.</p>
+<dd><p>Generate <a class="reference external" href="https://graphviz.readthedocs.io/en/stable/api.html#graphviz.Digraph" title="(in graphviz v0.13.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Digraph</span></code></a> for the task DAG.</p>
 </dd></dl>
 
 <dl class="method">
@@ -233,14 +233,14 @@ executed and no tasks were explicitly filtered</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>obj</strong> – any hashable object</li>
-<li><strong>depth</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – traverse DAG depth-first if true, breadth-first otherwise</li>
-<li><strong>priority</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><em>tuple</em></a>) – prioritize steps in DAG traversal in order</li>
+<li><strong>depth</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a>) – traverse DAG depth-first if true, breadth-first otherwise</li>
+<li><strong>priority</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.8)"><em>tuple</em></a>) – prioritize steps in DAG traversal in order</li>
 <li><strong>exception_handler</strong> – callable that accepts a task and an exception
 it raised and returns True if the exception
 should be ignored</li>
 <li><strong>task_filter</strong> – callable that accepts a task and returns True if
 the task should be executed</li>
-<li><strong>limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.7)"><em>int</em></a>) – limit of the number of executed task</li>
+<li><strong>limit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a>) – limit of the number of executed task</li>
 </ul>
 </td>
 </tr>
@@ -371,7 +371,7 @@ abstract path of the file instance.</li>
 <li><strong>root</strong> – If given, the abstract path will be created from the
 physical path taken relative to the root. If not given,
 the <code class="docutils literal notranslate"><span class="pre">path</span></code> argument must be relative.</li>
-<li><strong>keep</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – whether the physical file should kept or destroyed</li>
+<li><strong>keep</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a>) – whether the physical file should kept or destroyed</li>
 </ul>
 </td>
 </tr>
@@ -437,7 +437,7 @@ the <code class="docutils literal notranslate"><span class="pre">path</span></co
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>path</strong> (<em>Path</em>) – where the file should be created</li>
-<li><strong>mutable</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.7)"><em>bool</em></a>) – whether the created file will be mutable</li>
+<li><strong>mutable</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a>) – whether the created file will be mutable</li>
 </ul>
 </td>
 </tr>
@@ -913,8 +913,8 @@ returns a dictionary of parsed results as output.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>tex_template</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.7)"><em>str</em></a>) – a Jinja template</li>
-<li><strong>ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.7)"><em>dict</em></a>) – a variable context</li>
+<li><strong>tex_template</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a>) – a Jinja template</li>
+<li><strong>ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)"><em>dict</em></a>) – a variable context</li>
 </ul>
 </td>
 </tr>
