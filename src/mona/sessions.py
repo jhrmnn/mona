@@ -112,6 +112,7 @@ class TraversalManager:
         self._exc_handler = exception_handler
         self._task_filter = task_filter
         self._limit = limit
+        self._limit_reached = False
         self._exceptions: Dict[ATask, Exception] = {}
         self._n_executed = 0
         self._wont_schedule: List[ATask] = []
@@ -147,6 +148,7 @@ class TraversalManager:
         if self._limit is not None:
             assert self._n_executed <= self._limit
             if self._n_executed == self._limit:
+                self._limit_reached = True
                 return False
             elif self._n_executed == self._limit - 1:
                 log.info('Maximum number of executed tasks reached')
@@ -170,8 +172,11 @@ class TraversalManager:
         return bool(self._filtered)
 
     def has_abnormalities(self) -> bool:
-        return (
-            self.has_filtered() or bool(self._wont_schedule) or bool(self._exceptions)
+        return bool(
+            self._filtered
+            or self._wont_schedule
+            or self._exceptions
+            or self._limit_reached
         )
 
     def report_abnormalities(self) -> None:
@@ -185,6 +190,9 @@ class TraversalManager:
             msg = (
                 f'Cannot evaluate future because tasks were filtered: {self._filtered}'
             )
+            log.info(msg)
+        if self._limit_reached:
+            msg = f'Cannot evaluate future because limit was reached'
             log.info(msg)
 
 
