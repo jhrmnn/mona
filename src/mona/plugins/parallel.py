@@ -74,6 +74,7 @@ class Parallel(SessionPlugin):
             try:
                 assert await execute(task, done)
             except Exception as e:
+                # TODO if can be removed for >=3.8
                 if not isinstance(e, asyncio.CancelledError):
                     done((task, e, ()))
             asyncio_task = asyncio.current_task()

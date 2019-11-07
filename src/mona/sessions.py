@@ -156,6 +156,7 @@ class TraversalManager:
         return True
 
     def handle_exception(self, task: ATask, exc: Exception) -> None:
+        # TODO CancelledError can be removed for >=3.8
         if isinstance(exc, (MonaError, AssertionError, asyncio.CancelledError)):
             raise exc
         assert isinstance(exc, Exception)
