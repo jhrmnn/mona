@@ -24,7 +24,12 @@ __all__ = ()
 log = logging.getLogger(__name__)
 
 
-@click.group()
+class NaturalOrderGroup(click.Group):
+    def list_commands(self, ctx):  # type: ignore
+        return self.commands.keys()
+
+
+@click.group(cls=NaturalOrderGroup)
 @click.option('--app', 'appname', envvar='MONA_APP', required=True)
 @click.option('--debug', is_flag=True, envvar='MONA_DEBUG')
 @click.pass_context
