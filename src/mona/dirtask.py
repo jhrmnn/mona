@@ -10,9 +10,9 @@ from typing import (
     Callable,
     ContextManager,
     Dict,
+    Iterable,
     List,
     Optional,
-    Sequence,
     Tuple,
     Union,
     cast,
@@ -113,7 +113,7 @@ class DirtaskTmpdir:
 def checkout_files(
     root: Path,
     exe: Optional[File],
-    files: Sequence[DirtaskInput],
+    files: Iterable[DirtaskInput],
     mutable: bool = False,
 ) -> None:
     assert root.exists()

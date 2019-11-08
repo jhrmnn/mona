@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple, cast
+from typing import Dict, Iterable, List, Optional, Tuple, cast
 
 import click
 
@@ -94,10 +94,10 @@ class ExceptionBuffer:
 def run(
     app: Mona,
     pattern: List[str],
-    cores: int,
+    cores: Optional[int],
     path: bool,
     limit: Optional[int],
-    maxerror: int,
+    maxerror: Optional[int],
     entry: str,
     args: List[str],
 ) -> None:
@@ -188,7 +188,7 @@ def checkout(app: Mona, pattern: List[str], done: bool, copy: bool) -> None:
             if done and not task.done():
                 continue
             exe: Optional[File]
-            paths: Sequence[DirtaskInput]
+            paths: Iterable[DirtaskInput]
             if task.rule == 'dir_task':
                 exe = cast(File, task.args[0].value)
                 paths = cast(List[DirtaskInput], task.args[1].value)
