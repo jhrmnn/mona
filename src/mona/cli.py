@@ -192,7 +192,7 @@ def checkout(app: Mona, pattern: List[str], done: bool, copy: bool) -> None:
                 continue
             if done and not task.done():
                 continue
-            exe: Optional[File]
+            exe: Optional[File] = None
             paths: Iterable[DirtaskInput]
             if task.rule == 'dir_task':
                 exe = cast(File, task.args[0].value)
@@ -200,8 +200,10 @@ def checkout(app: Mona, pattern: List[str], done: bool, copy: bool) -> None:
                 if task.done():
                     paths.extend(cast(Dict[str, File], task.result()).values())
             elif task.rule == 'file_collection':
-                exe = None
                 paths = cast(List[File], task.args[0].value)
+            else:
+                if task.done():
+                    paths = cast(Dict[str, File], task.result()).values()
             root = Path(task.label[1:])
             root.mkdir(parents=True, exist_ok=True)
             checkout_files(root, exe, paths, mutable=copy)
