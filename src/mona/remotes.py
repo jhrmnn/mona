@@ -44,11 +44,11 @@ class Remote:
         inp: Union[str, bytes] = None,
         capture_stdout: bool = False,
     ) -> Optional[bytes]:
-        cmd = ' '.join(['venv/bin/mona', *(shlex.quote(arg) for arg in args)])
+        cmd = ' '.join(['mona', *(shlex.quote(arg) for arg in args)])
         if isinstance(inp, str):
             inp = inp.encode()
         result = subprocess.run(
-            ['ssh', self._host, f'cd {self._path} && exec {cmd}'],
+            ['ssh', self._host, f'cd {self._path} && direnv exec . {cmd}'],
             input=inp,
             stdout=subprocess.PIPE if capture_stdout else None,
         )
