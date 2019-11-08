@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -172,7 +173,7 @@ def graph(app: Mona, file: Optional[Path]) -> None:
     fmt = file.suffix[1:] if file else 'pdf'
     tgt = dot.render(tempfile.mkstemp()[1], cleanup=True, format=fmt, view=not file)
     if file:
-        Path(tgt).rename(file)
+        shutil.move(tgt, file)
 
 
 @cli.command()
