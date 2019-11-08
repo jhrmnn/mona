@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -14,7 +15,7 @@ import click
 from .app import Mona
 from .dirtask import DirtaskInput, checkout_files
 from .files import File
-from .futures import STATE_COLORS
+from .futures import STATE_COLORS, State
 from .table import Table, lenstr
 from .tasks import Task
 from .utils import groupby, import_fullname, match_glob
@@ -123,6 +124,38 @@ def run(
         print(result)
 
 
+@cli.command(context_settings={'ignore_unknown_options': True})
+@click.argument('profile')
+@click.option('-j', '--jobs', type=int, default=1, help='Number of launched workers')
+@click.option(
+    'env_vars',
+    '-v',
+    '--var',
+    multiple=True,
+    help='Environment variable for worker profile',
+)
+@click.argument('args', nargs=-1)
+@click.pass_obj
+def dispatch(
+    app: Mona, profile: str, args: List[str], jobs: int, env_vars: List[str]
+) -> None:
+    """Dispatch a Mona command to external workers."""
+    worker = Path(f'~/.config/mona/worker_{profile}').expanduser()
+    cmd = [str(worker), *args]
+    for _ in range(jobs):
+        try:
+            subprocess.run(
+                cmd,
+                check=True,
+                env={
+                    **os.environ,
+                    **dict(cast(Tuple[str, str], x.split('=', 1)) for x in env_vars),
+                },
+            )
+        except subprocess.CalledProcessError:
+            log.error(f'Running {worker} failed.')
+
+
 @cli.command()
 @click.option('-p', '--pattern', multiple=True, help='Patterns to be reported')
 @click.pass_obj
@@ -160,6 +193,98 @@ def status(app: Mona, pattern: List[str]) -> None:
         ]
         table.add_row(label, *col_counts)
     click.echo(str(table))
+
+
+@cli.group('list')
+def list_() -> None:
+    """List various objects."""
+    pass
+
+
+@list_.command('tasks')
+@click.option(
+    'patterns', '-p', '--pattern', multiple=True, help='Patterns to be listed'
+)
+@click.option('do_finished', '--finished', is_flag=True, help='List finished tasks')
+@click.option(
+    'do_unfinished', '--unfinished', is_flag=True, help='List unfinished tasks'
+)
+@click.option('do_running', '--running', is_flag=True, help='List running tasks')
+@click.option('do_error', '--error', is_flag=True, help='List tasks in error')
+@click.option('disp_hash', '--hash', is_flag=True, help='Display task hash')
+@click.option('disp_label', '--label', is_flag=True, help='Display task label')
+# @click.option('disp_tmp', '--tmp', is_flag=True, help='Display temporary directory')
+@click.option('--no-color', is_flag=True, help='Do not color paths')
+@click.pass_obj
+def list_tasks(
+    app: Mona,
+    patterns: List[str],
+    do_finished: bool,
+    do_unfinished: bool,
+    do_running: bool,
+    do_error: bool,
+    disp_hash: bool,
+    disp_label: bool,
+    # disp_tmp: bool,  TODO
+    no_color: bool,
+) -> None:
+    """List tasks."""
+    with app.create_session(warn=False, write='never', full_restore=True) as sess:
+        app.call_last_entry()
+        all_tasks = list(sess.all_tasks())
+    for task in all_tasks:
+        if do_finished and task.state is not State.DONE:
+            continue
+        if do_error and task.state is not State.ERROR:
+            continue
+        if do_unfinished and task.state is State.DONE:
+            continue
+        if do_running and task.state is not State.RUNNING:
+            continue
+        label = task.label
+        if not no_color:
+            label = click.style(task.label, fg=STATE_COLORS[task.state])
+        if disp_hash:
+            line: str = task.hashid
+        # elif tmp:
+        #     if queue[hashid][2]:
+        #         line = queue[hashid][2]
+        #     else:
+        #         continue
+        elif disp_label:
+            line = label
+        else:
+            line = f'{task.hashid} {label}'
+        sys.stdout.write(line + '\n')
+
+
+@cli.command()
+@click.option('-p', '--pattern', multiple=True, help='Tasks to be reset')
+@click.option('--running', is_flag=True, help='Also reset running tasks')
+@click.option('--only-running', is_flag=True, help='Only reset running tasks')
+# TODO
+# @click.option(
+#     '--hard', is_flag=True, help='Also reset finished tasks and remove outputs'
+# )
+@click.pass_obj
+def reset(
+    app: Mona, pattern: List[str], running: bool, only_running: bool, hard: bool = False
+) -> None:
+    """Remove all temporary checkouts and set tasks to clean."""
+    if hard and input('Are you sure? ["y" to confirm] ') != 'y':
+        return
+    states_to_reset = set()
+    if not only_running:
+        states_to_reset.add(State.ERROR)
+    if only_running or running or hard:
+        states_to_reset.add(State.RUNNING)
+    with app.create_session(warn=False, write='on_exit', full_restore=True) as sess:
+        app.call_last_entry()
+        for task in sess.all_tasks():
+            if pattern and not any(match_glob(task.label, patt) for patt in pattern):
+                continue
+            if task.state in states_to_reset:
+                task.set_state(State.READY)
 
 
 @cli.command()
