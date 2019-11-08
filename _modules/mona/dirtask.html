@@ -46,9 +46,9 @@
     <span class="n">Callable</span><span class="p">,</span>
     <span class="n">ContextManager</span><span class="p">,</span>
     <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">Iterable</span><span class="p">,</span>
     <span class="n">List</span><span class="p">,</span>
     <span class="n">Optional</span><span class="p">,</span>
-    <span class="n">Sequence</span><span class="p">,</span>
     <span class="n">Tuple</span><span class="p">,</span>
     <span class="n">Union</span><span class="p">,</span>
     <span class="n">cast</span><span class="p">,</span>
@@ -149,7 +149,7 @@
 <span class="k">def</span> <span class="nf">checkout_files</span><span class="p">(</span>
     <span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">exe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">File</span><span class="p">],</span>
-    <span class="n">files</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">DirtaskInput</span><span class="p">],</span>
+    <span class="n">files</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">DirtaskInput</span><span class="p">],</span>
     <span class="n">mutable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">assert</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
