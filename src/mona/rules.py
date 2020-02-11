@@ -36,8 +36,6 @@ class Rule(Generic[_T]):
 
         All arguments are passed to :class:`Task`.
         """
-        assert 'rule' not in kwargs
-        kwargs['rule'] = self._corofunc.__name__
         return Session.active().create_task(self._corofunc, *args, **kwargs)
 
     @property
