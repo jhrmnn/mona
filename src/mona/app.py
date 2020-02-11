@@ -158,16 +158,3 @@ class Mona:
             remotes = [self._config['remotes'][name] for name in remote_str.split(',')]
         for remote in remotes:
             yield Remote(remote['host'], remote['path'])
-
-    def add_source(self, path: Pathable) -> Callable[[_R], _R]:
-        """Create a rule decorator to add a source to the task arguments.
-
-        The source is passed as :class:`File`. The file argument is appended to the
-        directly passed arguments.
-        """
-
-        def decorator(rule: _R) -> _R:
-            rule.add_extra_arg(lambda: HashedFile(File.from_path(path)))
-            return rule
-
-        return decorator
