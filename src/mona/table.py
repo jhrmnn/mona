@@ -8,7 +8,7 @@ __all__ = ()
 
 
 class lenstr(str):  # noqa: N801
-    def __new__(cls, s: Any, len: int) -> str:
+    def __new__(cls, s: Any, len: int) -> str:  # type: ignore
         return str.__new__(cls, s)  # type: ignore
 
     def __init__(self, s: Any, len: int) -> None:

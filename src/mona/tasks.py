@@ -118,7 +118,7 @@ class Task(HashedFuture[_T_co]):
         ).encode()
 
     @classmethod
-    def from_spec(cls, spec: bytes, resolve: HashResolver) -> Task[_T]:
+    def from_spec(cls, spec: bytes, resolve: HashResolver) -> Task[_T_co]:
         rule_name: str
         corohash: Hash
         arg_hashes: Tuple[Hash, ...]

@@ -4,7 +4,7 @@
 import shlex
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Union, cast
+from typing import List, Optional, Union
 
 from .errors import MonaError
 
@@ -58,7 +58,7 @@ class Remote:
                 f'with exit code {result.returncode}'
             )
         if capture_stdout:
-            return cast(bytes, result.stdout)
+            return result.stdout
         return None
 
     # def command_output(self, args: List[str], inp: str = None) -> str:

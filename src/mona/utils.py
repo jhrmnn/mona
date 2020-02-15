@@ -43,7 +43,7 @@ def fullname_of(obj: Union[Callable[..., object], Type[object]]) -> str:
 def import_fullname(fullname: str) -> object:
     module_name, qualname = fullname.split(':')
     module = importlib.import_module(module_name)
-    return getattr(module, qualname)  # type: ignore
+    return getattr(module, qualname)
 
 
 def shorten_text(s: Union[str, bytes], n: int) -> str:
