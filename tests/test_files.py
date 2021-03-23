@@ -1,7 +1,7 @@
 import shutil
 from pathlib import Path
 
-import pytest  # type: ignore
+import pytest
 
 from mona import Rule, Session
 from mona.dirtask import dir_task
@@ -111,7 +111,7 @@ def test_alt_input(datafile, tmpdir):
 
     with Session([FileManager(tmpdir)]) as sess:
         sess.run_task(create_task())
-        int(create_task().value['STDOUT'].read_text()) == 4
+        assert int(create_task().value['STDOUT'].read_text()) == 4
 
 
 def test_alt_input2(datafile, tmpdir):

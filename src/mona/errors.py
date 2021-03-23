@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .futures import Future
-    from .tasks import Task
     from .sessions import Session
+    from .tasks import Task
 
 __version__ = '0.1.0'
 __all__ = ()

@@ -22,7 +22,6 @@ from typing import (
 
 import toml
 
-from .files import File, HashedFile
 from .plugins import Cache, FileManager, Parallel, TmpdirManager
 from .remotes import Remote
 from .rules import Rule
@@ -153,7 +152,7 @@ class Mona:
 
     def parse_remotes(self, remote_str: str) -> Iterable[Remote]:
         if remote_str == 'all':
-            remotes = [r for r in self._config['remotes'].values()]
+            remotes = list(self._config['remotes'].values())
         else:
             remotes = [self._config['remotes'][name] for name in remote_str.split(',')]
         for remote in remotes:

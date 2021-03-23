@@ -40,10 +40,10 @@ from .dag import (
     traverse_async,
 )
 from .errors import FutureError, MonaError, SessionError, TaskError
-from .futures import STATE_COLORS
+from .futures import STATE_COLORS, State
 from .hashing import Hash, Hashed
 from .pluggable import Pluggable, Plugin
-from .tasks import Corofunc, HashedFuture, State, Task, TaskComposite
+from .tasks import Corofunc, HashedFuture, Task, TaskComposite
 from .utils import Literal, split
 
 __version__ = '0.1.0'
@@ -192,7 +192,7 @@ class TraversalManager:
             )
             log.info(msg)
         if self._limit_reached:
-            msg = f'Cannot evaluate future because limit was reached'
+            msg = 'Cannot evaluate future because limit was reached'
             log.info(msg)
 
 

@@ -1,4 +1,4 @@
-import pytest  # type: ignore
+import pytest
 
 from mona import Rule, Session
 from mona.plugins import Cache, FileManager

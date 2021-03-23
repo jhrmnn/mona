@@ -31,7 +31,7 @@ from typing import (
 from .. import sci
 
 if TYPE_CHECKING:
-    import numpy as np  # type: ignore
+    import numpy as np
 else:
     np = None  # lazy-loaded in Molecule constructor
 
@@ -97,7 +97,7 @@ class Molecule(Sized, Iterable[Atom]):
     def __init__(self, atoms: List[Atom], **flags: Any) -> None:
         global np
         if np is None:
-            import numpy as np
+            import numpy as np  # type: ignore
         self._atoms = atoms
         self.flags = flags
 

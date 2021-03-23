@@ -120,7 +120,7 @@ def run(
             limit=limit,
         )
     if app.get_entry(entry).stdout:
-        log.info(f'Printing result to standard output.')
+        log.info('Printing result to standard output.')
         print(result)
 
 

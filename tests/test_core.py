@@ -1,6 +1,6 @@
 import subprocess
 
-import pytest  # type: ignore
+import pytest
 
 from mona import Rule, Session, run_shell, run_thread
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import pytest  # type: ignore
+import pytest
 
 from mona import Rule, Session
 from mona.dirtask import dir_task

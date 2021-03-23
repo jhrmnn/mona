@@ -1,4 +1,4 @@
-import pytest  # type: ignore
+import pytest
 
 from mona.errors import HashingError
 from mona.pyhash import hash_function

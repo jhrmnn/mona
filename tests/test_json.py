@@ -1,6 +1,6 @@
 import json
 
-import pytest  # type: ignore
+import pytest
 
 from mona.errors import CompositeError
 from mona.json import ClassJSONDecoder, ClassJSONEncoder, validate_json

@@ -1,7 +1,7 @@
 import pickle
 import subprocess
 
-import pytest  # type: ignore
+import pytest
 
 from mona import Rule, Session, run_shell
 from mona.errors import MonaError, SessionError, TaskError

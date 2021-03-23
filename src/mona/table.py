@@ -2,14 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from itertools import chain, starmap
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union, cast
 
 __all__ = ()
 
 
 class lenstr(str):  # noqa: N801
     def __new__(cls, s: Any, len: int) -> str:  # type: ignore
-        return str.__new__(cls, s)  # type: ignore
+        return str.__new__(cls, s)
 
     def __init__(self, s: Any, len: int) -> None:
         self._len = len
@@ -51,7 +51,7 @@ class Table:
 
     def sort(
         self,
-        key: Callable[[Tuple[object, ...]], object] = lambda x: x[0],
+        key: Callable[[Tuple[object, ...]], str] = lambda x: cast(str, x[0]),
         **kwargs: Any,
     ) -> None:
         self._rows.sort(key=lambda x: key(x[1]), **kwargs)

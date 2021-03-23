@@ -55,7 +55,7 @@ class Parallel(SessionPlugin):
     def _stop(self) -> None:
         assert self._pending is None
         self._pending = 0
-        log.info(f'Stopping scheduler')
+        log.info('Stopping scheduler')
 
     def ignored_exception(self) -> None:  # noqa: D102
         if self._registered_exceptions == 0:

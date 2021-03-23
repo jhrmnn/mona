@@ -172,7 +172,7 @@ class Control(AimsPlugin):
         for tag, value in tags:
             if value is None:
                 continue
-            if value is ():
+            if value == ():
                 lines.append(tag)
             elif isinstance(value, list):
                 lines.extend(f'{tag}  {p2f(v)}' for v in value)

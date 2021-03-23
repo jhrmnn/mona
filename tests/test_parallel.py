@@ -1,7 +1,7 @@
 import asyncio
 import subprocess
 
-import pytest  # type: ignore
+import pytest
 
 from mona import Rule, Session, run_process, run_shell, run_thread
 from mona.dirtask import dir_task
@@ -12,13 +12,13 @@ from tests.test_dirtask import analysis
 
 @Rule
 async def shell():
-    out, _ = await run_shell('expr `cat` "*" 2', input=b'2')
+    out = await run_shell('expr `cat` "*" 2', input=b'2')
     return int(out)
 
 
 @Rule
 async def process():
-    out, _ = await run_process('bash', '-c', 'expr `cat` "*" 2', input=b'2')
+    out = await run_process('bash', '-c', 'expr `cat` "*" 2', input=b'2')
     return int(out)
 
 
@@ -46,12 +46,12 @@ async def error():
 
 def test_shell():
     with Session([Parallel()]) as sess:
-        sess.eval(shell()) == 4
+        assert sess.eval(shell()) == 4
 
 
 def test_process():
     with Session([Parallel()]) as sess:
-        sess.eval(process()) == 4
+        assert sess.eval(process()) == 4
 
 
 def test_thread():
@@ -60,7 +60,7 @@ def test_thread():
         return await run_thread(lambda: 4)
 
     with Session([Parallel()]) as sess:
-        sess.eval(f()) == 4
+        assert sess.eval(f()) == 4
 
 
 def test_calc():
