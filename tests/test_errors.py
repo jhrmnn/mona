@@ -66,7 +66,7 @@ def test_arg_not_in_session():
 
 def test_dependency_cycle():
     @Rule
-    async def f(x):
+    def f(x):
         return f(x)
 
     with pytest.raises(MonaError):
@@ -93,14 +93,6 @@ def test_run_already_run():
             sess.run_task(identity(1))
 
 
-def test_no_coroutine():
-    with pytest.raises(MonaError):
-
-        @Rule
-        def f():
-            pass
-
-
 def test_pickled_future():
     with pytest.raises(MonaError):
         with Session():
@@ -109,8 +101,8 @@ def test_pickled_future():
 
 def test_process_error():
     @Rule
-    async def f():
-        return await run_shell('<', stderr=subprocess.PIPE)
+    def f():
+        return run_shell('<', stderr=subprocess.PIPE)
 
     with pytest.raises(subprocess.CalledProcessError):
         with Session() as sess:

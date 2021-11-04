@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-import asyncio
 import inspect
 import json
 import logging
@@ -11,7 +10,6 @@ import pickle
 from abc import abstractmethod
 from typing import (
     TYPE_CHECKING,
-    Awaitable,
     Callable,
     Dict,
     Iterable,
@@ -38,7 +36,6 @@ log = logging.getLogger(__name__)
 _T = TypeVar('_T')
 _T_co = TypeVar('_T_co', covariant=True)
 _U = TypeVar('_U')
-Corofunc = Callable[..., Awaitable[_T]]
 
 
 # Although this class could be hashable in principle, this would require
@@ -87,12 +84,12 @@ class HashedFuture(Hashed[_T_co], Future):
 class Task(HashedFuture[_T_co]):
     def __init__(
         self,
-        corofunc: Corofunc[_T_co],
+        func: Callable[..., _T_co],
         *args: object,
         label: str = None,
         default: Maybe[_T_co] = Empty._,
     ) -> None:
-        self._corofunc = corofunc
+        self._func = func
         self._args = tuple(map(TaskComposite.ensure_hashed, args))
         Future.__init__(
             self, (arg for arg in self._args if isinstance(arg, HashedFuture))
@@ -103,7 +100,7 @@ class Task(HashedFuture[_T_co]):
         else:
             arg_list = ', '.join(a.label for a in self._args)
             arg_list = arg_list if len(arg_list) < 50 else '...'
-            self._label = f'{self._corofunc.__qualname__}({arg_list})'
+            self._label = f'{self._func.__qualname__}({arg_list})'
         self._result: Union[_T_co, Hashed[_T_co], Empty] = Empty._
         self._storage: Dict[str, object] = {}
 
@@ -111,8 +108,8 @@ class Task(HashedFuture[_T_co]):
     def spec(self) -> bytes:
         return json.dumps(
             [
-                fullname_of(self._corofunc),
-                hash_function(self._corofunc),
+                fullname_of(self._func),
+                hash_function(self._func),
                 *(fut.hashid for fut in self._args),
             ]
         ).encode()
@@ -120,15 +117,15 @@ class Task(HashedFuture[_T_co]):
     @classmethod
     def from_spec(cls, spec: bytes, resolve: HashResolver) -> Task[_T_co]:
         rule_name: str
-        corohash: Hash
+        funchash: Hash
         arg_hashes: Tuple[Hash, ...]
-        rule_name, corohash, *arg_hashes = json.loads(spec)
+        rule_name, funchash, *arg_hashes = json.loads(spec)
         rule: Rule[_T] = import_fullname(rule_name)  # type: ignore
-        corofunc = rule.corofunc
-        assert inspect.iscoroutinefunction(corofunc)
-        assert hash_function(corofunc) == corohash
+        func = rule.func
+        assert inspect.isfunction(func)
+        assert hash_function(func) == funchash
         args = (resolve(h) for h in arg_hashes)
-        return cls(corofunc, *args)
+        return cls(func, *args)
 
     @property
     def label(self) -> str:
@@ -141,8 +138,8 @@ class Task(HashedFuture[_T_co]):
         return self.resolve(lambda res: res.value)
 
     @property
-    def corofunc(self) -> Corofunc[_T_co]:
-        return self._corofunc
+    def func(self) -> Callable[..., _T_co]:
+        return self._func
 
     @property
     def args(self) -> Tuple[Hashed[object], ...]:
@@ -216,14 +213,11 @@ class Task(HashedFuture[_T_co]):
         return self._result
 
     def call(self) -> _T_co:
-        return asyncio.run(self.call_async())
-
-    async def call_async(self) -> _T_co:
         args = [
             arg.value_or_default if isinstance(arg, HashedFuture) else arg.value
             for arg in self.args
         ]
-        return await self._corofunc(*args)
+        return self._func(*args)
 
 
 class TaskComponent(HashedFuture[_T_co]):

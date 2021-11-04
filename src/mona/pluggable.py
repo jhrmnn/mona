@@ -48,19 +48,6 @@ class Pluggable:
             if wrap_first:
                 args[0] = result
 
-    async def run_plugins_async(
-        self, func: str, *args: Any, wrap_first: bool = False, reverse: bool = False
-    ) -> Any:
-        arg_list = list(args)
-        gen = self._run_plugins(func, arg_list, wrap_first, reverse)
-        result: Any = None
-        try:
-            while True:
-                result = await gen.send(result)
-        except StopIteration:
-            if wrap_first:
-                return arg_list[0]
-
     def run_plugins(
         self, func: str, *args: Any, wrap_first: bool = False, reverse: bool = False
     ) -> Any:

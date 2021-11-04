@@ -320,7 +320,7 @@ class Cache(SessionPlugin):
             self._db.execute('END TRANSACTION')
 
     def wrap_execute(self, execute: TaskExecutor) -> TaskExecutor:  # noqa: D102
-        async def _execute(task: Task[object], done: TaskExecuted) -> bool:
+        def _execute(task: Task[object], done: TaskExecuted) -> bool:
             if self._write is WriteAccess.EAGER:
                 with self._db_lock():
                     task_row = self._task_row_for(task.hashid)
@@ -330,7 +330,7 @@ class Cache(SessionPlugin):
                         'UPDATE tasks SET state = ? WHERE hashid = ?',
                         (State.RUNNING.name, task.hashid),
                     )
-            return await execute(task, done)
+            return execute(task, done)
 
         return _execute
 

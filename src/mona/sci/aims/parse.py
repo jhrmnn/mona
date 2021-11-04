@@ -15,7 +15,7 @@ __all__ = ['parse_aims']
 
 
 @Rule
-async def parse_aims(outputs: Dict[str, File]) -> Any:
+def parse_aims(outputs: Dict[str, File]) -> Any:
     """Create a task that parses outputs of FHI-aims calculations.
 
     The task takes the output of :class:`mona.sci.aims.Aims` as an input and

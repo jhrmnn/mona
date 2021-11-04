@@ -20,7 +20,7 @@ _FM = TypeVar('_FM', bound='FileManager')
 
 
 @Rule
-async def file_collection(files: List[File]) -> None:
+def file_collection(files: List[File]) -> None:
     """Create a void task whose purpose is to label a file collection.
 
     :param files: a list of :class:`File`

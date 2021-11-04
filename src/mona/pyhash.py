@@ -57,7 +57,7 @@ def ast_code_of(func: Callable[..., Any]) -> str:
     code = '\n'.join(lines)
     module: Any = ast.parse(code)
     assert len(module.body) == 1
-    assert isinstance(module.body[0], (ast.AsyncFunctionDef, ast.FunctionDef))
+    assert isinstance(module.body[0], (ast.FunctionDef))
     for node in ast.walk(module):
         remove_docstring(node)
     func_node = module.body[0]
@@ -66,7 +66,7 @@ def ast_code_of(func: Callable[..., Any]) -> str:
 
 
 def remove_docstring(node: ast.AST) -> None:
-    classes = ast.AsyncFunctionDef, ast.FunctionDef, ast.ClassDef, ast.Module
+    classes = ast.FunctionDef, ast.ClassDef, ast.Module
     if not isinstance(node, classes):
         return
     if not (node.body and isinstance(node.body[0], ast.Expr)):
@@ -83,9 +83,7 @@ def hashed_globals_of(func: Callable[..., Any]) -> Dict[str, str]:
     for name, obj in items:
         if hasattr(obj, '_func_hash'):
             hashid = (
-                obj._func_hash()
-                if getattr(obj, 'corofunc', None) is not func
-                else 'self'
+                obj._func_hash() if getattr(obj, 'func', None) is not func else 'self'
             )
             hashed_globals[name] = f'func_hash:{hashid}'
             continue

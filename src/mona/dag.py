@@ -3,12 +3,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-import asyncio
 from enum import Enum
+from queue import Queue
 from typing import (
     Any,
-    AsyncIterator,
-    Awaitable,
     Callable,
     Container,
     Deque,
@@ -25,13 +23,13 @@ from typing import (
     cast,
 )
 
-__all__ = ['traverse_async', 'traverse', 'traverse_id']
+__all__ = ['traverse_execute', 'traverse', 'traverse_id']
 
 _T = TypeVar('_T')
 NodeScheduler = Callable[[_T, Callable[[_T], None]], None]
 NodeResult = Tuple[_T, Optional[Exception], Iterable[_T]]
 NodeExecuted = Callable[[NodeResult[_T]], None]
-NodeExecutor = Callable[[_T, NodeExecuted[_T]], Awaitable[bool]]
+NodeExecutor = Callable[[_T, NodeExecuted[_T]], bool]
 Priority = Tuple['Action', 'Action', 'Action']
 
 
@@ -64,7 +62,7 @@ class NodeException(NamedTuple):
 default_priority = cast(Priority, tuple(Action))
 
 
-# only limited override for use in traverse_async()
+# only limited override for use in traverse_execute()
 class SetDeque(Deque[_T]):
     def __init__(self, *args: Any) -> None:
         super().__init__(*args)
@@ -90,14 +88,14 @@ class SetDeque(Deque[_T]):
         return x
 
 
-async def traverse_async(
+def traverse_execute(
     start: Iterable[_T],
     edges_from: Callable[[_T], Iterable[_T]],
     schedule: NodeScheduler[_T],
     execute: NodeExecutor[_T],
     depth: bool = False,
     priority: Priority = default_priority,
-) -> AsyncIterator[Union[Step, NodeException]]:
+) -> Iterator[Union[Step, NodeException]]:
     """Traverse a self-extending DAG, yield steps.
 
     :param start: Starting nodes
@@ -110,7 +108,7 @@ async def traverse_async(
     """
     visited: Set[_T] = set()
     to_visit, to_execute = SetDeque[_T](), Deque[_T]()
-    done: asyncio.Queue[NodeResult[_T]] = asyncio.Queue()
+    done: Queue[NodeResult[_T]] = Queue()
     executing, executed = 0, 0
     actionable: Dict[Action, Callable[[], bool]] = {
         Action.RESULTS: lambda: not done.empty(),
@@ -142,7 +140,7 @@ async def traverse_async(
             extend_from(edges_from(node), to_visit, filter=visited)
         elif action is Action.RESULTS:
             yield Step(action, None, progress)
-            node, exc, nodes = await done.get()
+            node, exc, nodes = done.get()
             if exc:
                 yield NodeException(node, exc)
             extend_from(nodes, to_visit, filter=visited)
@@ -154,7 +152,7 @@ async def traverse_async(
             yield Step(action, node, progress)
             executing += 1
             try:
-                if not (await execute(node, done.put_nowait)):
+                if not execute(node, done.put_nowait):
                     executing -= 1
             except Exception as exc:
                 yield NodeException(node, exc)

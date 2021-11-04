@@ -17,20 +17,20 @@ def test_db(db, mocker):
     sess = Session([Cache(db)])
     with sess:
         sess.eval(analysis(calcs()))
-    mocker.patch.object(sess, 'run_task_async')
+    mocker.patch.object(sess, 'run_task')
     with sess:
         assert sess.eval(analysis(calcs())) == 20
-        assert not sess.run_task_async.called
+        assert not sess.run_task.called
 
 
 def test_db_files(db, tmpdir, mocker):
     sess = Session([Cache(db), FileManager(tmpdir)])
     with sess:
         sess.eval(analysis(calcs2()))
-    mocker.patch.object(sess, 'run_task_async')
+    mocker.patch.object(sess, 'run_task')
     with sess:
         sess.eval(analysis(calcs2()))
-        assert not sess.run_task_async.called
+        assert not sess.run_task.called
 
 
 def test_postponed(db):
@@ -43,7 +43,7 @@ def test_postponed(db):
 
 
 @Rule
-async def get_object():
+def get_object():
     return object()
 
 

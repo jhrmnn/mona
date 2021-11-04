@@ -320,12 +320,12 @@ def checkout(app: Mona, pattern: List[str], done: bool, copy: bool) -> None:
                 continue
             exe: Optional[File] = None
             paths: Iterable[DirtaskInput]
-            if task._corofunc.__name__ == 'dir_task':
+            if task._func.__name__ == 'dir_task':
                 exe = cast(File, task.args[0].value)
                 paths = cast(List[DirtaskInput], task.args[1].value)
                 if task.done():
                     paths.extend(cast(Dict[str, File], task.result()).values())
-            elif task._corofunc.__name__ == 'file_collection':
+            elif task._func.__name__ == 'file_collection':
                 paths = cast(List[File], task.args[0].value)
             else:
                 if task.done():

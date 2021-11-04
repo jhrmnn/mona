@@ -2,21 +2,21 @@ import subprocess
 
 import pytest
 
-from mona import Rule, Session, run_shell, run_thread
+from mona import Rule, Session, run_shell
 
 
 @Rule
-async def identity(x):
+def identity(x):
     return x
 
 
 @Rule
-async def total(xs):
+def total(xs):
     return sum(xs)
 
 
 @Rule
-async def multi(n):
+def multi(n):
     return [identity(x, default=0) for x in range(n)]
 
 
@@ -27,7 +27,7 @@ def test_pass_through():
 
 def test_object():
     @Rule
-    async def get_object():
+    def get_object():
         return object()
 
     with Session() as sess:
@@ -36,7 +36,7 @@ def test_object():
 
 def test_returned_done_future():
     @Rule
-    async def f(x):
+    def f(x):
         if x < 0:
             return x
         return f(-x)
@@ -48,7 +48,7 @@ def test_returned_done_future():
 
 def test_identical_futures():
     @Rule
-    async def f(x, y):
+    def f(x, y):
         x, y = x[0], y[0]
         m = min(x, y)
         if m < 0:
@@ -62,7 +62,7 @@ def test_identical_futures():
 
 def test_recursion():
     @Rule
-    async def recurse(i):
+    def recurse(i):
         if i < 5:
             return recurse(i + 1)
         return i
@@ -97,7 +97,7 @@ def test_graphviz():
 
 def test_local_storage():
     @Rule
-    async def f():
+    def f():
         return Session.active().running_task.storage['test']
 
     with Session() as sess:
@@ -105,19 +105,10 @@ def test_local_storage():
         assert sess.run_task(f()).value == 3
 
 
-def test_run_thread():
-    @Rule
-    async def f():
-        return await run_thread(lambda: 1)
-
-    with Session() as sess:
-        assert sess.run_task(f()).value == 1
-
-
 def test_stderr():
     @Rule
-    async def f():
-        return await run_shell('echo 5 1>&2', stderr=subprocess.PIPE)
+    def f():
+        return run_shell('echo 5 1>&2', stderr=subprocess.PIPE)
 
     with Session() as sess:
         assert int(sess.eval(f()[1])) == 5

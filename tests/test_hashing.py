@@ -5,10 +5,10 @@ from mona.pyhash import hash_function
 
 
 def test_docstring():
-    async def f():
+    def f():
         return 1
 
-    async def g():
+    def g():
         """Docstring."""
         return 1
 
@@ -16,21 +16,21 @@ def test_docstring():
 
 
 def test_whitespace():
-    async def f():
+    def f():
 
         return 1
 
-    async def g():
+    def g():
         return 1  # comment
 
     assert hash_function(f) == hash_function(g)
 
 
 def test_different():
-    async def f():
+    def f():
         return 1
 
-    async def g():
+    def g():
         return 2
 
     assert hash_function(f) != hash_function(g)
@@ -39,14 +39,14 @@ def test_different():
 def test_constant():
     dct = {'a': 1}
 
-    async def f():
+    def f():
         1
         return dct
 
     h1 = hash_function(f)
     dct['a'] = 2
 
-    async def f():
+    def f():
         1
         return dct
 
@@ -58,7 +58,7 @@ obj = object()
 
 
 def test_unhashable():
-    async def f():
+    def f():
         return obj
 
     with pytest.raises(HashingError):

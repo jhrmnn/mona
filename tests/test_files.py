@@ -22,7 +22,7 @@ def datafile():
 
 
 @Rule
-async def calcs2():
+def calcs2():
     return [
         [
             dist,

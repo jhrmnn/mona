@@ -3,17 +3,15 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import annotations
 
-import asyncio
 import logging
 import warnings
 from collections import defaultdict
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import wraps
 from itertools import chain
 from typing import (
     Any,
-    AsyncGenerator,
     Callable,
     Dict,
     FrozenSet,
@@ -37,13 +35,13 @@ from .dag import (
     Priority,
     default_priority,
     traverse,
-    traverse_async,
+    traverse_execute,
 )
 from .errors import FutureError, MonaError, SessionError, TaskError
 from .futures import STATE_COLORS, State
 from .hashing import Hash, Hashed
 from .pluggable import Pluggable, Plugin
-from .tasks import Corofunc, HashedFuture, Task, TaskComposite
+from .tasks import HashedFuture, Task, TaskComposite
 from .utils import Literal, split
 
 __version__ = '0.1.0'
@@ -70,10 +68,10 @@ class SessionPlugin(Plugin['Session']):
     def pre_exit(self, sess: Session) -> None:
         pass
 
-    async def pre_run(self) -> None:
+    def pre_run(self) -> None:
         pass
 
-    async def post_run(self) -> None:
+    def post_run(self) -> None:
         pass
 
     def post_task_run(self, task: ATask) -> None:
@@ -137,7 +135,7 @@ class TraversalManager:
         else:
             self._wont_schedule.append(task)
 
-    async def execute(self, task: ATask, done: TaskExecuted) -> bool:
+    def execute(self, task: ATask, done: TaskExecuted) -> bool:
         def _done(execute_results: NodeResult[ATask]) -> None:
             n, e, candidates = execute_results
             tasks: List[ATask] = []
@@ -154,12 +152,11 @@ class TraversalManager:
                 log.info('Maximum number of executed tasks reached')
         self._n_executed += 1
         log.info(f'{task}: will run')
-        assert await self._execute(task, _done)
+        assert self._execute(task, _done)
         return True
 
     def handle_exception(self, task: ATask, exc: Exception) -> None:
-        # TODO CancelledError can be removed for >=3.8
-        if isinstance(exc, (MonaError, AssertionError, asyncio.CancelledError)):
+        if isinstance(exc, (MonaError, AssertionError)):
             raise exc
         assert isinstance(exc, Exception)
         if self._exc_handler and self._exc_handler(task, exc):
@@ -213,8 +210,9 @@ class Session(Pluggable):
             plugin(self)
         self._tasks: Dict[Hash, ATask] = {}
         self._graph = SessionGraph({}, defaultdict(list), {})
-        self._running_task: ContextVar[Optional[ATask]] = ContextVar('running_task')
-        self._running_task.set(None)
+        self._running_task: ContextVar[Optional[ATask]] = ContextVar(
+            'running_task', default=None
+        )
         self._storage: Dict[str, Any] = {}
         self._warn = warn
 
@@ -239,7 +237,7 @@ class Session(Pluggable):
 
     def __enter__(self) -> Session:
         assert _active_session.get() is None
-        self._active_session_token = _active_session.set(self)
+        _active_session.set(self)
         self.run_plugins('post_enter', self)
         return self
 
@@ -249,8 +247,7 @@ class Session(Pluggable):
     def __exit__(self, exc_type: Any, *args: Any) -> None:
         assert _active_session.get() is self
         self.run_plugins('pre_exit', self)
-        _active_session.reset(self._active_session_token)
-        del self._active_session_token
+        _active_session.set(None)
         if self._warn and exc_type is None:
             tasks_not_run = self._filter_tasks(lambda t: t.state < State.RUNNING)
             if tasks_not_run:
@@ -307,15 +304,15 @@ class Session(Pluggable):
         self._graph.side_effects[caller.hashid].append(callee.hashid)
 
     def create_task(
-        self, corofunc: Corofunc[_T], *args: Any, **kwargs: Any
+        self, func: Callable[..., _T], *args: Any, **kwargs: Any
     ) -> Task[_T]:
         """Create a new task.
 
-        :param corofunc: a coroutine function to be executed
-        :param args: arguments to the coroutine
+        :param func: a function to be executed
+        :param args: arguments to the function
         :param kwargs: keyword arguments passed to :class:`~tasks.Task`
         """
-        task = Task(corofunc, *args, **kwargs)
+        task = Task(func, *args, **kwargs)
         caller = self._running_task.get()
         if caller:
             self.add_side_effect_of(caller, task)
@@ -324,28 +321,25 @@ class Session(Pluggable):
             self.run_plugins('post_create', task)
         return task
 
-    @asynccontextmanager
-    async def run_context(self) -> AsyncGenerator[None, None]:
+    @contextmanager
+    def run_context(self) -> Iterator[None]:
         """Context in which tasks should be run."""
-        await self.run_plugins_async('pre_run')
+        self.run_plugins('pre_run')
         try:
             yield
         finally:
-            await self.run_plugins_async('post_run')
-
-    async def _run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
-        async with self.run_context():
-            return await self.run_task_async(task)
+            self.run_plugins('post_run')
 
     def run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         """Run a task.
 
         :param task: task to run
 
-        Return the result of the task's coroutine function or it's hashed
-        instance if hashable.
+        Return the result of the task's function or it's hashed instance if
+        hashable.
         """
-        return asyncio.run(self._run_task(task))
+        with self.run_context():
+            return self._run_task(task)
 
     def set_result(self, task: Task[_T], result: Union[_T, Hashed[_T]]) -> None:
         """Attach a result to a task."""
@@ -362,15 +356,14 @@ class Session(Pluggable):
         backflow = self._process_objects([result])
         self._graph.backflow[task.hashid] = frozenset(t.hashid for t in backflow)
 
-    async def run_task_async(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
-        """Run a task asynchronously."""
+    def _run_task(self, task: Task[_T]) -> Union[_T, Hashed[_T]]:
         if task.state < State.READY:
             raise TaskError(f'Not ready: {task!r}', task)
         if task.state > State.READY:
             raise TaskError(f'Task was already run: {task!r}', task)
         task.set_running()
         with self._running_task_ctx(task):
-            raw_result = await task.corofunc(*(arg.value for arg in task.args))
+            raw_result = task.func(*(arg.value for arg in task.args))
         task.set_has_run()
         side_effects = self.side_effects_of(task)
         if side_effects:
@@ -380,17 +373,13 @@ class Session(Pluggable):
         self.run_plugins('post_task_run', task)
         return result
 
-    async def _traverse_execute(self, task: ATask, done: TaskExecuted) -> bool:
-        await self.run_task_async(task)
+    def _traverse_execute(self, task: ATask, done: TaskExecuted) -> bool:
+        self._run_task(task)
         backflow = (self._tasks[h] for h in self._graph.backflow.get(task.hashid, ()))
         done((task, None, backflow))
         return True
 
-    def eval(self, *args: Any, **kwargs: Any) -> Any:
-        """Blocking version of :meth:`eval_async`."""
-        return asyncio.run(self.eval_async(*args, **kwargs))
-
-    async def _eval_async(
+    def _eval(
         self,
         obj: object,
         depth: bool = False,
@@ -431,7 +420,7 @@ class Session(Pluggable):
             task_filter,
             limit,
         )
-        async for step_or_exception in traverse_async(
+        for step_or_exception in traverse_execute(
             self._process_objects([fut]),
             mngr.edges_from,
             mngr.schedule,
@@ -468,10 +457,10 @@ class Session(Pluggable):
                     raise
         return fut
 
-    @wraps(_eval_async)
-    async def eval_async(self, *args: Any, **kwargs: Any) -> Any:
-        async with self.run_context():
-            return await self._eval_async(*args, **kwargs)
+    @wraps(_eval)
+    def eval(self, *args: Any, **kwargs: Any) -> Any:
+        with self.run_context():
+            return self._eval(*args, **kwargs)
 
     def dot_graph(self, *args: Any, **kwargs: Any) -> Any:
         """Generate :class:`~graphviz.Digraph` for the task DAG."""

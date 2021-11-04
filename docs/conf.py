@@ -58,7 +58,6 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
-    'sphinxcontrib.asyncio',
 ]
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),

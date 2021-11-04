@@ -3,42 +3,42 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import inspect
 from functools import wraps
-from typing import Any, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar
 
 from .errors import MonaError
 from .pyhash import hash_function
 from .sessions import Session
-from .tasks import Corofunc, Task
+from .tasks import Task
 
 _T = TypeVar('_T')
 
 
 class Rule(Generic[_T]):
-    """Decorator that turns a coroutine function into a rule.
+    """Decorator that turns a function into a rule.
 
     A rule is a callable that generates a task instead of actually calling the
-    coroutine.
+    function.
 
-    :param corofunc: a coroutine function
+    :param func: a function
     """
 
-    def __init__(self, corofunc: Corofunc[_T]) -> None:
-        if not inspect.iscoroutinefunction(corofunc):
-            raise MonaError(f'Task function is not a coroutine: {corofunc}')
-        self._corofunc = corofunc
-        wraps(corofunc)(self)
+    def __init__(self, func: Callable[..., _T]) -> None:
+        if not inspect.isfunction(func):
+            raise MonaError(f'Task function is not a function: {func}')
+        self._func = func
+        wraps(func)(self)
 
     def _func_hash(self) -> str:
-        return hash_function(self._corofunc)
+        return hash_function(self._func)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Task[_T]:
         """Create a task.
 
         All arguments are passed to :class:`Task`.
         """
-        return Session.active().create_task(self._corofunc, *args, **kwargs)
+        return Session.active().create_task(self._func, *args, **kwargs)
 
     @property
-    def corofunc(self) -> Corofunc[_T]:
-        """Coroutine function associated with the rule."""
-        return self._corofunc
+    def func(self) -> Callable[..., _T]:
+        """Function associated with the rule."""
+        return self._func

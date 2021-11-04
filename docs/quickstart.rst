@@ -18,16 +18,16 @@ This takes only a little work with Mona::
     from mona import Rule
 
     @Rule
-    async def add(x, y):
+    def add(x, y):
         return x + y
 
     @Rule
-    async def fib(n):
+    def fib(n):
         if n <= 2:
             return 1
         return add(fib(n - 1), fib(n - 2))
 
-We have turned ``fib()`` into a coroutine function (requirement by Mona), decorated it with :class:`~mona.Rule`, and replaced ``x + y`` by ``add(x, y)``. Calling a rule is similar to calling a coroutine function in the sense that neither actually runs the body of the function (unlike calling an ordinary function does). The similarity ends there, however---calling a coroutine function creates a coroutine object, whereas calling a rule creates a :class:`~mona.tasks.Task`.
+We have decorated ``fib()`` with :class:`~mona.Rule` and replaced ``x + y`` by ``add(x, y)``. Calling a rule then does not actually run the body of the function but creates a :class:`~mona.tasks.Task`.
 
 The extra ``add()`` rule is needed, because tasks created by calling rules may be yet unevaluated, and their results inaccessible. But Mona ensures that a task (such as ``add(fib(2), fib(1))``) is run only when its inputs (``fib(2)`` and ``fib(1)``) have been evaluated, and passes in the evaluated arguments.
 
@@ -40,12 +40,12 @@ To make a rule accessible to the command-line interface of Mona, one decorates i
     app = Mona()
 
     @Rule
-    async def add(x, y):
+    def add(x, y):
         return x + y
 
     @app.entry('fib', int)
     @Rule
-    async def fib(n):
+    def fib(n):
         if n <= 2:
             return 1
         return add(fib(n - 1), fib(n - 2))

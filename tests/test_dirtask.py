@@ -9,7 +9,7 @@ from mona.files import File
 
 
 @Rule
-async def calcs():
+def calcs():
     return [
         [
             dist,
@@ -24,12 +24,12 @@ async def calcs():
 
 
 @Rule
-async def analysis(results):
+def analysis(results):
     return sum(int(stdout.read_text()) for _, stdout in results)
 
 
 @Rule
-async def python():
+def python():
     return dir_task(
         File.from_str(
             'script', '#!/usr/bin/env python\nimport coverage\nprint(coverage.__name__)'

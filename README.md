@@ -27,12 +27,12 @@ from mona import Mona, Rule
 app = Mona()
 
 @Rule
-async def total(xs):
+def total(xs):
     return sum(xs)
 
 @app.entry('fib', int)
 @Rule
-async def fib(n):
+def fib(n):
     if n <= 2:
         return 1
     return total([fib(n - 1), fib(n - 2)])

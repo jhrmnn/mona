@@ -155,7 +155,7 @@ def validate_file_inputs(
 
 
 @Rule
-async def dir_task(exe: File, inputs: List[DirtaskInputRaw]) -> Dict[str, File]:
+def dir_task(exe: File, inputs: List[DirtaskInputRaw]) -> Dict[str, File]:
     """Create a rule with an executable and a files as inputs.
 
     The result of the task is a dictionary of all new files created by running
@@ -172,7 +172,7 @@ async def dir_task(exe: File, inputs: List[DirtaskInputRaw]) -> Dict[str, File]:
         out_path, err_path = tmpdir / 'STDOUT', tmpdir / 'STDERR'
         try:
             with out_path.open('w') as stdout, err_path.open('w') as stderr:
-                await run_process(
+                run_process(
                     str(tmpdir / exe.path),
                     stdout=stdout,
                     stderr=stderr,

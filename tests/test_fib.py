@@ -3,12 +3,12 @@ from tests.test_core import total
 
 
 @Rule
-async def add(x, y):
+def add(x, y):
     return x + y
 
 
 @Rule
-async def fib(n):
+def fib(n):
     if n < 2:
         return n
     return add(fib(n - 1), fib(n - 2))
@@ -30,7 +30,7 @@ def test_fibonacci2():
 
 def test_fibonacci3():
     @Rule
-    async def fib(n):
+    def fib(n):
         if n < 2:
             return n
         return total([fib(n - 1), fib(n - 2)])
@@ -41,7 +41,7 @@ def test_fibonacci3():
 
 def test_fibonacci4():
     @Rule
-    async def fib(n):
+    def fib(n):
         if n < 2:
             return [[n]]
         return [[add(fib(n - 1)[0][0], fib(n - 2)[0][0])]]
