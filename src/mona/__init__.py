@@ -1,4 +1,5 @@
 from .app import Mona
+from .decsession import DecentralizedSession
 from .executor import DecentralizedExecutor
 from .messaging import Message, MessageBus, MessageType
 from .recipe import Patch, PatchOperation, Recipe
@@ -24,4 +25,5 @@ __all__ = [
     'Message',
     'MessageType',
     'DecentralizedExecutor',
+    'DecentralizedSession',
 ]

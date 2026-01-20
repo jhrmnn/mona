@@ -171,7 +171,9 @@ class DecentralizedExecutor:
                 # Get result from hub
                 hub = self.registry.get_hub(task_info["function_id"])
                 if hub:
-                    return hub.get_result(task_hash)
+                    result = hub.get_result(task_hash)
+                    # Recursively resolve any TaskRefs in the result
+                    return self._resolve_inputs(result, recipe)
             return inputs  # Return as-is if can't resolve
         elif isinstance(inputs, dict):
             if "$task" in inputs:
