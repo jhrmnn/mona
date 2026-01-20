@@ -203,7 +203,8 @@ class Session(Pluggable):
     """
 
     def __init__(
-        self, plugins: Iterable[SessionPlugin] = None, warn: bool = True
+        self, plugins: Iterable[SessionPlugin] = None, warn: bool = True,
+        decentralized: bool = False
     ) -> None:
         Pluggable.__init__(self)
         for plugin in plugins or ():
@@ -215,6 +216,14 @@ class Session(Pluggable):
         )
         self._storage: Dict[str, Any] = {}
         self._warn = warn
+        self._decentralized = decentralized
+        
+        # Initialize decentralized backend if enabled
+        if self._decentralized:
+            from .decsession import DecentralizedSession
+            self._dec_session = DecentralizedSession()
+        else:
+            self._dec_session = None
 
     def _check_active(self) -> None:
         sess = _active_session.get()
@@ -238,6 +247,9 @@ class Session(Pluggable):
     def __enter__(self) -> Session:
         assert _active_session.get() is None
         _active_session.set(self)
+        if self._decentralized:
+            assert self._dec_session is not None
+            self._dec_session.__enter__()
         self.run_plugins('post_enter', self)
         return self
 
@@ -247,6 +259,9 @@ class Session(Pluggable):
     def __exit__(self, exc_type: Any, *args: Any) -> None:
         assert _active_session.get() is self
         self.run_plugins('pre_exit', self)
+        if self._decentralized:
+            assert self._dec_session is not None
+            self._dec_session.__exit__(exc_type, *args)
         _active_session.set(None)
         if self._warn and exc_type is None:
             tasks_not_run = self._filter_tasks(lambda t: t.state < State.RUNNING)
@@ -312,6 +327,10 @@ class Session(Pluggable):
         :param args: arguments to the function
         :param kwargs: keyword arguments passed to :class:`~tasks.Task`
         """
+        if self._decentralized:
+            assert self._dec_session is not None
+            return self._dec_session.create_task(func, *args, **kwargs)
+        
         task = Task(func, *args, **kwargs)
         caller = self._running_task.get()
         if caller:
@@ -459,6 +478,9 @@ class Session(Pluggable):
 
     @wraps(_eval)
     def eval(self, *args: Any, **kwargs: Any) -> Any:
+        if self._decentralized:
+            assert self._dec_session is not None
+            return self._dec_session.eval(*args, **kwargs)
         with self.run_context():
             return self._eval(*args, **kwargs)
 
