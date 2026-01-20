@@ -11,6 +11,8 @@
 
 Mona is a calculation framework that provides [persistent](https://en.wikipedia.org/wiki/Persistence_(computer_science)) [memoization](https://en.wikipedia.org/wiki/Memoization) and turns the Python call stack into a task [dependency graph](https://en.wikipedia.org/wiki/Dependency_graph). The graph contains three types of edges: a task input depending on outputs of other tasks, a task creating new tasks, and a task output referencing outputs of other tasks.
 
+**New**: Mona now supports **decentralized execution** mode where tasks are executed by independent task hubs with no central scheduler. See [Decentralized Execution](#decentralized-execution) below.
+
 ## Installing
 
 Install and update using [Pip](https://pip.pypa.io/en/stable/quickstart/).
@@ -64,7 +66,46 @@ with app.create_session() as sess:
     assert sess.eval(fib(5)) == sum(sess.eval([fib(4), fib(3)]))
 ```
 
+## Decentralized Execution
+
+Mona now supports a fully decentralized execution mode where:
+
+- **No central scheduler**: Each function has its own task hub
+- **No central state**: Execution state is carried by recipes that flow through the network
+- **Content-addressable tasks**: Tasks are identified by hash(function_identity, inputs)
+- **Dynamic graph expansion**: Tasks can create new tasks and return futures
+
+### Example
+
+```python
+from mona import Rule, Session
+
+@Rule
+def fibonacci(n):
+    if n <= 2:
+        return 1
+    return add(fibonacci(n - 1), fibonacci(n - 2))
+
+@Rule
+def add(x, y):
+    return x + y
+
+# Enable decentralized mode
+with Session(decentralized=True) as sess:
+    result = sess.eval(fibonacci(6))
+    print(result)  # Output: 8
+```
+
+In decentralized mode:
+- Each function (`fibonacci`, `add`) gets its own TaskHub
+- No central scheduler coordinates execution
+- Results are cached in hubs for automatic deduplication
+- Recipes carry the DAG structure through the network
+
+See `docs/decentralized.md` and `examples/decentralized_fibonacci.py` for more details.
+
 ## Links
 
 - Documentation: https://jhrmnn.github.io/mona
+- Decentralized Execution: [docs/decentralized.md](docs/decentralized.md)
 
