@@ -77,11 +77,28 @@ class TaskHub:
         log.info(f"Hub {self.function_identity}: Executing task {task_hash}")
         result = self.func(*inputs) if isinstance(inputs, (list, tuple)) else self.func(inputs)
         
+        # Convert any DecentralizedTaskHandle in result to TaskRef
+        from .decsession import DecentralizedTaskHandle
+        result = self._convert_handles_to_refs(result)
+        
         # Store result (may contain TaskRefs)
         self.completed[task_hash] = result
         log.debug(f"Hub {self.function_identity}: Task {task_hash} completed")
         
         return result
+    
+    def _convert_handles_to_refs(self, obj: Any) -> Any:
+        """Convert DecentralizedTaskHandle objects to TaskRef objects."""
+        from .decsession import DecentralizedTaskHandle
+        
+        if isinstance(obj, DecentralizedTaskHandle):
+            return TaskRef(obj.task_hash)
+        elif isinstance(obj, dict):
+            return {k: self._convert_handles_to_refs(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            converted = [self._convert_handles_to_refs(item) for item in obj]
+            return type(obj)(converted) if isinstance(obj, tuple) else converted
+        return obj
     
     def add_waiting(self, task_hash: Hash, parent_hash: Hash, json_pointer: str) -> None:
         """Register a parent task waiting for this task to complete."""

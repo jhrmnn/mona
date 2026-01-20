@@ -63,9 +63,18 @@ class DecentralizedSession:
             hub = self.executor.register_function_hub(function_identity, func)
             self._function_hubs[function_identity] = hub
         
+        # Convert any DecentralizedTaskHandle args to TaskRefs for serialization
+        processed_args = []
+        for arg in args:
+            if isinstance(arg, DecentralizedTaskHandle):
+                from .taskhub import TaskRef
+                processed_args.append(TaskRef(arg.task_hash))
+            else:
+                processed_args.append(arg)
+        
         # Create task in recipe
         task_hash = self.executor.create_task_in_recipe(
-            self._current_recipe, function_identity, args
+            self._current_recipe, function_identity, tuple(processed_args)
         )
         
         # Return a handle that can be evaluated later

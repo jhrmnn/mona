@@ -45,10 +45,24 @@ class Patch:
     @classmethod
     def create_add_task(cls, task_hash: Hash, function_id: str, inputs: Any) -> Patch:
         """Create a patch to add a task node."""
+        # Convert TaskRefs to serializable form
+        from .taskhub import TaskRef
+        
+        def serialize_input(obj):
+            if isinstance(obj, TaskRef):
+                return obj.to_dict()
+            elif isinstance(obj, (list, tuple)):
+                return [serialize_input(i) for i in obj]
+            elif isinstance(obj, dict):
+                return {k: serialize_input(v) for k, v in obj.items()}
+            return obj
+        
+        serialized_inputs = serialize_input(inputs)
+        
         data = {
             "task_hash": task_hash,
             "function_id": function_id,
-            "inputs": inputs
+            "inputs": serialized_inputs
         }
         # Create deterministic patch_id from operation and data
         patch_content = json.dumps([PatchOperation.ADD_TASK, data], sort_keys=True)

@@ -43,11 +43,18 @@ class DecentralizedExecutor:
         
         task_hash = H(function_identity, canonicalized_inputs)
         """
+        # Convert inputs to JSON-serializable form
+        def serialize_input(obj):
+            if isinstance(obj, TaskRef):
+                return obj.to_dict()
+            return obj
+        
         # Canonicalize inputs by JSON serialization with sorted keys
         if isinstance(inputs, (list, tuple)):
-            canonical_inputs = json.dumps(inputs, sort_keys=True)
+            serializable_inputs = [serialize_input(i) for i in inputs]
+            canonical_inputs = json.dumps(serializable_inputs, sort_keys=True)
         else:
-            canonical_inputs = json.dumps([inputs], sort_keys=True)
+            canonical_inputs = json.dumps([serialize_input(inputs)], sort_keys=True)
         
         # Create hash from function identity and inputs
         hash_input = json.dumps([function_identity, canonical_inputs], sort_keys=True)
@@ -65,9 +72,33 @@ class DecentralizedExecutor:
         self._active_recipes[recipe.recipe_id] = recipe
         log.info(f"Starting execution of recipe {recipe.recipe_id}")
         
-        # Process all tasks in recipe
-        for task_hash, task_info in recipe.tasks.items():
-            self._process_task(recipe, task_hash, task_info)
+        # Process tasks iteratively to handle dynamic task creation
+        max_iterations = 1000
+        iteration = 0
+        processed_tasks = set()
+        
+        while iteration < max_iterations:
+            # Get unprocessed tasks
+            current_tasks = set(recipe.tasks.keys()) - processed_tasks
+            
+            if not current_tasks:
+                # No new tasks, check if output is ready
+                hub = self.registry.get_hub(recipe.tasks[output_task_hash]["function_id"])
+                if hub and hub.has_completed(output_task_hash):
+                    result = hub.get_result(output_task_hash)
+                    # Resolve any remaining TaskRefs in the result
+                    resolved_result = self._resolve_inputs(result, recipe)
+                    if self._is_fully_resolved(resolved_result):
+                        log.info(f"Recipe {recipe.recipe_id} completed")
+                        return resolved_result
+                break
+            
+            # Process unprocessed tasks
+            for task_hash in current_tasks:
+                task_info = recipe.get_task_info(task_hash)
+                if task_info and not recipe.is_complete(task_hash):
+                    self._process_task(recipe, task_hash, task_info)
+                processed_tasks.add(task_hash)
         
         # Deliver messages until completion
         max_iterations = 1000  # Safety limit
@@ -81,9 +112,11 @@ class DecentralizedExecutor:
             hub = self.registry.get_hub(recipe.tasks[output_task_hash]["function_id"])
             if hub and hub.has_completed(output_task_hash):
                 result = hub.get_result(output_task_hash)
-                if self._is_fully_resolved(result):
+                # Resolve any remaining TaskRefs in the result
+                resolved_result = self._resolve_inputs(result, recipe)
+                if self._is_fully_resolved(resolved_result):
                     log.info(f"Recipe {recipe.recipe_id} completed")
-                    return result
+                    return resolved_result
             
             # If no pending messages and task not complete, we're stuck
             if not self.message_bus.has_pending():
@@ -102,8 +135,11 @@ class DecentralizedExecutor:
         if not hub:
             raise RuntimeError(f"No hub registered for function: {function_id}")
         
+        # Resolve any TaskRefs in inputs before execution
+        resolved_inputs = self._resolve_inputs(inputs, recipe)
+        
         # Execute task on hub
-        result = hub.execute_task(task_hash, inputs)
+        result = hub.execute_task(task_hash, resolved_inputs)
         
         # Mark task as complete in recipe
         patch = Patch.create_mark_complete(task_hash)
@@ -118,6 +154,35 @@ class DecentralizedExecutor:
         # Send completion signal
         completion_msg = Message.create_task_completion(task_hash, result, function_id)
         self.message_bus.send(completion_msg)
+    
+    def _resolve_inputs(self, inputs: Any, recipe: Recipe) -> Any:
+        """Resolve any TaskRefs in inputs to their actual values.
+        
+        This recursively processes TaskRefs and executes dependent tasks if needed.
+        """
+        if isinstance(inputs, TaskRef):
+            # Get the task hash and resolve it
+            task_hash = inputs.task_hash
+            task_info = recipe.get_task_info(task_hash)
+            if task_info:
+                # Process the dependent task if not already complete
+                if not recipe.is_complete(task_hash):
+                    self._process_task(recipe, task_hash, task_info)
+                # Get result from hub
+                hub = self.registry.get_hub(task_info["function_id"])
+                if hub:
+                    return hub.get_result(task_hash)
+            return inputs  # Return as-is if can't resolve
+        elif isinstance(inputs, dict):
+            if "$task" in inputs:
+                # This is a TaskRef in dict form
+                task_ref = TaskRef.from_dict(inputs)
+                return self._resolve_inputs(task_ref, recipe)
+            return {k: self._resolve_inputs(v, recipe) for k, v in inputs.items()}
+        elif isinstance(inputs, (list, tuple)):
+            resolved = [self._resolve_inputs(item, recipe) for item in inputs]
+            return type(inputs)(resolved) if isinstance(inputs, tuple) else resolved
+        return inputs
     
     def _contains_task_refs(self, obj: Any) -> bool:
         """Check if an object contains TaskRefs."""
